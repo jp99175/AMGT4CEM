@@ -1,0 +1,177 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.amgt-hidden {
+  display: none !important;
+}
+
+/* --- Barre d'outils --- */
+#amgt-toolbar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
+}
+
+.amgt-btn {
+  background: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.amgt-btn:hover {
+  background: #f0f0f0;
+}
+
+.amgt-btn--active {
+  background: #2c3e50;
+  color: #fff;
+}
+
+.amgt-btn--primary {
+  background: #2c7a3d;
+  color: #fff;
+  border-color: #2c7a3d;
+}
+
+/* --- Bannières d'information --- */
+.amgt-banner {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: #fff8e1;
+  border: 1px solid #e0b400;
+  border-radius: 4px;
+  padding: 8px 14px;
+  font-size: 13px;
+  max-width: 90%;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.amgt-file-label {
+  display: inline-block;
+  margin-left: 8px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* --- Affichage coordonnées --- */
+#amgt-coords-display {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 1000;
+  background: rgba(255,255,255,0.85);
+  padding: 3px 8px;
+  font-size: 12px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+/* --- Mode placement d'un point --- */
+.amgt-placing-mode {
+  cursor: crosshair !important;
+}
+
+/* --- Formulaire de création --- */
+#amgt-point-form {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: #fff;
+  border-radius: 6px;
+  padding: 14px 16px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+  width: 260px;
+}
+
+#amgt-point-form h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.amgt-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.amgt-form-row input {
+  padding: 5px;
+  font-size: 13px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+.amgt-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* --- Marqueurs --- */
+.amgt-point-marker__dot {
+  width: 14px;
+  height: 14px;
+  background: #1565c0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 3px rgba(0,0,0,0.6);
+}
+
+.amgt-temp-marker__dot {
+  width: 18px;
+  height: 18px;
+  background: #e67e22;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0,0,0,0.7);
+  animation: amgt-pulse 1s infinite;
+}
+
+@keyframes amgt-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* --- Popups --- */
+.amgt-popup table {
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.amgt-popup th {
+  text-align: left;
+  padding: 2px 8px 2px 0;
+  color: #555;
+  vertical-align: top;
+}
+
+.amgt-popup td {
+  padding: 2px 0;
+}

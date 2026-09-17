@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AMGT4CEM &ndash; Carte du réseau métro</title>
+
+<link rel="stylesheet" href="./vendor/leaflet/leaflet.css" />
+<link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- Barre d'outils principale -->
+<div id="amgt-toolbar">
+  <button id="amgt-reset-view-btn" class="amgt-btn" title="Revenir à l'emprise générale du réseau">
+    ⤢ Vue métro
+  </button>
+  <button id="amgt-add-point-btn" class="amgt-btn" title="Ajouter un point">
+    ✚ Ajouter un point
+  </button>
+</div>
+
+<!-- Avertissement fond Urbis inaccessible -->
+<div id="amgt-basemap-warning" class="amgt-banner amgt-hidden">
+  Le fond de plan Urbis semble inaccessible depuis ce poste. Sélectionnez
+  « Fond de secours (OSM) » dans le contrôle de couches (haut droite).
+</div>
+
+<!-- Chargement manuel de Metro.json si fetch() a échoué (ouverture en file://) -->
+<div id="amgt-manual-load" class="amgt-banner amgt-hidden">
+  Chargement automatique de Metro.json impossible depuis ce mode d'ouverture.
+  <label class="amgt-file-label">
+    Sélectionner le fichier Metro.json
+    <input type="file" id="amgt-manual-load-input" accept=".json" />
+  </label>
+</div>
+
+<!-- Affichage des coordonnées Lambert du curseur -->
+<div id="amgt-coords-display"></div>
+
+<!-- Formulaire de création d'un point métier -->
+<div id="amgt-point-form" class="amgt-hidden">
+  <h3>Nouveau point</h3>
+  <div class="amgt-form-row">
+    <span>X Lambert :</span> <span id="amgt-form-x">-</span>
+  </div>
+  <div class="amgt-form-row">
+    <span>Y Lambert :</span> <span id="amgt-form-y">-</span>
+  </div>
+  <div class="amgt-form-row">
+    <label for="amgt-form-type">Type</label>
+    <input type="text" id="amgt-form-type" placeholder="ex : ouvrage, défaut, capteur..." />
+  </div>
+  <div class="amgt-form-row">
+    <label for="amgt-form-label">Libellé</label>
+    <input type="text" id="amgt-form-label" placeholder="Nom / description courte" />
+  </div>
+  <div class="amgt-form-actions">
+    <button id="amgt-form-cancel" class="amgt-btn">Annuler</button>
+    <button id="amgt-form-confirm" class="amgt-btn amgt-btn--primary">Enregistrer</button>
+  </div>
+</div>
+
+<script src="./vendor/leaflet/leaflet.js"></script>
+<script src="./vendor/proj4/proj4.js"></script>
+
+<script src="./config.js"></script>
+<script src="./src/crs.js"></script>
+<script src="./src/metroData.js"></script>
+<script src="./src/metroLayer.js"></script>
+<script src="./src/pointsStore.js"></script>
+<script src="./src/pointsLayer.js"></script>
+<script src="./src/addPointTool.js"></script>
+<script src="./src/coordsDisplay.js"></script>
+<script src="./src/basemap.js"></script>
+<script src="./src/app.js"></script>
+</body>
+</html>
