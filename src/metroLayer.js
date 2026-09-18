@@ -15,7 +15,7 @@ const AMGT4CEM_METRO_TYPES = {
 const AMGT4CEM_MetroLayer = {
   /**
    * @param {object} geojson - FeatureCollection Metro.json (non modifiée)
-   * @returns {{ layersByType: Object.<string, L.LayerGroup>, bounds: L.LatLngBounds }}
+   * @returns {{ layersByType: Object.<string, L.LayerGroup>, bounds: L.LatLngBounds, searchIndex: object[] }}
    */
   build(geojson) {
     const layersByType = {
@@ -23,6 +23,7 @@ const AMGT4CEM_MetroLayer = {
       MT: L.layerGroup(),
     };
     const bounds = L.latLngBounds([]);
+    const searchIndex = [];
 
     for (const feature of geojson.features || []) {
       const props = feature.properties || {};
@@ -57,9 +58,16 @@ const AMGT4CEM_MetroLayer = {
       });
       polygon.addTo(layersByType[type]);
       bounds.extend(polygon.getBounds());
+
+      searchIndex.push({
+        kind: type === 'MS' ? 'station' : 'tunnel',
+        label: props.name_fr || props.name_nl || '(sans nom)',
+        searchText: [props.name_fr, props.name_nl].filter(Boolean).join(' '),
+        bounds: polygon.getBounds(),
+      });
     }
 
-    return { layersByType, bounds };
+    return { layersByType, bounds, searchIndex };
   },
 
   _buildPopupHtml(props) {

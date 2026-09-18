@@ -31,9 +31,10 @@ fichier `Metro.json` (sans quitter la page).
 2. Les couches **Stations** et **Tunnels** sont visibles.
 3. Cliquez sur une station ou un tunnel : ses attributs (`name_fr`,
    `name_nl`, `type`, `niveau`...) s'affichent dans une popup.
-4. Déplacez la carte (glisser) et zoomez (molette, boutons +/-, ou
-   double-clic) : le fond et les données métro restent parfaitement
-   superposés, sans limite de zoom.
+4. Déplacez la carte (glisser) et zoomez (molette, pincement, ou
+   double-clic — pas de boutons +/- dédiés, voir point 7 ci-dessous) : le
+   fond et les données métro restent parfaitement superposés, sans limite
+   de zoom.
 5. Bouton **☰ Carte** (haut gauche) : ouvre le menu fond de plan / couches /
    vue. Choisissez **UrbIS** ou **Orthophotos** (fait apparaître, en bas de
    l'écran, une navigation **‹ année › ⏭** pour parcourir les millésimes de
@@ -41,22 +42,26 @@ fichier `Metro.json` (sans quitter la page).
    réglée sur la plus récente accessible par défaut ; le bouton **⏭** y
    ramène directement). Les cases à cocher activent/désactivent Stations,
    Tunnels et Points métier. Le bouton **⤢ Réinitialiser la vue** revient à
-   l'emprise générale du réseau et remet le fond UrbIS grisé. Le contrôle de
-   zoom (+/-) est en haut à droite.
-6. Les coordonnées Lambert du curseur s'affichent en bas à gauche, sous la
+   l'emprise générale du réseau et remet le fond UrbIS grisé.
+6. Bouton **🔍** (haut droite) : ouvre un champ de recherche sur les
+   stations, tunnels (Metro.json) et points métier. Tapez un nom (les
+   accents sont ignorés dans la recherche, ex. "de brouckere" trouve
+   "De Brouckère"), cliquez un résultat : la carte se recentre et zoome
+   dessus automatiquement.
+7. Les coordonnées Lambert du curseur s'affichent en bas à gauche, sous la
    navigation temporelle quand celle-ci est visible.
-7. Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
+8. Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
    carte (vous pouvez continuer à naviguer avant de cliquer) : un marqueur
    provisoire apparaît, les coordonnées X/Y Lambert sont calculées
    automatiquement et affichées dans le petit formulaire.
-8. Complétez *Type* et *Libellé*, cliquez **Enregistrer**. Le point devient
+9. Complétez *Type* et *Libellé*, cliquez **Enregistrer**. Le point devient
    permanent et est sauvegardé dans la micro-base (`localStorage` du
    navigateur, propre à cet appareil — voir section 6).
-9. Rechargez la page : le point est toujours là. Cliquez dessus pour
-   consulter ses informations. Vous pouvez le glisser-déposer pour le
-   repositionner : les coordonnées Lambert sont recalculées et enregistrées
-   automatiquement. Le bouton **🗑 Supprimer ce point** dans la popup
-   l'efface définitivement (demande confirmation).
+10. Rechargez la page : le point est toujours là. Cliquez dessus pour
+    consulter ses informations. Vous pouvez le glisser-déposer pour le
+    repositionner : les coordonnées Lambert sont recalculées et enregistrées
+    automatiquement. Le bouton **🗑 Supprimer ce point** dans la popup
+    l'efface définitivement (demande confirmation).
 
 Voir section 6 ci-dessous pour le détail du stockage (micro-base de
 données) et sa mise en place.
@@ -145,6 +150,7 @@ src/metroData.js             chargement Metro.json (fetch, avec repli FileReader
 src/metroLayer.js            construction des couches Leaflet Stations/Tunnels
 src/basemap.js                fonds de plan (UrbIS, Orthophoto, Bruciel)
 src/mapMenu.js                menu fond de plan / couches / réinitialisation
+src/searchTool.js             recherche station/tunnel/point (remplace le zoom +/-)
 src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
 src/pointsLayer.js           affichage/déplacement des points métier
 src/addPointTool.js          workflow "Ajouter un point"

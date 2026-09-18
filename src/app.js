@@ -4,8 +4,9 @@
  */
 (function () {
   const map = L.map('map', {
-    // Contrôle de zoom désactivé ici et recréé en haut à droite (position par
-    // défaut = haut gauche, sous le menu "☰ Carte" et masqué par lui).
+    // Pas de contrôle de zoom Leaflet : remplacé par la recherche en haut à
+    // droite (voir searchTool.js). Le zoom reste possible à la molette, au
+    // pincement et au double-clic.
     zoomControl: false,
     maxZoom: AMGT4CEM_CONFIG.maxZoom,
     // Vue par défaut le temps que Metro.json soit chargé (recentrée ensuite
@@ -13,7 +14,7 @@
     center: [50.85, 4.35],
     zoom: 12,
   });
-  L.control.zoom({ position: 'topright' }).addTo(map);
+  AMGT4CEM_SearchTool.init(map);
   // Retire le lien "Leaflet" du contrôle d'attribution (sans obligation légale :
   // la licence BSD-2-Clause de Leaflet n'exige pas d'affichage à l'écran, voir
   // README). Les attributions des sources de données (UrbIS, Bruciel...)
@@ -41,10 +42,11 @@
   });
 
   function onMetroLoaded(geojson) {
-    const { layersByType, bounds } = AMGT4CEM_MetroLayer.build(geojson);
+    const { layersByType, bounds, searchIndex } = AMGT4CEM_MetroLayer.build(geojson);
     layersByType.MS.addTo(map);
     layersByType.MT.addTo(map);
     AMGT4CEM_MapMenu.setMetroLayers(layersByType);
+    AMGT4CEM_SearchTool.setMetroIndex(searchIndex);
 
     metroBounds = bounds;
     map.fitBounds(bounds, { padding: [20, 20] });

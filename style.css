@@ -53,6 +53,89 @@ html, body {
   border-color: #2c7a3d;
 }
 
+/* --- Recherche (remplace le contrôle de zoom, haut droite) --- */
+#amgt-search-box {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+}
+
+.amgt-btn--icon {
+  padding: 8px 10px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+#amgt-search-panel {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  width: 240px;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+  padding: 8px;
+}
+
+#amgt-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 8px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+#amgt-search-results {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.amgt-search-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.amgt-search-result:hover {
+  background: #f0f0f0;
+}
+
+.amgt-search-kind {
+  flex-shrink: 0;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #fff;
+  background: #999;
+}
+
+.amgt-search-kind--station { background: #c0392b; }
+.amgt-search-kind--tunnel { background: #2c3e50; }
+.amgt-search-kind--point { background: #1565c0; }
+
+.amgt-search-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.amgt-search-empty {
+  padding: 6px 4px;
+  font-size: 13px;
+  color: #888;
+}
+
 /* --- Menu carte (fond de plan, couches, réinitialisation) --- */
 #amgt-map-menu {
   position: absolute;

@@ -48,6 +48,19 @@
   </button>
 </div>
 
+<!-- Recherche (station, tunnel, point métier) : remplace le contrôle de zoom
+     Leaflet en haut à droite. Le zoom reste possible à la molette, au
+     pincement et au double-clic. -->
+<div id="amgt-search-box">
+  <button id="amgt-search-toggle" class="amgt-btn amgt-btn--icon" title="Rechercher une station, un tunnel ou un point">
+    🔍
+  </button>
+  <div id="amgt-search-panel" class="amgt-hidden">
+    <input type="text" id="amgt-search-input" placeholder="Station, tunnel, point..." autocomplete="off" />
+    <ul id="amgt-search-results"></ul>
+  </div>
+</div>
+
 <!-- Chargement manuel de Metro.json si fetch() a échoué (ouverture en file://) -->
 <div id="amgt-manual-load" class="amgt-banner amgt-hidden">
   Chargement automatique de Metro.json impossible depuis ce mode d'ouverture.
@@ -105,6 +118,7 @@
 <script src="./src/coordsDisplay.js"></script>
 <script src="./src/basemap.js"></script>
 <script src="./src/mapMenu.js"></script>
+<script src="./src/searchTool.js"></script>
 <script src="./src/app.js"></script>
 </body>
 </html>
