@@ -111,32 +111,17 @@ const AMGT4CEM_CONFIG = {
     },
   },
 
-  // --- Micro-base de données métier ---
-  // Stockage : le fichier JSON ci-dessous, dans CE dépôt GitHub, lu/écrit via
-  // l'API Contents de GitHub (voir src/pointsStore.js). Les points sont donc
-  // partagés entre tous les appareils qui ouvrent l'application, pas
-  // seulement stockés localement.
-  //
-  // ⚠️ Le jeton ci-dessous, une fois renseigné, est embarqué tel quel dans le
-  // code JavaScript public de l'application (aucun serveur ne le protège) :
-  // n'importe qui inspectant la page peut le récupérer et l'utiliser pour
-  // écrire dans ce dépôt. Décision assumée par l'utilisateur (voir
-  // conversation) le temps de mettre en place un vrai backend. Pour limiter
-  // les dégâts possibles :
-  //   - Utilisez un jeton "fine-grained" (pas un "classic token"),
-  //   - Portée strictement limitée à CE dépôt (pas "All repositories"),
-  //   - Permission "Contents" réglée sur "Read and write" UNIQUEMENT,
-  //     aucune autre permission cochée,
-  //   - Régénérable/révocable à tout moment depuis
-  //     https://github.com/settings/tokens si besoin.
-  // Voir README section "Micro-base de données" pour la procédure complète.
-  githubStore: {
-    owner: 'jp99175',
-    repo: 'AMGT4CEM',
-    branch: 'claude/amgt4cem-mapping-app-fy2zdt',
-    path: 'data/points.json',
-    token: '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',
-  },
+  // --- Micro-base de données métier (stockage local du prototype) ---
+  // Tentative abandonnée : stocker les points dans data/points.json de ce
+  // dépôt via l'API GitHub (partagé entre appareils). Ça ne fonctionne pas :
+  // l'API Contents de GitHub ne répond pas correctement au préflight CORS
+  // dès qu'une requête porte un en-tête Authorization ou
+  // Content-Type: application/json — le navigateur bloque toute écriture
+  // avant même qu'elle parte, quel que soit le jeton (vérifié en conditions
+  // réelles). Voir README section "Micro-base de données" pour le détail et
+  // les deux pistes sérieuses pour la suite (petit relais serveur, ou un
+  // service pensé pour ça comme Supabase).
+  pointsStorageKey: 'amgt4cem.points.v1',
 
   // --- Affichage ---
   maxZoom: 22,
