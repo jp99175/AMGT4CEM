@@ -12,11 +12,16 @@
     zoom: 12,
   });
 
-  const { urbis, fallback } = AMGT4CEM_Basemap.build();
-  urbis.addTo(map);
+  const { layers: basemapLayers, defaultId } = AMGT4CEM_Basemap.build();
+  basemapLayers[defaultId].addTo(map);
+
+  const basemapControlEntries = {};
+  for (const entry of AMGT4CEM_CONFIG.basemaps) {
+    if (basemapLayers[entry.id]) basemapControlEntries[entry.label] = basemapLayers[entry.id];
+  }
 
   const layersControl = L.control.layers(
-    { 'Urbis (fond officiel)': urbis, 'Fond de secours (OSM)': fallback },
+    basemapControlEntries,
     {},
     { position: 'topright', collapsed: true }
   ).addTo(map);

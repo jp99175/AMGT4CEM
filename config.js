@@ -21,28 +21,67 @@ const AMGT4CEM_CONFIG = {
   // --- Données cartographiques de référence ---
   metroDataUrl: './Metro.json',
 
-  // --- Fond de plan Urbis (Bruxelles Mobilité / MobiGIS) ---
-  // Service WMS public identifié : GeoServer du CIRB/CIBG, workspace "Urbis".
-  // Endpoint documenté publiquement : geoservices-urbis.irisnet.be
-  // Note : l'accès sortant de cet environnement de développement vers ce domaine
-  // est bloqué par la politique réseau du bac à sable (voir README). La configuration
-  // ci-dessous suit strictement les spécifications OGC WMS publiques de ce service ;
-  // elle doit être vérifiée dans un navigateur utilisateur réel (voir README, section Test).
-  urbisWms: {
-    url: 'https://geoservices-urbis.irisnet.be/geoserver/Urbis/wms',
-    layers: 'urbisFR',
-    version: '1.3.0',
-    format: 'image/png',
-    attribution: '&copy; CIRB/CIBG &ndash; UrbIS',
-  },
+  // --- Fonds de plan ---
+  // Liste ordonnée des fonds sélectionnables (contrôle de couches, boutons radio).
+  // Le premier marqué `default: true` est chargé au démarrage.
+  //
+  // Note générale : l'accès sortant de cet environnement de développement vers les
+  // domaines *.irisnet.be et *.brussels est bloqué par la politique réseau du bac à
+  // sable (voir README). Les identifiants de couches ci-dessous suivent les
+  // spécifications OGC WMS publiques documentées de ces services, mais n'ont pas pu
+  // être testés en direct depuis ici — à vérifier dans un navigateur utilisateur réel.
+  basemaps: [
+    {
+      id: 'urbis-grey',
+      label: 'UrbIS (grisé)',
+      type: 'wms',
+      default: true,
+      url: 'https://geoservices-urbis.irisnet.be/geoserver/Urbis/wms',
+      layers: 'urbisFRGray',
+      version: '1.3.0',
+      format: 'image/png',
+      attribution: '&copy; CIRB/CIBG &ndash; UrbIS',
+    },
+    {
+      id: 'urbis-color',
+      label: 'UrbIS (couleur)',
+      type: 'wms',
+      url: 'https://geoservices-urbis.irisnet.be/geoserver/Urbis/wms',
+      layers: 'urbisFR',
+      version: '1.3.0',
+      format: 'image/png',
+      attribution: '&copy; CIRB/CIBG &ndash; UrbIS',
+    },
 
-  // Fond de secours (utilisé si Urbis est inaccessible depuis le poste utilisateur :
-  // réseau restreint, service indisponible, etc.). N'affecte pas l'architecture :
-  // simple couche de base alternative sélectionnable dans le contrôle de couches.
-  fallbackBasemap: {
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenStreetMap contributors',
-  },
+    // Orthophotos historiques Bruciel (Bruxelles Urbanisme & Patrimoine / urban.brussels).
+    // Service GeoServer identifié : gis.urban.brussels, workspace "BRUCIEL".
+    // Les noms de couches précis par année n'ont PAS pu être vérifiés depuis ce bac à
+    // sable (domaine bloqué) : à confirmer via GetCapabilities avant utilisation réelle.
+    //   https://gis.urban.brussels/geoserver/BRUCIEL/ows?service=WMS&version=1.3.0&request=GetCapabilities
+    // Corrigez `layers` ci-dessous (et dupliquez le bloc par année) une fois les noms
+    // exacts connus — voir README section "Orthophotos Bruciel".
+    // {
+    //   id: 'bruciel-2023',
+    //   label: 'Orthophoto 2023 (bruciel)',
+    //   type: 'wms',
+    //   url: 'https://gis.urban.brussels/geoserver/BRUCIEL/wms',
+    //   layers: 'BRUCIEL:Ortho2023', // <-- à vérifier
+    //   version: '1.3.0',
+    //   format: 'image/jpeg',
+    //   attribution: '&copy; urban.brussels &ndash; Bruciel',
+    // },
+
+    // Fond de secours (utilisé si Urbis est inaccessible depuis le poste utilisateur :
+    // réseau restreint, service indisponible, etc.). N'affecte pas l'architecture :
+    // simple entrée de plus dans la même liste de fonds sélectionnables.
+    {
+      id: 'osm',
+      label: 'Fond de secours (OSM)',
+      type: 'xyz',
+      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: '&copy; OpenStreetMap contributors',
+    },
+  ],
 
   // --- Micro-base de données métier (stockage local du prototype) ---
   pointsStorageKey: 'amgt4cem.points.v1',

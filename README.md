@@ -49,18 +49,39 @@ fichier `Metro.json` (sans quitter la page).
    repositionner : les coordonnées Lambert sont recalculées et enregistrées
    automatiquement.
 
-## 3. Le fond de plan Urbis
+## 3. Les fonds de plan
 
-L'application est configurée pour utiliser le service WMS public UrbIS
-(CIRB/CIBG), le même service que celui utilisé par MobiGIS
-(`https://geoservices-urbis.irisnet.be/geoserver/Urbis/wms`, couche
-`urbisFR`). **Cet endpoint n'a pas pu être testé en direct depuis
-l'environnement de développement** (politique réseau du bac à sable
-bloquant les domaines `*.irisnet.be`) — vérifiez son chargement depuis votre
-propre poste. S'il ne se charge pas (icône d'avertissement affichée
-automatiquement), basculez sur **« Fond de secours (OSM) »** dans le
-contrôle de couches : l'architecture ne change pas, seule l'URL de tuiles
-diffère (voir `config.js`).
+Tous les fonds sélectionnables sont déclarés dans `config.js`
+(`AMGT4CEM_CONFIG.basemaps`), sous forme de liste : ajouter/retirer/réordonner
+un fond se fait à cet unique endroit, sans toucher au reste du code.
+
+### UrbIS (grisé / couleur)
+
+Service WMS public UrbIS (CIRB/CIBG), le même service que celui utilisé par
+MobiGIS (`https://geoservices-urbis.irisnet.be/geoserver/Urbis/wms`, couches
+`urbisFRGray` pour le fond grisé par défaut et `urbisFR` pour la version
+couleur). **Ces endpoints n'ont pas pu être testés en direct depuis
+l'environnement de développement** (politique réseau du bac à sable bloquant
+les domaines `*.irisnet.be`) — vérifiez leur chargement depuis votre propre
+poste. Si un fond ne se charge pas (bannière d'avertissement affichée
+automatiquement, nommant le fond en cause), basculez sur un autre fond dans
+le contrôle de couches.
+
+### Orthophotos historiques Bruciel
+
+**Non activées pour l'instant.** Le service existe bel et bien (GeoServer
+public `gis.urban.brussels`, workspace `BRUCIEL`), mais ce domaine est lui
+aussi bloqué depuis ce bac à sable : impossible de lire la liste exacte des
+noms de couches par année (le nom précis n'est pas forcément `Ortho<année>`
+pour toutes les années). Pour les activer :
+
+1. Ouvrez depuis votre téléphone/ordinateur :
+   `https://gis.urban.brussels/geoserver/BRUCIEL/ows?service=WMS&version=1.3.0&request=GetCapabilities`
+2. Repérez les balises `<Name>` des couches qui vous intéressent (ex. une par
+   année).
+3. Dans `config.js`, dupliquez le bloc commenté `bruciel-2023` (section
+   `basemaps`) pour chaque année voulue, en renseignant le `layers` exact lu
+   à l'étape 2, et décommentez.
 
 ## 4. Analyse de Metro.json (référence)
 
