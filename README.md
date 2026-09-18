@@ -69,19 +69,26 @@ le contrôle de couches.
 
 ### Orthophotos historiques Bruciel
 
-**Non activées pour l'instant.** Le service existe bel et bien (GeoServer
-public `gis.urban.brussels`, workspace `BRUCIEL`), mais ce domaine est lui
-aussi bloqué depuis ce bac à sable : impossible de lire la liste exacte des
-noms de couches par année (le nom précis n'est pas forcément `Ortho<année>`
-pour toutes les années). Pour les activer :
+Activées : 8 années disponibles (**1935, 1944, 1953, 1961, 1971, 1977, 1987,
+1996**), confirmées via un `GetCapabilities` réel du service (fourni par
+l'utilisateur, pas une supposition). Service GeoServer : `gis.urban.brussels`,
+workspace **`URBAN_DCC_ER`** (et non `BRUCIEL`, qui ne contient que des
+couches thématiques annexes — localisation d'ateliers, tracés de tram, etc.
+— pas les images aériennes elles-mêmes). Couches `Orthophotoplans_<année>`,
+CRS EPSG:31370 supporté nativement par ces couches.
 
-1. Ouvrez depuis votre téléphone/ordinateur :
-   `https://gis.urban.brussels/geoserver/BRUCIEL/ows?service=WMS&version=1.3.0&request=GetCapabilities`
-2. Repérez les balises `<Name>` des couches qui vous intéressent (ex. une par
-   année).
-3. Dans `config.js`, dupliquez le bloc commenté `bruciel-2023` (section
-   `basemaps`) pour chaque année voulue, en renseignant le `layers` exact lu
-   à l'étape 2, et décommentez.
+Ce serveur ne semble pas aller au-delà de 1996 : les orthophotos plus
+récentes (2000, 2010, 2020...) n'y ont pas été trouvées et sont
+vraisemblablement publiées sur l'infrastructure UrbIS plutôt que sur celle
+d'urban.brussels (BruGIS). Pour les ajouter :
+
+1. Ouvrez depuis votre téléphone :
+   `https://geoservices-urbis.irisnet.be/geoserver/ows?service=WMS&version=1.3.0&request=GetCapabilities`
+2. Cherchez un workspace contenant des couches `Ortho...` avec une année
+   récente dans le nom ou le titre.
+3. Envoyez-moi le fichier XML (comme pour Bruciel) pour que j'ajoute les
+   couches trouvées à `config.js` (section `basemaps`), sur le même modèle
+   que les 8 années actuelles.
 
 ## 4. Analyse de Metro.json (référence)
 

@@ -54,22 +54,23 @@ const AMGT4CEM_CONFIG = {
     },
 
     // Orthophotos historiques Bruciel (Bruxelles Urbanisme & Patrimoine / urban.brussels).
-    // Service GeoServer identifié : gis.urban.brussels, workspace "BRUCIEL".
-    // Les noms de couches précis par année n'ont PAS pu être vérifiés depuis ce bac à
-    // sable (domaine bloqué) : à confirmer via GetCapabilities avant utilisation réelle.
-    //   https://gis.urban.brussels/geoserver/BRUCIEL/ows?service=WMS&version=1.3.0&request=GetCapabilities
-    // Corrigez `layers` ci-dessous (et dupliquez le bloc par année) une fois les noms
-    // exacts connus — voir README section "Orthophotos Bruciel".
-    // {
-    //   id: 'bruciel-2023',
-    //   label: 'Orthophoto 2023 (bruciel)',
-    //   type: 'wms',
-    //   url: 'https://gis.urban.brussels/geoserver/BRUCIEL/wms',
-    //   layers: 'BRUCIEL:Ortho2023', // <-- à vérifier
-    //   version: '1.3.0',
-    //   format: 'image/jpeg',
-    //   attribution: '&copy; urban.brussels &ndash; Bruciel',
-    // },
+    // Service GeoServer : gis.urban.brussels, workspace "URBAN_DCC_ER" (et non
+    // "BRUCIEL", qui ne contient que des couches thématiques annexes). Noms de
+    // couches et CRS EPSG:31370 confirmés via un GetCapabilities réel fourni par
+    // l'utilisateur (voir historique de conversation) — pas de supposition ici.
+    // Ce serveur ne va pas au-delà de 1996 ; les orthophotos plus récentes (2000+)
+    // sont vraisemblablement publiées ailleurs (infrastructure UrbIS) et n'ont pas
+    // encore été localisées — voir README section "Orthophotos Bruciel".
+    ...[1935, 1944, 1953, 1961, 1971, 1977, 1987, 1996].map((year) => ({
+      id: `bruciel-${year}`,
+      label: `Orthophoto ${year} (bruciel)`,
+      type: 'wms',
+      url: 'https://gis.urban.brussels/geoserver/URBAN_DCC_ER/wms',
+      layers: `Orthophotoplans_${year}`,
+      version: '1.3.0',
+      format: 'image/jpeg',
+      attribution: '&copy; urban.brussels &ndash; Bruciel',
+    })),
 
     // Fond de secours (utilisé si Urbis est inaccessible depuis le poste utilisateur :
     // réseau restreint, service indisponible, etc.). N'affecte pas l'architecture :
