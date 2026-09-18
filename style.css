@@ -266,6 +266,20 @@ html, body {
   vertical-align: top;
 }
 
+.amgt-popup__delete-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  color: #b3261e;
+  border-color: #e0a8a3;
+  font-size: 12px;
+  padding: 5px 8px;
+}
+
+.amgt-popup__delete-btn:hover {
+  background: #fdecea;
+}
+
 .amgt-popup td {
   padding: 2px 0;
 }

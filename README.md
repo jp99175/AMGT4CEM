@@ -55,7 +55,15 @@ fichier `Metro.json` (sans quitter la page).
 9. Rechargez la page : le point est toujours là. Cliquez dessus pour
    consulter ses informations. Vous pouvez le glisser-déposer pour le
    repositionner : les coordonnées Lambert sont recalculées et enregistrées
-   automatiquement.
+   automatiquement. Le bouton **🗑 Supprimer ce point** dans la popup
+   l'efface définitivement (demande confirmation).
+
+**Stockage et effacement des points** : les points vivent uniquement dans le
+`localStorage` de ce navigateur, sur cet appareil (clé `amgt4cem.points.v1`,
+tableau JSON) — rien n'est envoyé à un serveur, rien n'est partagé entre
+appareils. Pour tout effacer d'un coup (plutôt que point par point),
+utilisez les réglages du navigateur : « Effacer les données de
+navigation/cookies » pour ce site.
 
 ## 3. Les fonds de plan
 
