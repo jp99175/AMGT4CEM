@@ -135,7 +135,7 @@ const AMGT4CEM_CONFIG = {
     repo: 'AMGT4CEM',
     branch: 'claude/amgt4cem-mapping-app-fy2zdt',
     path: 'data/points.json',
-    token: '', // <-- collez votre jeton "fine-grained" ici
+    token: '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',
   },
 
   // --- Affichage ---
