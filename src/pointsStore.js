@@ -29,20 +29,38 @@ const AMGT4CEM_PointsStore = {
     return `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}`;
   },
 
+  /**
+   * Toujours sans jeton : l'API Contents de GitHub ne répond pas correctement
+   * au préflight CORS (OPTIONS) dès qu'une requête porte un en-tête
+   * Authorization — le navigateur bloque alors la requête avant même qu'elle
+   * parte (vérifié en conditions réelles, reproductible avec n'importe quel
+   * jeton, y compris invalide). Envoyer le jeton ici casserait donc aussi la
+   * lecture. Voir README section 6 : les écritures ne peuvent de toute façon
+   * pas passer par un appel direct navigateur → api.github.com, pour la même
+   * raison (elles nécessitent Authorization + Content-Type: application/json,
+   * deux en-têtes qui déclenchent un préflight que GitHub ne gère pas ici).
+   */
   _headers() {
-    const headers = { Accept: 'application/vnd.github+json' };
-    const token = AMGT4CEM_CONFIG.githubStore.token;
-    if (token) headers.Authorization = `Bearer ${token}`;
-    return headers;
+    return { Accept: 'application/vnd.github+json' };
   },
 
-  _requireToken() {
-    if (!AMGT4CEM_CONFIG.githubStore.token) {
-      throw new Error(
-        "Aucun jeton GitHub configuré (AMGT4CEM_CONFIG.githubStore.token) : " +
-        "impossible d'enregistrer. Voir README section \"Micro-base de données\"."
-      );
-    }
+  /**
+   * Écrire (ajouter/modifier/supprimer un point) nécessite d'envoyer un jeton
+   * GitHub — mais dès qu'une requête porte un en-tête Authorization (ou
+   * Content-Type: application/json, également nécessaire ici), le navigateur
+   * déclenche un préflight CORS que l'API Contents de GitHub ne gère pas :
+   * la requête est bloquée avant même de partir, quel que soit le jeton.
+   * Vérifié en conditions réelles (reproductible avec un jeton invalide,
+   * donc indépendant de sa validité). Un appel direct navigateur →
+   * api.github.com ne peut donc pas écrire, point final — voir README
+   * section 6 pour la solution (petit relais serveur).
+   */
+  _writeNotPossible() {
+    throw new Error(
+      "Écriture impossible : l'API GitHub ne peut pas être appelée en écriture " +
+      "directement depuis un navigateur (limitation CORS de l'API GitHub elle-même, " +
+      "pas un problème de jeton). Voir README section \"Micro-base de données\"."
+    );
   },
 
   /**
@@ -96,7 +114,7 @@ const AMGT4CEM_PointsStore = {
    * résultat. Réessaie en cas de conflit d'écriture concurrente.
    */
   async _mutate(message, mutate) {
-    this._requireToken();
+    this._writeNotPossible();
     const maxAttempts = 3;
     let lastErr;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
