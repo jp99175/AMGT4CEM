@@ -80,6 +80,31 @@ const AMGT4CEM_CONFIG = {
       crs: 'EPSG:31370',
       attribution: '&copy; urban.brussels &ndash; Bruciel',
     })),
+
+    // Orthophotos récentes UrbIS (2004-2022) — les mêmes que celles proposées par
+    // MobiGIS (data.mobility.brussels/mobigis). Service GeoServer :
+    // geoservices-urbis.irisnet.be, workspace "urbisgrid". Noms de couches
+    // confirmés en extrayant les URLs de légende réellement générées par la page
+    // MobiGIS (snapshot HTML fourni par l'utilisateur) — pas de supposition ici.
+    // "NIR" = variante infrarouge proche (fausses couleurs) ; "Ns" = millésime le
+    // plus récent de la série correspondante. `crs` forcé en EPSG:31370 par
+    // précaution (même raison que les couches Bruciel ci-dessus ; le
+    // GetCapabilities de ce workspace précis n'a pas été vérifié).
+    ...[
+      'Ortho2004', 'Ortho2009', 'Ortho2012', 'Ortho2014', 'Ortho2016', 'Ortho2017',
+      'Ortho2018', 'Ortho2019', 'Ortho2020', 'Ortho2020NIR', 'Ortho2021Ns',
+      'Ortho2022Ns', 'Ortho2022NirNs',
+    ].map((layerName) => ({
+      id: `urbisgrid-${layerName.toLowerCase()}`,
+      label: `Orthophoto ${layerName.replace('Ortho', '').replace('Ns', '').replace('NIR', ' (infrarouge)').replace('Nir', ' (infrarouge)')} (UrbIS)`,
+      type: 'wms',
+      url: 'https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms',
+      layers: `urbisgrid:${layerName}`,
+      version: '1.3.0',
+      format: 'image/jpeg',
+      crs: 'EPSG:31370',
+      attribution: '&copy; CIRB/CIBG &ndash; UrbIS',
+    })),
   ],
 
   // --- Micro-base de données métier (stockage local du prototype) ---

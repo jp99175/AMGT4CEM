@@ -77,18 +77,20 @@ couches thématiques annexes — localisation d'ateliers, tracés de tram, etc.
 — pas les images aériennes elles-mêmes). Couches `Orthophotoplans_<année>`,
 CRS EPSG:31370 supporté nativement par ces couches.
 
-Ce serveur ne semble pas aller au-delà de 1996 : les orthophotos plus
-récentes (2000, 2010, 2020...) n'y ont pas été trouvées et sont
-vraisemblablement publiées sur l'infrastructure UrbIS plutôt que sur celle
-d'urban.brussels (BruGIS). Pour les ajouter :
+Ce serveur ne va pas au-delà de 1996 pour les orthophotos.
 
-1. Ouvrez depuis votre téléphone :
-   `https://geoservices-urbis.irisnet.be/geoserver/ows?service=WMS&version=1.3.0&request=GetCapabilities`
-2. Cherchez un workspace contenant des couches `Ortho...` avec une année
-   récente dans le nom ou le titre.
-3. Envoyez-moi le fichier XML (comme pour Bruciel) pour que j'ajoute les
-   couches trouvées à `config.js` (section `basemaps`), sur le même modèle
-   que les 8 années actuelles.
+### Orthophotos récentes UrbIS (identiques à MobiGIS)
+
+Activées : 13 couches, de **2004 à 2022** (dont une variante infrarouge pour
+2020 et 2022), les mêmes que celles proposées par le viewer MobiGIS
+(`data.mobility.brussels/mobigis`). Service GeoServer :
+`geoservices-urbis.irisnet.be`, workspace **`urbisgrid`**. Noms de couches
+(`urbisgrid:Ortho2022Ns`, etc.) confirmés en extrayant les URLs de légende
+réellement générées par la page MobiGIS (snapshot HTML fourni par
+l'utilisateur), pas une supposition. Le `GetCapabilities` précis de ce
+workspace n'a pas été consulté (accès direct bloqué depuis MobiGIS), donc
+`crs` est forcé en `EPSG:31370` par précaution, comme pour les couches
+Bruciel ci-dessus.
 
 ## 4. Analyse de Metro.json (référence)
 
