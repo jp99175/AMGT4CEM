@@ -29,6 +29,12 @@ const AMGT4CEM_MapMenu = {
     this._initLayerControls(map, pointsGroup);
 
     document.getElementById('amgt-reset-view-btn').addEventListener('click', () => {
+      // Revient également au fond de référence UrbIS grisé, pas seulement à
+      // l'emprise géographique.
+      document.getElementById('amgt-year-slider-bar').classList.add('amgt-hidden');
+      document.querySelector('input[name="amgt-basemap"][value="urbis"]').checked = true;
+      AMGT4CEM_Basemap.showUrbis();
+
       const bounds = getMetroBounds();
       if (bounds && bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
     });
@@ -46,6 +52,7 @@ const AMGT4CEM_MapMenu = {
     const bar = document.getElementById('amgt-year-slider-bar');
     const prevBtn = document.getElementById('amgt-year-prev');
     const nextBtn = document.getElementById('amgt-year-next');
+    const latestBtn = document.getElementById('amgt-year-latest');
     const yearLabel = document.getElementById('amgt-bruciel-year-label');
 
     // Années réellement accessibles, dans l'ordre chronologique. Sondées une
@@ -58,9 +65,11 @@ const AMGT4CEM_MapMenu = {
 
     const renderNav = () => {
       const hasYears = accessibleYears && accessibleYears.length > 0;
+      const atLatest = !hasYears || currentIndex >= accessibleYears.length - 1;
       yearLabel.textContent = hasYears ? accessibleYears[currentIndex] : (accessibleYears ? '—' : '…');
       prevBtn.disabled = !hasYears || currentIndex <= 0;
-      nextBtn.disabled = !hasYears || currentIndex >= accessibleYears.length - 1;
+      nextBtn.disabled = atLatest;
+      latestBtn.disabled = atLatest;
     };
 
     const showYearAt = (index) => {
@@ -85,6 +94,9 @@ const AMGT4CEM_MapMenu = {
     });
     nextBtn.addEventListener('click', () => {
       if (accessibleYears && currentIndex < accessibleYears.length - 1) showYearAt(currentIndex + 1);
+    });
+    latestBtn.addEventListener('click', () => {
+      if (accessibleYears && accessibleYears.length > 0) showYearAt(accessibleYears.length - 1);
     });
 
     document.querySelectorAll('input[name="amgt-basemap"]').forEach((radio) => {

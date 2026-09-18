@@ -36,12 +36,13 @@ fichier `Metro.json` (sans quitter la page).
    superposés, sans limite de zoom.
 5. Bouton **☰ Carte** (haut gauche) : ouvre le menu fond de plan / couches /
    vue. Choisissez **UrbIS** ou **Orthophotos** (fait apparaître, en bas de
-   l'écran, une navigation ‹ année › pour parcourir les millésimes de 1935 à
-   2022 — seules les années dont le service répond sont proposées, réglée
-   sur la plus récente accessible par défaut). Les cases à cocher
-   activent/désactivent Stations, Tunnels et Points métier. Le bouton
-   **⤢ Réinitialiser la vue** revient à l'emprise générale du réseau. Le
-   contrôle de zoom (+/-) est en haut à droite.
+   l'écran, une navigation **‹ année › ⏭** pour parcourir les millésimes de
+   1935 à 2022 — seules les années dont le service répond sont proposées,
+   réglée sur la plus récente accessible par défaut ; le bouton **⏭** y
+   ramène directement). Les cases à cocher activent/désactivent Stations,
+   Tunnels et Points métier. Le bouton **⤢ Réinitialiser la vue** revient à
+   l'emprise générale du réseau et remet le fond UrbIS grisé. Le contrôle de
+   zoom (+/-) est en haut à droite.
 6. Les coordonnées Lambert du curseur s'affichent en bas à gauche, sous la
    navigation temporelle quand celle-ci est visible.
 7. Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
