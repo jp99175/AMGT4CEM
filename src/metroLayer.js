@@ -40,7 +40,21 @@ const AMGT4CEM_MetroLayer = {
         fillOpacity: style.fillOpacity,
       });
 
+      // bindPopup ouvrirait automatiquement la popup au clic ; on retire ce
+      // comportement par défaut (`off`) pour le remplacer par le nôtre, qui
+      // laisse la priorité à l'outil "Ajouter un point" quand il est actif —
+      // sans ça, cliquer sur une station/un tunnel n'ouvrirait que sa popup
+      // d'info et ne poserait jamais de point à cet endroit.
       polygon.bindPopup(this._buildPopupHtml(props));
+      polygon.off('click');
+      polygon.on('click', (e) => {
+        if (AMGT4CEM_AddPointTool.isActive()) {
+          L.DomEvent.stopPropagation(e);
+          AMGT4CEM_AddPointTool.handleMapClick(e);
+        } else {
+          polygon.openPopup(e.latlng);
+        }
+      });
       polygon.addTo(layersByType[type]);
       bounds.extend(polygon.getBounds());
     }

@@ -16,7 +16,7 @@ const AMGT4CEM_AddPointTool = {
   init(map, { onPointCreated }) {
     this._map = map;
     this._onPointCreated = onPointCreated;
-    map.on('click', (e) => this._handleMapClick(e));
+    map.on('click', (e) => this.handleMapClick(e));
   },
 
   isActive() {
@@ -42,7 +42,15 @@ const AMGT4CEM_AddPointTool = {
     else this.activate();
   },
 
-  _handleMapClick(e) {
+  /**
+   * Traite un clic candidat à la pose d'un point (position géographique dans
+   * `e.latlng`). Appelé aussi bien pour les clics directs sur la carte que
+   * pour les clics sur les polygones Metro (stations/tunnels), qui
+   * intercepteraient sinon le clic pour ouvrir leur propre popup — voir
+   * metroLayer.js — afin qu'un point puisse être posé n'importe où, y
+   * compris pile sur le réseau.
+   */
+  handleMapClick(e) {
     if (!this._active) return;
 
     this._pendingLatLng = e.latlng;
