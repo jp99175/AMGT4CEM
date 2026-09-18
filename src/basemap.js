@@ -1,6 +1,6 @@
 /**
- * Fonds de plan : UrbIS, Orthophoto (dernière en date) et Bruciel (série
- * historique, une couche par année).
+ * Fonds de plan : UrbIS et Bruciel (ligne du temps orthophotos, une couche
+ * par année, de 1935 à la plus récente disponible).
  *
  * Une seule couche de fond est ajoutée à la carte à la fois ; changer de fond
  * ou d'année Bruciel retire l'ancienne couche et ajoute la nouvelle.
@@ -20,9 +20,8 @@ const AMGT4CEM_Basemap = {
   init(map) {
     this._map = map;
     this._brucielLayersByYear = {};
-    for (const year of AMGT4CEM_CONFIG.basemaps.bruciel.years) {
-      const entry = AMGT4CEM_CONFIG.basemaps.bruciel.layerFor(year);
-      this._brucielLayersByYear[year] = this._buildLayer(entry);
+    for (const entry of AMGT4CEM_CONFIG.basemaps.bruciel.entries) {
+      this._brucielLayersByYear[entry.year] = this._buildLayer(entry);
     }
   },
 
@@ -34,15 +33,8 @@ const AMGT4CEM_Basemap = {
   },
 
   /**
-   * Affiche l'orthophoto la plus récente.
-   */
-  showOrthophoto() {
-    this._setActiveLayer(this._buildLayer(AMGT4CEM_CONFIG.basemaps.orthophoto));
-  },
-
-  /**
    * Affiche la couche Bruciel correspondant à l'année donnée (voir
-   * AMGT4CEM_CONFIG.basemaps.bruciel.years pour les années disponibles).
+   * AMGT4CEM_CONFIG.basemaps.bruciel.entries pour les années disponibles).
    */
   showBruciel(year) {
     const layer = this._brucielLayersByYear[year];

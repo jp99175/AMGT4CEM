@@ -43,7 +43,7 @@ const AMGT4CEM_MapMenu = {
   },
 
   _initBasemapControls() {
-    const years = AMGT4CEM_CONFIG.basemaps.bruciel.years;
+    const years = AMGT4CEM_CONFIG.basemaps.bruciel.entries.map((e) => e.year);
     const sliderRow = document.getElementById('amgt-bruciel-slider-row');
     const slider = document.getElementById('amgt-bruciel-slider');
     const yearLabel = document.getElementById('amgt-bruciel-year-label');
@@ -66,7 +66,6 @@ const AMGT4CEM_MapMenu = {
         if (!radio.checked) return;
         sliderRow.classList.toggle('amgt-hidden', radio.value !== 'bruciel');
         if (radio.value === 'urbis') AMGT4CEM_Basemap.showUrbis();
-        else if (radio.value === 'orthophoto') AMGT4CEM_Basemap.showOrthophoto();
         else if (radio.value === 'bruciel') applyBruciel();
       });
     });

@@ -22,10 +22,11 @@ const AMGT4CEM_CONFIG = {
   metroDataUrl: './Metro.json',
 
   // --- Fonds de plan ---
-  // Trois choix exposés à l'utilisateur : UrbIS (fond de référence grisé),
-  // Orthophoto (image aérienne la plus récente) et Bruciel (série historique
-  // parcourue via un curseur temporel). Chaque sous-clé décrit une ou plusieurs
-  // couches WMS ; voir src/basemap.js pour la construction des couches Leaflet.
+  // Deux choix exposés à l'utilisateur : UrbIS (fond de référence grisé) et
+  // Bruciel (ligne du temps unique, parcourue via un curseur, couvrant à la
+  // fois les orthophotos historiques ET les plus récentes — deux services
+  // distincts fusionnés dans une seule série chronologique côté interface).
+  // Voir src/basemap.js pour la construction des couches Leaflet.
   //
   // Note générale : l'accès sortant de cet environnement de développement vers les
   // domaines *.irisnet.be et *.brussels est bloqué par la politique réseau du bac à
@@ -44,28 +45,23 @@ const AMGT4CEM_CONFIG = {
       attribution: '&copy; CIRB/CIBG &ndash; UrbIS',
     },
 
-    // Orthophoto la plus récente disponible sur le workspace "urbisgrid" (voir
-    // ci-dessous) — actuellement 2022. Mettre à jour `layers` ici quand un
-    // millésime plus récent sera identifié.
-    orthophoto: {
-      id: 'urbisgrid-ortho2022ns',
-      label: 'Orthophoto',
-      type: 'wms',
-      url: 'https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms',
-      layers: 'urbisgrid:Ortho2022Ns',
-      version: '1.3.0',
-      format: 'image/jpeg',
-      crs: 'EPSG:31370',
-      attribution: '&copy; CIRB/CIBG &ndash; UrbIS',
-    },
-
-    // Orthophotos historiques Bruciel (Bruxelles Urbanisme & Patrimoine / urban.brussels),
-    // parcourues via un curseur temporel dans l'interface plutôt qu'une liste de
-    // fonds séparés. Service GeoServer : gis.urban.brussels, workspace
+    // Ligne du temps orthophotos "Bruciel" : fusionne deux services distincts
+    // dans une seule série chronologique parcourue au curseur (voir
+    // src/mapMenu.js) — l'utilisateur n'a pas besoin de savoir laquelle des
+    // deux infrastructures sert quelle année.
+    //
+    // 1935-1996 : Bruciel historique (Bruxelles Urbanisme & Patrimoine /
+    // urban.brussels). Service GeoServer : gis.urban.brussels, workspace
     // "URBAN_DCC_ER" (et non "BRUCIEL", qui ne contient que des couches
-    // thématiques annexes). Noms de couches confirmés via un GetCapabilities réel
-    // fourni par l'utilisateur (voir historique de conversation) — pas de
-    // supposition ici.
+    // thématiques annexes). Ce serveur ne va pas au-delà de 1996.
+    //
+    // 2004-2022 : orthophotos récentes UrbIS, les mêmes que celles proposées
+    // par MobiGIS (data.mobility.brussels/mobigis). Service GeoServer :
+    // geoservices-urbis.irisnet.be, workspace "urbisgrid".
+    //
+    // Tous les noms de couches ci-dessous ont été confirmés via un
+    // GetCapabilities réel ou un snapshot HTML de MobiGIS fournis par
+    // l'utilisateur (voir historique de conversation) — aucun n'est deviné.
     // Streaming à la demande comme les autres fonds WMS : aucune image n'est
     // embarquée dans l'application, chaque tuile est requêtée au serveur au
     // moment de l'affichage (voir architecture, README section 5).
@@ -74,22 +70,37 @@ const AMGT4CEM_CONFIG = {
     // carte Leaflet fonctionnant par défaut en Web Mercator, il faut forcer ces
     // requêtes WMS dans leur CRS natif via `crs`, sous peine de tuiles vides ou
     // d'erreur serveur (voir crs.js / basemap.js).
-    // Ce serveur ne va pas au-delà de 1996.
     bruciel: {
-      years: [1935, 1944, 1953, 1961, 1971, 1977, 1987, 1996],
-      layerFor(year) {
-        return {
-          id: `bruciel-${year}`,
-          label: `Bruciel ${year}`,
-          type: 'wms',
+      entries: [
+        ...[1935, 1944, 1953, 1961, 1971, 1977, 1987, 1996].map((year) => ({
+          year,
           url: 'https://gis.urban.brussels/geoserver/URBAN_DCC_ER/wms',
           layers: `Orthophotoplans_${year}`,
-          version: '1.3.0',
-          format: 'image/jpeg',
-          crs: 'EPSG:31370',
           attribution: '&copy; urban.brussels &ndash; Bruciel',
-        };
-      },
+        })),
+        { year: 2004, url: 'https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms', layers: 'urbisgrid:Ortho2004', attribution: '&copy; CIRB/CIBG &ndash; UrbIS' },
+        { year: 2009, url: 'https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms', layers: 'urbisgrid:Ortho2009', attribution: '&copy; CIRB/CIBG &ndash; UrbIS' },
+        { year: 2012, url: 'https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms', layers: 'urbisgrid:Ortho2012', attribution: '&copy; CIRB/CIBG &ndash; UrbIS' },
+        { year: 2014, url: 'https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms', layers: 'urbisgrid:Ortho2014', attribution: '&copy; CIRB/CIBG &ndash; UrbIS' },
+        { year: 2016, url: 'https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms', layers: 'urbisgrid:Ortho2016', attribution: '&copy; CIRB/CIBG &ndash; UrbIS' },
+        { year: 2017, url: 'https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms', layers: 'urbisgrid:Ortho2017', attribution: '&copy; CIRB/CIBG &ndash; UrbIS' },
+        { year: 2018, url: 'https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms', layers: 'urbisgrid:Ortho2018', attribution: '&copy; CIRB/CIBG &ndash; UrbIS' },
+        { year: 2019, url: 'https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms', layers: 'urbisgrid:Ortho2019', attribution: '&copy; CIRB/CIBG &ndash; UrbIS' },
+        { year: 2020, url: 'https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms', layers: 'urbisgrid:Ortho2020', attribution: '&copy; CIRB/CIBG &ndash; UrbIS' },
+        { year: 2021, url: 'https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms', layers: 'urbisgrid:Ortho2021Ns', attribution: '&copy; CIRB/CIBG &ndash; UrbIS' },
+        { year: 2022, url: 'https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms', layers: 'urbisgrid:Ortho2022Ns', attribution: '&copy; CIRB/CIBG &ndash; UrbIS' },
+      ].map((e) => ({
+        id: `bruciel-${e.year}`,
+        label: `Bruciel ${e.year}`,
+        type: 'wms',
+        url: e.url,
+        layers: e.layers,
+        version: '1.3.0',
+        format: 'image/jpeg',
+        crs: 'EPSG:31370',
+        attribution: e.attribution,
+        year: e.year,
+      })),
     },
   },
 

@@ -35,11 +35,11 @@ fichier `Metro.json` (sans quitter la page).
    double-clic) : le fond et les données métro restent parfaitement
    superposés, sans limite de zoom.
 5. Bouton **☰ Carte** (haut gauche) : ouvre le menu fond de plan / couches /
-   vue. Choisissez **UrbIS**, **Orthophoto** (image la plus récente) ou
-   **Bruciel** (fait apparaître un curseur pour parcourir les années
-   1935-1996). Les cases à cocher activent/désactivent Stations, Tunnels et
-   Points métier. Le bouton **⤢ Réinitialiser la vue** revient à l'emprise
-   générale du réseau.
+   vue. Choisissez **UrbIS** ou **Bruciel** (fait apparaître un curseur pour
+   parcourir les orthophotos de 1935 à 2022, réglé sur 2022 par défaut). Les
+   cases à cocher activent/désactivent Stations, Tunnels et Points métier.
+   Le bouton **⤢ Réinitialiser la vue** revient à l'emprise générale du
+   réseau.
 6. Les coordonnées Lambert du curseur s'affichent en bas à gauche.
 7. Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
    carte (vous pouvez continuer à naviguer avant de cliquer) : un marqueur
@@ -55,7 +55,7 @@ fichier `Metro.json` (sans quitter la page).
 
 ## 3. Les fonds de plan
 
-Trois choix dans le menu **☰ Carte**, déclarés dans `config.js`
+Deux choix dans le menu **☰ Carte**, déclarés dans `config.js`
 (`AMGT4CEM_CONFIG.basemaps`) :
 
 ### UrbIS
@@ -69,36 +69,39 @@ les domaines `*.irisnet.be`) — vérifiez son chargement depuis votre propre
 poste. S'il ne se charge pas, une bannière d'avertissement s'affiche
 automatiquement.
 
-### Orthophoto
+### Bruciel (orthophotos)
 
-La photo aérienne la plus récente disponible : **2022**
-(`urbisgrid:Ortho2022Ns`), sur le même serveur UrbIS, workspace `urbisgrid`.
-Ce nom de couche a été confirmé en extrayant les URLs de légende réellement
-générées par la page MobiGIS (snapshot HTML fourni par l'utilisateur), pas
-une supposition. Pour passer à un millésime plus récent quand il sera
-disponible, il suffit de changer `layers` dans
-`AMGT4CEM_CONFIG.basemaps.orthophoto` (voir `config.js`).
-
-### Bruciel
-
-Série historique (**1935, 1944, 1953, 1961, 1971, 1977, 1987, 1996**),
+Une seule ligne du temps continue, de **1935 à 2022** (19 millésimes),
 parcourue via le curseur qui apparaît dans le menu une fois "Bruciel"
 sélectionné — déplacer le curseur change la couche affichée en direct.
-Confirmée via un `GetCapabilities` réel du service (fourni par l'utilisateur,
-pas une supposition). Service GeoServer : `gis.urban.brussels`, workspace
-`URBAN_DCC_ER` (et non `BRUCIEL`, qui ne contient que des couches
-thématiques annexes — localisation d'ateliers, tracés de tram, etc. — pas
-les images aériennes elles-mêmes). Couches `Orthophotoplans_<année>`. Ce
-serveur ne va pas au-delà de 1996.
+Réglé sur 2022 (le plus récent) par défaut. Elle fusionne deux services
+distincts, de façon transparente pour l'utilisateur :
+
+- **1935-1996** : Bruciel historique (Bruxelles Urbanisme & Patrimoine /
+  urban.brussels). Service GeoServer : `gis.urban.brussels`, workspace
+  `URBAN_DCC_ER` (et non `BRUCIEL`, qui ne contient que des couches
+  thématiques annexes — localisation d'ateliers, tracés de tram, etc. — pas
+  les images aériennes elles-mêmes). Couches `Orthophotoplans_<année>`.
+  Confirmées via un `GetCapabilities` réel fourni par l'utilisateur.
+- **2004-2022** : orthophotos récentes UrbIS, les mêmes que celles
+  proposées par MobiGIS (`data.mobility.brussels/mobigis`). Service
+  GeoServer : `geoservices-urbis.irisnet.be`, workspace `urbisgrid`.
+  Couches `urbisgrid:Ortho<année>`. Noms confirmés en extrayant les URLs de
+  légende réellement générées par la page MobiGIS (snapshot HTML fourni par
+  l'utilisateur).
+
+Aucun nom de couche ci-dessus n'est deviné. Pour ajouter un millésime plus
+récent quand il sera identifié, ajoutez une entrée dans
+`AMGT4CEM_CONFIG.basemaps.bruciel.entries` (voir `config.js`).
 
 ### CRS forcé en EPSG:31370
 
-Les couches Bruciel et Orthophoto ne déclarent que `EPSG:31370`/`CRS:84`
-dans leurs `GetCapabilities` (pas `EPSG:3857`, contrairement au fond UrbIS)
-— la carte Leaflet fonctionnant par défaut en Web Mercator, ces couches
-précisent `crs: 'EPSG:31370'` dans `config.js` pour forcer Leaflet à les
-requêter dans leur CRS natif (via Proj4Leaflet, voir `src/basemap.js`), sous
-peine de tuiles vides ou d'erreur serveur.
+Les couches Bruciel (les deux périodes) ne déclarent que
+`EPSG:31370`/`CRS:84` dans leurs `GetCapabilities` (pas `EPSG:3857`,
+contrairement au fond UrbIS) — la carte Leaflet fonctionnant par défaut en
+Web Mercator, ces couches précisent `crs: 'EPSG:31370'` dans `config.js`
+pour forcer Leaflet à les requêter dans leur CRS natif (via Proj4Leaflet,
+voir `src/basemap.js`), sous peine de tuiles vides ou d'erreur serveur.
 
 ## 4. Analyse de Metro.json (référence)
 
