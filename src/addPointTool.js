@@ -69,10 +69,32 @@ const AMGT4CEM_AddPointTool = {
     this._tempMarker.on('dragend', () => {
       this._pendingLatLng = this._tempMarker.getLatLng();
       this._updateCoordPreview();
+      this._ensureMarkerVisibleAboveForm();
     });
 
     this._updateCoordPreview();
     this._showForm();
+    this._ensureMarkerVisibleAboveForm();
+  },
+
+  /**
+   * Le formulaire est ancré en bas de l'écran (voir style.css) : un point posé
+   * dans cette zone se retrouverait masqué juste après avoir été placé. On
+   * décale la vue (sans changer la position géographique du point) pour que
+   * le marqueur reste visible au-dessus du formulaire.
+   */
+  _ensureMarkerVisibleAboveForm() {
+    const formEl = document.getElementById('amgt-point-form');
+    const mapContainer = this._map.getContainer();
+    const formRect = formEl.getBoundingClientRect();
+    const mapRect = mapContainer.getBoundingClientRect();
+    const margin = 16;
+    const safeBottom = formRect.top - mapRect.top - margin;
+
+    const markerPoint = this._map.latLngToContainerPoint(this._pendingLatLng);
+    if (markerPoint.y > safeBottom) {
+      this._map.panBy([0, markerPoint.y - safeBottom], { animate: true });
+    }
   },
 
   _updateCoordPreview() {
