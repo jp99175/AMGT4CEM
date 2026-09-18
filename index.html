@@ -48,9 +48,6 @@
   </button>
 </div>
 
-<!-- Avertissement fond de plan inaccessible (texte rempli dynamiquement) -->
-<div id="amgt-basemap-warning" class="amgt-banner amgt-hidden"></div>
-
 <!-- Chargement manuel de Metro.json si fetch() a échoué (ouverture en file://) -->
 <div id="amgt-manual-load" class="amgt-banner amgt-hidden">
   Chargement automatique de Metro.json impossible depuis ce mode d'ouverture.
@@ -60,10 +57,11 @@
   </label>
 </div>
 
-<!-- Curseur temporel orthophotos (visible uniquement quand ce fond est actif) -->
+<!-- Navigation temporelle orthophotos (visible uniquement quand ce fond est actif) -->
 <div id="amgt-year-slider-bar" class="amgt-hidden">
-  <input type="range" id="amgt-bruciel-slider" min="0" max="0" step="1" value="0" />
-  <span id="amgt-bruciel-year-label"></span>
+  <button id="amgt-year-prev" class="amgt-chevron-btn" title="Année accessible précédente">‹</button>
+  <span id="amgt-bruciel-year-label">&hellip;</span>
+  <button id="amgt-year-next" class="amgt-chevron-btn" title="Année accessible suivante">›</button>
 </div>
 
 <!-- Affichage des coordonnées Lambert du curseur -->

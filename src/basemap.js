@@ -5,6 +5,11 @@
  * Une seule couche de fond est ajoutée à la carte à la fois ; changer de fond
  * ou d'année Bruciel retire l'ancienne couche et ajoute la nouvelle.
  *
+ * Chaque année Bruciel est sondée avant d'être proposée à la navigation (voir
+ * checkBrucielAccessibility) : aucune tuile cassée ni message d'erreur n'est
+ * jamais montré à l'utilisateur, les années inaccessibles sont simplement
+ * absentes de la navigation par chevrons (voir mapMenu.js).
+ *
  * Techniquement, un L.tileLayer.wms Leaflet charge ses tuiles via des balises
  * <img>, pas via fetch/XHR : les restrictions CORS n'empêchent donc pas
  * l'affichage (elles ne bloqueraient que la lecture des pixels via un canvas,
@@ -16,6 +21,7 @@ const AMGT4CEM_Basemap = {
   _currentLayer: null,
   _leafletCrsCache: {},
   _brucielLayersByYear: {},
+  _accessibilityChecks: {},
 
   init(map) {
     this._map = map;
@@ -45,6 +51,58 @@ const AMGT4CEM_Basemap = {
     this._setActiveLayer(layer);
   },
 
+  /**
+   * Sonde l'accessibilité de chaque année Bruciel (une requête GetMap minimale
+   * par couche, mise en cache pour la session) et retourne les années
+   * effectivement accessibles, dans leur ordre chronologique.
+   * @returns {Promise<number[]>}
+   */
+  async getAccessibleBrucielYears() {
+    const entries = AMGT4CEM_CONFIG.basemaps.bruciel.entries;
+    const results = await Promise.all(entries.map((entry) => this._checkAccessible(entry)));
+    return entries.filter((_, i) => results[i]).map((entry) => entry.year);
+  },
+
+  _checkAccessible(entry) {
+    if (this._accessibilityChecks[entry.id]) return this._accessibilityChecks[entry.id];
+
+    const promise = new Promise((resolve) => {
+      const [minX, minY, maxX, maxY] = AMGT4CEM_CONFIG.probeBboxLambert;
+      const params = new URLSearchParams({
+        service: 'WMS',
+        request: 'GetMap',
+        version: entry.version || '1.3.0',
+        layers: entry.layers,
+        styles: '',
+        format: entry.format || 'image/png',
+        transparent: 'false',
+        width: '64',
+        height: '64',
+        crs: entry.crs || 'EPSG:31370',
+        bbox: [minX, minY, maxX, maxY].join(','),
+      });
+
+      const probe = new Image();
+      let settled = false;
+      const finish = (accessible) => {
+        if (settled) return;
+        settled = true;
+        resolve(accessible);
+      };
+
+      probe.onload = () => finish(true);
+      probe.onerror = () => finish(false);
+      // Filet de sécurité si le serveur ne répond ni par succès ni par erreur
+      // réseau franche (requête qui reste en attente indéfiniment).
+      setTimeout(() => finish(false), 6000);
+
+      probe.src = `${entry.url}?${params.toString()}`;
+    });
+
+    this._accessibilityChecks[entry.id] = promise;
+    return promise;
+  },
+
   _setActiveLayer(layer) {
     if (this._currentLayer === layer) return;
     if (this._currentLayer) this._map.removeLayer(this._currentLayer);
@@ -68,9 +126,7 @@ const AMGT4CEM_Basemap = {
     // d'affichage général de la carte (Leaflet convertit automatiquement).
     if (entry.crs) options.crs = this._resolveLeafletCrs(entry.crs);
 
-    const layer = L.tileLayer.wms(entry.url, options);
-    this._attachErrorWarning(layer, entry);
-    return layer;
+    return L.tileLayer.wms(entry.url, options);
   },
 
   /**
@@ -83,23 +139,5 @@ const AMGT4CEM_Basemap = {
       this._leafletCrsCache[epsgCode] = new L.Proj.CRS(epsgCode);
     }
     return this._leafletCrsCache[epsgCode];
-  },
-
-  _attachErrorWarning(layer, entry) {
-    let failed = false;
-    const yearLabel = document.getElementById('amgt-bruciel-year-label');
-
-    layer.on('tileerror', () => {
-      // Année inconnue tant que le fond est inaccessible : pas d'information
-      // trompeuse (voir index.html / mapMenu.js pour le curseur temporel).
-      if (entry.year !== undefined && yearLabel) yearLabel.classList.add('amgt-hidden');
-
-      if (failed) return;
-      failed = true;
-      console.warn(`[AMGT4CEM] Le fond "${entry.label}" semble inaccessible depuis ce poste.`);
-      const warningEl = document.getElementById('amgt-basemap-warning');
-      warningEl.textContent = `Le fond « ${entry.label} » semble inaccessible depuis ce poste.`;
-      warningEl.classList.remove('amgt-hidden');
-    });
   },
 };

@@ -21,6 +21,13 @@ const AMGT4CEM_CONFIG = {
   // --- Données cartographiques de référence ---
   metroDataUrl: './Metro.json',
 
+  // Petite emprise (2km x 2km, centre de Bruxelles) utilisée uniquement pour
+  // sonder si un fond WMS répond avant de le proposer (voir basemap.js) —
+  // confortablement à l'intérieur de l'emprise de tous les fonds Orthophoto
+  // connus (vérifié contre les BoundingBox de leurs GetCapabilities). Ce
+  // n'est pas une donnée métier.
+  probeBboxLambert: [148000, 168000, 150000, 170000],
+
   // --- Fonds de plan ---
   // Deux choix exposés à l'utilisateur : UrbIS (fond de référence grisé) et
   // Bruciel (ligne du temps unique, parcourue via un curseur, couvrant à la

@@ -43,33 +43,56 @@ const AMGT4CEM_MapMenu = {
   },
 
   _initBasemapControls() {
-    const years = AMGT4CEM_CONFIG.basemaps.bruciel.entries.map((e) => e.year);
-    const sliderBar = document.getElementById('amgt-year-slider-bar');
-    const slider = document.getElementById('amgt-bruciel-slider');
+    const bar = document.getElementById('amgt-year-slider-bar');
+    const prevBtn = document.getElementById('amgt-year-prev');
+    const nextBtn = document.getElementById('amgt-year-next');
     const yearLabel = document.getElementById('amgt-bruciel-year-label');
 
-    slider.min = 0;
-    slider.max = years.length - 1;
-    slider.value = years.length - 1;
-    yearLabel.textContent = years[years.length - 1];
+    // Années réellement accessibles, dans l'ordre chronologique. Sondées une
+    // seule fois (résultat mis en cache par AMGT4CEM_Basemap) lors du premier
+    // passage sur "Orthophotos" ; tant que le sondage n'est pas terminé, la
+    // navigation est désactivée plutôt que de risquer d'afficher une image
+    // cassée ou un message d'erreur.
+    let accessibleYears = null;
+    let currentIndex = -1;
 
-    const applyBruciel = () => {
-      const year = years[Number(slider.value)];
-      // Ré-affiche le libellé (masqué le temps précédent si le fond était
-      // inaccessible) avant de charger la nouvelle année.
-      yearLabel.classList.remove('amgt-hidden');
-      yearLabel.textContent = year;
-      AMGT4CEM_Basemap.showBruciel(year);
+    const renderNav = () => {
+      const hasYears = accessibleYears && accessibleYears.length > 0;
+      yearLabel.textContent = hasYears ? accessibleYears[currentIndex] : (accessibleYears ? '—' : '…');
+      prevBtn.disabled = !hasYears || currentIndex <= 0;
+      nextBtn.disabled = !hasYears || currentIndex >= accessibleYears.length - 1;
     };
 
-    slider.addEventListener('input', applyBruciel);
+    const showYearAt = (index) => {
+      currentIndex = index;
+      renderNav();
+      AMGT4CEM_Basemap.showBruciel(accessibleYears[currentIndex]);
+    };
+
+    const ensureAccessibleYearsLoaded = async () => {
+      if (accessibleYears) return;
+      renderNav(); // affiche "…" pendant le sondage
+      accessibleYears = await AMGT4CEM_Basemap.getAccessibleBrucielYears();
+      if (accessibleYears.length > 0) {
+        showYearAt(accessibleYears.length - 1); // la plus récente accessible
+      } else {
+        renderNav();
+      }
+    };
+
+    prevBtn.addEventListener('click', () => {
+      if (accessibleYears && currentIndex > 0) showYearAt(currentIndex - 1);
+    });
+    nextBtn.addEventListener('click', () => {
+      if (accessibleYears && currentIndex < accessibleYears.length - 1) showYearAt(currentIndex + 1);
+    });
 
     document.querySelectorAll('input[name="amgt-basemap"]').forEach((radio) => {
       radio.addEventListener('change', () => {
         if (!radio.checked) return;
-        sliderBar.classList.toggle('amgt-hidden', radio.value !== 'bruciel');
+        bar.classList.toggle('amgt-hidden', radio.value !== 'bruciel');
         if (radio.value === 'urbis') AMGT4CEM_Basemap.showUrbis();
-        else if (radio.value === 'bruciel') applyBruciel();
+        else if (radio.value === 'bruciel') ensureAccessibleYearsLoaded();
       });
     });
   },

@@ -123,32 +123,48 @@ html, body {
   text-decoration: underline;
 }
 
-/* --- Curseur temporel orthophotos --- */
-/* Placé juste au-dessus de l'affichage des coordonnées Lambert (jamais superposé). */
+/* --- Navigation temporelle orthophotos --- */
+/* Placée juste au-dessus de l'affichage des coordonnées Lambert (jamais superposée). */
 #amgt-year-slider-bar {
   position: absolute;
-  left: 8px;
-  right: 8px;
+  left: 50%;
+  transform: translateX(-50%);
   bottom: 40px;
   z-index: 1000;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
   background: rgba(255,255,255,0.92);
   border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: 6px 10px;
+  font-size: 14px;
   color: #333;
   box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
 
-#amgt-year-slider-bar input[type="range"] {
-  flex: 1;
+.amgt-chevron-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 10px;
+  cursor: pointer;
+  color: #2c3e50;
+  border-radius: 4px;
+}
+
+.amgt-chevron-btn:hover:not(:disabled) {
+  background: #f0f0f0;
+}
+
+.amgt-chevron-btn:disabled {
+  color: #ccc;
+  cursor: default;
 }
 
 #amgt-bruciel-year-label {
-  min-width: 2.5em;
-  text-align: right;
+  min-width: 3.5em;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
 

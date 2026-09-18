@@ -36,13 +36,14 @@ fichier `Metro.json` (sans quitter la page).
    superposés, sans limite de zoom.
 5. Bouton **☰ Carte** (haut gauche) : ouvre le menu fond de plan / couches /
    vue. Choisissez **UrbIS** ou **Orthophotos** (fait apparaître, en bas de
-   l'écran, un curseur pour parcourir les millésimes de 1935 à 2022, réglé
-   sur 2022 par défaut). Les cases à cocher activent/désactivent Stations,
-   Tunnels et Points métier. Le bouton **⤢ Réinitialiser la vue** revient à
-   l'emprise générale du réseau. Le contrôle de zoom (+/-) est en haut à
-   droite.
-6. Les coordonnées Lambert du curseur s'affichent en bas à gauche, sous le
-   curseur temporel quand celui-ci est visible.
+   l'écran, une navigation ‹ année › pour parcourir les millésimes de 1935 à
+   2022 — seules les années dont le service répond sont proposées, réglée
+   sur la plus récente accessible par défaut). Les cases à cocher
+   activent/désactivent Stations, Tunnels et Points métier. Le bouton
+   **⤢ Réinitialiser la vue** revient à l'emprise générale du réseau. Le
+   contrôle de zoom (+/-) est en haut à droite.
+6. Les coordonnées Lambert du curseur s'affichent en bas à gauche, sous la
+   navigation temporelle quand celle-ci est visible.
 7. Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
    carte (vous pouvez continuer à naviguer avant de cliquer) : un marqueur
    provisoire apparaît, les coordonnées X/Y Lambert sont calculées
@@ -68,20 +69,26 @@ service que celui utilisé par MobiGIS
 `urbisFRGray`). **Cet endpoint n'a pas pu être testé en direct depuis
 l'environnement de développement** (politique réseau du bac à sable bloquant
 les domaines `*.irisnet.be`) — vérifiez son chargement depuis votre propre
-poste. S'il ne se charge pas, une bannière d'avertissement s'affiche
-automatiquement.
+poste.
 
 ### Orthophotos
 
 Une seule ligne du temps continue, de **1935 à 2022** (19 millésimes),
-parcourue via le curseur qui apparaît en bas de l'écran (au-dessus des
-coordonnées Lambert) une fois "Orthophotos" sélectionné dans le menu —
-déplacer le curseur change la couche affichée en direct. Réglé sur 2022 (le
-plus récent) par défaut. Le nom "Bruciel" n'est pas montré à l'utilisateur,
-mais reste utilisé en interne (`config.js`, `AMGT4CEM_Basemap.showBruciel`)
-puisque la donnée historique vient bien de ce service. Deux services
-distincts sont fusionnés dans cette unique série, de façon transparente
-pour l'utilisateur :
+parcourue avec des chevrons ‹ › en bas de l'écran une fois "Orthophotos"
+sélectionné dans le menu. Contrairement à un simple curseur, **seules les
+années dont le service répond effectivement sont proposées** : à la
+première sélection, chaque année est sondée une fois (petite requête
+GetMap 64×64, voir `AMGT4CEM_Basemap.getAccessibleBrucielYears` dans
+`src/basemap.js`) et le résultat mis en cache pour la session. Les chevrons
+ne naviguent qu'entre années accessibles ; il n'y a donc jamais d'image
+cassée ni de message d'erreur affiché — si une année est inaccessible, elle
+n'apparaît simplement pas dans la navigation. Réglée sur la plus récente
+accessible par défaut (2022 si tout répond).
+
+Le nom "Bruciel" n'est pas montré à l'utilisateur, mais reste utilisé en
+interne (`config.js`, `AMGT4CEM_Basemap.showBruciel`) puisque la donnée
+historique vient bien de ce service. Deux services distincts sont fusionnés
+dans cette unique série, de façon transparente pour l'utilisateur :
 
 - **1935-1996** : Bruciel historique (Bruxelles Urbanisme & Patrimoine /
   urban.brussels). Service GeoServer : `gis.urban.brussels`, workspace
