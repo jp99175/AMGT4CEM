@@ -29,12 +29,8 @@
     <input type="radio" name="amgt-basemap" value="urbis" checked /> UrbIS
   </label>
   <label class="amgt-radio-row">
-    <input type="radio" name="amgt-basemap" value="bruciel" /> Bruciel (orthophotos)
+    <input type="radio" name="amgt-basemap" value="bruciel" /> Orthophotos
   </label>
-  <div id="amgt-bruciel-slider-row" class="amgt-slider-row amgt-hidden">
-    <input type="range" id="amgt-bruciel-slider" min="0" max="0" step="1" value="0" />
-    <span id="amgt-bruciel-year-label"></span>
-  </div>
 
   <h3>Couches</h3>
   <label class="amgt-checkbox-row">
@@ -62,6 +58,12 @@
     Sélectionner le fichier Metro.json
     <input type="file" id="amgt-manual-load-input" accept=".json" />
   </label>
+</div>
+
+<!-- Curseur temporel orthophotos (visible uniquement quand ce fond est actif) -->
+<div id="amgt-year-slider-bar" class="amgt-hidden">
+  <input type="range" id="amgt-bruciel-slider" min="0" max="0" step="1" value="0" />
+  <span id="amgt-bruciel-year-label"></span>
 </div>
 
 <!-- Affichage des coordonnées Lambert du curseur -->

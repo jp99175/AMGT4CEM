@@ -4,13 +4,16 @@
  */
 (function () {
   const map = L.map('map', {
-    zoomControl: true,
+    // Contrôle de zoom désactivé ici et recréé en haut à droite (position par
+    // défaut = haut gauche, sous le menu "☰ Carte" et masqué par lui).
+    zoomControl: false,
     maxZoom: AMGT4CEM_CONFIG.maxZoom,
     // Vue par défaut le temps que Metro.json soit chargé (recentrée ensuite
     // sur l'emprise réelle du réseau).
     center: [50.85, 4.35],
     zoom: 12,
   });
+  L.control.zoom({ position: 'topright' }).addTo(map);
 
   AMGT4CEM_Basemap.init(map);
   AMGT4CEM_Basemap.showUrbis();

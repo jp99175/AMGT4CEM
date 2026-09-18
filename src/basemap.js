@@ -87,7 +87,13 @@ const AMGT4CEM_Basemap = {
 
   _attachErrorWarning(layer, entry) {
     let failed = false;
+    const yearLabel = document.getElementById('amgt-bruciel-year-label');
+
     layer.on('tileerror', () => {
+      // Année inconnue tant que le fond est inaccessible : pas d'information
+      // trompeuse (voir index.html / mapMenu.js pour le curseur temporel).
+      if (entry.year !== undefined && yearLabel) yearLabel.classList.add('amgt-hidden');
+
       if (failed) return;
       failed = true;
       console.warn(`[AMGT4CEM] Le fond "${entry.label}" semble inaccessible depuis ce poste.`);

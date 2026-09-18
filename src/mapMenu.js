@@ -44,7 +44,7 @@ const AMGT4CEM_MapMenu = {
 
   _initBasemapControls() {
     const years = AMGT4CEM_CONFIG.basemaps.bruciel.entries.map((e) => e.year);
-    const sliderRow = document.getElementById('amgt-bruciel-slider-row');
+    const sliderBar = document.getElementById('amgt-year-slider-bar');
     const slider = document.getElementById('amgt-bruciel-slider');
     const yearLabel = document.getElementById('amgt-bruciel-year-label');
 
@@ -55,6 +55,9 @@ const AMGT4CEM_MapMenu = {
 
     const applyBruciel = () => {
       const year = years[Number(slider.value)];
+      // Ré-affiche le libellé (masqué le temps précédent si le fond était
+      // inaccessible) avant de charger la nouvelle année.
+      yearLabel.classList.remove('amgt-hidden');
       yearLabel.textContent = year;
       AMGT4CEM_Basemap.showBruciel(year);
     };
@@ -64,7 +67,7 @@ const AMGT4CEM_MapMenu = {
     document.querySelectorAll('input[name="amgt-basemap"]').forEach((radio) => {
       radio.addEventListener('change', () => {
         if (!radio.checked) return;
-        sliderRow.classList.toggle('amgt-hidden', radio.value !== 'bruciel');
+        sliderBar.classList.toggle('amgt-hidden', radio.value !== 'bruciel');
         if (radio.value === 'urbis') AMGT4CEM_Basemap.showUrbis();
         else if (radio.value === 'bruciel') applyBruciel();
       });
