@@ -14,6 +14,11 @@
     zoom: 12,
   });
   L.control.zoom({ position: 'topright' }).addTo(map);
+  // Retire le lien "Leaflet" du contrôle d'attribution (sans obligation légale :
+  // la licence BSD-2-Clause de Leaflet n'exige pas d'affichage à l'écran, voir
+  // README). Les attributions des sources de données (UrbIS, Bruciel...)
+  // restent affichées, elles.
+  map.attributionControl.setPrefix(false);
 
   AMGT4CEM_Basemap.init(map);
   AMGT4CEM_Basemap.showUrbis();
