@@ -10,6 +10,8 @@ const AMGT4CEM_SearchTool = {
 
   init(map) {
     this._map = map;
+    this._searchToken = 0;
+    this._geocodeTimer = null;
 
     const toggleBtn = document.getElementById('amgt-search-toggle');
     const panel = document.getElementById('amgt-search-panel');
@@ -24,6 +26,7 @@ const AMGT4CEM_SearchTool = {
     };
     const close = () => {
       panel.classList.add('amgt-hidden');
+      clearTimeout(this._geocodeTimer);
     };
 
     toggleBtn.addEventListener('click', () => {
@@ -43,12 +46,29 @@ const AMGT4CEM_SearchTool = {
 
     input.addEventListener('input', async () => {
       const query = input.value.trim();
+      clearTimeout(this._geocodeTimer);
+      const token = ++this._searchToken;
+
       if (!query) {
         resultsEl.innerHTML = '';
         return;
       }
-      const results = await this._search(query);
-      this._renderResults(resultsEl, results, close);
+
+      // Résultats locaux (stations/tunnels/points) : quasi instantanés, pas
+      // de vrai réseau (localStorage), affichés sans attendre le géocodeur.
+      const localResults = [...this._searchLocal(query), ...(await this._searchPoints(query))];
+      if (token !== this._searchToken) return; // une saisie plus récente a eu lieu
+      this._renderResults(resultsEl, localResults, close);
+
+      // Recherche d'adresse (UrbIS) : débattue (300 ms) pour éviter une
+      // requête réseau à chaque frappe, ajoutée aux résultats locaux déjà
+      // affichés une fois reçue — sans jamais bloquer/casser l'affichage des
+      // résultats locaux si le géocodage échoue (réseau, CORS...).
+      this._geocodeTimer = setTimeout(async () => {
+        const addressResults = await this._searchAddresses(query);
+        if (token !== this._searchToken) return;
+        this._renderResults(resultsEl, [...localResults, ...addressResults], close);
+      }, 300);
     });
   },
 
@@ -67,7 +87,7 @@ const AMGT4CEM_SearchTool = {
       .toLowerCase();
   },
 
-  async _search(query) {
+  _searchLocal(query) {
     const needle = this._normalize(query);
     const results = [];
 
@@ -78,25 +98,72 @@ const AMGT4CEM_SearchTool = {
       }
     }
 
-    if (results.length < 8) {
-      const points = await AMGT4CEM_PointsStore.getAll();
-      for (const point of points) {
-        if (this._normalize(point.label).includes(needle)) {
-          results.push({
-            kind: 'point',
-            label: point.label,
-            latlng: AMGT4CEM_CRS.lambertToLatLng([point.x, point.y]),
-          });
-          if (results.length >= 8) break;
-        }
-      }
-    }
-
     return results;
   },
 
+  async _searchPoints(query) {
+    const needle = this._normalize(query);
+    const results = [];
+    const points = await AMGT4CEM_PointsStore.getAll();
+    for (const point of points) {
+      if (this._normalize(point.label).includes(needle)) {
+        results.push({
+          kind: 'point',
+          label: point.label,
+          latlng: AMGT4CEM_CRS.lambertToLatLng([point.x, point.y]),
+        });
+        if (results.length >= 8) break;
+      }
+    }
+    return results;
+  },
+
+  /**
+   * Recherche d'adresse via le géocodeur officiel UrbIS. Renvoie [] (jamais
+   * d'exception) en cas d'échec réseau/CORS/format inattendu — une adresse
+   * introuvable ne doit jamais casser l'affichage des résultats locaux déjà
+   * montrés à l'utilisateur.
+   */
+  async _searchAddresses(query) {
+    const { url, spatialReference, language } = AMGT4CEM_CONFIG.geocoder;
+    const requestUrl = `${url}?spatialReference=${spatialReference}&language=${language}&address=${encodeURIComponent(query)}`;
+
+    try {
+      const response = await fetch(requestUrl);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const body = await response.json();
+      const entries = body.result || [];
+
+      return entries.slice(0, 5).map((entry) => {
+        const street = entry.address?.street || {};
+        const parts = [
+          [street.name, entry.address?.number].filter(Boolean).join(' '),
+          [street.postCode, street.municipality].filter(Boolean).join(' '),
+        ].filter(Boolean);
+
+        const extent = entry.extent;
+        const bounds = extent
+          ? L.latLngBounds(
+              AMGT4CEM_CRS.lambertToLatLng([extent.xmin, extent.ymin]),
+              AMGT4CEM_CRS.lambertToLatLng([extent.xmax, extent.ymax])
+            )
+          : null;
+
+        return {
+          kind: 'address',
+          label: parts.join(', ') || query,
+          latlng: bounds ? null : AMGT4CEM_CRS.lambertToLatLng([entry.point.x, entry.point.y]),
+          bounds,
+        };
+      });
+    } catch (err) {
+      console.warn('[AMGT4CEM] Recherche d\'adresse (UrbIS) indisponible :', err);
+      return [];
+    }
+  },
+
   _kindLabel(kind) {
-    return { station: 'Station', tunnel: 'Tunnel', point: 'Point métier' }[kind] || kind;
+    return { station: 'Station', tunnel: 'Tunnel', point: 'Point métier', address: 'Adresse' }[kind] || kind;
   },
 
   _renderResults(resultsEl, results, close) {

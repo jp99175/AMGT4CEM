@@ -111,6 +111,24 @@ const AMGT4CEM_CONFIG = {
     },
   },
 
+  // --- Géocodage d'adresses (recherche par nom de rue) ---
+  // Service officiel UrbIS (CIRB/CIBG), le même écosystème que le fond de
+  // plan et les orthophotos. Endpoint et format de requête/réponse
+  // confirmés via le code source public du connecteur PHP "geo6/
+  // geocoder-php-urbis-provider" (pas une supposition). Répond nativement
+  // en EPSG:31370 (`spatialReference=31370`), pas besoin de conversion.
+  // Domaine bloqué depuis ce bac à sable (comme les autres services
+  // *.irisnet.be) : le fonctionnement du fond de plan (tuiles <img>, jamais
+  // lu par du JS) a pu être vérifié malgré ce blocage, mais un appel
+  // fetch() JSON comme celui-ci est un cas différent (nécessite un vrai
+  // support CORS pour que le navigateur laisse passer la réponse) — à
+  // vérifier depuis un navigateur utilisateur réel.
+  geocoder: {
+    url: 'https://geoservices.irisnet.be/localization/Rest/Localize/getaddresses',
+    spatialReference: 31370,
+    language: 'fr',
+  },
+
   // --- Micro-base de données métier (stockage local du prototype) ---
   // Tentative abandonnée : stocker les points dans data/points.json de ce
   // dépôt via l'API GitHub (partagé entre appareils). Ça ne fonctionne pas :

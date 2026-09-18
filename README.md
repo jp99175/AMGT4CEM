@@ -44,10 +44,13 @@ fichier `Metro.json` (sans quitter la page).
    Tunnels et Points métier. Le bouton **⤢ Réinitialiser la vue** revient à
    l'emprise générale du réseau et remet le fond UrbIS grisé.
 6. Bouton **🔍** (haut droite) : ouvre un champ de recherche sur les
-   stations, tunnels (Metro.json) et points métier. Tapez un nom (les
-   accents sont ignorés dans la recherche, ex. "de brouckere" trouve
-   "De Brouckère"), cliquez un résultat : la carte se recentre et zoome
-   dessus automatiquement.
+   stations, tunnels (Metro.json), points métier et adresses (noms de
+   rues). Tapez un nom (les accents sont ignorés dans la recherche, ex.
+   "de brouckere" trouve "De Brouckère") : les résultats stations/tunnels/
+   points apparaissent immédiatement, puis les adresses correspondantes
+   (géocodeur UrbIS, voir section 3) s'ajoutent après une courte requête
+   réseau. Cliquez un résultat : la carte se recentre et zoome dessus
+   automatiquement.
 7. Les coordonnées Lambert du curseur s'affichent en bas à gauche, sous la
    navigation temporelle quand celle-ci est visible.
 8. Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
@@ -116,6 +119,26 @@ dans cette unique série, de façon transparente pour l'utilisateur :
 Aucun nom de couche ci-dessus n'est deviné. Pour ajouter un millésime plus
 récent quand il sera identifié, ajoutez une entrée dans
 `AMGT4CEM_CONFIG.basemaps.bruciel.entries` (voir `config.js`).
+
+### Recherche d'adresses (géocodage)
+
+La recherche (bouton **🔍**) inclut aussi les noms de rues, via le service
+officiel de géocodage UrbIS (CIRB/CIBG),
+`https://geoservices.irisnet.be/localization/Rest/Localize/getaddresses`
+(déclaré dans `AMGT4CEM_CONFIG.geocoder`, utilisé par `src/searchTool.js`).
+Endpoint et format confirmés via le code source public du connecteur PHP
+`geo6/geocoder-php-urbis-provider` (pas deviné) ; il répond nativement en
+EPSG:31370, pas de conversion nécessaire côté client.
+
+Contrairement aux fonds de plan WMS (chargés comme des `<img>`, jamais lus
+par du JavaScript), cette recherche fait un vrai appel `fetch()` qui lit la
+réponse JSON — ce qui exige un support CORS explicite du serveur. **Ce
+point n'a pas pu être vérifié depuis l'environnement de développement**
+(domaine `*.irisnet.be` bloqué par la politique réseau du bac à sable, comme
+pour les autres services UrbIS) : à tester depuis un navigateur réel. En
+cas d'indisponibilité (réseau, CORS, format inattendu), la recherche
+d'adresse échoue silencieusement (aucune erreur affichée) et les résultats
+stations/tunnels/points restent disponibles normalement.
 
 ### CRS forcé en EPSG:31370
 
