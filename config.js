@@ -56,8 +56,16 @@ const AMGT4CEM_CONFIG = {
     // Orthophotos historiques Bruciel (Bruxelles Urbanisme & Patrimoine / urban.brussels).
     // Service GeoServer : gis.urban.brussels, workspace "URBAN_DCC_ER" (et non
     // "BRUCIEL", qui ne contient que des couches thématiques annexes). Noms de
-    // couches et CRS EPSG:31370 confirmés via un GetCapabilities réel fourni par
-    // l'utilisateur (voir historique de conversation) — pas de supposition ici.
+    // couches confirmés via un GetCapabilities réel fourni par l'utilisateur (voir
+    // historique de conversation) — pas de supposition ici.
+    // Streaming à la demande comme le reste des fonds WMS : aucune image n'est
+    // embarquée dans l'application, chaque tuile est requêtée au serveur au moment
+    // de l'affichage (voir architecture, README section 5).
+    // Important : ces couches ne déclarent QUE EPSG:31370 et CRS:84 dans leur
+    // GetCapabilities (pas EPSG:3857/900913, contrairement au fond UrbIS) — la
+    // carte Leaflet fonctionnant par défaut en Web Mercator, il faut forcer ces
+    // requêtes WMS dans leur CRS natif via `crs`, sous peine de tuiles vides ou
+    // d'erreur serveur (voir crs.js / basemap.js).
     // Ce serveur ne va pas au-delà de 1996 ; les orthophotos plus récentes (2000+)
     // sont vraisemblablement publiées ailleurs (infrastructure UrbIS) et n'ont pas
     // encore été localisées — voir README section "Orthophotos Bruciel".
@@ -69,19 +77,9 @@ const AMGT4CEM_CONFIG = {
       layers: `Orthophotoplans_${year}`,
       version: '1.3.0',
       format: 'image/jpeg',
+      crs: 'EPSG:31370',
       attribution: '&copy; urban.brussels &ndash; Bruciel',
     })),
-
-    // Fond de secours (utilisé si Urbis est inaccessible depuis le poste utilisateur :
-    // réseau restreint, service indisponible, etc.). N'affecte pas l'architecture :
-    // simple entrée de plus dans la même liste de fonds sélectionnables.
-    {
-      id: 'osm',
-      label: 'Fond de secours (OSM)',
-      type: 'xyz',
-      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      attribution: '&copy; OpenStreetMap contributors',
-    },
   ],
 
   // --- Micro-base de données métier (stockage local du prototype) ---

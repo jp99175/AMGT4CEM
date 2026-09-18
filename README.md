@@ -112,7 +112,7 @@ config.js                    configuration (CRS, services, clés de stockage)
 src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
 src/metroData.js             chargement Metro.json (fetch, avec repli FileReader)
 src/metroLayer.js            construction des couches Leaflet Stations/Tunnels
-src/basemap.js                fond Urbis WMS + fond de secours
+src/basemap.js                fonds de plan WMS/XYZ sélectionnables
 src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
 src/pointsLayer.js           affichage/déplacement des points métier
 src/addPointTool.js          workflow "Ajouter un point"
