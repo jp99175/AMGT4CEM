@@ -12,23 +12,19 @@
     zoom: 12,
   });
 
-  const { layers: basemapLayers, defaultId } = AMGT4CEM_Basemap.build();
-  basemapLayers[defaultId].addTo(map);
-
-  const basemapControlEntries = {};
-  for (const entry of AMGT4CEM_CONFIG.basemaps) {
-    if (basemapLayers[entry.id]) basemapControlEntries[entry.label] = basemapLayers[entry.id];
-  }
-
-  const layersControl = L.control.layers(
-    basemapControlEntries,
-    {},
-    { position: 'topright', collapsed: true }
-  ).addTo(map);
+  AMGT4CEM_Basemap.init(map);
+  AMGT4CEM_Basemap.showUrbis();
 
   AMGT4CEM_CoordsDisplay.init(map);
   const pointsGroup = AMGT4CEM_PointsLayer.init(map);
-  layersControl.addOverlay(pointsGroup, 'Points métier');
+
+  let metroBounds = null;
+
+  AMGT4CEM_MapMenu.init({
+    map,
+    pointsGroup,
+    getMetroBounds: () => metroBounds,
+  });
 
   AMGT4CEM_AddPointTool.init(map, {
     onPointCreated() {
@@ -36,14 +32,11 @@
     },
   });
 
-  let metroBounds = null;
-
   function onMetroLoaded(geojson) {
     const { layersByType, bounds } = AMGT4CEM_MetroLayer.build(geojson);
-    layersControl.addOverlay(layersByType.MS, 'Stations');
-    layersControl.addOverlay(layersByType.MT, 'Tunnels');
     layersByType.MS.addTo(map);
     layersByType.MT.addTo(map);
+    AMGT4CEM_MapMenu.setMetroLayers(layersByType);
 
     metroBounds = bounds;
     map.fitBounds(bounds, { padding: [20, 20] });
@@ -61,12 +54,6 @@
     AMGT4CEM_MetroData.loadFromFile(file, onMetroLoaded, (err) => {
       alert('Impossible de lire ce fichier comme Metro.json : ' + err.message);
     });
-  });
-
-  document.getElementById('amgt-reset-view-btn').addEventListener('click', () => {
-    if (metroBounds && metroBounds.isValid()) {
-      map.fitBounds(metroBounds, { padding: [20, 20] });
-    }
   });
 
   document.getElementById('amgt-add-point-btn').addEventListener('click', () => {

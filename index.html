@@ -14,11 +14,44 @@
 
 <!-- Barre d'outils principale -->
 <div id="amgt-toolbar">
-  <button id="amgt-reset-view-btn" class="amgt-btn" title="Revenir à l'emprise générale du réseau">
-    ⤢ Vue métro
+  <button id="amgt-menu-btn" class="amgt-btn" title="Fond de carte, couches, vue">
+    ☰ Carte
   </button>
   <button id="amgt-add-point-btn" class="amgt-btn" title="Ajouter un point">
     ✚ Ajouter un point
+  </button>
+</div>
+
+<!-- Menu : fond de carte, couches visibles, réinitialisation de la vue -->
+<div id="amgt-map-menu" class="amgt-panel amgt-hidden">
+  <h3>Fond de carte</h3>
+  <label class="amgt-radio-row">
+    <input type="radio" name="amgt-basemap" value="urbis" checked /> UrbIS
+  </label>
+  <label class="amgt-radio-row">
+    <input type="radio" name="amgt-basemap" value="orthophoto" /> Orthophoto
+  </label>
+  <label class="amgt-radio-row">
+    <input type="radio" name="amgt-basemap" value="bruciel" /> Bruciel
+  </label>
+  <div id="amgt-bruciel-slider-row" class="amgt-slider-row amgt-hidden">
+    <input type="range" id="amgt-bruciel-slider" min="0" max="0" step="1" value="0" />
+    <span id="amgt-bruciel-year-label"></span>
+  </div>
+
+  <h3>Couches</h3>
+  <label class="amgt-checkbox-row">
+    <input type="checkbox" id="amgt-layer-stations" checked /> Stations
+  </label>
+  <label class="amgt-checkbox-row">
+    <input type="checkbox" id="amgt-layer-tunnels" checked /> Tunnels
+  </label>
+  <label class="amgt-checkbox-row">
+    <input type="checkbox" id="amgt-layer-points" checked /> Points métier
+  </label>
+
+  <button id="amgt-reset-view-btn" class="amgt-btn amgt-btn--full" title="Revenir à l'emprise générale du réseau">
+    ⤢ Réinitialiser la vue
   </button>
 </div>
 
@@ -73,6 +106,7 @@
 <script src="./src/addPointTool.js"></script>
 <script src="./src/coordsDisplay.js"></script>
 <script src="./src/basemap.js"></script>
+<script src="./src/mapMenu.js"></script>
 <script src="./src/app.js"></script>
 </body>
 </html>

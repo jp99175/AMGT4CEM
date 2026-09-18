@@ -28,14 +28,18 @@ fichier `Metro.json` (sans quitter la page).
 ## 2. Tester le scénario principal
 
 1. La carte s'ouvre déjà recentrée sur l'emprise du réseau métro.
-2. Les couches **Stations** et **Tunnels** sont visibles (contrôle de
-   couches en haut à droite pour les activer/désactiver).
+2. Les couches **Stations** et **Tunnels** sont visibles.
 3. Cliquez sur une station ou un tunnel : ses attributs (`name_fr`,
    `name_nl`, `type`, `niveau`...) s'affichent dans une popup.
 4. Déplacez la carte (glisser) et zoomez (molette, boutons +/-, ou
    double-clic) : le fond et les données métro restent parfaitement
    superposés, sans limite de zoom.
-5. Bouton **⤢ Vue métro** : revient à l'emprise générale du réseau.
+5. Bouton **☰ Carte** (haut gauche) : ouvre le menu fond de plan / couches /
+   vue. Choisissez **UrbIS**, **Orthophoto** (image la plus récente) ou
+   **Bruciel** (fait apparaître un curseur pour parcourir les années
+   1935-1996). Les cases à cocher activent/désactivent Stations, Tunnels et
+   Points métier. Le bouton **⤢ Réinitialiser la vue** revient à l'emprise
+   générale du réseau.
 6. Les coordonnées Lambert du curseur s'affichent en bas à gauche.
 7. Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
    carte (vous pouvez continuer à naviguer avant de cliquer) : un marqueur
@@ -51,46 +55,50 @@ fichier `Metro.json` (sans quitter la page).
 
 ## 3. Les fonds de plan
 
-Tous les fonds sélectionnables sont déclarés dans `config.js`
-(`AMGT4CEM_CONFIG.basemaps`), sous forme de liste : ajouter/retirer/réordonner
-un fond se fait à cet unique endroit, sans toucher au reste du code.
+Trois choix dans le menu **☰ Carte**, déclarés dans `config.js`
+(`AMGT4CEM_CONFIG.basemaps`) :
 
-### UrbIS (grisé / couleur)
+### UrbIS
 
-Service WMS public UrbIS (CIRB/CIBG), le même service que celui utilisé par
-MobiGIS (`https://geoservices-urbis.irisnet.be/geoserver/Urbis/wms`, couches
-`urbisFRGray` pour le fond grisé par défaut et `urbisFR` pour la version
-couleur). **Ces endpoints n'ont pas pu être testés en direct depuis
+Fond de référence grisé. Service WMS public UrbIS (CIRB/CIBG), le même
+service que celui utilisé par MobiGIS
+(`https://geoservices-urbis.irisnet.be/geoserver/Urbis/wms`, couche
+`urbisFRGray`). **Cet endpoint n'a pas pu être testé en direct depuis
 l'environnement de développement** (politique réseau du bac à sable bloquant
-les domaines `*.irisnet.be`) — vérifiez leur chargement depuis votre propre
-poste. Si un fond ne se charge pas (bannière d'avertissement affichée
-automatiquement, nommant le fond en cause), basculez sur un autre fond dans
-le contrôle de couches.
+les domaines `*.irisnet.be`) — vérifiez son chargement depuis votre propre
+poste. S'il ne se charge pas, une bannière d'avertissement s'affiche
+automatiquement.
 
-### Orthophotos historiques Bruciel
+### Orthophoto
 
-Activées : 8 années disponibles (**1935, 1944, 1953, 1961, 1971, 1977, 1987,
-1996**), confirmées via un `GetCapabilities` réel du service (fourni par
-l'utilisateur, pas une supposition). Service GeoServer : `gis.urban.brussels`,
-workspace **`URBAN_DCC_ER`** (et non `BRUCIEL`, qui ne contient que des
-couches thématiques annexes — localisation d'ateliers, tracés de tram, etc.
-— pas les images aériennes elles-mêmes). Couches `Orthophotoplans_<année>`,
-CRS EPSG:31370 supporté nativement par ces couches.
+La photo aérienne la plus récente disponible : **2022**
+(`urbisgrid:Ortho2022Ns`), sur le même serveur UrbIS, workspace `urbisgrid`.
+Ce nom de couche a été confirmé en extrayant les URLs de légende réellement
+générées par la page MobiGIS (snapshot HTML fourni par l'utilisateur), pas
+une supposition. Pour passer à un millésime plus récent quand il sera
+disponible, il suffit de changer `layers` dans
+`AMGT4CEM_CONFIG.basemaps.orthophoto` (voir `config.js`).
 
-Ce serveur ne va pas au-delà de 1996 pour les orthophotos.
+### Bruciel
 
-### Orthophotos récentes UrbIS (identiques à MobiGIS)
+Série historique (**1935, 1944, 1953, 1961, 1971, 1977, 1987, 1996**),
+parcourue via le curseur qui apparaît dans le menu une fois "Bruciel"
+sélectionné — déplacer le curseur change la couche affichée en direct.
+Confirmée via un `GetCapabilities` réel du service (fourni par l'utilisateur,
+pas une supposition). Service GeoServer : `gis.urban.brussels`, workspace
+`URBAN_DCC_ER` (et non `BRUCIEL`, qui ne contient que des couches
+thématiques annexes — localisation d'ateliers, tracés de tram, etc. — pas
+les images aériennes elles-mêmes). Couches `Orthophotoplans_<année>`. Ce
+serveur ne va pas au-delà de 1996.
 
-Activées : 13 couches, de **2004 à 2022** (dont une variante infrarouge pour
-2020 et 2022), les mêmes que celles proposées par le viewer MobiGIS
-(`data.mobility.brussels/mobigis`). Service GeoServer :
-`geoservices-urbis.irisnet.be`, workspace **`urbisgrid`**. Noms de couches
-(`urbisgrid:Ortho2022Ns`, etc.) confirmés en extrayant les URLs de légende
-réellement générées par la page MobiGIS (snapshot HTML fourni par
-l'utilisateur), pas une supposition. Le `GetCapabilities` précis de ce
-workspace n'a pas été consulté (accès direct bloqué depuis MobiGIS), donc
-`crs` est forcé en `EPSG:31370` par précaution, comme pour les couches
-Bruciel ci-dessus.
+### CRS forcé en EPSG:31370
+
+Les couches Bruciel et Orthophoto ne déclarent que `EPSG:31370`/`CRS:84`
+dans leurs `GetCapabilities` (pas `EPSG:3857`, contrairement au fond UrbIS)
+— la carte Leaflet fonctionnant par défaut en Web Mercator, ces couches
+précisent `crs: 'EPSG:31370'` dans `config.js` pour forcer Leaflet à les
+requêter dans leur CRS natif (via Proj4Leaflet, voir `src/basemap.js`), sous
+peine de tuiles vides ou d'erreur serveur.
 
 ## 4. Analyse de Metro.json (référence)
 
@@ -114,13 +122,15 @@ config.js                    configuration (CRS, services, clés de stockage)
 src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
 src/metroData.js             chargement Metro.json (fetch, avec repli FileReader)
 src/metroLayer.js            construction des couches Leaflet Stations/Tunnels
-src/basemap.js                fonds de plan WMS/XYZ sélectionnables
+src/basemap.js                fonds de plan (UrbIS, Orthophoto, Bruciel)
+src/mapMenu.js                menu fond de plan / couches / réinitialisation
 src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
 src/pointsLayer.js           affichage/déplacement des points métier
 src/addPointTool.js          workflow "Ajouter un point"
 src/coordsDisplay.js         affichage des coordonnées Lambert du curseur
 src/app.js                   assemblage de l'application
-vendor/leaflet, vendor/proj4 bibliothèques embarquées localement
+vendor/leaflet, vendor/proj4,
+vendor/proj4leaflet          bibliothèques embarquées localement
 ```
 
 `Metro.json` (donnée de référence) et la micro-base de points métier

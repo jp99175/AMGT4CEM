@@ -53,6 +53,63 @@ html, body {
   border-color: #2c7a3d;
 }
 
+/* --- Menu carte (fond de plan, couches, réinitialisation) --- */
+#amgt-map-menu {
+  position: absolute;
+  top: 96px;
+  left: 10px;
+  z-index: 1000;
+  background: #fff;
+  border-radius: 6px;
+  padding: 10px 14px 14px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+  width: 220px;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+#amgt-map-menu h3 {
+  margin: 12px 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #777;
+}
+
+#amgt-map-menu h3:first-child {
+  margin-top: 0;
+}
+
+.amgt-radio-row,
+.amgt-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  padding: 5px 0;
+  cursor: pointer;
+}
+
+.amgt-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 4px 24px;
+  font-size: 13px;
+  color: #444;
+}
+
+.amgt-slider-row input[type="range"] {
+  flex: 1;
+}
+
+.amgt-btn--full {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  text-align: center;
+}
+
 /* --- Bannières d'information --- */
 /* Placée sous la barre d'outils (jamais superposée) : celle-ci peut passer
    sur deux lignes sur un petit écran, la bannière descend donc assez bas. */
