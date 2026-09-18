@@ -121,21 +121,33 @@ const AMGT4CEM_AddPointTool = {
     }
   },
 
-  confirm() {
+  async confirm() {
     const type = document.getElementById('amgt-form-type').value.trim();
     const label = document.getElementById('amgt-form-label').value.trim();
     if (!type || !label || !this._pendingLambert) {
       alert('Merci de renseigner au minimum un type et un libellé.');
       return;
     }
-    const point = AMGT4CEM_PointsStore.add({
-      type,
-      label,
-      x: this._pendingLambert.x,
-      y: this._pendingLambert.y,
-    });
-    this._onPointCreated(point);
-    this.deactivate();
+
+    const confirmBtn = document.getElementById('amgt-form-confirm');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Enregistrement…';
+    try {
+      const point = await AMGT4CEM_PointsStore.add({
+        type,
+        label,
+        x: this._pendingLambert.x,
+        y: this._pendingLambert.y,
+      });
+      this._onPointCreated(point);
+      this.deactivate();
+    } catch (err) {
+      console.error('[AMGT4CEM] Enregistrement du point impossible :', err);
+      alert('Impossible d\'enregistrer ce point : ' + err.message);
+    } finally {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Enregistrer';
+    }
   },
 
   cancel() {

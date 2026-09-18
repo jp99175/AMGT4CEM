@@ -9,6 +9,11 @@
  * HTML : type/libellé/propriétés viennent du formulaire "Ajouter un point"
  * (saisie utilisateur), les insérer tels quels dans du HTML permettrait une
  * injection stockée (ex : libellé "<img onerror=...>").
+ *
+ * La micro-base (voir pointsStore.js) est désormais distante (API GitHub) :
+ * chaque lecture/écriture est asynchrone et peut échouer (réseau, jeton
+ * absent, conflit d'écriture concurrente) — chaque action ci-dessous gère
+ * l'erreur en conséquence (message clair, retour à l'état précédent).
  */
 const AMGT4CEM_PointsLayer = {
   _layerGroup: null,
@@ -19,9 +24,16 @@ const AMGT4CEM_PointsLayer = {
     return this._layerGroup;
   },
 
-  refresh() {
+  async refresh() {
+    let points;
+    try {
+      points = await AMGT4CEM_PointsStore.getAll();
+    } catch (err) {
+      console.error('[AMGT4CEM] Chargement des points métier impossible :', err);
+      return;
+    }
     this._layerGroup.clearLayers();
-    for (const point of AMGT4CEM_PointsStore.getAll()) {
+    for (const point of points) {
       this._addMarker(point);
     }
   },
@@ -40,11 +52,20 @@ const AMGT4CEM_PointsLayer = {
 
     marker.bindPopup(this._buildPopupContent(point));
 
-    marker.on('dragend', () => {
+    marker.on('dragend', async () => {
+      const previousLatLng = latlng;
       const newLatLng = marker.getLatLng();
       const { x, y } = AMGT4CEM_CRS.latLngToLambert(newLatLng);
-      const updated = AMGT4CEM_PointsStore.update(point.id, { x, y });
-      marker.setPopupContent(this._buildPopupContent(updated));
+      try {
+        const updated = await AMGT4CEM_PointsStore.update(point.id, { x, y });
+        point.x = x;
+        point.y = y;
+        marker.setPopupContent(this._buildPopupContent(updated));
+      } catch (err) {
+        console.error('[AMGT4CEM] Repositionnement impossible :', err);
+        alert('Impossible d\'enregistrer le déplacement : ' + err.message);
+        marker.setLatLng(previousLatLng);
+      }
     });
 
     marker.addTo(this._layerGroup);
@@ -79,10 +100,19 @@ const AMGT4CEM_PointsLayer = {
     deleteBtn.type = 'button';
     deleteBtn.className = 'amgt-btn amgt-popup__delete-btn';
     deleteBtn.textContent = '🗑 Supprimer ce point';
-    deleteBtn.addEventListener('click', () => {
+    deleteBtn.addEventListener('click', async () => {
       if (!confirm(`Supprimer le point « ${point.label} » ? Cette action est irréversible.`)) return;
-      AMGT4CEM_PointsStore.remove(point.id);
-      this.refresh();
+      deleteBtn.disabled = true;
+      deleteBtn.textContent = 'Suppression…';
+      try {
+        await AMGT4CEM_PointsStore.remove(point.id);
+        this.refresh();
+      } catch (err) {
+        console.error('[AMGT4CEM] Suppression impossible :', err);
+        alert('Impossible de supprimer ce point : ' + err.message);
+        deleteBtn.disabled = false;
+        deleteBtn.textContent = '🗑 Supprimer ce point';
+      }
     });
     container.appendChild(deleteBtn);
 

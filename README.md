@@ -1,8 +1,10 @@
 # AMGT4CEM — Carte du réseau métro (V1)
 
 Application cartographique légère et autonome pour la maintenance génie
-civil du réseau métro bruxellois (HTML + CSS + JavaScript, sans framework,
-sans backend).
+civil du réseau métro bruxellois (HTML + CSS + JavaScript, sans framework).
+La micro-base de points métier utilise l'API GitHub comme stockage partagé
+en attendant un vrai backend — voir section 6, y compris une mise en garde
+sécurité importante.
 
 ## 1. Lancer l'application
 
@@ -49,21 +51,18 @@ fichier `Metro.json` (sans quitter la page).
    carte (vous pouvez continuer à naviguer avant de cliquer) : un marqueur
    provisoire apparaît, les coordonnées X/Y Lambert sont calculées
    automatiquement et affichées dans le petit formulaire.
-8. Complétez *Type* et *Libellé*, cliquez **Enregistrer**. Le point devient
-   permanent et est sauvegardé dans la micro-base (`localStorage` du
-   navigateur).
-9. Rechargez la page : le point est toujours là. Cliquez dessus pour
-   consulter ses informations. Vous pouvez le glisser-déposer pour le
-   repositionner : les coordonnées Lambert sont recalculées et enregistrées
-   automatiquement. Le bouton **🗑 Supprimer ce point** dans la popup
-   l'efface définitivement (demande confirmation).
+8. Complétez *Type* et *Libellé*, cliquez **Enregistrer** (le bouton affiche
+   « Enregistrement… » pendant l'écriture). Le point devient permanent,
+   partagé avec tous les appareils qui ouvrent l'application.
+9. Rechargez la page, ou ouvrez l'application sur un autre appareil : le
+   point est toujours là. Cliquez dessus pour consulter ses informations.
+   Vous pouvez le glisser-déposer pour le repositionner : les coordonnées
+   Lambert sont recalculées et enregistrées automatiquement. Le bouton
+   **🗑 Supprimer ce point** dans la popup l'efface définitivement (demande
+   confirmation).
 
-**Stockage et effacement des points** : les points vivent uniquement dans le
-`localStorage` de ce navigateur, sur cet appareil (clé `amgt4cem.points.v1`,
-tableau JSON) — rien n'est envoyé à un serveur, rien n'est partagé entre
-appareils. Pour tout effacer d'un coup (plutôt que point par point),
-utilisez les réglages du navigateur : « Effacer les données de
-navigation/cookies » pour ce site.
+Voir section 6 ci-dessous pour le détail du stockage (micro-base de
+données) et sa mise en place.
 
 ## 3. Les fonds de plan
 
@@ -149,7 +148,7 @@ src/metroData.js             chargement Metro.json (fetch, avec repli FileReader
 src/metroLayer.js            construction des couches Leaflet Stations/Tunnels
 src/basemap.js                fonds de plan (UrbIS, Orthophoto, Bruciel)
 src/mapMenu.js                menu fond de plan / couches / réinitialisation
-src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
+src/pointsStore.js           micro-base de données (API GitHub, schéma ouvert)
 src/pointsLayer.js           affichage/déplacement des points métier
 src/addPointTool.js          workflow "Ajouter un point"
 src/coordsDisplay.js         affichage des coordonnées Lambert du curseur
@@ -162,3 +161,52 @@ vendor/proj4leaflet          bibliothèques embarquées localement
 (`pointsStore.js`) sont deux sources totalement indépendantes : la première
 n'est jamais réécrite ; la seconde peut être remplacée plus tard par un
 vrai backend sans toucher à la cartographie.
+
+## 6. Micro-base de données
+
+**Stockage** : les points métier sont dans le fichier
+[`data/points.json`](data/points.json) de ce dépôt, lu et écrit via l'API
+Contents de GitHub — pas de serveur séparé à installer, mais ce n'est **pas**
+un vrai backend : chaque ajout/modification/suppression crée un commit sur
+la branche de l'application. Partagé entre tous les appareils qui ouvrent
+l'app (contrairement à la V1, qui utilisait `localStorage`, propre à chaque
+appareil).
+
+### ⚠️ Mise en garde sécurité
+
+Écrire dans le dépôt nécessite un jeton GitHub. Ce jeton est **embarqué dans
+le code JavaScript public de l'application** (`config.js`) : n'importe qui
+inspecte la page (outils développeur du navigateur) peut le récupérer et
+l'utiliser pour écrire dans ce dépôt — pas seulement les points, potentiellement
+n'importe quel fichier accessible avec ses permissions. C'est un compromis
+accepté explicitement le temps de disposer d'un vrai backend (ex : petite
+API MySQL/phpMyAdmin), pas une pratique à généraliser. Pour limiter les
+dégâts possibles en attendant :
+
+1. Utilisez un jeton **"fine-grained"** (pas un "classic token") :
+   [github.com/settings/tokens?type=beta](https://github.com/settings/tokens?type=beta)
+2. **Repository access** → « Only select repositories » → `AMGT4CEM`
+   uniquement (jamais « All repositories »).
+3. **Permissions** → **Contents** → **Read and write**. Ne cochez **aucune**
+   autre permission.
+4. Copiez le jeton généré, collez-le dans `config.js` :
+   `AMGT4CEM_CONFIG.githubStore.token = '...'`, committez et poussez.
+5. En cas de doute ou d'abus constaté, révoquez/régénérez-le immédiatement
+   depuis la même page GitHub — ça ne casse rien d'autre.
+
+Sans jeton renseigné, l'application reste utilisable en lecture seule (les
+points existants s'affichent), mais toute tentative d'ajout/modification/
+suppression échoue avec un message clair plutôt qu'une erreur silencieuse.
+
+### Fonctionnement
+
+- Lecture (`getAll`) : `GET` sur le fichier via l'API Contents, décodage
+  base64 → JSON. Fonctionne sans jeton (soumis à la limite GitHub de 60
+  requêtes/heure par IP sans authentification, 5000/heure avec).
+- Écriture (`add`/`update`/`remove`) : relit la dernière version du fichier
+  (et son `sha` git), applique le changement, réécrit le fichier entier via
+  `PUT`. Si un autre appareil a écrit entre-temps (conflit `409`), l'opération
+  relit et réessaie automatiquement (jusqu'à 3 fois) plutôt que d'écraser ses
+  données.
+- Aucun arrondi : les coordonnées Lambert restent en pleine précision dans
+  le JSON stocké, comme en V1.
