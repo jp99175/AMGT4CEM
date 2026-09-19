@@ -40,9 +40,10 @@ fichier `Metro.json` (sans quitter la page).
    l'écran, une navigation **‹ année › ⏭** pour parcourir les millésimes de
    1935 à 2022 — seules les années dont le service répond sont proposées,
    réglée sur la plus récente accessible par défaut ; le bouton **⏭** y
-   ramène directement). Les cases à cocher activent/désactivent Stations,
-   Tunnels et Points métier. Le bouton **⤢ Réinitialiser la vue** revient à
-   l'emprise générale du réseau et remet le fond UrbIS grisé.
+   ramène directement). Les cases à cocher activent/désactivent Métro
+   (Stations et Tunnels), Points métier et UrbIS Topo (voir section 3bis).
+   Le bouton **⤢ Réinitialiser la vue** revient à l'emprise générale du
+   réseau et remet le fond UrbIS grisé.
 6. Bouton **🔍** (haut droite) : ouvre un champ de recherche sur les
    stations, tunnels (Metro.json), points métier et adresses (noms de
    rues). Tapez un nom (les accents sont ignorés dans la recherche, ex.
@@ -156,10 +157,11 @@ voir `src/basemap.js`), sous peine de tuiles vides ou d'erreur serveur.
 ### Couches UrbIS Topo à la demande
 
 Dans le menu **☰ Carte**, section "Couches" : la case **UrbIS Topo**,
-au même titre que Stations/Tunnels/Points métier, affiche ou masque des
-objets détaillés du produit **UrbIS Topo** (CIRB/CIBG - Paradigm) — grilles
-de ventilation, chambres et taques d'égout, avaloirs, mobilier urbain,
-marquages routiers, etc.
+au même titre que Métro (Stations + Tunnels, fusionnés en une seule case
+également) et Points métier, affiche ou masque des objets détaillés du
+produit **UrbIS Topo** (CIRB/CIBG - Paradigm) — grilles de ventilation,
+chambres et taques d'égout, avaloirs, mobilier urbain, marquages
+routiers, etc.
 
 Le choix des types à afficher se fait à part, via le lien
 **"(modifier la sélection)"** juste en dessous de cette case, qui ouvre un
@@ -172,12 +174,21 @@ elle-même cochée), avec une couleur assignée automatiquement. Le menu ne
 liste pas les types actuellement sélectionnés : seule la case globale et le
 lien de sélection y apparaissent.
 
+Chaque thème a sa propre case "tout cocher/décocher" (à côté de son titre,
+état indéterminé si seule une partie des types du thème est sélectionnée),
+pour sélectionner une famille entière d'un coup plutôt que type par type.
+Le bouton **💾** en haut du sélecteur enregistre la sélection courante comme
+sélection par défaut de cet appareil — utilisée à la prochaine fois que
+l'application démarre sans aucune sélection enregistrée (première visite,
+ou après effacement des données du navigateur), à la place de la
+présélection intégrée au code (grilles de ventilation, chambres/taques,
+avaloirs).
+
 Voir `data/urbisTopoCatalog.js` pour le catalogue complet,
 `src/urbisTopoSelectionStore.js` pour la sélection (persistée dans
-`localStorage`, propre à cet appareil, clé `amgt4cem.urbistopo-selection.v1`
-— au tout premier lancement, une présélection reprend les trois familles
-proposées lors d'une itération précédente : grilles de ventilation,
-chambres/taques d'égout, avaloirs), `src/urbisTopoPicker.js` pour le
+`localStorage`, propre à cet appareil : clé `amgt4cem.urbistopo-selection.v1`
+pour la sélection courante, `amgt4cem.urbistopo-default.v1` pour la
+sélection par défaut enregistrée via 💾), `src/urbisTopoPicker.js` pour le
 sélecteur, et `src/urbisTopoLayer.js` pour le chargement carte.
 
 **Rien de tout cela n'est deviné.** Le service WFS officiel

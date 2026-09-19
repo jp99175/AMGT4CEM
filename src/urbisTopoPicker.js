@@ -22,6 +22,14 @@ const AMGT4CEM_UrbisTopoPicker = {
 
     document.getElementById('amgt-topo-picker-close').addEventListener('click', () => this.close());
     this._searchInput.addEventListener('input', () => this._render());
+
+    const saveBtn = document.getElementById('amgt-topo-picker-save-default');
+    const saveBtnDefaultText = saveBtn.textContent;
+    saveBtn.addEventListener('click', () => {
+      AMGT4CEM_UrbisTopoSelectionStore.saveCurrentAsDefault();
+      saveBtn.textContent = '✓';
+      setTimeout(() => { saveBtn.textContent = saveBtnDefaultText; }, 1200);
+    });
   },
 
   open() {
@@ -58,10 +66,7 @@ const AMGT4CEM_UrbisTopoPicker = {
 
       const section = document.createElement('section');
       section.className = 'amgt-topo-theme';
-
-      const heading = document.createElement('h4');
-      heading.textContent = theme;
-      section.appendChild(heading);
+      section.appendChild(this._buildThemeHeading(theme, entries, selection));
 
       for (const entry of entries) {
         section.appendChild(this._buildRow(entry, selection));
@@ -76,6 +81,37 @@ const AMGT4CEM_UrbisTopoPicker = {
       empty.textContent = "Aucun type d'objet ne correspond à cette recherche.";
       this._content.appendChild(empty);
     }
+  },
+
+  /**
+   * En-tête d'un thème avec une case "tout cocher/décocher" : reflète l'état
+   * (coché si tous les types visibles du thème sont sélectionnés, indéterminé
+   * si certains seulement) et agit sur les types actuellement affichés (donc
+   * filtrés par la recherche s'il y en a une).
+   */
+  _buildThemeHeading(theme, entries, selection) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'amgt-topo-theme-heading';
+
+    const codes = entries.map((e) => e.code);
+    const selectedCount = codes.filter((c) => selection[c]).length;
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = selectedCount === codes.length;
+    checkbox.indeterminate = selectedCount > 0 && selectedCount < codes.length;
+    checkbox.title = `Tout cocher/décocher — ${theme}`;
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) AMGT4CEM_UrbisTopoSelectionStore.selectMany(codes);
+      else AMGT4CEM_UrbisTopoSelectionStore.deselectMany(codes);
+      this._render();
+    });
+
+    const heading = document.createElement('h4');
+    heading.textContent = theme;
+
+    wrapper.append(checkbox, heading);
+    return wrapper;
   },
 
   _buildRow(entry, selection) {

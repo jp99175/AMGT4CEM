@@ -116,16 +116,18 @@ const AMGT4CEM_MapMenu = {
   },
 
   _initLayerControls(map, pointsGroup) {
-    document.getElementById('amgt-layer-stations').addEventListener('change', (e) => {
+    // Une seule case pour Stations + Tunnels (Metro.json) : les deux se
+    // parcourent toujours ensemble en pratique, inutile de les distinguer
+    // ici (la recherche, elle, continue de les différencier).
+    document.getElementById('amgt-layer-metro').addEventListener('change', (e) => {
       if (!this._metroLayers) return;
-      if (e.target.checked) this._metroLayers.MS.addTo(map);
-      else map.removeLayer(this._metroLayers.MS);
-    });
-
-    document.getElementById('amgt-layer-tunnels').addEventListener('change', (e) => {
-      if (!this._metroLayers) return;
-      if (e.target.checked) this._metroLayers.MT.addTo(map);
-      else map.removeLayer(this._metroLayers.MT);
+      if (e.target.checked) {
+        this._metroLayers.MS.addTo(map);
+        this._metroLayers.MT.addTo(map);
+      } else {
+        map.removeLayer(this._metroLayers.MS);
+        map.removeLayer(this._metroLayers.MT);
+      }
     });
 
     document.getElementById('amgt-layer-points').addEventListener('change', (e) => {

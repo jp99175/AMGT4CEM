@@ -37,10 +37,7 @@
 
   <h3>Couches</h3>
   <label class="amgt-checkbox-row">
-    <input type="checkbox" id="amgt-layer-stations" checked /> Stations
-  </label>
-  <label class="amgt-checkbox-row">
-    <input type="checkbox" id="amgt-layer-tunnels" checked /> Tunnels
+    <input type="checkbox" id="amgt-layer-metro" checked /> Métro
   </label>
   <label class="amgt-checkbox-row">
     <input type="checkbox" id="amgt-layer-points" checked /> Points métier
@@ -153,7 +150,12 @@
 <div id="amgt-topo-picker" class="amgt-hidden">
   <div id="amgt-topo-picker-header">
     <h2>Objets UrbIS Topo à afficher</h2>
-    <button id="amgt-topo-picker-close" class="amgt-btn" title="Retour à la carte">✕ Fermer</button>
+    <div id="amgt-topo-picker-header-actions">
+      <button id="amgt-topo-picker-save-default" class="amgt-btn amgt-btn--icon" title="Enregistrer la sélection actuelle comme sélection par défaut">
+        💾
+      </button>
+      <button id="amgt-topo-picker-close" class="amgt-btn" title="Retour à la carte">✕ Fermer</button>
+    </div>
   </div>
   <input
     type="text"

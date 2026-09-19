@@ -236,6 +236,13 @@ html, body {
   margin: 0;
 }
 
+#amgt-topo-picker-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 #amgt-topo-picker-search {
   width: 100%;
   box-sizing: border-box;
@@ -256,14 +263,21 @@ html, body {
   margin-bottom: 16px;
 }
 
-.amgt-topo-theme h4 {
+.amgt-topo-theme-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #eee;
+}
+
+.amgt-topo-theme-heading h4 {
+  margin: 0;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: #777;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 4px;
 }
 
 .amgt-link-btn {
