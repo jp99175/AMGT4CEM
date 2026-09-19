@@ -35,17 +35,19 @@ fichier `Metro.json` (sans quitter la page).
    double-clic — pas de boutons +/- dédiés, voir point 7 ci-dessous) : le
    fond et les données métro restent parfaitement superposés, sans limite
    de zoom.
-5. Bouton **☰ Carte** (haut gauche) : ouvre le menu fond de plan / couches /
-   vue. Choisissez **UrbIS** ou **Orthophotos** (fait apparaître, en bas de
-   l'écran, une navigation **‹ année › ⏭** pour parcourir les millésimes de
-   1935 à 2022 — seules les années dont le service répond sont proposées,
-   réglée sur la plus récente accessible par défaut ; le bouton **⏭** y
-   ramène directement). Les cases à cocher activent/désactivent Métro
-   (Stations et Tunnels), Points métier et UrbIS Topo (voir section 3bis).
-   L'icône **☰ curseurs** à côté de chaque couche ouvre un réglage
-   d'opacité individuel (comme dans MobiGIS), mémorisé par appareil.
-   Le bouton **⤢ Réinitialiser la vue** revient à l'emprise générale du
-   réseau et remet le fond UrbIS grisé.
+5. Bouton **☰ Carte** (haut gauche) : ouvre le menu, organisé en trois
+   catégories. **Fond de carte** : choisissez **UrbIS** ou **Orthophotos**
+   (fait apparaître, en bas de l'écran, une navigation **‹ année › ⏭** pour
+   parcourir les millésimes de 1935 à 2022 — seules les années dont le
+   service répond sont proposées, réglée sur la plus récente accessible par
+   défaut ; le bouton **⏭** y ramène directement). **Couches** : cases à
+   cocher pour Métro (Stations et Tunnels) et UrbIS Topo (voir section
+   3bis). **Points métier** : case à cocher pour vos points métier (section
+   6) — cette catégorie est amenée à s'enrichir (constats/signalements...).
+   L'icône **☰ curseurs** à côté de chaque couche, dans les trois
+   catégories, ouvre un réglage d'opacité individuel (comme dans MobiGIS),
+   mémorisé par appareil. Le bouton **⤢ Réinitialiser la vue** revient à
+   l'emprise générale du réseau et remet le fond UrbIS grisé.
 6. Bouton **🔍** (haut droite) : ouvre un champ de recherche sur les
    stations, tunnels (Metro.json), points métier et adresses (noms de
    rues). Tapez un nom (les accents sont ignorés dans la recherche, ex.
