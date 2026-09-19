@@ -17,6 +17,7 @@ const AMGT4CEM_MapMenu = {
     const panel = document.getElementById('amgt-map-menu');
 
     menuBtn.addEventListener('click', () => {
+      AMGT4CEM_SettingsPanel.close();
       panel.classList.toggle('amgt-hidden');
     });
     document.addEventListener('click', (e) => {

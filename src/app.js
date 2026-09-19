@@ -3,6 +3,11 @@
  * couche Metro, points métier, outils de navigation et de création).
  */
 (function () {
+  // Applique d'éventuelles surcharges utilisateur (panneau ⚙ Paramètres) des
+  // URLs de services externes AVANT que basemap.js/searchTool.js ne lisent
+  // AMGT4CEM_CONFIG.
+  AMGT4CEM_SettingsStore.applyToConfig(AMGT4CEM_CONFIG);
+
   const map = L.map('map', {
     // Pas de contrôle de zoom Leaflet : remplacé par la recherche en haut à
     // droite (voir searchTool.js). Le zoom reste possible à la molette, au
@@ -34,6 +39,7 @@
     pointsGroup,
     getMetroBounds: () => metroBounds,
   });
+  AMGT4CEM_SettingsPanel.init();
 
   AMGT4CEM_AddPointTool.init(map, {
     onPointCreated() {

@@ -20,6 +20,9 @@
   <button id="amgt-add-point-btn" class="amgt-btn" title="Ajouter un point">
     ✚ Ajouter un point
   </button>
+  <button id="amgt-settings-btn" class="amgt-btn" title="Paramètres des sources de données">
+    ⚙ Paramètres
+  </button>
 </div>
 
 <!-- Menu : fond de carte, couches visibles, réinitialisation de la vue -->
@@ -46,6 +49,42 @@
   <button id="amgt-reset-view-btn" class="amgt-btn amgt-btn--full" title="Revenir à l'emprise générale du réseau">
     ⤢ Réinitialiser la vue
   </button>
+</div>
+
+<!-- Panneau : corriger les URLs des services externes si l'un d'eux change
+     d'adresse (UrbIS, orthophotos, géocodeur). Exclusif avec le menu ☰ Carte. -->
+<div id="amgt-settings-panel" class="amgt-hidden">
+  <h3>Sources de données</h3>
+  <p class="amgt-settings-hint">
+    À corriger uniquement si l'un de ces services externes change d'adresse.
+    Laissez un champ vide pour revenir à sa valeur par défaut.
+  </p>
+
+  <label class="amgt-settings-row">
+    Fond UrbIS &mdash; URL du service WMS
+    <input type="text" id="amgt-settings-urbis-url" />
+  </label>
+  <label class="amgt-settings-row">
+    Fond UrbIS &mdash; nom de la couche
+    <input type="text" id="amgt-settings-urbis-layers" />
+  </label>
+  <label class="amgt-settings-row">
+    Orthophotos historiques (1935&ndash;1996) &mdash; URL du service WMS
+    <input type="text" id="amgt-settings-bruciel-hist-url" />
+  </label>
+  <label class="amgt-settings-row">
+    Orthophotos récentes (2004&ndash;2022) &mdash; URL du service WMS
+    <input type="text" id="amgt-settings-bruciel-recent-url" />
+  </label>
+  <label class="amgt-settings-row">
+    Recherche d'adresses &mdash; URL du géocodeur
+    <input type="text" id="amgt-settings-geocoder-url" />
+  </label>
+
+  <div class="amgt-form-actions">
+    <button id="amgt-settings-reset" class="amgt-btn">Réinitialiser</button>
+    <button id="amgt-settings-save" class="amgt-btn amgt-btn--primary">Enregistrer</button>
+  </div>
 </div>
 
 <!-- Recherche (station, tunnel, point métier) : remplace le contrôle de zoom
@@ -109,6 +148,7 @@
 <script src="./vendor/proj4leaflet/proj4leaflet.js"></script>
 
 <script src="./config.js"></script>
+<script src="./src/settingsStore.js"></script>
 <script src="./src/crs.js"></script>
 <script src="./src/metroData.js"></script>
 <script src="./src/metroLayer.js"></script>
@@ -118,6 +158,7 @@
 <script src="./src/coordsDisplay.js"></script>
 <script src="./src/basemap.js"></script>
 <script src="./src/mapMenu.js"></script>
+<script src="./src/settingsPanel.js"></script>
 <script src="./src/searchTool.js"></script>
 <script src="./src/app.js"></script>
 </body>

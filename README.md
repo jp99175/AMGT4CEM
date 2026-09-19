@@ -65,6 +65,10 @@ fichier `Metro.json` (sans quitter la page).
     repositionner : les coordonnées Lambert sont recalculées et enregistrées
     automatiquement. Le bouton **🗑 Supprimer ce point** dans la popup
     l'efface définitivement (demande confirmation).
+11. Bouton **⚙ Paramètres** (barre d'outils) : permet de corriger l'URL d'un
+    service externe (fond UrbIS, orthophotos, géocodeur d'adresses) si
+    celui-ci change d'adresse un jour, sans devoir modifier le code. Voir
+    section 3bis ci-dessous.
 
 Voir section 6 ci-dessous pour le détail du stockage (micro-base de
 données) et sa mise en place.
@@ -149,6 +153,38 @@ Web Mercator, ces couches précisent `crs: 'EPSG:31370'` dans `config.js`
 pour forcer Leaflet à les requêter dans leur CRS natif (via Proj4Leaflet,
 voir `src/basemap.js`), sous peine de tuiles vides ou d'erreur serveur.
 
+## 3bis. Toutes les sources de données sont-elles externes ? Que faire si l'une change ?
+
+Oui, à une exception près : `Metro.json` est un fichier fourni par
+l'utilisateur et servi localement (jamais réécrit, voir section 4), et la
+micro-base de points métier vit uniquement dans le `localStorage` du
+navigateur (section 6). Tout le reste — fond UrbIS, orthophotos Bruciel,
+géocodeur d'adresses — est interrogé en direct auprès de services externes
+(CIRB/CIBG, urban.brussels), à chaque affichage, sans rien mettre en cache
+de façon permanente côté application.
+
+Ces URLs sont en dur dans `config.js`. Si l'un de ces services change
+d'adresse (migration de serveur, changement de nom de domaine...), il n'est
+pas nécessaire de modifier le code : le bouton **⚙ Paramètres** de la barre
+d'outils ouvre un panneau permettant de corriger :
+
+- l'URL du service WMS du fond UrbIS et le nom de sa couche,
+- l'URL du service WMS des orthophotos historiques (1935&ndash;1996),
+- l'URL du service WMS des orthophotos récentes (2004&ndash;2022),
+- l'URL du géocodeur d'adresses.
+
+Ces valeurs sont enregistrées à part (`localStorage`, clé
+`amgt4cem.settings.v1`, voir `src/settingsStore.js`), propres à cet appareil
+comme les points métier, et appliquées au rechargement de la page. Un champ
+laissé vide revient à la valeur par défaut de `config.js`. Le bouton
+**Réinitialiser** efface toutes les surcharges en une fois.
+
+Cela ne couvre que les adresses de service (le cas le plus probable :
+migration d'un serveur entier) : les noms de couches par année pour les
+orthophotos (`Orthophotoplans_1996`, `urbisgrid:Ortho2022Ns`...) restent
+dans `config.js`, car les vérifier nécessite de toute façon de consulter le
+`GetCapabilities` réel du service (voir section 3).
+
 ## 4. Analyse de Metro.json (référence)
 
 - Format : `FeatureCollection` GeoJSON (sortie de service WFS GeoServer).
@@ -168,6 +204,8 @@ voir `src/basemap.js`), sous peine de tuiles vides ou d'erreur serveur.
 ```
 index.html, style.css        interface
 config.js                    configuration (CRS, services, clés de stockage)
+src/settingsStore.js         surcharges utilisateur des URLs de services (⚙ Paramètres)
+src/settingsPanel.js         panneau "⚙ Paramètres"
 src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
 src/metroData.js             chargement Metro.json (fetch, avec repli FileReader)
 src/metroLayer.js            construction des couches Leaflet Stations/Tunnels
