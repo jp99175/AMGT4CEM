@@ -8,6 +8,7 @@
  */
 const AMGT4CEM_MapMenu = {
   _metroLayers: null,
+  _metroOpacityFactor: 1,
 
   /**
    * @param {{ map: L.Map, pointsGroup: L.LayerGroup, getMetroBounds: () => (L.LatLngBounds|null) }} deps
@@ -28,6 +29,7 @@ const AMGT4CEM_MapMenu = {
 
     this._initBasemapControls();
     this._initLayerControls(map, pointsGroup);
+    this._initOpacityControls();
 
     document.getElementById('amgt-topo-edit-link').addEventListener('click', (e) => {
       e.preventDefault();
@@ -52,6 +54,24 @@ const AMGT4CEM_MapMenu = {
    */
   setMetroLayers(layersByType) {
     this._metroLayers = layersByType;
+    this._applyMetroOpacity(this._metroOpacityFactor);
+  },
+
+  /**
+   * Réglage d'opacité de la couche Métro (icône curseurs) : Stations et
+   * Tunnels n'ont pas la même opacité de remplissage d'origine
+   * (AMGT4CEM_METRO_TYPES, voir metroLayer.js) — le facteur s'applique en
+   * multiplicateur sur chacune, jamais en remplacement absolu.
+   */
+  _applyMetroOpacity(factor) {
+    this._metroOpacityFactor = factor;
+    if (!this._metroLayers) return;
+
+    const applyGroup = (group, base) => {
+      group.eachLayer((layer) => layer.setStyle({ opacity: factor, fillOpacity: base.fillOpacity * factor }));
+    };
+    applyGroup(this._metroLayers.MS, AMGT4CEM_METRO_TYPES.MS);
+    applyGroup(this._metroLayers.MT, AMGT4CEM_METRO_TYPES.MT);
   },
 
   _initBasemapControls() {
@@ -142,5 +162,38 @@ const AMGT4CEM_MapMenu = {
     document.getElementById('amgt-layer-urbistopo').addEventListener('change', (e) => {
       AMGT4CEM_UrbisTopoLayer.setEnabled(e.target.checked);
     });
+  },
+
+  /**
+   * Icône curseurs (☰ Carte, section Couches) : ouvre/ferme un curseur
+   * d'opacité par couche (Métro, Points métier, UrbIS Topo), comme dans
+   * MobiGIS. Réglage persistant par appareil (voir layerOpacityStore.js).
+   */
+  _initOpacityControls() {
+    const layers = [
+      { key: 'metro', apply: (factor) => this._applyMetroOpacity(factor) },
+      { key: 'points', apply: (factor) => AMGT4CEM_PointsLayer.setOpacity(factor) },
+      { key: 'urbistopo', apply: (factor) => AMGT4CEM_UrbisTopoLayer.setOpacity(factor) },
+    ];
+
+    for (const { key, apply } of layers) {
+      const toggleBtn = document.querySelector(`.amgt-opacity-toggle-btn[data-layer="${key}"]`);
+      const sliderRow = document.querySelector(`.amgt-opacity-slider-row[data-layer="${key}"]`);
+      const slider = sliderRow.querySelector('.amgt-opacity-slider');
+
+      const factor = AMGT4CEM_LayerOpacityStore.getFactor(key);
+      slider.value = String(Math.round(factor * 100));
+      apply(factor);
+
+      toggleBtn.addEventListener('click', () => {
+        sliderRow.classList.toggle('amgt-hidden');
+      });
+
+      slider.addEventListener('input', () => {
+        const newFactor = Number(slider.value) / 100;
+        apply(newFactor);
+        AMGT4CEM_LayerOpacityStore.setFactor(key, newFactor);
+      });
+    }
   },
 };

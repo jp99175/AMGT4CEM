@@ -36,15 +36,64 @@
   </label>
 
   <h3>Couches</h3>
-  <label class="amgt-checkbox-row">
-    <input type="checkbox" id="amgt-layer-metro" checked /> Métro
-  </label>
-  <label class="amgt-checkbox-row">
-    <input type="checkbox" id="amgt-layer-points" checked /> Points métier
-  </label>
-  <label class="amgt-checkbox-row">
-    <input type="checkbox" id="amgt-layer-urbistopo" checked /> UrbIS Topo
-  </label>
+
+  <div class="amgt-layer-row">
+    <label class="amgt-checkbox-row">
+      <input type="checkbox" id="amgt-layer-metro" checked /> Métro
+    </label>
+    <button type="button" class="amgt-opacity-toggle-btn" data-layer="metro" title="Régler l'opacité">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+        <line x1="1" y1="3" x2="15" y2="3" />
+        <circle cx="5" cy="3" r="1.6" />
+        <line x1="1" y1="8" x2="15" y2="8" />
+        <circle cx="11" cy="8" r="1.6" />
+        <line x1="1" y1="13" x2="15" y2="13" />
+        <circle cx="7" cy="13" r="1.6" />
+      </svg>
+    </button>
+  </div>
+  <div class="amgt-opacity-slider-row amgt-hidden" data-layer="metro">
+    <input type="range" min="0" max="100" value="100" class="amgt-opacity-slider" />
+  </div>
+
+  <div class="amgt-layer-row">
+    <label class="amgt-checkbox-row">
+      <input type="checkbox" id="amgt-layer-points" checked /> Points métier
+    </label>
+    <button type="button" class="amgt-opacity-toggle-btn" data-layer="points" title="Régler l'opacité">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+        <line x1="1" y1="3" x2="15" y2="3" />
+        <circle cx="5" cy="3" r="1.6" />
+        <line x1="1" y1="8" x2="15" y2="8" />
+        <circle cx="11" cy="8" r="1.6" />
+        <line x1="1" y1="13" x2="15" y2="13" />
+        <circle cx="7" cy="13" r="1.6" />
+      </svg>
+    </button>
+  </div>
+  <div class="amgt-opacity-slider-row amgt-hidden" data-layer="points">
+    <input type="range" min="0" max="100" value="100" class="amgt-opacity-slider" />
+  </div>
+
+  <div class="amgt-layer-row">
+    <label class="amgt-checkbox-row">
+      <input type="checkbox" id="amgt-layer-urbistopo" checked /> UrbIS Topo
+    </label>
+    <button type="button" class="amgt-opacity-toggle-btn" data-layer="urbistopo" title="Régler l'opacité">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+        <line x1="1" y1="3" x2="15" y2="3" />
+        <circle cx="5" cy="3" r="1.6" />
+        <line x1="1" y1="8" x2="15" y2="8" />
+        <circle cx="11" cy="8" r="1.6" />
+        <line x1="1" y1="13" x2="15" y2="13" />
+        <circle cx="7" cy="13" r="1.6" />
+      </svg>
+    </button>
+  </div>
+  <div class="amgt-opacity-slider-row amgt-hidden" data-layer="urbistopo">
+    <input type="range" min="0" max="100" value="100" class="amgt-opacity-slider" />
+  </div>
+
   <p class="amgt-topo-edit-hint">
     <a href="#" id="amgt-topo-edit-link">(modifier la sélection)</a>
   </p>
@@ -173,6 +222,7 @@
 <script src="./config.js"></script>
 <script src="./data/urbisTopoCatalog.js"></script>
 <script src="./src/settingsStore.js"></script>
+<script src="./src/layerOpacityStore.js"></script>
 <script src="./src/crs.js"></script>
 <script src="./src/metroData.js"></script>
 <script src="./src/metroLayer.js"></script>

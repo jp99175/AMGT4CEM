@@ -17,11 +17,18 @@
  */
 const AMGT4CEM_PointsLayer = {
   _layerGroup: null,
+  _opacityFactor: 1,
 
   init(map) {
     this._layerGroup = L.layerGroup().addTo(map);
     this.refresh();
     return this._layerGroup;
+  },
+
+  /** Réglage d'opacité (icône curseurs du menu ☰ Carte), 0 à 1. */
+  setOpacity(factor) {
+    this._opacityFactor = factor;
+    this._layerGroup.eachLayer((marker) => marker.setOpacity(factor));
   },
 
   async refresh() {
@@ -42,6 +49,7 @@ const AMGT4CEM_PointsLayer = {
     const latlng = AMGT4CEM_CRS.lambertToLatLng([point.x, point.y]);
     const marker = L.marker(latlng, {
       draggable: true,
+      opacity: this._opacityFactor,
       icon: L.divIcon({
         className: 'amgt-point-marker',
         html: '<div class="amgt-point-marker__dot"></div>',

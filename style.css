@@ -193,6 +193,56 @@ html, body {
   cursor: pointer;
 }
 
+/* --- Ligne de couche (case + icône réglage d'opacité) --- */
+.amgt-layer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.amgt-layer-row .amgt-checkbox-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.amgt-opacity-toggle-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 4px;
+  color: #888;
+  cursor: pointer;
+  border-radius: 4px;
+  line-height: 0;
+}
+
+.amgt-opacity-toggle-btn:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.amgt-opacity-toggle-btn svg {
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.amgt-opacity-toggle-btn svg circle {
+  fill: currentColor;
+  stroke: none;
+}
+
+.amgt-opacity-slider-row {
+  padding: 2px 0 8px 4px;
+}
+
+.amgt-opacity-slider {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .amgt-topo-color-dot {
   display: inline-block;
   width: 10px;

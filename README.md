@@ -42,6 +42,8 @@ fichier `Metro.json` (sans quitter la page).
    réglée sur la plus récente accessible par défaut ; le bouton **⏭** y
    ramène directement). Les cases à cocher activent/désactivent Métro
    (Stations et Tunnels), Points métier et UrbIS Topo (voir section 3bis).
+   L'icône **☰ curseurs** à côté de chaque couche ouvre un réglage
+   d'opacité individuel (comme dans MobiGIS), mémorisé par appareil.
    Le bouton **⤢ Réinitialiser la vue** revient à l'emprise générale du
    réseau et remet le fond UrbIS grisé.
 6. Bouton **🔍** (haut droite) : ouvre un champ de recherche sur les
@@ -292,6 +294,7 @@ index.html, style.css        interface
 config.js                    configuration (CRS, services, clés de stockage)
 src/settingsStore.js         surcharges utilisateur des URLs de services (⚙ Paramètres)
 src/settingsPanel.js         panneau "⚙ Paramètres"
+src/layerOpacityStore.js     opacité individuelle des couches (icône curseurs, persistée)
 src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
 src/metroData.js             chargement Metro.json (fetch, avec repli FileReader)
 src/metroLayer.js            construction des couches Leaflet Stations/Tunnels

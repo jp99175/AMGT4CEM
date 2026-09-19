@@ -22,6 +22,12 @@ const AMGT4CEM_UrbisTopoLayer = {
   _fetchToken: 0,
   _moveTimer: null,
   _catalogIndexCache: null,
+  // Opacité de base (à facteur 1, réglage par défaut) des styles construits
+  // par _pointStyle/_lineStyle — le facteur réglable (icône curseurs du menu
+  // ☰ Carte) s'applique en multiplicateur dessus, jamais en remplacement.
+  _basePointFillOpacity: 0.9,
+  _baseLineOpacity: 1,
+  _opacityFactor: 1,
 
   init(map) {
     this._map = map;
@@ -40,6 +46,18 @@ const AMGT4CEM_UrbisTopoLayer = {
   setEnabled(enabled) {
     this._enabled = enabled;
     this.refresh();
+  },
+
+  /** Réglage d'opacité (icône curseurs du menu ☰ Carte), 0 à 1. */
+  setOpacity(factor) {
+    this._opacityFactor = factor;
+    this._group.eachLayer((layer) => {
+      if (layer instanceof L.CircleMarker) {
+        layer.setStyle({ fillOpacity: this._basePointFillOpacity * factor });
+      } else if (layer instanceof L.Polyline) {
+        layer.setStyle({ opacity: this._baseLineOpacity * factor });
+      }
+    });
   },
 
   async refresh() {
@@ -146,11 +164,17 @@ const AMGT4CEM_UrbisTopoLayer = {
   },
 
   _pointStyle(color) {
-    return { radius: 5, color: '#fff', weight: 1, fillColor: color, fillOpacity: 0.9 };
+    return {
+      radius: 5,
+      color: '#fff',
+      weight: 1,
+      fillColor: color,
+      fillOpacity: this._basePointFillOpacity * this._opacityFactor,
+    };
   },
 
   _lineStyle(color) {
-    return { color, weight: 3 };
+    return { color, weight: 3, opacity: this._baseLineOpacity * this._opacityFactor };
   },
 
   /** Construction DOM sûre (pas d'innerHTML) : les valeurs viennent d'un service externe. */
