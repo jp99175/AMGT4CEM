@@ -1,10 +1,10 @@
 /**
- * Couches UrbIS Topo optionnelles (grilles de ventilation, chambres/taques
- * d'égout, avaloirs... voir AMGT4CEM_CONFIG.urbisTopo), chargées strictement
- * à la demande : rien n'est requêté tant qu'une couche n'est pas cochée dans
- * le menu ☰ Carte, et seuls les objets de l'emprise visible sont demandés au
- * service (le WFS ne groupe le catalogue que par géométrie — une seule de
- * ces 3 couches globales dépasse 450 000 objets, tous types confondus).
+ * Affichage carte des types d'objets UrbIS Topo choisis par l'utilisateur
+ * (voir urbisTopoSelectionStore.js / urbisTopoPicker.js). Chargement
+ * strictement à la demande : rien n'est requêté tant que la sélection est
+ * vide, et seuls les objets de l'emprise visible sont demandés au service
+ * (le WFS ne groupe le catalogue que par géométrie — une seule des 3
+ * couches globales dépasse 450 000 objets, tous types confondus).
  *
  * En dessous du niveau de zoom minimal (config.js), rien n'est affiché ni
  * requêté plutôt que de risquer une réponse énorme ou lente — comme pour les
@@ -12,76 +12,68 @@
  */
 const AMGT4CEM_UrbisTopoLayer = {
   _map: null,
-  _groups: {},
-  _enabled: {},
-  _fetchToken: {},
+  _group: null,
+  _fetchToken: 0,
   _moveTimer: null,
+  _catalogIndexCache: null,
 
   init(map) {
     this._map = map;
-    for (const layer of AMGT4CEM_CONFIG.urbisTopo.layers) {
-      this._groups[layer.id] = L.layerGroup();
-      this._enabled[layer.id] = false;
-      this._fetchToken[layer.id] = 0;
-    }
+    this._group = L.layerGroup();
+
+    AMGT4CEM_UrbisTopoSelectionStore.onChange(() => this.refresh());
 
     map.on('moveend', () => {
       clearTimeout(this._moveTimer);
-      this._moveTimer = setTimeout(() => this._refreshAllEnabled(), 400);
+      this._moveTimer = setTimeout(() => this.refresh(), 400);
     });
+
+    this.refresh();
   },
 
-  /**
-   * @returns {{id: string, label: string, color: string}[]} pour construire
-   * les cases à cocher du menu ☰ Carte (voir mapMenu.js).
-   */
-  getLayerDefinitions() {
-    return AMGT4CEM_CONFIG.urbisTopo.layers.map(({ id, label, color }) => ({ id, label, color }));
-  },
+  async refresh() {
+    const token = ++this._fetchToken;
+    this._group.clearLayers();
 
-  setEnabled(layerId, enabled) {
-    this._enabled[layerId] = enabled;
-    const group = this._groups[layerId];
-    if (!group) return;
+    const selection = AMGT4CEM_UrbisTopoSelectionStore.getSelection();
+    const codes = Object.keys(selection);
 
-    if (enabled) {
-      group.addTo(this._map);
-      this._refresh(layerId);
-    } else {
-      this._map.removeLayer(group);
-      group.clearLayers();
+    if (codes.length === 0) {
+      this._map.removeLayer(this._group);
+      return;
     }
-  },
-
-  _refreshAllEnabled() {
-    for (const [id, enabled] of Object.entries(this._enabled)) {
-      if (enabled) this._refresh(id);
-    }
-  },
-
-  async _refresh(layerId) {
-    const group = this._groups[layerId];
-    const layerDef = AMGT4CEM_CONFIG.urbisTopo.layers.find((l) => l.id === layerId);
-    if (!group || !layerDef) return;
-
-    const token = ++this._fetchToken[layerId];
-    group.clearLayers();
+    this._group.addTo(this._map);
 
     if (this._map.getZoom() < AMGT4CEM_CONFIG.urbisTopo.minZoom) return;
 
-    const bbox = AMGT4CEM_CRS.boundsToLambertBbox(this._map.getBounds());
+    const catalogByCode = this._catalogIndex();
+    const pointCodes = codes.filter((c) => catalogByCode[c] && catalogByCode[c].geometry === 'point');
+    const lineCodes = codes.filter((c) => catalogByCode[c] && catalogByCode[c].geometry === 'ligne');
 
-    for (const query of layerDef.queries) {
+    const bbox = AMGT4CEM_CRS.boundsToLambertBbox(this._map.getBounds());
+    const queries = [];
+    if (pointCodes.length) queries.push({ featureType: 'urbistopo:TopoPoints', codes: pointCodes });
+    if (lineCodes.length) queries.push({ featureType: 'urbistopo:TopoLines', codes: lineCodes });
+
+    for (const query of queries) {
       let features;
       try {
         features = await this._fetchFeatures(query, bbox);
       } catch (err) {
-        console.warn(`[AMGT4CEM] Couche UrbIS Topo "${layerDef.label}" indisponible :`, err);
+        console.warn('[AMGT4CEM] Couches UrbIS Topo indisponibles :', err);
         continue;
       }
-      if (token !== this._fetchToken[layerId]) return; // la vue a changé entre-temps
-      this._renderFeatures(group, features, layerDef);
+      if (token !== this._fetchToken) return; // la vue a changé entre-temps
+      this._renderFeatures(features, selection, catalogByCode);
     }
+  },
+
+  _catalogIndex() {
+    if (!this._catalogIndexCache) {
+      this._catalogIndexCache = {};
+      for (const entry of AMGT4CEM_URBISTOPO_CATALOG) this._catalogIndexCache[entry.code] = entry;
+    }
+    return this._catalogIndexCache;
   },
 
   async _fetchFeatures(query, [minX, minY, maxX, maxY]) {
@@ -105,48 +97,54 @@ const AMGT4CEM_UrbisTopoLayer = {
     return geojson.features || [];
   },
 
-  _renderFeatures(group, features, layerDef) {
+  _renderFeatures(features, selection, catalogByCode) {
+    const typeAttribute = AMGT4CEM_CONFIG.urbisTopo.typeAttribute;
     for (const feature of features) {
-      const leafletLayer = this._buildLeafletLayer(feature.geometry, layerDef);
+      const code = feature.properties && feature.properties[typeAttribute];
+      const color = selection[code];
+      if (!color) continue; // type non sélectionné (ne devrait pas arriver, le serveur filtre déjà)
+
+      const leafletLayer = this._buildLeafletLayer(feature.geometry, color);
       if (!leafletLayer) continue;
-      leafletLayer.bindPopup(this._buildPopup(feature.properties || {}, layerDef));
-      group.addLayer(leafletLayer);
+      leafletLayer.bindPopup(this._buildPopup(feature.properties || {}, catalogByCode[code]));
+      this._group.addLayer(leafletLayer);
     }
   },
 
-  _buildLeafletLayer(geom, layerDef) {
+  _buildLeafletLayer(geom, color) {
     if (!geom) return null;
     const toLatLng = (pair) => AMGT4CEM_CRS.lambertToLatLng(pair);
 
     switch (geom.type) {
       case 'Point':
-        return L.circleMarker(toLatLng(geom.coordinates), this._pointStyle(layerDef));
+        return L.circleMarker(toLatLng(geom.coordinates), this._pointStyle(color));
       case 'MultiPoint':
-        return L.circleMarker(toLatLng(geom.coordinates[0]), this._pointStyle(layerDef));
+        return L.circleMarker(toLatLng(geom.coordinates[0]), this._pointStyle(color));
       case 'LineString':
-        return L.polyline(geom.coordinates.map(toLatLng), this._lineStyle(layerDef));
+        return L.polyline(geom.coordinates.map(toLatLng), this._lineStyle(color));
       case 'MultiLineString':
-        return L.polyline(geom.coordinates.map((line) => line.map(toLatLng)), this._lineStyle(layerDef));
+        return L.polyline(geom.coordinates.map((line) => line.map(toLatLng)), this._lineStyle(color));
       default:
         return null;
     }
   },
 
-  _pointStyle(layerDef) {
-    return { radius: 5, color: '#fff', weight: 1, fillColor: layerDef.color, fillOpacity: 0.9 };
+  _pointStyle(color) {
+    return { radius: 5, color: '#fff', weight: 1, fillColor: color, fillOpacity: 0.9 };
   },
 
-  _lineStyle(layerDef) {
-    return { color: layerDef.color, weight: 3 };
+  _lineStyle(color) {
+    return { color, weight: 3 };
   },
 
   /** Construction DOM sûre (pas d'innerHTML) : les valeurs viennent d'un service externe. */
-  _buildPopup(props, layerDef) {
+  _buildPopup(props, catalogEntry) {
+    const typeAttribute = AMGT4CEM_CONFIG.urbisTopo.typeAttribute;
     const container = document.createElement('div');
     container.className = 'amgt-popup';
 
     const title = document.createElement('strong');
-    title.textContent = props.DESCRFRE || layerDef.label;
+    title.textContent = props.DESCRFRE || (catalogEntry && catalogEntry.label) || props[typeAttribute] || 'Objet UrbIS Topo';
     container.appendChild(title);
 
     const table = document.createElement('table');
@@ -160,7 +158,7 @@ const AMGT4CEM_UrbisTopoLayer = {
       tr.append(th, td);
       table.appendChild(tr);
     };
-    addRow('Code', props[AMGT4CEM_CONFIG.urbisTopo.typeAttribute]);
+    addRow('Code', props[typeAttribute]);
     addRow('Identifiant', props.ID);
     container.appendChild(table);
 

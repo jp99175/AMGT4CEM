@@ -153,35 +153,65 @@ Web Mercator, ces couches précisent `crs: 'EPSG:31370'` dans `config.js`
 pour forcer Leaflet à les requêter dans leur CRS natif (via Proj4Leaflet,
 voir `src/basemap.js`), sous peine de tuiles vides ou d'erreur serveur.
 
-### Couches UrbIS Topo à la demande (grilles de ventilation, chambres/taques, avaloirs)
+### Couches UrbIS Topo à la demande
 
-Dans le menu **☰ Carte**, section "Couches UrbIS Topo" : des couches
-optionnelles, décochées par défaut, pour afficher certains objets détaillés
-du produit **UrbIS Topo** (CIRB/CIBG - Paradigm) en plus du fond de plan et
-du réseau métro. V1 : grilles de ventilation, chambres/taques d'égout,
-avaloirs (voir `AMGT4CEM_CONFIG.urbisTopo` pour la liste complète des codes,
-et `src/urbisTopoLayer.js` pour le chargement).
+Dans le menu **☰ Carte**, section "Couches UrbIS Topo" : affiche, en plus du
+fond de plan et du réseau métro, des objets détaillés du produit
+**UrbIS Topo** (CIRB/CIBG - Paradigm) — grilles de ventilation, chambres et
+taques d'égout, avaloirs, mobilier urbain, marquages routiers, etc.
 
-Le service WFS officiel (`geoservices-urbis.irisnet.be/geoserver/urbistopo/wfs`)
-ne regroupe le catalogue d'objets (~150 types) que sous 3 couches globales
-par géométrie (`urbistopo:TopoPoints/TopoLines/TopoShapes`) — chaque type
-réel (grille de ventilation, avaloir...) est un code (ex. `CR6203P`) dans un
-attribut `TYPE` à l'intérieur de ces couches. Rien de tout cela n'est deviné :
-la liste des codes vient de la fiche technique officielle ("UrbIS - Topo",
-spécifications de produit ISO 19131, PDF fourni par l'utilisateur), et le
-nom de l'attribut (`TYPE`) ainsi que le format de sortie (GeoJSON,
-EPSG:31370) viennent d'un `GetFeature` réel exécuté par l'utilisateur.
+Cette section n'affiche qu'une **légende en lecture seule** (pastille de
+couleur + libellé) des types actuellement affichés — pour changer la
+sélection, le lien **"(modifier la sélection)"** ouvre un sélecteur plein
+écran listant l'intégralité du catalogue d'objets (une centaine de types),
+classé par thème (Voirie, Assainissement et égouttage, Marquages et
+signalisation routière, Mobilier urbain, Transport en commun, Bâtiments...)
+avec un champ de recherche. Cocher/décocher un type l'affiche/le masque
+immédiatement sur la carte, avec une couleur assignée automatiquement.
+
+Voir `data/urbisTopoCatalog.js` pour le catalogue complet,
+`src/urbisTopoSelectionStore.js` pour la sélection (persistée dans
+`localStorage`, propre à cet appareil, clé `amgt4cem.urbistopo-selection.v1`
+— au tout premier lancement, une présélection reprend les trois familles
+proposées lors d'une itération précédente : grilles de ventilation,
+chambres/taques d'égout, avaloirs), `src/urbisTopoPicker.js` pour le
+sélecteur, et `src/urbisTopoLayer.js` pour le chargement carte.
+
+**Rien de tout cela n'est deviné.** Le service WFS officiel
+(`geoservices-urbis.irisnet.be/geoserver/urbistopo/wfs`) ne regroupe le
+catalogue d'objets que sous 3 couches globales par géométrie
+(`urbistopo:TopoPoints/TopoLines/TopoShapes`) — chaque type réel (grille de
+ventilation, avaloir...) est un code (ex. `CR6203P`) dans un attribut `TYPE`
+à l'intérieur de ces couches :
+- la liste complète des codes/libellés vient de la fiche technique
+  officielle ("UrbIS - Topo", spécifications de produit ISO 19131, section
+  4.1 "Catalogue d'objets", PDF fourni par l'utilisateur) ;
+- le nom de l'attribut (`TYPE`), les libellés français/néerlandais
+  (`DESCRFRE`/`DESCRDUT`) et le format de sortie (GeoJSON, EPSG:31370)
+  viennent d'un `GetFeature` réel exécuté par l'utilisateur.
+
+Le regroupement par thème (voirie, bâtiments...), en revanche, n'existe pas
+dans la fiche technique — c'est un classement construit pour la navigation
+dans le sélecteur, une aide d'interface et non une donnée officielle.
+
+**Limite connue de la V1** : seuls les types en géométrie "point" ou "ligne"
+sont proposés dans le sélecteur. Le catalogue contient aussi des types en
+géométrie "texte" (étiquettes, ex. noms de rue, numéros de maison) et un
+type en "polygone" (zones de mise à jour par levé) : leur affichage carte
+n'est pas encore pris en charge, ils restent listés dans
+`data/urbisTopoCatalog.js` mais ne sont pas sélectionnables.
 
 Chargement strictement **à la demande**, pour deux raisons :
-- rien n'est requêté tant qu'une case n'est pas cochée ;
-- une fois cochée, seuls les objets de l'emprise actuellement visible sont
-  demandés (`CQL_FILTER` avec `TYPE IN (...)` et `BBOX(...)`), et seulement
-  à partir d'un niveau de zoom minimal (`AMGT4CEM_CONFIG.urbisTopo.minZoom`,
-  16 par défaut, ajustable) — une seule des 3 couches globales dépasse
-  450 000 objets au total, tous types confondus, il serait à la fois lent et
-  inutile de tout charger d'un coup. La zone se met à jour (avec un léger
-  délai) quand vous déplacez ou zoomez la carte, tant qu'une case reste
-  cochée.
+- rien n'est requêté tant qu'aucun type n'est sélectionné ;
+- une fois une sélection faite, seuls les objets de l'emprise actuellement
+  visible sont demandés (`CQL_FILTER` avec `TYPE IN (...)` et `BBOX(...)`,
+  au plus 2 requêtes quel que soit le nombre de types sélectionnés — une par
+  géométrie), et seulement à partir d'un niveau de zoom minimal
+  (`AMGT4CEM_CONFIG.urbisTopo.minZoom`, 16 par défaut, ajustable) — une seule
+  des 3 couches globales dépasse 450 000 objets au total, tous types
+  confondus, il serait à la fois lent et inutile de tout charger d'un coup.
+  La zone se met à jour (avec un léger délai) quand vous déplacez ou zoomez
+  la carte, tant qu'au moins un type reste sélectionné.
 
 Comme pour le géocodeur d'adresses, cet endpoint est prévu pour un usage
 "téléchargement" classique depuis un navigateur : le support CORS d'un appel
@@ -189,6 +219,11 @@ Comme pour le géocodeur d'adresses, cet endpoint est prévu pour un usage
 depuis cet environnement** (domaine bloqué) — à tester en conditions
 réelles. En cas d'indisponibilité, la couche reste simplement vide (aucune
 erreur affichée), sans affecter le reste de l'application.
+
+Enfin, la fiche technique précise (section 6.2 "Généalogie") que ce jeu de
+données "est produit par l'intégration de données provenant d'opérations
+cycliques de photogrammétrie **et de relevés topographiques**", avec une
+mise à jour mensuelle du produit (section 9).
 
 ## 3bis. Toutes les sources de données sont-elles externes ? Que faire si l'une change ?
 
@@ -247,7 +282,10 @@ src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
 src/metroData.js             chargement Metro.json (fetch, avec repli FileReader)
 src/metroLayer.js            construction des couches Leaflet Stations/Tunnels
 src/basemap.js                fonds de plan (UrbIS, Orthophoto, Bruciel)
-src/urbisTopoLayer.js        couches UrbIS Topo à la demande (grilles, chambres, avaloirs...)
+data/urbisTopoCatalog.js     catalogue complet des types d'objets UrbIS Topo (référence)
+src/urbisTopoSelectionStore.js sélection utilisateur des types UrbIS Topo affichés
+src/urbisTopoPicker.js        sélecteur plein écran (catalogue classé par thème)
+src/urbisTopoLayer.js        affichage carte des types UrbIS Topo sélectionnés
 src/mapMenu.js                menu fond de plan / couches / réinitialisation
 src/searchTool.js             recherche station/tunnel/point (remplace le zoom +/-)
 src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)

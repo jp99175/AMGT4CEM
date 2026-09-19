@@ -199,6 +199,74 @@ html, body {
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
+  background: transparent;
+}
+
+#amgt-topo-edit-link {
+  color: #1565c0;
+}
+
+.amgt-topo-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  padding: 4px 0;
+}
+
+/* --- Sélecteur plein écran du catalogue UrbIS Topo --- */
+#amgt-topo-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  box-sizing: border-box;
+}
+
+#amgt-topo-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+#amgt-topo-picker-header h2 {
+  font-size: 16px;
+  margin: 0;
+}
+
+#amgt-topo-picker-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+#amgt-topo-picker-content {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.amgt-topo-theme {
+  margin-bottom: 16px;
+}
+
+.amgt-topo-theme h4 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #777;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 4px;
 }
 
 .amgt-link-btn {

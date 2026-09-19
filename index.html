@@ -50,8 +50,9 @@
   <p class="amgt-settings-hint">
     Chargées uniquement dans la zone visible, à partir d'un certain niveau de
     zoom.
+    <a href="#" id="amgt-topo-edit-link">(modifier la sélection)</a>
   </p>
-  <div id="amgt-topo-layers"></div>
+  <div id="amgt-topo-legend"></div>
 
   <button id="amgt-reset-view-btn" class="amgt-link-btn" title="Revenir à l'emprise générale du réseau">
     ⤢ Réinitialiser la vue
@@ -150,18 +151,36 @@
   </div>
 </div>
 
+<!-- Sélecteur plein écran du catalogue UrbIS Topo (grouper par thème + recherche) -->
+<div id="amgt-topo-picker" class="amgt-hidden">
+  <div id="amgt-topo-picker-header">
+    <h2>Objets UrbIS Topo à afficher</h2>
+    <button id="amgt-topo-picker-close" class="amgt-btn" title="Retour à la carte">✕ Fermer</button>
+  </div>
+  <input
+    type="text"
+    id="amgt-topo-picker-search"
+    placeholder="Rechercher un type d'objet..."
+    autocomplete="off"
+  />
+  <div id="amgt-topo-picker-content"></div>
+</div>
+
 <script src="./vendor/leaflet/leaflet.js"></script>
 <script src="./vendor/proj4/proj4.js"></script>
 <script src="./vendor/proj4leaflet/proj4leaflet.js"></script>
 
 <script src="./config.js"></script>
+<script src="./data/urbisTopoCatalog.js"></script>
 <script src="./src/settingsStore.js"></script>
 <script src="./src/crs.js"></script>
 <script src="./src/metroData.js"></script>
 <script src="./src/metroLayer.js"></script>
 <script src="./src/pointsStore.js"></script>
 <script src="./src/pointsLayer.js"></script>
+<script src="./src/urbisTopoSelectionStore.js"></script>
 <script src="./src/urbisTopoLayer.js"></script>
+<script src="./src/urbisTopoPicker.js"></script>
 <script src="./src/addPointTool.js"></script>
 <script src="./src/coordsDisplay.js"></script>
 <script src="./src/basemap.js"></script>

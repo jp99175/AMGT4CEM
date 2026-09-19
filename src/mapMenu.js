@@ -28,7 +28,7 @@ const AMGT4CEM_MapMenu = {
 
     this._initBasemapControls();
     this._initLayerControls(map, pointsGroup);
-    this._initTopoLayerControls();
+    this._initTopoLegend();
 
     document.getElementById('amgt-reset-view-btn').addEventListener('click', () => {
       // Revient également au fond de référence UrbIS grisé, pas seulement à
@@ -131,28 +131,54 @@ const AMGT4CEM_MapMenu = {
   },
 
   /**
-   * Cases à cocher générées dynamiquement à partir de config.js (une par
-   * couche UrbIS Topo optionnelle) : voir urbisTopoLayer.js.
+   * Légende en lecture seule des types UrbIS Topo actuellement sélectionnés
+   * (pastille de couleur + libellé, sans case à cocher) — la sélection se
+   * modifie uniquement via le lien "(modifier la sélection)", qui ouvre le
+   * sélecteur plein écran (voir urbisTopoPicker.js).
    */
-  _initTopoLayerControls() {
-    const container = document.getElementById('amgt-topo-layers');
+  _initTopoLegend() {
+    const container = document.getElementById('amgt-topo-legend');
+    const editLink = document.getElementById('amgt-topo-edit-link');
 
-    for (const { id, label, color } of AMGT4CEM_UrbisTopoLayer.getLayerDefinitions()) {
-      const row = document.createElement('label');
-      row.className = 'amgt-checkbox-row';
+    const catalogByCode = {};
+    for (const entry of AMGT4CEM_URBISTOPO_CATALOG) catalogByCode[entry.code] = entry;
 
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.addEventListener('change', () => {
-        AMGT4CEM_UrbisTopoLayer.setEnabled(id, checkbox.checked);
-      });
+    const render = () => {
+      container.innerHTML = '';
+      const selection = AMGT4CEM_UrbisTopoSelectionStore.getSelection();
+      const codes = Object.keys(selection);
 
-      const dot = document.createElement('span');
-      dot.className = 'amgt-topo-color-dot';
-      dot.style.background = color;
+      if (codes.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'amgt-settings-hint';
+        empty.textContent = 'Aucun objet sélectionné.';
+        container.appendChild(empty);
+        return;
+      }
 
-      row.append(checkbox, dot, document.createTextNode(' ' + label));
-      container.appendChild(row);
-    }
+      for (const code of codes) {
+        const entry = catalogByCode[code];
+        const row = document.createElement('div');
+        row.className = 'amgt-topo-legend-row';
+
+        const dot = document.createElement('span');
+        dot.className = 'amgt-topo-color-dot';
+        dot.style.background = selection[code];
+
+        const label = document.createElement('span');
+        label.textContent = entry ? entry.label : code;
+
+        row.append(dot, label);
+        container.appendChild(row);
+      }
+    };
+
+    AMGT4CEM_UrbisTopoSelectionStore.onChange(render);
+    editLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      AMGT4CEM_UrbisTopoPicker.open();
+    });
+
+    render();
   },
 };

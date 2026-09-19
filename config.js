@@ -130,22 +130,25 @@ const AMGT4CEM_CONFIG = {
   },
 
   // --- Couches UrbIS Topo (à la demande) ---
-  // Objets ponctuels/linéaires détaillés (grilles de ventilation, chambres de
-  // visite, avaloirs...), en plus du fond de plan. Service officiel UrbIS
-  // Topo (CIRB/CIBG - Paradigm), catalogue d'objets et attribut de type
-  // ("TYPE") confirmés via :
+  // Objets ponctuels/linéaires détaillés du produit UrbIS Topo (CIRB/CIBG -
+  // Paradigm), choisis individuellement par l'utilisateur (voir le
+  // sélecteur "modifier la sélection", src/urbisTopoPicker.js, et le
+  // catalogue complet data/urbisTopoCatalog.js) et affichés en plus du fond
+  // de plan. Service et attribut de type ("TYPE") confirmés via :
   //  - la fiche technique officielle "UrbIS - Topo" (spécifications de
   //    produit ISO 19131, PDF fourni par l'utilisateur) pour la liste des
-  //    codes/libellés d'objets ;
+  //    codes/libellés d'objets (voir data/urbisTopoCatalog.js) ;
   //  - un GetFeature réel (application/json, 5 entités, fourni par
   //    l'utilisateur) confirmant le nom de l'attribut de type ("TYPE"), les
   //    libellés français/néerlandais ("DESCRFRE"/"DESCRDUT") et le CRS de
   //    sortie (EPSG:31370, cohérent avec le reste de l'application).
-  // Aucun code ci-dessous n'est deviné.
+  // Aucun code n'est deviné.
   //
-  // Le service ne regroupe les ~150 types d'objets du catalogue que sous 3
-  // couches WFS globales (par géométrie) : chaque entrée ci-dessous précise
-  // dans laquelle filtrer et avec quels codes ("TYPE IN (...)").
+  // Le service ne regroupe le catalogue que sous 3 couches WFS globales (par
+  // géométrie) : quels que soient les types choisis par l'utilisateur,
+  // urbisTopoLayer.js les répartit en au plus 2 requêtes (urbistopo:TopoPoints
+  // / urbistopo:TopoLines, la géométrie "polygone" n'étant pas prise en
+  // charge pour l'instant) filtrées par "TYPE IN (...)".
   //
   // Le service ne déclare cet endpoint que pour un usage "download" classique
   // (formaté pour un navigateur, jamais testé ici en fetch() JS) : comme pour
@@ -158,40 +161,26 @@ const AMGT4CEM_CONFIG = {
     typeAttribute: 'TYPE',
     // Garde-fous : évite de charger des dizaines de milliers d'objets d'un
     // coup (une seule des 3 couches WFS globales en contient plus de 450 000
-    // au total, tous types confondus) — chaque couche n'est interrogée que
-    // dans l'emprise visible, à partir de ce niveau de zoom, et plafonnée à
-    // ce nombre d'objets par requête. Ajustable ici si trop restrictif/laxiste
-    // une fois testé en conditions réelles.
+    // au total, tous types confondus) — chaque requête ne porte que sur
+    // l'emprise visible, à partir de ce niveau de zoom, et est plafonnée à ce
+    // nombre d'objets. Ajustable ici si trop restrictif/laxiste une fois
+    // testé en conditions réelles.
     minZoom: 16,
     maxFeaturesPerQuery: 500,
-    layers: [
-      {
-        id: 'grilles-ventilation',
-        label: 'Grilles de ventilation',
-        color: '#00897b',
-        queries: [{ featureType: 'urbistopo:TopoLines', codes: ['BR14L'] }],
-      },
-      {
-        id: 'chambres-taques',
-        label: 'Chambres / taques d\'égout',
-        color: '#6d4c41',
-        queries: [
-          {
-            featureType: 'urbistopo:TopoPoints',
-            codes: [
-              'CR6101P', 'CR6102P', 'CR6103P', 'CR6104P',
-              'CR6105P', 'CR6106P', 'CR6107P', 'CR6109P',
-            ],
-          },
-          { featureType: 'urbistopo:TopoLines', codes: ['CR6102L', 'CR6108L'] },
-        ],
-      },
-      {
-        id: 'avaloirs',
-        label: 'Avaloirs',
-        color: '#1e88e5',
-        queries: [{ featureType: 'urbistopo:TopoPoints', codes: ['CR6203P', 'CR6204P', 'CR6205P'] }],
-      },
+    // Couleurs attribuées automatiquement aux types sélectionnés (voir
+    // urbisTopoSelectionStore.js), dans cet ordre, en boucle si besoin.
+    colorPalette: [
+      '#1e88e5', '#00897b', '#6d4c41', '#e64a19', '#8e24aa',
+      '#c0ca33', '#00acc1', '#f4511e', '#3949ab', '#7cb342',
+    ],
+    // Présélection au tout premier lancement (avant toute personnalisation) :
+    // reprend les trois familles proposées lors d'une itération précédente
+    // (grilles de ventilation, chambres/taques d'égout, avaloirs).
+    defaultSelectionCodes: [
+      'BR14L',
+      'CR6101P', 'CR6102P', 'CR6103P', 'CR6104P',
+      'CR6105P', 'CR6106P', 'CR6107P', 'CR6109P', 'CR6102L', 'CR6108L',
+      'CR6203P', 'CR6204P', 'CR6205P',
     ],
   },
 
