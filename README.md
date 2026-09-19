@@ -155,19 +155,22 @@ voir `src/basemap.js`), sous peine de tuiles vides ou d'erreur serveur.
 
 ### Couches UrbIS Topo à la demande
 
-Dans le menu **☰ Carte**, section "Couches UrbIS Topo" : affiche, en plus du
-fond de plan et du réseau métro, des objets détaillés du produit
-**UrbIS Topo** (CIRB/CIBG - Paradigm) — grilles de ventilation, chambres et
-taques d'égout, avaloirs, mobilier urbain, marquages routiers, etc.
+Dans le menu **☰ Carte**, section "Couches" : la case **UrbIS Topo**,
+au même titre que Stations/Tunnels/Points métier, affiche ou masque des
+objets détaillés du produit **UrbIS Topo** (CIRB/CIBG - Paradigm) — grilles
+de ventilation, chambres et taques d'égout, avaloirs, mobilier urbain,
+marquages routiers, etc.
 
-Cette section n'affiche qu'une **légende en lecture seule** (pastille de
-couleur + libellé) des types actuellement affichés — pour changer la
-sélection, le lien **"(modifier la sélection)"** ouvre un sélecteur plein
-écran listant l'intégralité du catalogue d'objets (une centaine de types),
-classé par thème (Voirie, Assainissement et égouttage, Marquages et
-signalisation routière, Mobilier urbain, Transport en commun, Bâtiments...)
-avec un champ de recherche. Cocher/décocher un type l'affiche/le masque
-immédiatement sur la carte, avec une couleur assignée automatiquement.
+Le choix des types à afficher se fait à part, via le lien
+**"(modifier la sélection)"** juste en dessous de cette case, qui ouvre un
+sélecteur plein écran listant l'intégralité du catalogue d'objets (une
+centaine de types), classé par thème (Voirie, Assainissement et égouttage,
+Marquages et signalisation routière, Mobilier urbain, Transport en
+commun, Bâtiments...) avec un champ de recherche. Cocher/décocher un type
+l'affiche/le masque immédiatement sur la carte (si la case "UrbIS Topo" est
+elle-même cochée), avec une couleur assignée automatiquement. Le menu ne
+liste pas les types actuellement sélectionnés : seule la case globale et le
+lien de sélection y apparaissent.
 
 Voir `data/urbisTopoCatalog.js` pour le catalogue complet,
 `src/urbisTopoSelectionStore.js` pour la sélection (persistée dans

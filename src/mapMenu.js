@@ -28,7 +28,11 @@ const AMGT4CEM_MapMenu = {
 
     this._initBasemapControls();
     this._initLayerControls(map, pointsGroup);
-    this._initTopoLegend();
+
+    document.getElementById('amgt-topo-edit-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      AMGT4CEM_UrbisTopoPicker.open();
+    });
 
     document.getElementById('amgt-reset-view-btn').addEventListener('click', () => {
       // Revient également au fond de référence UrbIS grisé, pas seulement à
@@ -128,57 +132,13 @@ const AMGT4CEM_MapMenu = {
       if (e.target.checked) pointsGroup.addTo(map);
       else map.removeLayer(pointsGroup);
     });
-  },
 
-  /**
-   * Légende en lecture seule des types UrbIS Topo actuellement sélectionnés
-   * (pastille de couleur + libellé, sans case à cocher) — la sélection se
-   * modifie uniquement via le lien "(modifier la sélection)", qui ouvre le
-   * sélecteur plein écran (voir urbisTopoPicker.js).
-   */
-  _initTopoLegend() {
-    const container = document.getElementById('amgt-topo-legend');
-    const editLink = document.getElementById('amgt-topo-edit-link');
-
-    const catalogByCode = {};
-    for (const entry of AMGT4CEM_URBISTOPO_CATALOG) catalogByCode[entry.code] = entry;
-
-    const render = () => {
-      container.innerHTML = '';
-      const selection = AMGT4CEM_UrbisTopoSelectionStore.getSelection();
-      const codes = Object.keys(selection);
-
-      if (codes.length === 0) {
-        const empty = document.createElement('p');
-        empty.className = 'amgt-settings-hint';
-        empty.textContent = 'Aucun objet sélectionné.';
-        container.appendChild(empty);
-        return;
-      }
-
-      for (const code of codes) {
-        const entry = catalogByCode[code];
-        const row = document.createElement('div');
-        row.className = 'amgt-topo-legend-row';
-
-        const dot = document.createElement('span');
-        dot.className = 'amgt-topo-color-dot';
-        dot.style.background = selection[code];
-
-        const label = document.createElement('span');
-        label.textContent = entry ? entry.label : code;
-
-        row.append(dot, label);
-        container.appendChild(row);
-      }
-    };
-
-    AMGT4CEM_UrbisTopoSelectionStore.onChange(render);
-    editLink.addEventListener('click', (e) => {
-      e.preventDefault();
-      AMGT4CEM_UrbisTopoPicker.open();
+    // Traitée comme une couche parmi d'autres (Stations, Tunnels, Points
+    // métier) : une seule case, active/désactive l'affichage des types
+    // actuellement sélectionnés. Le choix des types se fait à part, via
+    // "(modifier la sélection)" -> urbisTopoPicker.js.
+    document.getElementById('amgt-layer-urbistopo').addEventListener('change', (e) => {
+      AMGT4CEM_UrbisTopoLayer.setEnabled(e.target.checked);
     });
-
-    render();
   },
 };

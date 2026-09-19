@@ -202,16 +202,13 @@ html, body {
   background: transparent;
 }
 
-#amgt-topo-edit-link {
-  color: #1565c0;
+.amgt-topo-edit-hint {
+  margin: -4px 0 8px;
+  font-size: 12px;
 }
 
-.amgt-topo-legend-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  padding: 4px 0;
+#amgt-topo-edit-link {
+  color: #1565c0;
 }
 
 /* --- Sélecteur plein écran du catalogue UrbIS Topo --- */

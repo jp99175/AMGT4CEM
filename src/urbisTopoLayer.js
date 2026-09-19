@@ -1,10 +1,15 @@
 /**
  * Affichage carte des types d'objets UrbIS Topo choisis par l'utilisateur
- * (voir urbisTopoSelectionStore.js / urbisTopoPicker.js). Chargement
- * strictement à la demande : rien n'est requêté tant que la sélection est
- * vide, et seuls les objets de l'emprise visible sont demandés au service
- * (le WFS ne groupe le catalogue que par géométrie — une seule des 3
- * couches globales dépasse 450 000 objets, tous types confondus).
+ * (voir urbisTopoSelectionStore.js / urbisTopoPicker.js). Traitée comme les
+ * autres couches du menu ☰ Carte (Stations, Tunnels, Points métier) : une
+ * case active/désactive l'affichage (voir mapMenu.js) — le choix des types à
+ * afficher se fait à part, via le sélecteur plein écran.
+ *
+ * Chargement strictement à la demande : rien n'est requêté tant que la case
+ * est décochée ou que la sélection est vide, et seuls les objets de
+ * l'emprise visible sont demandés au service (le WFS ne groupe le catalogue
+ * que par géométrie — une seule des 3 couches globales dépasse 450 000
+ * objets, tous types confondus).
  *
  * En dessous du niveau de zoom minimal (config.js), rien n'est affiché ni
  * requêté plutôt que de risquer une réponse énorme ou lente — comme pour les
@@ -13,6 +18,7 @@
 const AMGT4CEM_UrbisTopoLayer = {
   _map: null,
   _group: null,
+  _enabled: true,
   _fetchToken: 0,
   _moveTimer: null,
   _catalogIndexCache: null,
@@ -31,9 +37,19 @@ const AMGT4CEM_UrbisTopoLayer = {
     this.refresh();
   },
 
+  setEnabled(enabled) {
+    this._enabled = enabled;
+    this.refresh();
+  },
+
   async refresh() {
     const token = ++this._fetchToken;
     this._group.clearLayers();
+
+    if (!this._enabled) {
+      this._map.removeLayer(this._group);
+      return;
+    }
 
     const selection = AMGT4CEM_UrbisTopoSelectionStore.getSelection();
     const codes = Object.keys(selection);
