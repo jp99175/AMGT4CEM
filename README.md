@@ -65,10 +65,10 @@ fichier `Metro.json` (sans quitter la page).
     repositionner : les coordonnées Lambert sont recalculées et enregistrées
     automatiquement. Le bouton **🗑 Supprimer ce point** dans la popup
     l'efface définitivement (demande confirmation).
-11. Bouton **⚙ Paramètres** (barre d'outils) : permet de corriger l'URL d'un
-    service externe (fond UrbIS, orthophotos, géocodeur d'adresses) si
-    celui-ci change d'adresse un jour, sans devoir modifier le code. Voir
-    section 3bis ci-dessous.
+11. Icône **⚙** en haut à droite du menu **☰ Carte** : permet de corriger
+    l'URL d'un service externe (fond UrbIS, orthophotos, géocodeur
+    d'adresses) si celui-ci change d'adresse un jour, sans devoir modifier
+    le code. Voir section 3bis ci-dessous.
 
 Voir section 6 ci-dessous pour le détail du stockage (micro-base de
 données) et sa mise en place.
@@ -165,8 +165,8 @@ de façon permanente côté application.
 
 Ces URLs sont en dur dans `config.js`. Si l'un de ces services change
 d'adresse (migration de serveur, changement de nom de domaine...), il n'est
-pas nécessaire de modifier le code : le bouton **⚙ Paramètres** de la barre
-d'outils ouvre un panneau permettant de corriger :
+pas nécessaire de modifier le code : l'icône **⚙** en haut à droite du menu
+**☰ Carte** ouvre un panneau permettant de corriger :
 
 - l'URL du service WMS du fond UrbIS et le nom de sa couche,
 - l'URL du service WMS des orthophotos historiques (1935&ndash;1996),

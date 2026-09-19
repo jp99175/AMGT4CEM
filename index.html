@@ -20,14 +20,14 @@
   <button id="amgt-add-point-btn" class="amgt-btn" title="Ajouter un point">
     ✚ Ajouter un point
   </button>
-  <button id="amgt-settings-btn" class="amgt-btn" title="Paramètres des sources de données">
-    ⚙ Paramètres
-  </button>
 </div>
 
 <!-- Menu : fond de carte, couches visibles, réinitialisation de la vue -->
 <div id="amgt-map-menu" class="amgt-panel amgt-hidden">
   <h3>Fond de carte</h3>
+  <button id="amgt-settings-btn" class="amgt-map-menu__settings-btn" title="Paramètres des sources de données">
+    ⚙
+  </button>
   <label class="amgt-radio-row">
     <input type="radio" name="amgt-basemap" value="urbis" checked /> UrbIS
   </label>
@@ -46,7 +46,7 @@
     <input type="checkbox" id="amgt-layer-points" checked /> Points métier
   </label>
 
-  <button id="amgt-reset-view-btn" class="amgt-btn amgt-btn--full" title="Revenir à l'emprise générale du réseau">
+  <button id="amgt-reset-view-btn" class="amgt-link-btn" title="Revenir à l'emprise générale du réseau">
     ⤢ Réinitialiser la vue
   </button>
 </div>

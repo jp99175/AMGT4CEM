@@ -160,8 +160,27 @@ html, body {
   color: #777;
 }
 
-#amgt-map-menu h3:first-child {
+#amgt-map-menu h3:first-of-type {
   margin-top: 0;
+}
+
+.amgt-map-menu__settings-btn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 17px;
+  line-height: 1;
+  padding: 3px 5px;
+  cursor: pointer;
+  color: #666;
+  border-radius: 4px;
+}
+
+.amgt-map-menu__settings-btn:hover {
+  background: #f0f0f0;
+  color: #333;
 }
 
 .amgt-radio-row,
@@ -174,11 +193,21 @@ html, body {
   cursor: pointer;
 }
 
-.amgt-btn--full {
+.amgt-link-btn {
   display: block;
-  width: 100%;
   margin-top: 14px;
-  text-align: center;
+  background: none;
+  border: none;
+  padding: 0;
+  color: #1565c0;
+  text-decoration: underline;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.amgt-link-btn:hover {
+  color: #0d47a1;
 }
 
 /* --- Panneau paramètres (URLs des services externes) --- */
