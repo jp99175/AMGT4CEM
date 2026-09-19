@@ -34,4 +34,14 @@ const AMGT4CEM_CRS = {
   formatCoord(value, decimals = 2) {
     return Number(value).toFixed(decimals);
   },
+
+  /**
+   * Convertit une emprise Leaflet (WGS84) en bbox Lambert [minX, minY, maxX, maxY],
+   * utile pour filtrer une requête WFS/WMS sur la zone actuellement visible.
+   */
+  boundsToLambertBbox(bounds) {
+    const sw = this.latLngToLambert(bounds.getSouthWest());
+    const ne = this.latLngToLambert(bounds.getNorthEast());
+    return [sw.x, sw.y, ne.x, ne.y];
+  },
 };

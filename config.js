@@ -129,6 +129,72 @@ const AMGT4CEM_CONFIG = {
     language: 'fr',
   },
 
+  // --- Couches UrbIS Topo (à la demande) ---
+  // Objets ponctuels/linéaires détaillés (grilles de ventilation, chambres de
+  // visite, avaloirs...), en plus du fond de plan. Service officiel UrbIS
+  // Topo (CIRB/CIBG - Paradigm), catalogue d'objets et attribut de type
+  // ("TYPE") confirmés via :
+  //  - la fiche technique officielle "UrbIS - Topo" (spécifications de
+  //    produit ISO 19131, PDF fourni par l'utilisateur) pour la liste des
+  //    codes/libellés d'objets ;
+  //  - un GetFeature réel (application/json, 5 entités, fourni par
+  //    l'utilisateur) confirmant le nom de l'attribut de type ("TYPE"), les
+  //    libellés français/néerlandais ("DESCRFRE"/"DESCRDUT") et le CRS de
+  //    sortie (EPSG:31370, cohérent avec le reste de l'application).
+  // Aucun code ci-dessous n'est deviné.
+  //
+  // Le service ne regroupe les ~150 types d'objets du catalogue que sous 3
+  // couches WFS globales (par géométrie) : chaque entrée ci-dessous précise
+  // dans laquelle filtrer et avec quels codes ("TYPE IN (...)").
+  //
+  // Le service ne déclare cet endpoint que pour un usage "download" classique
+  // (formaté pour un navigateur, jamais testé ici en fetch() JS) : comme pour
+  // le géocodeur, le support CORS d'un appel fetch() JSON depuis l'application
+  // n'a pas pu être vérifié depuis ce bac à sable (domaine bloqué) — à tester
+  // depuis un navigateur utilisateur réel.
+  urbisTopo: {
+    wfsUrl: 'https://geoservices-urbis.irisnet.be/geoserver/urbistopo/wfs',
+    version: '2.0.0',
+    typeAttribute: 'TYPE',
+    // Garde-fous : évite de charger des dizaines de milliers d'objets d'un
+    // coup (une seule des 3 couches WFS globales en contient plus de 450 000
+    // au total, tous types confondus) — chaque couche n'est interrogée que
+    // dans l'emprise visible, à partir de ce niveau de zoom, et plafonnée à
+    // ce nombre d'objets par requête. Ajustable ici si trop restrictif/laxiste
+    // une fois testé en conditions réelles.
+    minZoom: 16,
+    maxFeaturesPerQuery: 500,
+    layers: [
+      {
+        id: 'grilles-ventilation',
+        label: 'Grilles de ventilation',
+        color: '#00897b',
+        queries: [{ featureType: 'urbistopo:TopoLines', codes: ['BR14L'] }],
+      },
+      {
+        id: 'chambres-taques',
+        label: 'Chambres / taques d\'égout',
+        color: '#6d4c41',
+        queries: [
+          {
+            featureType: 'urbistopo:TopoPoints',
+            codes: [
+              'CR6101P', 'CR6102P', 'CR6103P', 'CR6104P',
+              'CR6105P', 'CR6106P', 'CR6107P', 'CR6109P',
+            ],
+          },
+          { featureType: 'urbistopo:TopoLines', codes: ['CR6102L', 'CR6108L'] },
+        ],
+      },
+      {
+        id: 'avaloirs',
+        label: 'Avaloirs',
+        color: '#1e88e5',
+        queries: [{ featureType: 'urbistopo:TopoPoints', codes: ['CR6203P', 'CR6204P', 'CR6205P'] }],
+      },
+    ],
+  },
+
   // --- Micro-base de données métier (stockage local du prototype) ---
   // Tentative abandonnée : stocker les points dans data/points.json de ce
   // dépôt via l'API GitHub (partagé entre appareils). Ça ne fonctionne pas :

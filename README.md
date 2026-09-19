@@ -153,6 +153,43 @@ Web Mercator, ces couches précisent `crs: 'EPSG:31370'` dans `config.js`
 pour forcer Leaflet à les requêter dans leur CRS natif (via Proj4Leaflet,
 voir `src/basemap.js`), sous peine de tuiles vides ou d'erreur serveur.
 
+### Couches UrbIS Topo à la demande (grilles de ventilation, chambres/taques, avaloirs)
+
+Dans le menu **☰ Carte**, section "Couches UrbIS Topo" : des couches
+optionnelles, décochées par défaut, pour afficher certains objets détaillés
+du produit **UrbIS Topo** (CIRB/CIBG - Paradigm) en plus du fond de plan et
+du réseau métro. V1 : grilles de ventilation, chambres/taques d'égout,
+avaloirs (voir `AMGT4CEM_CONFIG.urbisTopo` pour la liste complète des codes,
+et `src/urbisTopoLayer.js` pour le chargement).
+
+Le service WFS officiel (`geoservices-urbis.irisnet.be/geoserver/urbistopo/wfs`)
+ne regroupe le catalogue d'objets (~150 types) que sous 3 couches globales
+par géométrie (`urbistopo:TopoPoints/TopoLines/TopoShapes`) — chaque type
+réel (grille de ventilation, avaloir...) est un code (ex. `CR6203P`) dans un
+attribut `TYPE` à l'intérieur de ces couches. Rien de tout cela n'est deviné :
+la liste des codes vient de la fiche technique officielle ("UrbIS - Topo",
+spécifications de produit ISO 19131, PDF fourni par l'utilisateur), et le
+nom de l'attribut (`TYPE`) ainsi que le format de sortie (GeoJSON,
+EPSG:31370) viennent d'un `GetFeature` réel exécuté par l'utilisateur.
+
+Chargement strictement **à la demande**, pour deux raisons :
+- rien n'est requêté tant qu'une case n'est pas cochée ;
+- une fois cochée, seuls les objets de l'emprise actuellement visible sont
+  demandés (`CQL_FILTER` avec `TYPE IN (...)` et `BBOX(...)`), et seulement
+  à partir d'un niveau de zoom minimal (`AMGT4CEM_CONFIG.urbisTopo.minZoom`,
+  16 par défaut, ajustable) — une seule des 3 couches globales dépasse
+  450 000 objets au total, tous types confondus, il serait à la fois lent et
+  inutile de tout charger d'un coup. La zone se met à jour (avec un léger
+  délai) quand vous déplacez ou zoomez la carte, tant qu'une case reste
+  cochée.
+
+Comme pour le géocodeur d'adresses, cet endpoint est prévu pour un usage
+"téléchargement" classique depuis un navigateur : le support CORS d'un appel
+`fetch()` JSON depuis l'application elle-même **n'a pas pu être vérifié
+depuis cet environnement** (domaine bloqué) — à tester en conditions
+réelles. En cas d'indisponibilité, la couche reste simplement vide (aucune
+erreur affichée), sans affecter le reste de l'application.
+
 ## 3bis. Toutes les sources de données sont-elles externes ? Que faire si l'une change ?
 
 Oui, à une exception près : `Metro.json` est un fichier fourni par
@@ -210,6 +247,7 @@ src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
 src/metroData.js             chargement Metro.json (fetch, avec repli FileReader)
 src/metroLayer.js            construction des couches Leaflet Stations/Tunnels
 src/basemap.js                fonds de plan (UrbIS, Orthophoto, Bruciel)
+src/urbisTopoLayer.js        couches UrbIS Topo à la demande (grilles, chambres, avaloirs...)
 src/mapMenu.js                menu fond de plan / couches / réinitialisation
 src/searchTool.js             recherche station/tunnel/point (remplace le zoom +/-)
 src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)

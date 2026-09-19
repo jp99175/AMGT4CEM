@@ -28,6 +28,7 @@ const AMGT4CEM_MapMenu = {
 
     this._initBasemapControls();
     this._initLayerControls(map, pointsGroup);
+    this._initTopoLayerControls();
 
     document.getElementById('amgt-reset-view-btn').addEventListener('click', () => {
       // Revient également au fond de référence UrbIS grisé, pas seulement à
@@ -127,5 +128,31 @@ const AMGT4CEM_MapMenu = {
       if (e.target.checked) pointsGroup.addTo(map);
       else map.removeLayer(pointsGroup);
     });
+  },
+
+  /**
+   * Cases à cocher générées dynamiquement à partir de config.js (une par
+   * couche UrbIS Topo optionnelle) : voir urbisTopoLayer.js.
+   */
+  _initTopoLayerControls() {
+    const container = document.getElementById('amgt-topo-layers');
+
+    for (const { id, label, color } of AMGT4CEM_UrbisTopoLayer.getLayerDefinitions()) {
+      const row = document.createElement('label');
+      row.className = 'amgt-checkbox-row';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.addEventListener('change', () => {
+        AMGT4CEM_UrbisTopoLayer.setEnabled(id, checkbox.checked);
+      });
+
+      const dot = document.createElement('span');
+      dot.className = 'amgt-topo-color-dot';
+      dot.style.background = color;
+
+      row.append(checkbox, dot, document.createTextNode(' ' + label));
+      container.appendChild(row);
+    }
   },
 };

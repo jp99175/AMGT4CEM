@@ -46,6 +46,13 @@
     <input type="checkbox" id="amgt-layer-points" checked /> Points métier
   </label>
 
+  <h3>Couches UrbIS Topo</h3>
+  <p class="amgt-settings-hint">
+    Chargées uniquement dans la zone visible, à partir d'un certain niveau de
+    zoom.
+  </p>
+  <div id="amgt-topo-layers"></div>
+
   <button id="amgt-reset-view-btn" class="amgt-link-btn" title="Revenir à l'emprise générale du réseau">
     ⤢ Réinitialiser la vue
   </button>
@@ -154,6 +161,7 @@
 <script src="./src/metroLayer.js"></script>
 <script src="./src/pointsStore.js"></script>
 <script src="./src/pointsLayer.js"></script>
+<script src="./src/urbisTopoLayer.js"></script>
 <script src="./src/addPointTool.js"></script>
 <script src="./src/coordsDisplay.js"></script>
 <script src="./src/basemap.js"></script>

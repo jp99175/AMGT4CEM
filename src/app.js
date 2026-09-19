@@ -31,6 +31,7 @@
 
   AMGT4CEM_CoordsDisplay.init(map);
   const pointsGroup = AMGT4CEM_PointsLayer.init(map);
+  AMGT4CEM_UrbisTopoLayer.init(map);
 
   let metroBounds = null;
 
