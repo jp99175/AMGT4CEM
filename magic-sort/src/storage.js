@@ -8,6 +8,11 @@ function defaultSave() {
     settings: { music: true, sfx: true },
     unlockedThemes: ["default"],
     tutorialSeen: false,
+    // The puzzle instance currently in play: same (id, seed) pair across a
+    // page reload or Restart, but a fresh random seed each time a *new*
+    // level is entered -- see src/levels.js.
+    activeLevelId: null,
+    activeSeed: null,
   };
 }
 

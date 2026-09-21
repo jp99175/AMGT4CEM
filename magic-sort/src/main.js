@@ -1,6 +1,6 @@
 import { Bottle } from "./bottle.js";
 import { canPour, pour, undoPour, checkVictory, findHint } from "./puzzle.js";
-import { buildLevel, TOTAL_MVP_LEVELS } from "./levels.js";
+import { buildLevel, randomSeed, CURATED_LEVELS } from "./levels.js";
 import { loadProgress, saveProgress } from "./storage.js";
 import { audio } from "./audio.js";
 import { renderAll, setSelected, clearHint, showHint, shakeInvalid, animatePour, spawnConfetti } from "./render.js";
@@ -43,7 +43,7 @@ els.musicToggle.checked = progress.settings.music;
 els.sfxToggle.checked = progress.settings.sfx;
 els.addBottleCost.textContent = `${ADD_BOTTLE_COST}◆`;
 
-let currentLevelId = clampLevelId(progress.currentLevel || 1);
+let currentLevelId = Math.max(1, progress.currentLevel || 1);
 let bottles = [];
 let history = [];
 let inputLocked = false;
@@ -51,8 +51,18 @@ let addedBottleThisLevel = false;
 let tutorialStep = null; // null | 'select' | 'pour' | 'group'
 let toastTimer = null;
 
-function clampLevelId(id) {
-  return Math.min(Math.max(1, id), TOTAL_MVP_LEVELS);
+// Each level is randomly generated (see src/levels.js), so the exact same
+// puzzle only needs to reappear for the level currently in progress -- to
+// survive a page reload and to make Restart restore the right layout. The
+// moment the player moves to a different level, a brand new seed is drawn.
+function ensureSeedFor(id) {
+  if (progress.activeLevelId === id && progress.activeSeed !== null) {
+    return progress.activeSeed;
+  }
+  progress.activeLevelId = id;
+  progress.activeSeed = randomSeed();
+  saveProgress(progress);
+  return progress.activeSeed;
 }
 
 const inputCtrl = attachBottleInput(els.bottleRow, {
@@ -69,8 +79,9 @@ const inputCtrl = attachBottleInput(els.bottleRow, {
 });
 
 function startLevel(id) {
-  currentLevelId = clampLevelId(id);
-  bottles = buildLevel(currentLevelId);
+  currentLevelId = Math.max(1, id);
+  const seed = ensureSeedFor(currentLevelId);
+  bottles = buildLevel(currentLevelId, seed);
   history = [];
   addedBottleThisLevel = false;
   inputLocked = false;
@@ -122,7 +133,9 @@ function undo() {
 
 function restart() {
   if (inputLocked) return;
-  bottles = buildLevel(currentLevelId);
+  // Same seed as the in-progress instance -- restart must reproduce the
+  // exact layout the player started with, not draw a new puzzle.
+  bottles = buildLevel(currentLevelId, progress.activeSeed);
   history = [];
   addedBottleThisLevel = false;
   renderAll(els.bottleRow, bottles);
@@ -165,7 +178,7 @@ function handleVictory() {
     progress.completedLevels.push(currentLevelId);
     progress.coins += WIN_COINS;
   }
-  progress.currentLevel = Math.max(progress.currentLevel, Math.min(currentLevelId + 1, TOTAL_MVP_LEVELS));
+  progress.currentLevel = Math.max(progress.currentLevel, currentLevelId + 1);
   saveProgress(progress);
 
   audio.victory();
@@ -174,10 +187,10 @@ function handleVictory() {
 
   els.winCoins.textContent = firstClear ? String(WIN_COINS) : "0";
   els.winSubtitle.textContent =
-    currentLevelId >= TOTAL_MVP_LEVELS
-      ? "Bravo, tu as terminé tous les niveaux disponibles !"
+    currentLevelId === CURATED_LEVELS
+      ? "Bravo, tu passes en mode expert : la difficulté continue de grimper !"
       : "Toutes les couleurs sont triées.";
-  els.nextLevelBtn.textContent = currentLevelId >= TOTAL_MVP_LEVELS ? "Rejouer le niveau 1 →" : "Niveau suivant →";
+  els.nextLevelBtn.textContent = "Niveau suivant →";
   els.winPanel.classList.remove("hidden");
   updateTopbar();
 
@@ -245,7 +258,10 @@ function advanceTutorial(step) {
 
 function buildLevelGrid() {
   els.levelGrid.innerHTML = "";
-  for (let id = 1; id <= TOTAL_MVP_LEVELS; id++) {
+  // Grid always shows the curated milestones, and grows to cover however
+  // far the player has actually progressed (levels beyond 20 are endless).
+  const gridSize = Math.max(CURATED_LEVELS, progress.currentLevel);
+  for (let id = 1; id <= gridSize; id++) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "level-cell";
@@ -275,8 +291,7 @@ els.addBottleBtn.addEventListener("click", addBottle);
 
 els.nextLevelBtn.addEventListener("click", () => {
   els.winPanel.classList.add("hidden");
-  const next = currentLevelId >= TOTAL_MVP_LEVELS ? 1 : currentLevelId + 1;
-  startLevel(next);
+  startLevel(currentLevelId + 1);
 });
 
 els.levelsBtn.addEventListener("click", () => {

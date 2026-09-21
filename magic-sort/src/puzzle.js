@@ -62,7 +62,7 @@ function scramble({ colorCount, capacity, emptyBottles, shuffleMoves, seed }) {
 
   let done = 0;
   let attempts = 0;
-  const maxAttempts = shuffleMoves * 30;
+  const maxAttempts = shuffleMoves * 40;
 
   while (done < shuffleMoves && attempts < maxAttempts) {
     attempts++;
@@ -71,13 +71,27 @@ function scramble({ colorCount, capacity, emptyBottles, shuffleMoves, seed }) {
     if (src.isEmpty) continue;
 
     const runLength = src.topRunLength();
-    const k = 1 + Math.floor(rng() * runLength);
+    const color = src.topColor;
+    // The reverse of this exact move (an undo-pour from the destination
+    // back to `src`) must land legally: `src`'s new top has to still be
+    // `color`, or `src` must end up empty. That's only true if we either
+    // (a) leave at least one unit of `color` behind on `src`, or
+    // (b) drain the whole bottle, which only leaves it empty when the top
+    // run IS the entire bottle (nothing of a different color sits below).
+    const wholeBottleIsOneRun = runLength === src.length;
+    const maxK = wholeBottleIsOneRun ? runLength : runLength - 1;
+    if (maxK < 1) continue;
+    const k = 1 + Math.floor(rng() * maxK);
 
     const candidates = [];
     for (let d = 0; d < bottles.length; d++) {
       if (d === srcIdx) continue;
       const dst = bottles[d];
-      if (dst.capacity - dst.length >= k) candidates.push(d);
+      if (dst.capacity - dst.length < k) continue;
+      // Never stack onto a matching top color: that would merge into a run
+      // longer than `k`, and undoing it later would over-drain `dst`.
+      if (!dst.isEmpty && dst.topColor === color) continue;
+      candidates.push(d);
     }
     if (candidates.length === 0) continue;
 
@@ -90,47 +104,29 @@ function scramble({ colorCount, capacity, emptyBottles, shuffleMoves, seed }) {
   return bottles;
 }
 
-// Builds a scrambled-but-solvable level. The scramble step above is only
-// *usually* solvable in one shot: when a destination bottle happens to
-// already carry the same top color as the fragment being relocated onto it,
-// the single-move "reverse pour" argument breaks down (a real pour later
-// moves the whole merged run, not just the fragment), so a small fraction of
-// rolls turn out to be traps. We verify with a full BFS and deterministically
-// retry with a different seed until the result is conclusively solvable --
-// this is the actual guarantee callers rely on, not the construction alone.
-export function generateLevel({
-  colorCount,
-  capacity = 4,
-  emptyBottles = 2,
-  shuffleMoves = 60,
-  seed = 1,
-}) {
-  const maxRetries = 24;
-  let bottles = null;
-
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    const trySeed = seed + attempt * 104729;
-    const candidate = scramble({ colorCount, capacity, emptyBottles, shuffleMoves, seed: trySeed });
-    if (checkVictory(candidate)) continue; // degenerate roll, already solved
-
-    const solvable = isSolvable(candidate, { maxStates: 150000 });
-    if (solvable) {
-      bottles = candidate;
-      break;
-    }
+// Builds a scrambled level that is *solvable by construction*: every
+// scramble step above is chosen so its exact reverse (an undo-pour from the
+// destination back to the source) is itself a single legal pour at the
+// moment it would be applied. Playing the whole scramble sequence backwards
+// -- last move first -- is therefore always a valid solution, by induction:
+// undoing move N restores the state right after move N-1, whose own reverse
+// is legal for the same reason, and so on down to the solved state. No
+// search-based verification is needed (and, empirically, a full BFS over
+// puzzles with 8+ colors is far too slow to run live anyway).
+export function generateLevel({ colorCount, capacity = 4, emptyBottles = 2, shuffleMoves = 60, seed = 1 }) {
+  const bottles = scramble({ colorCount, capacity, emptyBottles, shuffleMoves, seed });
+  if (checkVictory(bottles)) {
+    // Degenerate roll (the constrained scramble ran out of legal moves
+    // almost immediately) -- retry with a different seed.
+    return generateLevel({
+      colorCount,
+      capacity,
+      emptyBottles,
+      shuffleMoves: shuffleMoves + 10,
+      seed: seed + 104729,
+    });
   }
-
-  if (bottles) return bottles;
-
-  // Extremely unlikely fallback: relax the puzzle (one more empty bottle,
-  // gentler shuffle) so a solvable roll is essentially guaranteed.
-  return generateLevel({
-    colorCount,
-    capacity,
-    emptyBottles: emptyBottles + 1,
-    shuffleMoves: Math.max(10, Math.floor(shuffleMoves * 0.7)),
-    seed: seed + 1,
-  });
+  return bottles;
 }
 
 function serialize(state) {

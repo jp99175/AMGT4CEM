@@ -19,15 +19,22 @@ Puis ouvrir http://localhost:8080/.
 
 ## Contenu du MVP
 
-- 20 niveaux à difficulté progressive (3 → 9 couleurs).
+- Progression à difficulté croissante (3 → 14 couleurs), infinie au-delà des
+  20 premiers "paliers" curés. Chaque partie d'un niveau tire une **graine
+  aléatoire** : rejouer le niveau 7 ne donne jamais deux fois le même puzzle,
+  à la même difficulté. Recommencer / recharger la page restaure exactement
+  l'instance en cours (la graine active est mémorisée), sans jamais changer
+  le puzzle sous les pieds du joueur.
 - Versement par tap (sélection puis cible) **et** par glisser-déposer.
 - Règles de versement strictes (`canPour`/`pour` dans `src/puzzle.js`),
   transferts multi-unités quand plusieurs couches identiques se touchent.
 - Annulation multi-niveaux, redémarrage exact du niveau, indice (recherche
   en largeur avec repli heuristique).
-- Générateur procédural garanti solvable (`generateLevel` : scramble par
-  déplacements inverses depuis un état résolu, puis vérification exhaustive
-  par recherche en largeur avec relance sur un autre seed si nécessaire).
+- Générateur procédural **solvable par construction** (`generateLevel` :
+  scramble par déplacements inverses depuis un état résolu, où chaque
+  déplacement est choisi pour rester individuellement réversible par un
+  coup légal -- pas de recherche exhaustive nécessaire pour le garantir,
+  ce qui le rend quasi instantané même à 14 couleurs).
 - Sauvegarde locale (niveau courant, niveaux terminés, monnaie, réglages
   audio) via `localStorage`.
 - Animations de versement (inclinaison + écoulement), sélection, victoire
@@ -41,7 +48,7 @@ Puis ouvrir http://localhost:8080/.
 src/
   bottle.js    Structure de données Bottle (capacity, colors[], isLocked, hiddenLayers)
   puzzle.js    Logique pure : canPour, pour, undoPour, checkVictory, generateLevel, findHint
-  levels.js    Courbe de difficulté des 20 niveaux + cache de génération
+  levels.js    Courbe de difficulté progressive + tirage de graine aléatoire
   colors.js    Palette de couleurs
   storage.js   saveProgress / loadProgress (localStorage)
   audio.js     Effets sonores synthétisés
