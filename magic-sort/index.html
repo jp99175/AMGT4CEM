@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+<title>Chromix — puzzle de tri de couleurs</title>
+<meta name="description" content="Chromix : reverse le tri des liquides colorés, fiole par fiole, dans un puzzle minimaliste et satisfaisant." />
+<meta name="theme-color" content="#241b3f" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23241b3f'/%3E%3Cpath d='M13 6h6v9l4 9a4 4 0 0 1-4 6H13a4 4 0 0 1-4-6l4-9V6z' fill='none' stroke='%23f4f1ff' stroke-width='2'/%3E%3Cpath d='M10.5 20h11' stroke='%23ffd23f' stroke-width='2'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+
+  <header id="topbar">
+    <div class="topbar__group">
+      <div class="badge" id="levelBadge">
+        <span class="badge__label">Niveau</span>
+        <span class="badge__value" id="levelValue">1</span>
+      </div>
+    </div>
+    <div class="topbar__group">
+      <div class="badge badge--coins" id="coinBadge" aria-live="polite">
+        <span class="badge__icon" aria-hidden="true">◆</span>
+        <span class="badge__value" id="coinValue">0</span>
+      </div>
+      <button type="button" class="icon-btn" id="levelsBtn" aria-label="Choisir un niveau">☰</button>
+      <button type="button" class="icon-btn" id="settingsBtn" aria-label="Paramètres">⚙</button>
+    </div>
+  </header>
+
+  <main id="board">
+    <div id="tutorialBanner" class="tutorial-banner hidden" role="status"></div>
+    <div id="bottleRow" class="bottle-row"></div>
+  </main>
+
+  <footer id="bottombar">
+    <button type="button" class="action-btn" id="undoBtn">
+      <span class="action-btn__icon" aria-hidden="true">↶</span>
+      <span class="action-btn__label">Annuler</span>
+    </button>
+    <button type="button" class="action-btn" id="restartBtn">
+      <span class="action-btn__icon" aria-hidden="true">↻</span>
+      <span class="action-btn__label">Recommencer</span>
+    </button>
+    <button type="button" class="action-btn" id="hintBtn">
+      <span class="action-btn__icon" aria-hidden="true">✦</span>
+      <span class="action-btn__label">Indice</span>
+    </button>
+    <button type="button" class="action-btn" id="addBottleBtn">
+      <span class="action-btn__icon" aria-hidden="true">+</span>
+      <span class="action-btn__label">Fiole</span>
+      <span class="action-btn__cost" id="addBottleCost">10◆</span>
+    </button>
+  </footer>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <div id="winPanel" class="overlay hidden">
+    <div class="panel panel--win">
+      <div class="panel__burst" aria-hidden="true">✨</div>
+      <h2>Niveau terminé !</h2>
+      <p class="panel__subtitle" id="winSubtitle">Toutes les couleurs sont triées.</p>
+      <div class="panel__reward">+<span id="winCoins">10</span> ◆</div>
+      <button type="button" class="primary-btn" id="nextLevelBtn">Niveau suivant →</button>
+    </div>
+  </div>
+
+  <div id="levelSelectPanel" class="overlay hidden">
+    <div class="panel panel--levels">
+      <div class="panel__header">
+        <h2>Niveaux</h2>
+        <button type="button" class="icon-btn" id="closeLevelsBtn" aria-label="Fermer">✕</button>
+      </div>
+      <div class="level-grid" id="levelGrid"></div>
+    </div>
+  </div>
+
+  <div id="settingsPanel" class="overlay hidden">
+    <div class="panel panel--settings">
+      <div class="panel__header">
+        <h2>Paramètres</h2>
+        <button type="button" class="icon-btn" id="closeSettingsBtn" aria-label="Fermer">✕</button>
+      </div>
+      <label class="toggle-row">
+        <span>Musique</span>
+        <input type="checkbox" id="musicToggle" />
+      </label>
+      <label class="toggle-row">
+        <span>Effets sonores</span>
+        <input type="checkbox" id="sfxToggle" />
+      </label>
+      <button type="button" class="secondary-btn" id="resetProgressBtn">Réinitialiser la progression</button>
+    </div>
+  </div>
+
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
