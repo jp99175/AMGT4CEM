@@ -34,6 +34,9 @@ const els = {
   musicToggle: document.getElementById("musicToggle"),
   sfxToggle: document.getElementById("sfxToggle"),
   resetProgressBtn: document.getElementById("resetProgressBtn"),
+  confirmResetPanel: document.getElementById("confirmResetPanel"),
+  cancelResetBtn: document.getElementById("cancelResetBtn"),
+  confirmResetBtn: document.getElementById("confirmResetBtn"),
 };
 
 const progress = loadProgress();
@@ -319,8 +322,20 @@ els.sfxToggle.addEventListener("change", () => {
   audio.sfxEnabled = progress.settings.sfx;
   saveProgress(progress);
 });
+// A native `confirm()` dialog is unreliable here (sandboxed embeds, such as
+// a published Artifact iframe, commonly block it outright), so the
+// confirmation is a normal in-page panel instead.
 els.resetProgressBtn.addEventListener("click", () => {
-  if (!confirm("Réinitialiser toute la progression ?")) return;
+  els.settingsPanel.classList.add("hidden");
+  els.confirmResetPanel.classList.remove("hidden");
+});
+els.cancelResetBtn.addEventListener("click", () => {
+  els.confirmResetPanel.classList.add("hidden");
+});
+els.confirmResetPanel.addEventListener("click", (e) => {
+  if (e.target === els.confirmResetPanel) els.confirmResetPanel.classList.add("hidden");
+});
+els.confirmResetBtn.addEventListener("click", () => {
   localStorage.removeItem("chromix.save.v1");
   window.location.reload();
 });

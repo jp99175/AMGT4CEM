@@ -501,6 +501,33 @@ body {
   cursor: pointer;
 }
 
+.panel__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.panel__actions .secondary-btn,
+.panel__actions .danger-btn {
+  margin-top: 0;
+  flex: 1;
+}
+
+.danger-btn {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: linear-gradient(135deg, #ff5470, #e83f3f);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.danger-btn:active {
+  transform: scale(0.96);
+}
+
 .level-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
