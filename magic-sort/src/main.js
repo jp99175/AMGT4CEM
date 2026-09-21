@@ -1,9 +1,18 @@
 import { Bottle } from "./bottle.js";
-import { canPour, pour, undoPour, checkVictory, findHint } from "./puzzle.js";
+import { canPour, pour, undoPour, checkVictory, hasAnyMove, findHint } from "./puzzle.js";
 import { buildLevel, randomSeed, CURATED_LEVELS } from "./levels.js";
 import { loadProgress, saveProgress } from "./storage.js";
 import { audio } from "./audio.js";
-import { renderAll, setSelected, clearHint, showHint, shakeInvalid, animatePour, spawnConfetti } from "./render.js";
+import {
+  renderAll,
+  setSelected,
+  clearHint,
+  showHint,
+  shakeInvalid,
+  animatePour,
+  spawnConfetti,
+  celebrateCap,
+} from "./render.js";
 import { attachBottleInput } from "./input.js";
 
 const ADD_BOTTLE_COST = 10;
@@ -12,6 +21,7 @@ const WIN_COINS = 10;
 const els = {
   bottleRow: document.getElementById("bottleRow"),
   tutorialBanner: document.getElementById("tutorialBanner"),
+  deadlockBanner: document.getElementById("deadlockBanner"),
   levelValue: document.getElementById("levelValue"),
   coinValue: document.getElementById("coinValue"),
   undoBtn: document.getElementById("undoBtn"),
@@ -94,6 +104,7 @@ function startLevel(id) {
   updateTopbar();
   updateActionButtons();
   maybeStartTutorial();
+  refreshDeadlockState();
 }
 
 function attemptMove(from, to) {
@@ -105,6 +116,7 @@ function attemptMove(from, to) {
   }
   inputLocked = true;
   clearHint(els.bottleRow);
+  const wasSolved = [from, to].map((idx) => bottles[idx].isSolved && !bottles[idx].isEmpty);
   const move = pour(bottles, from, to);
   history.push(move);
   audio.pour();
@@ -115,10 +127,20 @@ function attemptMove(from, to) {
     inputLocked = false;
     updateActionButtons();
 
+    [from, to].forEach((idx, i) => {
+      const nowSolved = bottles[idx].isSolved && !bottles[idx].isEmpty;
+      if (nowSolved && !wasSolved[i]) {
+        celebrateCap(els.bottleRow, idx);
+        audio.merge();
+      }
+    });
+
     if (tutorialStep === "pour") advanceTutorial("group");
 
     if (checkVictory(bottles)) {
       handleVictory();
+    } else {
+      refreshDeadlockState();
     }
   });
 }
@@ -132,6 +154,7 @@ function undo() {
   inputCtrl.clearSelection();
   audio.select();
   updateActionButtons();
+  refreshDeadlockState();
 }
 
 function restart() {
@@ -145,6 +168,7 @@ function restart() {
   clearHint(els.bottleRow);
   inputCtrl.clearSelection();
   updateActionButtons();
+  refreshDeadlockState();
 }
 
 function hint() {
@@ -173,6 +197,7 @@ function addBottle() {
   updateTopbar();
   updateActionButtons();
   audio.select();
+  refreshDeadlockState();
 }
 
 function handleVictory() {
@@ -213,6 +238,14 @@ function updateActionButtons() {
   els.restartBtn.disabled = inputLocked;
   els.hintBtn.disabled = inputLocked;
   els.addBottleBtn.disabled = inputLocked || addedBottleThisLevel || progress.coins < ADD_BOTTLE_COST;
+}
+
+// Surfaces a stuck board (no legal pour left, but not won) so the player
+// isn't left guessing why nothing responds -- points at the way out
+// (Undo/Restart/Ajouter une fiole) instead of a silent dead end.
+function refreshDeadlockState() {
+  const stuck = tutorialStep === null && !checkVictory(bottles) && !hasAnyMove(bottles);
+  els.deadlockBanner.classList.toggle("hidden", !stuck);
 }
 
 function showToast(message) {

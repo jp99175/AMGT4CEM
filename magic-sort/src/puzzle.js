@@ -44,6 +44,18 @@ export function checkVictory(bottles) {
   return bottles.every((b) => b.isSolved);
 }
 
+// True if at least one legal pour exists anywhere on the board -- used to
+// detect a deadlock (not won, but nothing left to do except undo/restart/add
+// a bottle).
+export function hasAnyMove(bottles) {
+  for (let i = 0; i < bottles.length; i++) {
+    for (let j = 0; j < bottles.length; j++) {
+      if (canPour(bottles, i, j)) return true;
+    }
+  }
+  return false;
+}
+
 // Builds a scrambled-but-always-solvable level: start from a fully solved
 // arrangement, then repeatedly relocate a top run of color onto ANY bottle
 // with room (ignoring color-matching). Each such relocation is, by

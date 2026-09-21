@@ -14,6 +14,10 @@ export function createBottleElement(bottle, idx) {
   const neck = document.createElement("div");
   neck.className = "bottle__neck";
 
+  const cap = document.createElement("div");
+  cap.className = "bottle__cap";
+  neck.appendChild(cap);
+
   const glass = document.createElement("div");
   glass.className = "bottle__glass";
 
@@ -99,6 +103,20 @@ export function shakeInvalid(container, idx) {
   void el.offsetWidth;
   el.classList.add("shake");
   setTimeout(() => el.classList.remove("shake"), 400);
+}
+
+// A brief "pop" on the cap the moment a bottle becomes solved, so completing
+// one reads as a small reward rather than a silent state change.
+export function celebrateCap(container, idx) {
+  const el = container.children[idx];
+  if (!el) return;
+  const cap = el.querySelector(".bottle__cap");
+  if (!cap) return;
+  cap.classList.remove("cap-pop");
+  // eslint-disable-next-line no-unused-expressions
+  void cap.offsetWidth;
+  cap.classList.add("cap-pop");
+  setTimeout(() => cap.classList.remove("cap-pop"), 500);
 }
 
 // Tilts the source bottle, then updates both bottles' liquid columns so the
