@@ -5,10 +5,13 @@
  * chacun est chargé une seule fois (mis en cache), sans filtre d'emprise ni
  * de zoom (volumes très modestes : quelques centaines d'entités au plus).
  *
- * Deux types de géométrie rencontrés dans ces fichiers :
+ * Géométries rencontrées dans ces fichiers :
  * - Polygon : emprise d'une planche de plan — tracée avec sa propre couleur
  *   de trait quand le fichier la fournit (stroke_color_rgb), sinon la
- *   couleur attribuée à la sélection.
+ *   couleur attribuée à la sélection. Si la planche porte un numéro de
+ *   référence (propriété "sheet_ref", absente ou null pour certaines
+ *   planches du jeu de données), ce numéro est aussi affiché comme
+ *   étiquette de texte au centre de la planche.
  * - Point avec un attribut "text" ou "numero" : une étiquette de texte
  *   (nom de station, numéro de planche/interstation...) — affichée comme
  *   telle, pas comme un simple point coloré, pour rester lisible.
@@ -97,6 +100,16 @@ const AMGT4CEM_PatrimoineLayer = {
     for (const feature of features) {
       const layer = this._buildLeafletLayer(feature, color);
       if (layer) group.addLayer(layer);
+
+      // Emprise de planche avec un numéro de référence (sheet_ref) : affiche
+      // ce numéro comme étiquette de texte au centre de la planche, en plus
+      // de son contour — sinon le numéro ne serait visible que dans la
+      // popup, alors que c'est l'information la plus utile de cette couche.
+      const props = feature.properties || {};
+      if (feature.geometry && feature.geometry.type === 'Polygon' && props.sheet_ref) {
+        const refLabel = this._buildPolygonRefLabel(feature, color);
+        if (refLabel) group.addLayer(refLabel);
+      }
     }
     return group;
   },
@@ -120,7 +133,7 @@ const AMGT4CEM_PatrimoineLayer = {
         fillOpacity: 0,
         opacity: this._opacityFactor,
       });
-      polygon.bindPopup(this._buildPolygonPopup());
+      polygon.bindPopup(this._buildPolygonPopup(props));
       return polygon;
     }
 
@@ -150,11 +163,38 @@ const AMGT4CEM_PatrimoineLayer = {
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   },
 
-  _buildPolygonPopup() {
+  /** Centroïde simple (moyenne des sommets) : suffisant pour placer une
+   * étiquette à l'intérieur d'une planche, pas besoin du centroïde d'aire
+   * exact pour ce seul usage d'affichage. */
+  _polygonCentroid(ring) {
+    const xs = ring.map((c) => c[0]);
+    const ys = ring.map((c) => c[1]);
+    return [xs.reduce((a, b) => a + b, 0) / xs.length, ys.reduce((a, b) => a + b, 0) / ys.length];
+  },
+
+  _buildPolygonRefLabel(feature, color) {
+    const centroid = this._polygonCentroid(feature.geometry.coordinates[0]);
+    const latlng = AMGT4CEM_CRS.lambertToLatLng(centroid);
+    const ref = feature.properties.sheet_ref;
+
+    const label = document.createElement('span');
+    label.className = 'amgt-patrimoine-label__text';
+    label.style.color = color;
+    label.textContent = ref;
+
+    const marker = L.marker(latlng, {
+      opacity: this._opacityFactor,
+      icon: L.divIcon({ className: 'amgt-patrimoine-label', html: label }),
+    });
+    marker.bindPopup(this._buildLabelPopup(ref, centroid));
+    return marker;
+  },
+
+  _buildPolygonPopup(props) {
     const container = document.createElement('div');
     container.className = 'amgt-popup';
     const title = document.createElement('strong');
-    title.textContent = "Plan d'ensemble 1/500e";
+    title.textContent = (props && props.sheet_ref) ? `Planche ${props.sheet_ref}` : "Plan d'ensemble 1/500e";
     container.appendChild(title);
     return container;
   },

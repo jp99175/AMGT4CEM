@@ -289,15 +289,18 @@ le catalogue disponible (voir `data/patrimoineCatalog.js`) ; rien n'est
 présélectionné par défaut.
 
 V1 (trois fichiers, EPSG:31370, voir `data/patrimoine-*.json`) :
-- **Plans d'ensemble au 1/500e** : emprise des planches de plan (polygone,
-  tracée avec sa couleur d'origine quand le fichier la fournit) et leur
-  numéro (ex. `1000-109`).
+- **Plans d'ensemble au 1/500e** : 36 planches (emprise en polygone, tracée
+  avec sa couleur d'origine quand le fichier la fournit) couvrant la quasi-
+  totalité du réseau (99 % en largeur, 104 % en hauteur de l'emprise de
+  `Metro.json`) ; leur numéro de référence (propriété `sheet_ref`, ex.
+  `1000-109` — absente pour 4 des 36 planches) est affiché comme étiquette
+  de texte au centre de la planche.
 - **Numéros interstation** : repères numérotés le long des tronçons entre
   stations.
 - **Noms de station** : toponymes bilingues FR/NL et repères associés.
 
-Ce sont des **étiquettes de texte** (le contenu du champ `text` ou
-`numero`, affiché tel quel, pas un simple point coloré) — voir
+Ce sont des **étiquettes de texte** (le contenu du champ `text`, `numero`
+ou `sheet_ref`, affiché tel quel, pas un simple point coloré) — voir
 `src/patrimoineLayer.js`. La géométrie "point" du catalogue UrbIS Topo, par
 comparaison, n'affiche qu'une pastille colorée : ici le texte réel du plan
 est ce qui compte. Aucun filtrage par zoom/emprise n'est nécessaire (les
