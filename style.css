@@ -261,8 +261,9 @@ html, body {
   color: #1565c0;
 }
 
-/* --- Sélecteur plein écran du catalogue UrbIS Topo --- */
-#amgt-topo-picker {
+/* --- Sélecteur plein écran (catalogue UrbIS Topo, Plans patrimoine...) ---
+   Classes partagées par tous les sélecteurs plein écran de l'application. */
+.amgt-fs-picker {
   position: fixed;
   inset: 0;
   z-index: 2000;
@@ -273,7 +274,7 @@ html, body {
   box-sizing: border-box;
 }
 
-#amgt-topo-picker-header {
+.amgt-fs-picker-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -281,19 +282,19 @@ html, body {
   margin-bottom: 12px;
 }
 
-#amgt-topo-picker-header h2 {
+.amgt-fs-picker-header h2 {
   font-size: 16px;
   margin: 0;
 }
 
-#amgt-topo-picker-header-actions {
+.amgt-fs-picker-header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
 }
 
-#amgt-topo-picker-search {
+.amgt-fs-picker-search {
   width: 100%;
   box-sizing: border-box;
   padding: 8px 10px;
@@ -304,7 +305,7 @@ html, body {
   flex-shrink: 0;
 }
 
-#amgt-topo-picker-content {
+.amgt-fs-picker-content {
   overflow-y: auto;
   flex: 1;
 }
@@ -541,6 +542,29 @@ html, body {
   border-radius: 50%;
   box-shadow: 0 0 4px rgba(0,0,0,0.7);
   animation: amgt-pulse 1s infinite;
+}
+
+/* Conteneur du marqueur (L.divIcon) : Leaflet lui applique par défaut un
+   fond blanc et une bordure — retirés ici, seul .amgt-patrimoine-label__text
+   doit être visible. */
+.amgt-patrimoine-label {
+  background: transparent;
+  border: none;
+  width: 0;
+  height: 0;
+}
+
+/* Étiquette de texte "Plans patrimoine" (noms de station, numéros de
+   planche/interstation...) : le texte lui-même, pas un simple point. */
+.amgt-patrimoine-label__text {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.85);
+  padding: 1px 4px;
+  border-radius: 2px;
+  box-shadow: 0 0 2px rgba(0,0,0,0.4);
 }
 
 @keyframes amgt-pulse {

@@ -36,6 +36,11 @@ const AMGT4CEM_MapMenu = {
       AMGT4CEM_UrbisTopoPicker.open();
     });
 
+    document.getElementById('amgt-patrimoine-edit-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      AMGT4CEM_PatrimoinePicker.open();
+    });
+
     document.getElementById('amgt-reset-view-btn').addEventListener('click', () => {
       // Revient également au fond de référence UrbIS grisé, pas seulement à
       // l'emprise géographique.
@@ -162,6 +167,10 @@ const AMGT4CEM_MapMenu = {
     document.getElementById('amgt-layer-urbistopo').addEventListener('change', (e) => {
       AMGT4CEM_UrbisTopoLayer.setEnabled(e.target.checked);
     });
+
+    document.getElementById('amgt-layer-patrimoine').addEventListener('change', (e) => {
+      AMGT4CEM_PatrimoineLayer.setEnabled(e.target.checked);
+    });
   },
 
   /**
@@ -174,6 +183,7 @@ const AMGT4CEM_MapMenu = {
       { key: 'metro', apply: (factor) => this._applyMetroOpacity(factor) },
       { key: 'points', apply: (factor) => AMGT4CEM_PointsLayer.setOpacity(factor) },
       { key: 'urbistopo', apply: (factor) => AMGT4CEM_UrbisTopoLayer.setOpacity(factor) },
+      { key: 'patrimoine', apply: (factor) => AMGT4CEM_PatrimoineLayer.setOpacity(factor) },
     ];
 
     for (const { key, apply } of layers) {

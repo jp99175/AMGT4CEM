@@ -41,9 +41,10 @@ fichier `Metro.json` (sans quitter la page).
    parcourir les millésimes de 1935 à 2022 — seules les années dont le
    service répond sont proposées, réglée sur la plus récente accessible par
    défaut ; le bouton **⏭** y ramène directement). **Couches** : cases à
-   cocher pour Métro (Stations et Tunnels) et UrbIS Topo (voir section
-   3bis). **Points métier** : case à cocher pour vos points métier (section
-   6) — cette catégorie est amenée à s'enrichir (constats/signalements...).
+   cocher pour Métro (Stations et Tunnels), UrbIS Topo (voir section 3bis)
+   et Plans patrimoine (section 3ter). **Points métier** : case à cocher
+   pour vos points métier (section 6) — cette catégorie est amenée à
+   s'enrichir (constats/signalements...).
    L'icône **☰ curseurs** à côté de chaque couche, dans les trois
    catégories, ouvre un réglage d'opacité individuel (comme dans MobiGIS),
    mémorisé par appareil. Le bouton **⤢ Réinitialiser la vue** revient à
@@ -245,13 +246,14 @@ mise à jour mensuelle du produit (section 9).
 
 ## 3bis. Toutes les sources de données sont-elles externes ? Que faire si l'une change ?
 
-Oui, à une exception près : `Metro.json` est un fichier fourni par
-l'utilisateur et servi localement (jamais réécrit, voir section 4), et la
-micro-base de points métier vit uniquement dans le `localStorage` du
-navigateur (section 6). Tout le reste — fond UrbIS, orthophotos Bruciel,
-géocodeur d'adresses — est interrogé en direct auprès de services externes
-(CIRB/CIBG, urban.brussels), à chaque affichage, sans rien mettre en cache
-de façon permanente côté application.
+Oui, à quelques exceptions près : `Metro.json` (jamais réécrit, voir
+section 4) et les fichiers "Plans patrimoine" (section 3ter) sont fournis
+par l'utilisateur et servis localement, et la micro-base de points métier
+vit uniquement dans le `localStorage` du navigateur (section 6). Tout le
+reste — fond UrbIS, orthophotos Bruciel, géocodeur d'adresses, UrbIS Topo —
+est interrogé en direct auprès de services externes (CIRB/CIBG,
+urban.brussels), à chaque affichage, sans rien mettre en cache de façon
+permanente côté application.
 
 Ces URLs sont en dur dans `config.js`. Si l'un de ces services change
 d'adresse (migration de serveur, changement de nom de domaine...), il n'est
@@ -274,6 +276,36 @@ migration d'un serveur entier) : les noms de couches par année pour les
 orthophotos (`Orthophotoplans_1996`, `urbisgrid:Ortho2022Ns`...) restent
 dans `config.js`, car les vérifier nécessite de toute façon de consulter le
 `GetCapabilities` réel du service (voir section 3).
+
+## 3ter. Plans patrimoine
+
+Dans le menu **☰ Carte**, section "Couches" : la case **Plans patrimoine**
+affiche ou masque des données de référence fournies directement par
+l'utilisateur (export de son propre SIG patrimoine, jamais rechargées
+depuis un service externe — contrairement à UrbIS Topo). Même principe que
+UrbIS Topo : le choix des plans à afficher se fait via le lien
+**"(modifier la sélection)"**, qui ouvre un sélecteur plein écran listant
+le catalogue disponible (voir `data/patrimoineCatalog.js`) ; rien n'est
+présélectionné par défaut.
+
+V1 (trois fichiers, EPSG:31370, voir `data/patrimoine-*.json`) :
+- **Plans d'ensemble au 1/500e** : emprise des planches de plan (polygone,
+  tracée avec sa couleur d'origine quand le fichier la fournit) et leur
+  numéro (ex. `1000-109`).
+- **Numéros interstation** : repères numérotés le long des tronçons entre
+  stations.
+- **Noms de station** : toponymes bilingues FR/NL et repères associés.
+
+Ce sont des **étiquettes de texte** (le contenu du champ `text` ou
+`numero`, affiché tel quel, pas un simple point coloré) — voir
+`src/patrimoineLayer.js`. La géométrie "point" du catalogue UrbIS Topo, par
+comparaison, n'affiche qu'une pastille colorée : ici le texte réel du plan
+est ce qui compte. Aucun filtrage par zoom/emprise n'est nécessaire (les
+volumes sont très modestes, quelques centaines d'objets au plus par plan).
+
+Liste volontairement ouverte : d'autres plans (constats, relevés...)
+pourront s'y ajouter au fur et à mesure, un fichier et une entrée de
+catalogue à la fois.
 
 ## 4. Analyse de Metro.json (référence)
 
@@ -305,6 +337,11 @@ data/urbisTopoCatalog.js     catalogue complet des types d'objets UrbIS Topo (r�
 src/urbisTopoSelectionStore.js sélection utilisateur des types UrbIS Topo affichés
 src/urbisTopoPicker.js        sélecteur plein écran (catalogue classé par thème)
 src/urbisTopoLayer.js        affichage carte des types UrbIS Topo sélectionnés
+data/patrimoineCatalog.js    catalogue des couches "Plans patrimoine" (référence)
+data/patrimoine-*.json       fichiers de référence locaux "Plans patrimoine" (jamais réécrits)
+src/patrimoineSelectionStore.js sélection utilisateur des couches Plans patrimoine affichées
+src/patrimoinePicker.js      sélecteur plein écran "Plans patrimoine"
+src/patrimoineLayer.js       affichage carte des couches Plans patrimoine sélectionnées
 src/mapMenu.js                menu fond de plan / couches / réinitialisation
 src/searchTool.js             recherche station/tunnel/point (remplace le zoom +/-)
 src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)

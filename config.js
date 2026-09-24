@@ -184,6 +184,18 @@ const AMGT4CEM_CONFIG = {
     ],
   },
 
+  // --- Plans patrimoine (à la demande) ---
+  // Données de référence LOCALES fournies directement par l'utilisateur
+  // (fichiers GeoJSON EPSG:31370, voir data/patrimoineCatalog.js) : plans
+  // d'ensemble au 1/500e, numéros interstation, noms de station. Jamais
+  // rechargées depuis un service externe (contrairement à UrbIS Topo), donc
+  // pas de garde-fou de zoom/emprise nécessaire (volumes très modestes).
+  patrimoine: {
+    // Couleurs attribuées automatiquement aux plans sélectionnés (voir
+    // patrimoineSelectionStore.js), dans cet ordre, en boucle si besoin.
+    colorPalette: ['#e64a19', '#1565c0', '#2e7d32', '#8e24aa', '#00838f'],
+  },
+
   // --- Micro-base de données métier (stockage local du prototype) ---
   // Tentative abandonnée : stocker les points dans data/points.json de ce
   // dépôt via l'API GitHub (partagé entre appareils). Ça ne fonctionne pas :

@@ -79,6 +79,28 @@
     <a href="#" id="amgt-topo-edit-link">(modifier la sélection)</a>
   </p>
 
+  <div class="amgt-layer-row">
+    <label class="amgt-checkbox-row">
+      <input type="checkbox" id="amgt-layer-patrimoine" checked /> Plans patrimoine
+    </label>
+    <button type="button" class="amgt-opacity-toggle-btn" data-layer="patrimoine" title="Régler l'opacité">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+        <line x1="1" y1="3" x2="15" y2="3" />
+        <circle cx="5" cy="3" r="1.6" />
+        <line x1="1" y1="8" x2="15" y2="8" />
+        <circle cx="11" cy="8" r="1.6" />
+        <line x1="1" y1="13" x2="15" y2="13" />
+        <circle cx="7" cy="13" r="1.6" />
+      </svg>
+    </button>
+  </div>
+  <div class="amgt-opacity-slider-row amgt-hidden" data-layer="patrimoine">
+    <input type="range" min="0" max="100" value="100" class="amgt-opacity-slider" />
+  </div>
+  <p class="amgt-topo-edit-hint">
+    <a href="#" id="amgt-patrimoine-edit-link">(modifier la sélection)</a>
+  </p>
+
   <h3>Points métier</h3>
 
   <div class="amgt-layer-row">
@@ -198,10 +220,10 @@
 </div>
 
 <!-- Sélecteur plein écran du catalogue UrbIS Topo (grouper par thème + recherche) -->
-<div id="amgt-topo-picker" class="amgt-hidden">
-  <div id="amgt-topo-picker-header">
+<div id="amgt-topo-picker" class="amgt-hidden amgt-fs-picker">
+  <div class="amgt-fs-picker-header">
     <h2>Objets UrbIS Topo à afficher</h2>
-    <div id="amgt-topo-picker-header-actions">
+    <div class="amgt-fs-picker-header-actions">
       <button id="amgt-topo-picker-save-default" class="amgt-btn amgt-btn--icon" title="Enregistrer la sélection actuelle comme sélection par défaut">
         💾
       </button>
@@ -211,10 +233,23 @@
   <input
     type="text"
     id="amgt-topo-picker-search"
+    class="amgt-fs-picker-search"
     placeholder="Rechercher un type d'objet..."
     autocomplete="off"
   />
-  <div id="amgt-topo-picker-content"></div>
+  <div id="amgt-topo-picker-content" class="amgt-fs-picker-content"></div>
+</div>
+
+<!-- Sélecteur plein écran des couches "Plans patrimoine" (mêmes classes que
+     le sélecteur UrbIS Topo ci-dessus, sans recherche : peu d'entrées) -->
+<div id="amgt-patrimoine-picker" class="amgt-hidden amgt-fs-picker">
+  <div class="amgt-fs-picker-header">
+    <h2>Plans patrimoine à afficher</h2>
+    <div class="amgt-fs-picker-header-actions">
+      <button id="amgt-patrimoine-picker-close" class="amgt-btn" title="Retour à la carte">✕ Fermer</button>
+    </div>
+  </div>
+  <div id="amgt-patrimoine-picker-content" class="amgt-fs-picker-content"></div>
 </div>
 
 <script src="./vendor/leaflet/leaflet.js"></script>
@@ -223,6 +258,7 @@
 
 <script src="./config.js"></script>
 <script src="./data/urbisTopoCatalog.js"></script>
+<script src="./data/patrimoineCatalog.js"></script>
 <script src="./src/settingsStore.js"></script>
 <script src="./src/layerOpacityStore.js"></script>
 <script src="./src/crs.js"></script>
@@ -233,6 +269,9 @@
 <script src="./src/urbisTopoSelectionStore.js"></script>
 <script src="./src/urbisTopoLayer.js"></script>
 <script src="./src/urbisTopoPicker.js"></script>
+<script src="./src/patrimoineSelectionStore.js"></script>
+<script src="./src/patrimoineLayer.js"></script>
+<script src="./src/patrimoinePicker.js"></script>
 <script src="./src/addPointTool.js"></script>
 <script src="./src/coordsDisplay.js"></script>
 <script src="./src/basemap.js"></script>

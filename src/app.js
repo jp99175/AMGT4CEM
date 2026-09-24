@@ -33,6 +33,8 @@
   const pointsGroup = AMGT4CEM_PointsLayer.init(map);
   AMGT4CEM_UrbisTopoLayer.init(map);
   AMGT4CEM_UrbisTopoPicker.init();
+  AMGT4CEM_PatrimoineLayer.init(map);
+  AMGT4CEM_PatrimoinePicker.init();
 
   let metroBounds = null;
 
