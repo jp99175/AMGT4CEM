@@ -293,8 +293,8 @@ V1 (trois fichiers, EPSG:31370, voir `data/patrimoine-*.json`) :
   avec sa couleur d'origine quand le fichier la fournit) couvrant la quasi-
   totalité du réseau (99 % en largeur, 104 % en hauteur de l'emprise de
   `Metro.json`) ; leur numéro de référence (propriété `sheet_ref`, ex.
-  `1000-109` — absente pour 4 des 36 planches) est affiché comme étiquette
-  de texte au centre de la planche.
+  `1000-109`, présente sur les 36 planches) est affiché comme étiquette de
+  texte au centre de la planche.
 - **Numéros interstation** : repères numérotés le long des tronçons entre
   stations.
 - **Noms de station** : toponymes bilingues FR/NL et repères associés.
