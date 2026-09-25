@@ -99,19 +99,21 @@ fichier `Metro.json` (sans quitter la page).
     d'arrivée suit le curseur en direct (segment pointillé + cote
     au bout du segment + cercle qui grandit/rétrécit avec lui) ; relâchez
     pour le figer, là aussi exactement au point de relâchement, jamais à
-    une position atteinte par la souris/le doigt ensuite. La mesure
-    complète reste ensuite affichée 15 secondes
-    puis disparaît automatiquement (une nouvelle pression pendant ce délai
-    recommence directement une nouvelle mesure). Le bouton **📷 Capture**,
-    lui, ne reste visible que 3 secondes après la fin du geste — deux
-    délais volontairement différents, pour que ce qui est affiché à
-    l'écran corresponde toujours à ce qui vient d'être capturé (le temps
-    d'atteindre le bouton, de générer l'image et d'afficher la
-    notification de téléchargement peut à lui seul dépasser 3 secondes sur
-    smartphone). Cliquez sur **📷 Capture** dans sa fenêtre de 3 secondes
-    pour garder une image de la mesure (PNG téléchargé directement,
-    capture de la carte telle qu'affichée à l'écran à cet instant, mesure
-    comprise). Le glisser-déposer et le pincer-zoomer de la
+    une position atteinte par la souris/le doigt ensuite.
+
+    Dès ce 2e relâchement, la carte est **automatiquement capturée et
+    copiée dans le presse-papier** (pas besoin de cliquer sur quoi que ce
+    soit) : capturer au moment précis où la mesure vient d'être tracée,
+    plutôt qu'à un clic ultérieur, évite toute image incomplète ou
+    incohérente avec ce qui a réellement été mesuré. Vous pouvez donc
+    directement coller (Ctrl/Cmd+V) cette image ailleurs (mail, document,
+    autre appli...). Le bouton **📷 Capture**, visible 3 secondes après la
+    fin du geste, ne fait que **sauvegarder** cette même image déjà
+    capturée sous forme de fichier PNG téléchargé, sans refaire de rendu.
+    Si vous ne cliquez pas dessus (ou si une nouvelle mesure démarre
+    entre-temps), l'image est effacée du presse-papier lorsque la mesure
+    disparaît (15 secondes), pour ne pas y laisser traîner une capture
+    oubliée. Le glisser-déposer et le pincer-zoomer de la
     carte sont désactivés tant que l'outil est actif, pour que ces gestes
     de positionnement ne déplacent/zooment pas la vue. Fonctionne aussi
     bien au doigt (smartphone/tablette) qu'à la souris (événements Pointer
@@ -414,7 +416,7 @@ src/pointsStore.js           micro-base de données (localStorage, schéma ouver
 src/pointsLayer.js           affichage/déplacement des points métier
 src/addPointTool.js          workflow "Ajouter un point"
 src/measureTool.js           outil "📏 Mesurer" (segment + cote + cercle, 3s puis disparition)
-src/screenshotTool.js        bouton "📷 Capture" (export PNG de la carte via html2canvas)
+src/screenshotTool.js        capture PNG auto au 2e relâchement (presse-papier) + sauvegarde ("Capture")
 src/scaleControl.js          réglette graduée (bas gauche), alterne au clic avec les coordonnées Lambert
 src/buildInfo.js             horodatage de la dernière mise à jour (à mettre à jour à chaque commit)
 src/buildInfoControl.js      affiche "BUILD ..." en bas à droite, sous l'attribution

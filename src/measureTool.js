@@ -11,17 +11,18 @@
  *    curseur en direct (segment pointillé + cote au bout du segment +
  *    cercle qui grandit/rétrécit avec lui). Relâcher fige le rayon.
  *
- * La mesure complète reste ensuite affichée 15 secondes (_visibleDurationMs)
- * puis disparaît automatiquement — une nouvelle pression pendant ce délai
- * recommence directement une nouvelle mesure. Le bouton "📷 Capture"
- * (screenshotTool.js), lui, ne reste visible que 3 secondes
- * (_captureBtnDurationMs) après la fin du geste : deux délais volontairement
- * distincts, pour que ce qui est visible à l'écran après avoir capturé (ou
- * après avoir raté la fenêtre de capture) corresponde toujours à ce qui
- * vient d'être capturé, plutôt que la mesure ne disparaisse juste avant/
- * pendant qu'on prend la capture (observé sur smartphone : le temps
- * d'atteindre le bouton, de rendre l'image et d'afficher la notification de
- * téléchargement peut à lui seul dépasser 3 secondes).
+ * Dès ce 2e relâchement, la carte est aussi immédiatement capturée et
+ * copiée dans le presse-papier (screenshotTool.js, captureToClipboard) :
+ * capturer au moment précis du relâchement, plutôt qu'à un clic ultérieur
+ * sur "Capture", élimine toute course avec le délai d'affichage de la
+ * mesure ou la vitesse de l'appareil. La mesure complète reste ensuite
+ * affichée 15 secondes (_visibleDurationMs) puis disparaît automatiquement
+ * — une nouvelle pression pendant ce délai recommence directement une
+ * nouvelle mesure, et l'image déjà en presse-papier est effacée si elle
+ * n'a pas été sauvegardée entre-temps (clearClipboardIfUnsaved). Le bouton
+ * "📷 Capture", lui, ne reste visible que 3 secondes
+ * (_captureBtnDurationMs) après la fin du geste ; il ne fait que sauver
+ * (téléchargement direct) l'image déjà capturée, sans refaire de rendu.
  *
  * Comme AddPointTool, le mode reste actif (bouton "allumé") tant qu'on ne
  * le désactive pas explicitement ; activer cet outil désactive AddPointTool
@@ -222,6 +223,7 @@ const AMGT4CEM_MeasureTool = {
       this._state = 'idle';
       this._armClearTimer();
       this._armCaptureBtnTimer();
+      AMGT4CEM_ScreenshotTool.captureToClipboard();
     }
   },
 
@@ -237,26 +239,6 @@ const AMGT4CEM_MeasureTool = {
     }, this._captureBtnDurationMs);
   },
 
-  /**
-   * Appelé par screenshotTool.js autour d'une capture : le rendu peut
-   * prendre un temps notable sur un appareil mobile moins puissant, et la
-   * mesure ne doit pas disparaître (délai _visibleDurationMs) en plein
-   * milieu — sans quoi la capture obtenue est aléatoire selon la vitesse
-   * de l'appareil. On suspend le délai pendant la capture, puis on le
-   * relance à zéro une fois celle-ci terminée (seulement s'il y avait
-   * encore une mesure figée à faire disparaître).
-   */
-  holdDuringCapture() {
-    clearTimeout(this._clearTimer);
-    this._clearTimer = null;
-  },
-
-  resumeAutoClear() {
-    if (this._state === 'idle' && this._circle) {
-      this._armClearTimer();
-    }
-  },
-
   _clearMeasurement() {
     clearTimeout(this._clearTimer);
     this._clearTimer = null;
@@ -268,6 +250,9 @@ const AMGT4CEM_MeasureTool = {
     if (this._labelMarker) { this._map.removeLayer(this._labelMarker); this._labelMarker = null; }
     this._center = null;
     document.getElementById('amgt-screenshot-btn').classList.add('amgt-hidden');
+    // Pas de sauvegarde entrée-temps (bouton "Capture" cliqué) : on ne
+    // laisse pas traîner une image de mesure oubliée dans le presse-papier.
+    AMGT4CEM_ScreenshotTool.clearClipboardIfUnsaved();
   },
 
   _formatDistance(meters) {
