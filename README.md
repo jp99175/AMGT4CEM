@@ -92,9 +92,11 @@ fichier `Metro.json` (sans quitter la page).
     centre d'un cercle, glissez pour en tracer le rayon (segment pointillé
     + cote au bout du segment + cercle), relâchez pour figer la mesure.
     Elle reste affichée 3 secondes après le relâchement puis disparaît
-    automatiquement — cliquez **📷 Capture** pendant ce délai pour en garder
-    une image (PNG téléchargé directement, capture de la carte telle
-    qu'affichée à l'écran à cet instant, mesure comprise). Activer
+    automatiquement. Le bouton **📷 Capture** n'apparaît que pendant que le
+    cercle et la cote sont visibles (pendant le tracé et ces 3 secondes) :
+    cliquez dessus dans ce délai pour en garder une image (PNG téléchargé
+    directement, capture de la carte telle qu'affichée à l'écran à cet
+    instant, mesure comprise). Activer
     **✚ Ajouter un point** désactive **📏 Mesurer** et inversement (un seul
     outil actif à la fois). Voir `src/measureTool.js` et
     `src/screenshotTool.js`.

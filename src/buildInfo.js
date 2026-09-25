@@ -6,4 +6,4 @@
  * effectivement en ligne (affichée en bas à droite de la carte, sous
  * l'attribution "(c) CIRB - UrbIS" — voir buildInfoControl.js).
  */
-const AMGT4CEM_BUILD_TIMESTAMP = '20260925-0702';
+const AMGT4CEM_BUILD_TIMESTAMP = '20260925-0720';

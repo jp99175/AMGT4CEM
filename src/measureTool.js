@@ -3,13 +3,21 @@
  * cercle, glisser trace son rayon (segment + cote au bout du segment +
  * cercle), relâcher fige la mesure. Le tout reste affiché 3 secondes après
  * le relâchement (ou la fin du clic, ex. sortie du curseur hors carte) puis
- * disparaît — le bouton "📷 Capture" (screenshotTool.js) permet d'en garder
- * une image avant que ça n'arrive.
+ * disparaît — le bouton "📷 Capture" (screenshotTool.js) n'est lui-même
+ * visible que pendant que la mesure l'est, pour permettre d'en garder une
+ * image avant qu'elle ne disparaisse.
  *
  * Comme AddPointTool, le mode reste actif (bouton "allumé") tant qu'on ne le
  * désactive pas explicitement, pour pouvoir enchaîner plusieurs mesures ;
  * activer cet outil désactive AddPointTool et vice-versa (un seul mode
  * d'interaction à la fois sur la carte).
+ *
+ * Capture de pointeur (voir activate()) : sans elle, un tracé rapide à la
+ * souris qui sort brièvement de la zone de la carte arrête de recevoir les
+ * événements mousemove/mouseup (ils partent alors vers l'élément qui se
+ * trouve sous le curseur à ce moment-là) et le tracé se fige au lieu de
+ * suivre le relâchement — cela ne se voit pas avec un tracé simulé "lisse"
+ * qui reste toujours dans les limites de la carte, seulement à l'usage réel.
  */
 const AMGT4CEM_MeasureTool = {
   _map: null,
@@ -20,13 +28,27 @@ const AMGT4CEM_MeasureTool = {
   _circle: null,
   _labelMarker: null,
   _clearTimer: null,
-  _onDeactivated: null,
 
   init(map) {
     this._map = map;
     this._onMouseDown = (e) => this._startDrawing(e.latlng);
     this._onMouseMove = (e) => this._updateDrawing(e.latlng);
     this._onMouseUp = () => this._finishDrawing();
+
+    // Pane dédiée, au-dessus de tout le reste (Métro, UrbIS Topo, Plans
+    // patrimoine...) pour que la mesure soit toujours visible quel que soit
+    // l'ordre d'ajout de ces couches. pointer-events:none : elle ne doit
+    // jamais intercepter le clic qui démarre une mesure suivante.
+    const pane = map.createPane('amgtMeasurePane');
+    pane.style.zIndex = 650;
+    pane.style.pointerEvents = 'none';
+
+    const container = map.getContainer();
+    container.addEventListener('pointerdown', (e) => {
+      if (this._active && container.setPointerCapture) {
+        try { container.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      }
+    });
   },
 
   isActive() {
@@ -66,19 +88,23 @@ const AMGT4CEM_MeasureTool = {
     this._drawing = true;
 
     this._line = L.polyline([latlng, latlng], {
+      pane: 'amgtMeasurePane',
       color: '#d32f2f',
       weight: 2,
       dashArray: '5,5',
     }).addTo(this._map);
 
     this._circle = L.circle(latlng, {
+      pane: 'amgtMeasurePane',
       radius: 0,
       color: '#d32f2f',
       weight: 2,
-      fillOpacity: 0.05,
+      fillOpacity: 0.08,
     }).addTo(this._map);
 
     this._labelMarker = this._buildLabelMarker(latlng, '0 m');
+
+    document.getElementById('amgt-screenshot-btn').classList.remove('amgt-hidden');
 
     this._map.on('mousemove', this._onMouseMove);
     document.addEventListener('mouseup', this._onMouseUp);
@@ -112,6 +138,7 @@ const AMGT4CEM_MeasureTool = {
     if (this._circle) { this._map.removeLayer(this._circle); this._circle = null; }
     if (this._labelMarker) { this._map.removeLayer(this._labelMarker); this._labelMarker = null; }
     this._center = null;
+    document.getElementById('amgt-screenshot-btn').classList.add('amgt-hidden');
   },
 
   _formatDistance(meters) {
@@ -122,13 +149,14 @@ const AMGT4CEM_MeasureTool = {
     const span = document.createElement('span');
     span.className = 'amgt-measure-label__text';
     span.textContent = text;
-    return L.divIcon({ className: 'amgt-measure-label', html: span });
+    return L.divIcon({ className: 'amgt-measure-label', pane: 'amgtMeasurePane', html: span });
   },
 
   _buildLabelMarker(latlng, text) {
     return L.marker(latlng, {
       icon: this._buildLabelIcon(text),
       interactive: false,
+      pane: 'amgtMeasurePane',
     }).addTo(this._map);
   },
 };
