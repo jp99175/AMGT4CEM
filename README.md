@@ -116,7 +116,11 @@ fichier `Metro.json` (sans quitter la page).
     disparition, l'image est effacée du presse-papier, pour ne pas y
     laisser traîner une capture oubliée. Cercle et segment sont en
     magenta (`#f50057`), une couleur qui tranche aussi bien sur le fond de
-    carte que sur les couches orangées (Plans patrimoine) déjà utilisées.
+    carte que sur les couches orangées (Plans patrimoine) déjà utilisées. La
+    cote (l'étiquette de distance) est toujours positionnée légèrement
+    au-delà du bord du cercle, dans le prolongement du rayon, et grandit à
+    l'opposé de celui-ci quelle que soit sa direction : elle n'est donc
+    jamais coupée par le trait ou le remplissage du cercle.
     Le glisser-déposer et le pincer-zoomer de la
     carte sont désactivés tant que l'outil est actif, pour que ces gestes
     de positionnement ne déplacent/zooment pas la vue. Fonctionne aussi
@@ -130,6 +134,19 @@ fichier `Metro.json` (sans quitter la page).
     SVG (`preferCanvas`, voir `src/app.js`) : la capture d'écran s'est
     montrée peu fiable avec le SVG de Leaflet en usage réel (couches ou
     éléments de la mesure absents de l'image bien que visibles à l'écran).
+
+    La capture ne redessine pas toute la carte à chaque mesure : régénérer
+    l'image entière (tuiles + couches) via `html2canvas` à chaque fois s'est
+    révélé peu fiable selon le réseau du moment (des tuiles pourtant bien
+    visibles à l'écran pouvaient manquer dans l'image, `useCORS` forçant une
+    nouvelle requête réseau indépendante de la tuile déjà chargée). Le fond
+    de carte n'est donc capturé qu'**une fois par activation** de l'outil
+    (réutilisé pour toutes les mesures suivantes tant qu'on reste actif, le
+    glisser/zoom étant désactivés entre-temps) ; seuls le cercle, le
+    segment, le point central et la cote — dont la géométrie exacte est
+    déjà connue — sont redessinés à **chaque** capture directement en
+    Canvas 2D (sans passer par `html2canvas`, donc sans dépendance réseau),
+    puis composés par-dessus ce fond.
     Activer **✚ Ajouter un point** désactive **📏 Mesurer** et inversement
     (un seul outil actif à la fois). Voir `src/measureTool.js` et
     `src/screenshotTool.js`.

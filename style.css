@@ -662,7 +662,11 @@ html, body {
   padding: 1px 5px;
   border-radius: 2px;
   box-shadow: 0 0 2px rgba(0,0,0,0.4);
-  transform: translate(8px, -8px);
+  /* transform: translate(...) posé dynamiquement en JS (measureTool.js,
+     _buildLabelIcon) : le point d'ancrage est déjà décalé au-delà du bord
+     du cercle (_computeLabelPlacement), et ce transform ancre le coin de
+     l'étiquette le plus proche du cercle sur ce point pour qu'elle
+     grandisse à l'opposé du cercle, jamais en repli dessus. */
 }
 
 /* Point central du cercle, visible dès le 1er geste (avant même que le

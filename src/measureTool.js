@@ -23,6 +23,17 @@
  * presse-papier est effacée si elle n'a pas été sauvegardée entre-temps
  * (clearClipboardIfUnsaved).
  *
+ * Cette capture ne redessine PAS toute la carte à chaque mesure : un fond
+ * (tuiles + couches) n'est capturé qu'une fois par activation de l'outil
+ * (screenshotTool.js, _ensureBackground), réutilisé pour toutes les mesures
+ * suivantes tant qu'on reste actif (le glisser/pincer-zoomer étant désactivé
+ * pendant ce temps, ce fond ne peut pas devenir obsolète). Seuls le cercle,
+ * le segment, le point central et la cote de LA mesure courante sont
+ * redessinés à chaque capture, directement en Canvas 2D (drawOverlayOnContext
+ * ci-dessous) à partir de leur géométrie déjà connue — jamais via un nouveau
+ * rendu DOM/réseau, donc jamais perdus si le réseau est capricieux au moment
+ * de la capture.
+ *
  * Le cercle et le segment sont reconstruits une dernière fois, à neuf, au
  * moment du relâchement (_freezeShapes) plutôt que de garder les mêmes
  * objets mutés en direct pendant tout le geste : sur un appareil réel
@@ -51,6 +62,16 @@
  * vers le haut par rapport au point de contact : sinon le doigt cache
  * lui-même le centre/la cote/le bord du cercle pendant qu'on les
  * positionne. Pas de décalage à la souris (le curseur, fin, ne cache rien).
+ *
+ * La cote (l'étiquette de distance) n'est jamais positionnée pile sur le
+ * bord du cercle (où son fond blanc la ferait apparaître "coupée" par le
+ * trait du cercle) : _computeLabelPlacement calcule un point décalé
+ * au-delà du bord, dans le prolongement du rayon, et une direction
+ * (dirX/dirY) utilisée pour ancrer le coin de l'étiquette le plus proche du
+ * cercle sur ce point — l'étiquette grandit alors toujours vers l'extérieur,
+ * jamais en repli sur le cercle. Même logique utilisée pour l'étiquette
+ * HTML en direct (_buildLabelIcon, transform CSS dynamique) et pour la
+ * cote redessinée à la capture (drawOverlayOnContext).
  */
 const AMGT4CEM_MeasureTool = {
   _map: null,
@@ -72,6 +93,9 @@ const AMGT4CEM_MeasureTool = {
   // Décalage (px écran) au-dessus du point de contact tactile, pour que le
   // doigt ne cache pas ce qu'il est en train de positionner.
   _touchOffsetPx: 60,
+  // Décalage (px écran) entre le bord du cercle et le point d'ancrage de la
+  // cote, pour qu'elle ne soit jamais visuellement coupée par le cercle.
+  _labelMarginPx: 14,
 
   init(map) {
     this._map = map;
@@ -109,6 +133,10 @@ const AMGT4CEM_MeasureTool = {
     if (this._active) return;
     this._active = true;
     this._state = 'idle';
+    // Le fond mis en cache pour la capture (screenshotTool.js) ne doit
+    // jamais survivre d'une activation à l'autre : la vue a pu changer
+    // (pan/zoom, couches) pendant que l'outil était inactif.
+    AMGT4CEM_ScreenshotTool.invalidateBackground();
     this._map.dragging.disable();
     if (this._map.tap) this._map.tap.disable();
     if (this._map.touchZoom) this._map.touchZoom.disable();
@@ -140,6 +168,7 @@ const AMGT4CEM_MeasureTool = {
     this._pointerId = null;
     this._state = 'idle';
     this._clearMeasurement();
+    AMGT4CEM_ScreenshotTool.invalidateBackground();
   },
 
   toggle() {
@@ -204,7 +233,8 @@ const AMGT4CEM_MeasureTool = {
         weight: 2,
         fillOpacity: 0.08,
       }).addTo(this._map);
-      this._labelMarker = this._buildLabelMarker(latlng, '0 m');
+      const placement = this._computeLabelPlacement(this._center, latlng);
+      this._labelMarker = this._buildLabelMarker(placement.anchorLatLng, '0 m', placement.dirX, placement.dirY);
       document.getElementById('amgt-screenshot-btn').classList.remove('amgt-hidden');
       this._state = 'draggingRadius';
     }
@@ -219,8 +249,9 @@ const AMGT4CEM_MeasureTool = {
       this._line.setLatLngs([this._center, latlng]);
       this._circle.setLatLng(this._center);
       this._circle.setRadius(radiusMeters);
-      this._labelMarker.setLatLng(latlng);
-      this._labelMarker.setIcon(this._buildLabelIcon(this._formatDistance(radiusMeters)));
+      const placement = this._computeLabelPlacement(this._center, latlng);
+      this._labelMarker.setLatLng(placement.anchorLatLng);
+      this._labelMarker.setIcon(this._buildLabelIcon(this._formatDistance(radiusMeters), placement.dirX, placement.dirY));
     }
   },
 
@@ -280,6 +311,121 @@ const AMGT4CEM_MeasureTool = {
     return meters >= 1000 ? `${(meters / 1000).toFixed(2)} km` : `${meters.toFixed(1)} m`;
   },
 
+  /** Voir l'en-tête du fichier : point d'ancrage de la cote décalé au-delà
+   * du bord du cercle (dans le prolongement du rayon), et direction
+   * (dirX/dirY, vecteur unitaire en pixels écran) utilisée par l'appelant
+   * pour ancrer le coin de l'étiquette le plus proche du cercle sur ce
+   * point plutôt que de centrer l'étiquette dessus. */
+  _computeLabelPlacement(centerLatLng, edgeLatLng) {
+    const map = this._map;
+    const c = map.latLngToContainerPoint(centerLatLng);
+    const e = map.latLngToContainerPoint(edgeLatLng);
+    let dx = e.x - c.x;
+    let dy = e.y - c.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1e-6) {
+      // Rayon nul (tout début du 2e geste) : direction par défaut, vers le
+      // haut, en attendant que l'utilisateur commence à déplacer le doigt.
+      dx = 0;
+      dy = -1;
+    } else {
+      dx /= len;
+      dy /= len;
+    }
+    const anchorPoint = L.point(e.x + dx * this._labelMarginPx, e.y + dy * this._labelMarginPx);
+    return {
+      anchorLatLng: map.containerPointToLatLng(anchorPoint),
+      dirX: dx,
+      dirY: dy,
+    };
+  },
+
+  /** -100/0/-50 (%) : traduit une composante de direction (dirX ou dirY) en
+   * décalage CSS translate() pour que l'étiquette grandisse à l'opposé du
+   * cercle plutôt que de se replier dessus (voir en-tête du fichier). */
+  _dirPercent(v) {
+    if (v > 0.15) return 0;
+    if (v < -0.15) return -100;
+    return -50;
+  },
+
+  /** Redessine directement (Canvas 2D, pas html2canvas) le cercle, le
+   * segment, le point central et la cote de la mesure courante sur un
+   * contexte déjà mis à l'échelle pixels CSS — voir screenshotTool.js,
+   * captureToClipboard/_buildCompositeBlob : ceci compose la capture sans
+   * jamais dépendre du réseau (pas de nouveau rendu DOM/tuiles), donc ne
+   * peut jamais perdre ces éléments même si le fond de carte, lui, a du mal
+   * à se recharger. */
+  drawOverlayOnContext(ctx) {
+    if (!this._center || !this._circle || !this._line) return;
+    const map = this._map;
+    const color = '#f50057';
+    const centerPt = map.latLngToContainerPoint(this._center);
+    const [, endLatLng] = this._line.getLatLngs();
+    const endPt = map.latLngToContainerPoint(endLatLng);
+    const radiusPx = Math.hypot(endPt.x - centerPt.x, endPt.y - centerPt.y);
+
+    ctx.save();
+
+    // Cercle
+    ctx.beginPath();
+    ctx.arc(centerPt.x, centerPt.y, radiusPx, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(245, 0, 87, 0.08)';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+
+    // Segment pointillé (centre -> bord)
+    ctx.beginPath();
+    ctx.setLineDash([5, 5]);
+    ctx.moveTo(centerPt.x, centerPt.y);
+    ctx.lineTo(endPt.x, endPt.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Point central
+    ctx.beginPath();
+    ctx.arc(centerPt.x, centerPt.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+
+    // Cote : même logique de décalage/ancrage que l'étiquette HTML en
+    // direct (_computeLabelPlacement/_dirPercent), pour un rendu cohérent.
+    const placement = this._computeLabelPlacement(this._center, endLatLng);
+    const anchorPt = map.latLngToContainerPoint(placement.anchorLatLng);
+    const text = this._formatDistance(this._circle.getRadius());
+    ctx.font = 'bold 12px system-ui, -apple-system, "Segoe UI", sans-serif';
+    const textWidth = ctx.measureText(text).width;
+    const textHeight = 12;
+    const padX = 5;
+    const padY = 3;
+    const boxW = textWidth + padX * 2;
+    const boxH = textHeight + padY * 2;
+
+    let boxX;
+    if (placement.dirX > 0.15) boxX = anchorPt.x;
+    else if (placement.dirX < -0.15) boxX = anchorPt.x - boxW;
+    else boxX = anchorPt.x - boxW / 2;
+
+    let boxY;
+    if (placement.dirY > 0.15) boxY = anchorPt.y;
+    else if (placement.dirY < -0.15) boxY = anchorPt.y - boxH;
+    else boxY = anchorPt.y - boxH / 2;
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.fillStyle = color;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, boxX + padX, boxY + boxH / 2);
+
+    ctx.restore();
+  },
+
   _buildDotMarker(latlng) {
     const dot = document.createElement('span');
     dot.className = 'amgt-measure-dot';
@@ -290,16 +436,22 @@ const AMGT4CEM_MeasureTool = {
     }).addTo(this._map);
   },
 
-  _buildLabelIcon(text) {
+  /** dirX/dirY (voir _computeLabelPlacement) : ancre dynamiquement le coin
+   * de l'étiquette le plus proche du cercle sur son point de positionnement
+   * (transform CSS), pour qu'elle grandisse à l'opposé du cercle et ne soit
+   * jamais coupée par son trait/remplissage, quelle que soit la direction
+   * du rayon. */
+  _buildLabelIcon(text, dirX, dirY) {
     const span = document.createElement('span');
     span.className = 'amgt-measure-label__text';
     span.textContent = text;
+    span.style.transform = `translate(${this._dirPercent(dirX)}%, ${this._dirPercent(dirY)}%)`;
     return L.divIcon({ className: 'amgt-measure-label', pane: 'amgtMeasurePane', html: span });
   },
 
-  _buildLabelMarker(latlng, text) {
+  _buildLabelMarker(latlng, text, dirX, dirY) {
     return L.marker(latlng, {
-      icon: this._buildLabelIcon(text),
+      icon: this._buildLabelIcon(text, dirX, dirY),
       interactive: false,
       pane: 'amgtMeasurePane',
     }).addTo(this._map);
