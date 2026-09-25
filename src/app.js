@@ -13,6 +13,17 @@
     // droite (voir searchTool.js). Le zoom reste possible à la molette, au
     // pincement et au double-clic.
     zoomControl: false,
+    // Rendu Canvas plutôt que SVG pour toutes les couches vectorielles
+    // (Métro, UrbIS Topo, Plans patrimoine, mesure...) : html2canvas
+    // (screenshotTool.js) s'est montré peu fiable pour capturer du SVG
+    // Leaflet en conditions réelles (tuiles de fond chargées, zoom serré,
+    // beaucoup d'objets à l'écran) — cercle/segment de mesure ou couches
+    // entières absents de la capture bien que visibles à l'écran — alors
+    // qu'un <canvas> se recopie pixel pour pixel sans ambiguïté. Popups et
+    // interactivité (clic sur une station, un tunnel...) restent
+    // pleinement fonctionnels avec ce mode, Leaflet gérant lui-même la
+    // détection de clic sur les couches canvas.
+    preferCanvas: true,
     // Attribution ajoutée "à la main" juste après (et non automatiquement
     // ici) : pour un coin bas, Leaflet insère chaque nouveau contrôle
     // au-dessus des précédents (voir Control.addTo), donc l'ordre d'ajout

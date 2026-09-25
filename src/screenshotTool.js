@@ -35,6 +35,15 @@
  * presse-papier d'image (ou refuse la permission), seule cette copie
  * échoue silencieusement ; la sauvegarde via le bouton "Capture" reste
  * disponible indépendamment.
+ *
+ * Rendu Canvas (voir app.js, preferCanvas) plutôt que SVG pour les couches
+ * (Métro, UrbIS Topo, Plans patrimoine, mesure...) : plus fiable pour
+ * html2canvas, mais Leaflet repeint son canvas de façon asynchrone (au
+ * prochain requestAnimationFrame) après un setRadius()/setLatLngs() —
+ * capturer de façon strictement synchrone au relâchement risquait donc de
+ * lire le canvas AVANT que le cercle/segment n'y soit effectivement
+ * dessiné (2 requestAnimationFrame d'attente ci-dessous avant de lancer
+ * html2canvas, pour laisser ce repaint se terminer).
  */
 const AMGT4CEM_ScreenshotTool = {
   _map: null,
@@ -49,7 +58,8 @@ const AMGT4CEM_ScreenshotTool = {
   /** Appelé par measureTool.js au moment précis du 2e relâchement. */
   captureToClipboard() {
     this._saved = false;
-    this._blobPromise = html2canvas(this._map.getContainer(), { useCORS: true, logging: false })
+    this._blobPromise = this._waitForPaint()
+      .then(() => html2canvas(this._map.getContainer(), { useCORS: true, logging: false }))
       .then((canvas) => new Promise((resolve) => canvas.toBlob(resolve, 'image/png')));
 
     if (navigator.clipboard && window.ClipboardItem) {
@@ -59,6 +69,12 @@ const AMGT4CEM_ScreenshotTool = {
     }
 
     this._blobPromise.catch((err) => console.error('[AMGT4CEM] Capture d\'écran impossible :', err));
+  },
+
+  /** Deux requestAnimationFrame : technique standard pour attendre qu'un
+   * repaint planifié (ici, le canvas Leaflet) ait bien eu lieu. */
+  _waitForPaint() {
+    return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   },
 
   /** Appelé par measureTool.js quand la mesure disparaît sans avoir été sauvegardée. */

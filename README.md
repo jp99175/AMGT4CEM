@@ -121,12 +121,13 @@ fichier `Metro.json` (sans quitter la page).
     tactile ne déclenche pas). Au doigt, le point réellement positionné est
     décalé de 60 px vers le haut par rapport au point de contact, pour que
     le doigt ne cache pas ce qu'il est en train de placer (pas de décalage
-    à la souris). La capture d'une mesure figée (bouton **📷 Capture**) met
-    en pause son délai de disparition de 3 secondes pendant le rendu, pour
-    un résultat fiable même si ce rendu prend un instant sur un appareil
-    mobile moins puissant. Activer
-    **✚ Ajouter un point** désactive **📏 Mesurer** et inversement (un seul
-    outil actif à la fois). Voir `src/measureTool.js` et
+    à la souris). Toutes les couches vectorielles (Métro, UrbIS Topo,
+    Plans patrimoine, mesure...) sont dessinées sur `<canvas>` plutôt qu'en
+    SVG (`preferCanvas`, voir `src/app.js`) : la capture d'écran s'est
+    montrée peu fiable avec le SVG de Leaflet en usage réel (couches ou
+    éléments de la mesure absents de l'image bien que visibles à l'écran).
+    Activer **✚ Ajouter un point** désactive **📏 Mesurer** et inversement
+    (un seul outil actif à la fois). Voir `src/measureTool.js` et
     `src/screenshotTool.js`.
 
 Voir section 6 ci-dessous pour le détail du stockage (micro-base de
