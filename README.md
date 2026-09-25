@@ -107,20 +107,25 @@ fichier `Metro.json` (sans quitter la page).
     d'être tracée, plutôt qu'à un clic ultérieur, évite toute image
     incomplète ou incohérente avec ce qui a réellement été mesuré. Rien
     n'est écrit où que ce soit (ni presse-papier, ni disque) à ce stade. Le
-    bouton **💾** est le SEUL moment où cette image quitte la mémoire :
-    il déclenche le téléchargement du fichier PNG déjà capturé, sans
-    refaire de rendu. Le bouton, le cercle, le segment et la cote
-    disparaissent tous ensemble 4 secondes après ce 2e relâchement (une
-    nouvelle pression pendant ce délai recommence directement une nouvelle
-    mesure) ; si vous n'avez pas cliqué sur "💾" avant leur disparition,
-    l'image capturée est simplement abandonnée (jamais écrite nulle part).
-    Cercle et segment sont en
+    bouton **💾**, sous "☰ Carte" (pas dans la barre d'outils, il
+    n'apparaît qu'avec une mesure en cours), est le SEUL moment où cette
+    image quitte la mémoire : il déclenche le téléchargement du fichier PNG
+    déjà capturé, sans refaire de rendu. Le bouton, le cercle, le segment
+    et la cote disparaissent tous ensemble 4 secondes après ce 2e
+    relâchement (une nouvelle pression pendant ce délai recommence
+    directement une nouvelle mesure) ; si vous n'avez pas cliqué sur "💾"
+    avant leur disparition, l'image capturée est simplement abandonnée
+    (jamais écrite nulle part). Cercle et segment sont en
     magenta (`#f50057`), une couleur qui tranche aussi bien sur le fond de
-    carte que sur les couches orangées (Plans patrimoine) déjà utilisées. La
-    cote (l'étiquette de distance) est toujours positionnée légèrement
-    au-delà du bord du cercle, dans le prolongement du rayon, et grandit à
-    l'opposé de celui-ci quelle que soit sa direction : elle n'est donc
-    jamais coupée par le trait ou le remplissage du cercle.
+    carte que sur les couches orangées (Plans patrimoine) déjà utilisées. Le
+    point de départ (centre du cercle) est un anneau avec un réticule (pas
+    un point plein), avec un pixel transparent à l'intersection des deux
+    lignes qui le composent, et un léger halo blanc pour rester lisible sur
+    un fond chargé. La cote (l'étiquette de distance) est toujours
+    positionnée légèrement au-delà du bord du cercle, dans le prolongement
+    du rayon, et grandit à l'opposé de celui-ci quelle que soit sa
+    direction : elle n'est donc jamais coupée par le trait ou le
+    remplissage du cercle.
     Le glisser-déposer et le pincer-zoomer de la
     carte sont désactivés tant que l'outil est actif, pour que ces gestes
     de positionnement ne déplacent/zooment pas la vue. Fonctionne aussi

@@ -53,6 +53,17 @@ html, body {
   border-color: #2c7a3d;
 }
 
+/* --- Bouton "💾" (screenshotTool.js) --- */
+/* Sous "☰ Carte" (1er bouton de la barre d'outils), pas dans la barre
+   elle-même : elle n'apparaît/disparaît qu'avec une mesure en cours, la
+   loger dans la barre l'aurait fait défiler les autres boutons. */
+#amgt-screenshot-btn {
+  position: absolute;
+  top: 52px;
+  left: 10px;
+  z-index: 1000;
+}
+
 /* --- Recherche (remplace le contrôle de zoom, haut droite) --- */
 #amgt-search-box {
   position: absolute;
@@ -681,11 +692,10 @@ html, body {
 
 .amgt-measure-dot {
   display: block;
-  width: 10px;
-  height: 10px;
-  margin: -5px 0 0 -5px;
-  border-radius: 50%;
-  background: #f50057;
-  border: 2px solid #fff;
-  box-shadow: 0 0 2px rgba(0,0,0,0.5);
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  /* Halo blanc (au lieu d'un fond plein) pour rester lisible sur un fond de
+     carte chargé, sans cacher le pixel transparent au centre du réticule. */
+  filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff);
 }

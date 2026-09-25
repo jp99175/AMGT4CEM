@@ -388,14 +388,31 @@ const AMGT4CEM_MeasureTool = {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Point central
+    // Point de départ : anneau + réticule, même géométrie que _buildReticleSvg
+    // (rayon 5, réticule jusqu'à 6px du centre, espace 1px de chaque côté
+    // à l'intersection) — rendu identique en direct et à la capture.
+    // ctx.lineCap reste 'butt' (défaut) pour la même raison que dans
+    // _buildReticleSvg : un capuchon rond repeindrait le pixel transparent
+    // voulu à l'intersection.
+    ctx.save();
+    ctx.shadowColor = '#fff';
+    ctx.shadowBlur = 2;
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = color;
     ctx.beginPath();
     ctx.arc(centerPt.x, centerPt.y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#fff';
     ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(centerPt.x - 6, centerPt.y);
+    ctx.lineTo(centerPt.x - 1, centerPt.y);
+    ctx.moveTo(centerPt.x + 1, centerPt.y);
+    ctx.lineTo(centerPt.x + 6, centerPt.y);
+    ctx.moveTo(centerPt.x, centerPt.y - 6);
+    ctx.lineTo(centerPt.x, centerPt.y - 1);
+    ctx.moveTo(centerPt.x, centerPt.y + 1);
+    ctx.lineTo(centerPt.x, centerPt.y + 6);
+    ctx.stroke();
+    ctx.restore();
 
     // Cote : même logique de décalage/ancrage que l'étiquette HTML en
     // direct (_computeLabelPlacement/_dirPercent), pour un rendu cohérent.
@@ -431,13 +448,39 @@ const AMGT4CEM_MeasureTool = {
   },
 
   _buildDotMarker(latlng) {
-    const dot = document.createElement('span');
-    dot.className = 'amgt-measure-dot';
     return L.marker(latlng, {
-      icon: L.divIcon({ className: 'amgt-measure-dot-icon', pane: 'amgtMeasurePane', html: dot }),
+      icon: L.divIcon({ className: 'amgt-measure-dot-icon', pane: 'amgtMeasurePane', html: this._buildReticleSvg() }),
       interactive: false,
       pane: 'amgtMeasurePane',
     }).addTo(this._map);
+  },
+
+  /** Point de départ : un anneau + un réticule (2 lignes), pas un point
+   * plein — plus lisible sur un fond de carte chargé, et laisse un pixel
+   * vide (transparent) à l'intersection des deux lignes qui composent le
+   * réticule (le petit espace entre chaque paire de segments ci-dessous).
+   * Même géométrie (rayon 5, réticule jusqu'à 6px du centre, espace 1px de
+   * chaque côté) que le point central redessiné dans la capture
+   * (drawOverlayOnContext, plus bas) — rendu identique en direct et à la
+   * capture. */
+  _buildReticleSvg() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'amgt-measure-dot');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('viewBox', '0 0 14 14');
+    svg.setAttribute('aria-hidden', 'true');
+    // stroke-linecap volontairement absent (donc "butt", par défaut) : un
+    // capuchon "round" dépasserait de la moitié de l'épaisseur du trait
+    // au-delà de l'extrémité indiquée, et repeindrait le pixel transparent
+    // voulu à l'intersection au centre.
+    svg.innerHTML =
+      '<circle cx="7" cy="7" r="5" fill="none" stroke="#f50057" stroke-width="1.6" />' +
+      '<line x1="1" y1="7" x2="6" y2="7" stroke="#f50057" stroke-width="1.6" />' +
+      '<line x1="8" y1="7" x2="13" y2="7" stroke="#f50057" stroke-width="1.6" />' +
+      '<line x1="7" y1="1" x2="7" y2="6" stroke="#f50057" stroke-width="1.6" />' +
+      '<line x1="7" y1="8" x2="7" y2="13" stroke="#f50057" stroke-width="1.6" />';
+    return svg;
   },
 
   /** dirX/dirY (voir _computeLabelPlacement) : ancre dynamiquement le coin

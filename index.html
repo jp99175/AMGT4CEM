@@ -23,10 +23,14 @@
   <button id="amgt-measure-btn" class="amgt-btn" title="Mesurer un rayon : presser-glisser-relâcher">
     📏
   </button>
-  <button id="amgt-screenshot-btn" class="amgt-btn amgt-hidden" title="Enregistrer la capture de la mesure (image PNG)">
-    💾
-  </button>
 </div>
+
+<!-- Sous "☰ Carte" (pas dans la barre d'outils, pour ne pas la faire
+     déborder pendant l'affichage d'une mesure) : visible seulement le
+     temps d'une mesure (measureTool.js, _hideDelayMs). -->
+<button id="amgt-screenshot-btn" class="amgt-btn amgt-hidden" title="Enregistrer la capture de la mesure (image PNG)">
+  💾
+</button>
 
 <!-- Menu : fond de carte, couches visibles, réinitialisation de la vue -->
 <div id="amgt-map-menu" class="amgt-panel amgt-hidden">
