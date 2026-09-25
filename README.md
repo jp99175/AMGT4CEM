@@ -89,17 +89,23 @@ fichier `Metro.json` (sans quitter la page).
     l'URL d'un service externe (fond UrbIS, orthophotos, géocodeur
     d'adresses) si celui-ci change d'adresse un jour, sans devoir modifier
     le code. Voir section 3bis ci-dessous.
-12. Bouton **📏 Mesurer** : deux clics, pas de cliquer-glisser. Premier clic
-    sur la carte : fige le centre d'un cercle. Déplacez ensuite la souris
-    (sans maintenir de bouton) : le rayon se prévisualise en direct et suit
-    le curseur (segment pointillé + cote au bout du segment + cercle).
-    Second clic : fige le rayon. La mesure reste affichée 3 secondes puis
-    disparaît automatiquement (un 3e clic recommence directement une
-    nouvelle mesure). Le bouton **📷 Capture** n'apparaît que pendant que le
-    cercle et la cote sont visibles (du premier clic à la fin de ce délai
-    de 3 secondes) : cliquez dessus dans cette fenêtre pour en garder une
-    image (PNG téléchargé directement, capture de la carte telle
-    qu'affichée à l'écran à cet instant, mesure comprise). Activer
+12. Bouton **📏 Mesurer** : effet dynamique en deux gestes
+    presser-glisser-relâcher. Pressez sur la carte pour poser le centre
+    d'un cercle : tant que le bouton reste enfoncé, le déplacer suit le
+    curseur en direct ; relâchez pour le figer. Pressez à nouveau pour
+    tracer le rayon depuis ce centre : tant que le bouton reste enfoncé,
+    le point d'arrivée suit le curseur en direct (segment pointillé + cote
+    au bout du segment + cercle qui grandit/rétrécit avec lui) ; relâchez
+    pour le figer. La mesure complète reste ensuite affichée 3 secondes
+    puis disparaît automatiquement (une nouvelle pression pendant ce délai
+    recommence directement une nouvelle mesure). Le bouton **📷 Capture**
+    n'apparaît que pendant que le cercle et la cote sont visibles (du
+    premier geste à la fin de ce délai de 3 secondes) : cliquez dessus
+    dans cette fenêtre pour en garder une image (PNG téléchargé
+    directement, capture de la carte telle qu'affichée à l'écran à cet
+    instant, mesure comprise). Le glisser-déposer de la carte (pan) est
+    désactivé tant que l'outil est actif, pour que ces gestes de
+    positionnement ne déplacent pas la vue. Activer
     **✚ Ajouter un point** désactive **📏 Mesurer** et inversement (un seul
     outil actif à la fois). Voir `src/measureTool.js` et
     `src/screenshotTool.js`.

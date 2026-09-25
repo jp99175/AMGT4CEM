@@ -664,3 +664,24 @@ html, body {
   box-shadow: 0 0 2px rgba(0,0,0,0.4);
   transform: translate(8px, -8px);
 }
+
+/* Point central du cercle, visible dès le 1er geste (avant même que le
+   rayon n'existe) et pendant tout le tracé du rayon. */
+.amgt-measure-dot-icon {
+  background: transparent;
+  border: none;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.amgt-measure-dot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: #d32f2f;
+  border: 2px solid #fff;
+  box-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
