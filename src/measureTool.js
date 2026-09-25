@@ -1,28 +1,29 @@
 /**
- * Outil "📏 Mesurer" : cliquer-maintenir sur la carte pose le centre d'un
- * cercle, glisser trace son rayon (segment + cote au bout du segment +
- * cercle), relâcher fige la mesure. Le tout reste affiché 3 secondes après
- * le relâchement (ou la fin du clic, ex. sortie du curseur hors carte) puis
- * disparaît — le bouton "📷 Capture" (screenshotTool.js) n'est lui-même
- * visible que pendant que la mesure l'est, pour permettre d'en garder une
- * image avant qu'elle ne disparaisse.
+ * Outil "📏 Mesurer" : deux clics, pas de cliquer-glisser (plus fiable —
+ * un cliquer-glisser continu s'est révélé peu fiable en usage réel, voir
+ * historique du commit).
  *
- * Comme AddPointTool, le mode reste actif (bouton "allumé") tant qu'on ne le
- * désactive pas explicitement, pour pouvoir enchaîner plusieurs mesures ;
- * activer cet outil désactive AddPointTool et vice-versa (un seul mode
- * d'interaction à la fois sur la carte).
+ * 1er clic : fige le centre du cercle à l'endroit cliqué.
+ * Déplacement (sans bouton enfoncé) : prévisualise le rayon en direct
+ * (segment pointillé + cote au bout du segment + cercle), qui suit le
+ * curseur.
+ * 2e clic : fige le rayon. La mesure reste affichée 3 secondes puis
+ * disparaît automatiquement — le bouton "📷 Capture" (screenshotTool.js)
+ * n'est lui-même visible que pendant que le cercle et la cote le sont
+ * (du 1er clic jusqu'à la fin de ce délai de 3 secondes), pour permettre
+ * d'en garder une image avant qu'elle ne disparaisse.
  *
- * Capture de pointeur (voir activate()) : sans elle, un tracé rapide à la
- * souris qui sort brièvement de la zone de la carte arrête de recevoir les
- * événements mousemove/mouseup (ils partent alors vers l'élément qui se
- * trouve sous le curseur à ce moment-là) et le tracé se fige au lieu de
- * suivre le relâchement — cela ne se voit pas avec un tracé simulé "lisse"
- * qui reste toujours dans les limites de la carte, seulement à l'usage réel.
+ * Un 3e clic recommence directement une nouvelle mesure (efface l'ancienne
+ * s'il en restait une). Comme AddPointTool, le mode reste actif (bouton
+ * "allumé") tant qu'on ne le désactive pas explicitement ; activer cet
+ * outil désactive AddPointTool et vice-versa (un seul mode d'interaction à
+ * la fois). Le glisser-déposer de la carte (pan/zoom) reste disponible
+ * pendant que l'outil est actif : un simple clic ne le déclenche pas.
  */
 const AMGT4CEM_MeasureTool = {
   _map: null,
   _active: false,
-  _drawing: false,
+  _state: 'idle', // 'idle' (attend le 1er clic) | 'awaitingRadius' (attend le 2e)
   _center: null,
   _line: null,
   _circle: null,
@@ -31,9 +32,6 @@ const AMGT4CEM_MeasureTool = {
 
   init(map) {
     this._map = map;
-    this._onMouseDown = (e) => this._startDrawing(e.latlng);
-    this._onMouseMove = (e) => this._updateDrawing(e.latlng);
-    this._onMouseUp = () => this._finishDrawing();
 
     // Pane dédiée, au-dessus de tout le reste (Métro, UrbIS Topo, Plans
     // patrimoine...) pour que la mesure soit toujours visible quel que soit
@@ -43,12 +41,13 @@ const AMGT4CEM_MeasureTool = {
     pane.style.zIndex = 650;
     pane.style.pointerEvents = 'none';
 
-    const container = map.getContainer();
-    container.addEventListener('pointerdown', (e) => {
-      if (this._active && container.setPointerCapture) {
-        try { container.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-      }
-    });
+    this._onMapClick = (e) => this._handleClick(e.latlng);
+    this._onMouseMove = (e) => this._updatePreview(e.latlng);
+    // Un clic pour poser le centre ou le rayon tombe souvent sur une
+    // station/un tunnel/un objet UrbIS Topo... qui ouvrirait sinon sa
+    // propre popup par-dessus la mesure : on la referme immédiatement tant
+    // que l'outil est actif.
+    this._onPopupOpen = (e) => e.popup.close();
   },
 
   isActive() {
@@ -58,22 +57,22 @@ const AMGT4CEM_MeasureTool = {
   activate() {
     if (this._active) return;
     this._active = true;
-    this._map.dragging.disable();
+    this._state = 'idle';
     this._map.getContainer().classList.add('amgt-placing-mode');
     document.getElementById('amgt-measure-btn').classList.add('amgt-btn--active');
-    this._map.on('mousedown', this._onMouseDown);
+    this._map.on('click', this._onMapClick);
+    this._map.on('popupopen', this._onPopupOpen);
   },
 
   deactivate() {
     if (!this._active) return;
     this._active = false;
-    this._map.dragging.enable();
     this._map.getContainer().classList.remove('amgt-placing-mode');
     document.getElementById('amgt-measure-btn').classList.remove('amgt-btn--active');
-    this._map.off('mousedown', this._onMouseDown);
+    this._map.off('click', this._onMapClick);
     this._map.off('mousemove', this._onMouseMove);
-    document.removeEventListener('mouseup', this._onMouseUp);
-    this._drawing = false;
+    this._map.off('popupopen', this._onPopupOpen);
+    this._state = 'idle';
     this._clearMeasurement();
   },
 
@@ -82,10 +81,15 @@ const AMGT4CEM_MeasureTool = {
     else this.activate();
   },
 
-  _startDrawing(latlng) {
+  _handleClick(latlng) {
+    if (this._state === 'idle') this._startCenter(latlng);
+    else this._finishRadius(latlng);
+  },
+
+  _startCenter(latlng) {
     this._clearMeasurement();
     this._center = latlng;
-    this._drawing = true;
+    this._state = 'awaitingRadius';
 
     this._line = L.polyline([latlng, latlng], {
       pane: 'amgtMeasurePane',
@@ -103,15 +107,13 @@ const AMGT4CEM_MeasureTool = {
     }).addTo(this._map);
 
     this._labelMarker = this._buildLabelMarker(latlng, '0 m');
-
     document.getElementById('amgt-screenshot-btn').classList.remove('amgt-hidden');
 
     this._map.on('mousemove', this._onMouseMove);
-    document.addEventListener('mouseup', this._onMouseUp);
   },
 
-  _updateDrawing(latlng) {
-    if (!this._drawing) return;
+  _updatePreview(latlng) {
+    if (this._state !== 'awaitingRadius') return;
     const radiusMeters = this._map.distance(this._center, latlng);
 
     this._line.setLatLngs([this._center, latlng]);
@@ -121,11 +123,10 @@ const AMGT4CEM_MeasureTool = {
     this._labelMarker.setIcon(this._buildLabelIcon(this._formatDistance(radiusMeters)));
   },
 
-  _finishDrawing() {
-    if (!this._drawing) return;
-    this._drawing = false;
+  _finishRadius(latlng) {
+    this._updatePreview(latlng);
+    this._state = 'idle';
     this._map.off('mousemove', this._onMouseMove);
-    document.removeEventListener('mouseup', this._onMouseUp);
 
     clearTimeout(this._clearTimer);
     this._clearTimer = setTimeout(() => this._clearMeasurement(), 3000);

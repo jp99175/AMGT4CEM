@@ -89,15 +89,17 @@ fichier `Metro.json` (sans quitter la page).
     l'URL d'un service externe (fond UrbIS, orthophotos, géocodeur
     d'adresses) si celui-ci change d'adresse un jour, sans devoir modifier
     le code. Voir section 3bis ci-dessous.
-12. Bouton **📏 Mesurer** : cliquez-maintenez sur la carte pour poser le
-    centre d'un cercle, glissez pour en tracer le rayon (segment pointillé
-    + cote au bout du segment + cercle), relâchez pour figer la mesure.
-    Elle reste affichée 3 secondes après le relâchement puis disparaît
-    automatiquement. Le bouton **📷 Capture** n'apparaît que pendant que le
-    cercle et la cote sont visibles (pendant le tracé et ces 3 secondes) :
-    cliquez dessus dans ce délai pour en garder une image (PNG téléchargé
-    directement, capture de la carte telle qu'affichée à l'écran à cet
-    instant, mesure comprise). Activer
+12. Bouton **📏 Mesurer** : deux clics, pas de cliquer-glisser. Premier clic
+    sur la carte : fige le centre d'un cercle. Déplacez ensuite la souris
+    (sans maintenir de bouton) : le rayon se prévisualise en direct et suit
+    le curseur (segment pointillé + cote au bout du segment + cercle).
+    Second clic : fige le rayon. La mesure reste affichée 3 secondes puis
+    disparaît automatiquement (un 3e clic recommence directement une
+    nouvelle mesure). Le bouton **📷 Capture** n'apparaît que pendant que le
+    cercle et la cote sont visibles (du premier clic à la fin de ce délai
+    de 3 secondes) : cliquez dessus dans cette fenêtre pour en garder une
+    image (PNG téléchargé directement, capture de la carte telle
+    qu'affichée à l'écran à cet instant, mesure comprise). Activer
     **✚ Ajouter un point** désactive **📏 Mesurer** et inversement (un seul
     outil actif à la fois). Voir `src/measureTool.js` et
     `src/screenshotTool.js`.
