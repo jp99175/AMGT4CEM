@@ -99,6 +99,11 @@ const AMGT4CEM_MeasureTool = {
   // Décalage (px écran) entre le bord du cercle et le point d'ancrage de la
   // cote, pour qu'elle ne soit jamais visuellement coupée par le cercle.
   _labelMarginPx: 14,
+  // Rayon (px écran) autour du centre dans lequel le segment n'est jamais
+  // tracé, pour ne pas traverser le réticule du point de départ (icône de
+  // 14px, encre la plus éloignée du centre à 6px — voir _buildReticleSvg) ;
+  // une petite marge au-delà de ces 6px.
+  _lineClearancePx: 7,
 
   init(map) {
     this._map = map;
@@ -223,7 +228,7 @@ const AMGT4CEM_MeasureTool = {
       this._centerMarker = this._buildDotMarker(latlng);
       this._state = 'draggingCenter';
     } else if (this._state === 'idleAwaitingRadius') {
-      this._line = L.polyline([this._center, latlng], {
+      this._line = L.polyline([this._trimLineStart(this._center, latlng), latlng], {
         pane: 'amgtMeasurePane',
         color: '#f50057',
         weight: 2,
@@ -249,7 +254,7 @@ const AMGT4CEM_MeasureTool = {
       this._centerMarker.setLatLng(latlng);
     } else if (this._state === 'draggingRadius') {
       const radiusMeters = this._map.distance(this._center, latlng);
-      this._line.setLatLngs([this._center, latlng]);
+      this._line.setLatLngs([this._trimLineStart(this._center, latlng), latlng]);
       this._circle.setLatLng(this._center);
       this._circle.setRadius(radiusMeters);
       const placement = this._computeLabelPlacement(this._center, latlng);
@@ -281,7 +286,7 @@ const AMGT4CEM_MeasureTool = {
     this._map.removeLayer(this._line);
     this._map.removeLayer(this._circle);
 
-    this._line = L.polyline([center, end], {
+    this._line = L.polyline([this._trimLineStart(center, end), end], {
       pane: 'amgtMeasurePane',
       color: '#f50057',
       weight: 2,
@@ -294,6 +299,24 @@ const AMGT4CEM_MeasureTool = {
       weight: 2,
       fillOpacity: 0.08,
     }).addTo(this._map);
+  },
+
+  /** Point de départ réel du segment tracé (voir _lineClearancePx) : décalé
+   * depuis le centre exact vers le bord, pour ne jamais traverser le
+   * réticule du point de départ. N'affecte que le tracé — le centre réel
+   * (this._center) reste utilisé pour le calcul de distance, le cercle et
+   * le réticule lui-même. Si tout le segment potentiel tient sous le
+   * réticule (tout début du geste), rien n'est tracé (segment nul). */
+  _trimLineStart(centerLatLng, edgeLatLng) {
+    const map = this._map;
+    const c = map.latLngToContainerPoint(centerLatLng);
+    const e = map.latLngToContainerPoint(edgeLatLng);
+    const dx = e.x - c.x;
+    const dy = e.y - c.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len <= this._lineClearancePx) return edgeLatLng;
+    const t = this._lineClearancePx / len;
+    return map.containerPointToLatLng(L.point(c.x + dx * t, c.y + dy * t));
   },
 
   _clearMeasurement() {
@@ -380,10 +403,18 @@ const AMGT4CEM_MeasureTool = {
     ctx.strokeStyle = color;
     ctx.stroke();
 
-    // Segment pointillé (centre -> bord)
+    // Segment pointillé (centre -> bord), sans traverser le réticule du
+    // point de départ (voir _trimLineStart) : même geometrie que le tracé
+    // en direct, radiusPx déjà calculé ci-dessus sert aussi de longueur.
+    const lineStart = radiusPx <= this._lineClearancePx
+      ? endPt
+      : {
+        x: centerPt.x + ((endPt.x - centerPt.x) * this._lineClearancePx) / radiusPx,
+        y: centerPt.y + ((endPt.y - centerPt.y) * this._lineClearancePx) / radiusPx,
+      };
     ctx.beginPath();
     ctx.setLineDash([5, 5]);
-    ctx.moveTo(centerPt.x, centerPt.y);
+    ctx.moveTo(lineStart.x, lineStart.y);
     ctx.lineTo(endPt.x, endPt.y);
     ctx.stroke();
     ctx.setLineDash([]);
