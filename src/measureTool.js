@@ -86,7 +86,16 @@ const AMGT4CEM_MeasureTool = {
     this._map.dragging.disable();
     if (this._map.tap) this._map.tap.disable();
     if (this._map.touchZoom) this._map.touchZoom.disable();
-    this._map.getContainer().classList.add('amgt-placing-mode');
+    const container = this._map.getContainer();
+    container.classList.add('amgt-placing-mode');
+    // Leaflet ne met touch-action:none sur le conteneur (nécessaire pour
+    // qu'un geste tactile soit entièrement géré en JS, sans que le
+    // navigateur ne le récupère en cours de route pour son propre
+    // défilement/zoom — ce qui figeait le point en plein milieu du geste
+    // au lieu d'attendre le relâchement) que lorsque son propre dragging/
+    // touchZoom est actif ; comme on vient de les désactiver ci-dessus, on
+    // le repose nous-mêmes explicitement.
+    container.style.touchAction = 'none';
     document.getElementById('amgt-measure-btn').classList.add('amgt-btn--active');
     this._map.on('popupopen', this._onPopupOpen);
   },
@@ -97,7 +106,9 @@ const AMGT4CEM_MeasureTool = {
     this._map.dragging.enable();
     if (this._map.tap) this._map.tap.enable();
     if (this._map.touchZoom) this._map.touchZoom.enable();
-    this._map.getContainer().classList.remove('amgt-placing-mode');
+    const container = this._map.getContainer();
+    container.classList.remove('amgt-placing-mode');
+    container.style.touchAction = '';
     document.getElementById('amgt-measure-btn').classList.remove('amgt-btn--active');
     this._map.off('popupopen', this._onPopupOpen);
     this._pointerId = null;
