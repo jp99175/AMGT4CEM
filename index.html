@@ -20,6 +20,12 @@
   <button id="amgt-add-point-btn" class="amgt-btn" title="Ajouter un point">
     ✚ Ajouter un point
   </button>
+  <button id="amgt-measure-btn" class="amgt-btn" title="Mesurer un rayon : cliquer-maintenir puis glisser">
+    📏 Mesurer
+  </button>
+  <button id="amgt-screenshot-btn" class="amgt-btn" title="Capture d'écran de la carte">
+    📷 Capture
+  </button>
 </div>
 
 <!-- Menu : fond de carte, couches visibles, réinitialisation de la vue -->
@@ -254,6 +260,7 @@
 <script src="./vendor/leaflet/leaflet.js"></script>
 <script src="./vendor/proj4/proj4.js"></script>
 <script src="./vendor/proj4leaflet/proj4leaflet.js"></script>
+<script src="./vendor/html2canvas/html2canvas.min.js"></script>
 
 <script src="./config.js"></script>
 <script src="./src/buildInfo.js"></script>
@@ -273,6 +280,8 @@
 <script src="./src/patrimoineLayer.js"></script>
 <script src="./src/patrimoinePicker.js"></script>
 <script src="./src/addPointTool.js"></script>
+<script src="./src/measureTool.js"></script>
+<script src="./src/screenshotTool.js"></script>
 <script src="./src/scaleControl.js"></script>
 <script src="./src/buildInfoControl.js"></script>
 <script src="./src/basemap.js"></script>

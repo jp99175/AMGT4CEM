@@ -639,3 +639,28 @@ html, body {
   padding: 0 4px 2px;
   pointer-events: none;
 }
+
+/* --- Outil de mesure (measureTool.js) --- */
+/* Même technique que .amgt-patrimoine-label : neutralise le fond/bordure
+   par défaut d'un divIcon Leaflet, seul .amgt-measure-label__text reste
+   visible (la cote, au bout du segment de rayon). */
+.amgt-measure-label {
+  background: transparent;
+  border: none;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.amgt-measure-label__text {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: #d32f2f;
+  background: rgba(255,255,255,0.9);
+  padding: 1px 5px;
+  border-radius: 2px;
+  box-shadow: 0 0 2px rgba(0,0,0,0.4);
+  transform: translate(8px, -8px);
+}

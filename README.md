@@ -88,6 +88,16 @@ fichier `Metro.json` (sans quitter la page).
     l'URL d'un service externe (fond UrbIS, orthophotos, géocodeur
     d'adresses) si celui-ci change d'adresse un jour, sans devoir modifier
     le code. Voir section 3bis ci-dessous.
+12. Bouton **📏 Mesurer** : cliquez-maintenez sur la carte pour poser le
+    centre d'un cercle, glissez pour en tracer le rayon (segment pointillé
+    + cote au bout du segment + cercle), relâchez pour figer la mesure.
+    Elle reste affichée 3 secondes après le relâchement puis disparaît
+    automatiquement — cliquez **📷 Capture** pendant ce délai pour en garder
+    une image (PNG téléchargé directement, capture de la carte telle
+    qu'affichée à l'écran à cet instant, mesure comprise). Activer
+    **✚ Ajouter un point** désactive **📏 Mesurer** et inversement (un seul
+    outil actif à la fois). Voir `src/measureTool.js` et
+    `src/screenshotTool.js`.
 
 Voir section 6 ci-dessous pour le détail du stockage (micro-base de
 données) et sa mise en place.
@@ -375,12 +385,15 @@ src/searchTool.js             recherche station/tunnel/point (remplace le zoom +
 src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
 src/pointsLayer.js           affichage/déplacement des points métier
 src/addPointTool.js          workflow "Ajouter un point"
+src/measureTool.js           outil "📏 Mesurer" (segment + cote + cercle, 3s puis disparition)
+src/screenshotTool.js        bouton "📷 Capture" (export PNG de la carte via html2canvas)
 src/scaleControl.js          réglette graduée (bas gauche), alterne au clic avec les coordonnées Lambert
 src/buildInfo.js             horodatage de la dernière mise à jour (à mettre à jour à chaque commit)
 src/buildInfoControl.js      affiche "BUILD ..." en bas à droite, sous l'attribution
 src/app.js                   assemblage de l'application
 vendor/leaflet, vendor/proj4,
-vendor/proj4leaflet          bibliothèques embarquées localement
+vendor/proj4leaflet,
+vendor/html2canvas           bibliothèques embarquées localement
 ```
 
 `Metro.json` (donnée de référence) et la micro-base de points métier

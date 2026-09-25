@@ -62,6 +62,8 @@
       AMGT4CEM_PointsLayer.refresh();
     },
   });
+  AMGT4CEM_MeasureTool.init(map);
+  AMGT4CEM_ScreenshotTool.init(map);
 
   function onMetroLoaded(geojson) {
     const { layersByType, bounds, searchIndex } = AMGT4CEM_MetroLayer.build(geojson);
@@ -89,7 +91,13 @@
   });
 
   document.getElementById('amgt-add-point-btn').addEventListener('click', () => {
+    AMGT4CEM_MeasureTool.deactivate();
     AMGT4CEM_AddPointTool.toggle();
+  });
+
+  document.getElementById('amgt-measure-btn').addEventListener('click', () => {
+    AMGT4CEM_AddPointTool.deactivate();
+    AMGT4CEM_MeasureTool.toggle();
   });
 
   document.getElementById('amgt-form-confirm').addEventListener('click', () => {
