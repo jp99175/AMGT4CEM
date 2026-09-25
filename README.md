@@ -103,9 +103,12 @@ fichier `Metro.json` (sans quitter la page).
     premier geste à la fin de ce délai de 3 secondes) : cliquez dessus
     dans cette fenêtre pour en garder une image (PNG téléchargé
     directement, capture de la carte telle qu'affichée à l'écran à cet
-    instant, mesure comprise). Le glisser-déposer de la carte (pan) est
-    désactivé tant que l'outil est actif, pour que ces gestes de
-    positionnement ne déplacent pas la vue. Activer
+    instant, mesure comprise). Le glisser-déposer et le pincer-zoomer de la
+    carte sont désactivés tant que l'outil est actif, pour que ces gestes
+    de positionnement ne déplacent/zooment pas la vue. Fonctionne aussi
+    bien au doigt (smartphone/tablette) qu'à la souris (événements Pointer
+    natifs plutôt que les événements souris relayés par Leaflet, que le
+    tactile ne déclenche pas). Activer
     **✚ Ajouter un point** désactive **📏 Mesurer** et inversement (un seul
     outil actif à la fois). Voir `src/measureTool.js` et
     `src/screenshotTool.js`.

@@ -4,12 +4,12 @@
  * de lâcher), un pour le centre, un pour le rayon :
  *
  * 1. Presser sur la carte : pose un premier point (le centre). Tant que le
- *    bouton reste enfoncé, le déplacer suit le curseur en direct. Relâcher
- *    fige ce centre.
+ *    doigt/bouton reste enfoncé, le déplacer suit le curseur en direct.
+ *    Relâcher fige ce centre.
  * 2. Presser à nouveau : démarre le tracé du rayon depuis ce centre fixe.
- *    Tant que le bouton reste enfoncé, le point d'arrivée suit le curseur
- *    en direct (segment pointillé + cote au bout du segment + cercle qui
- *    grandit/rétrécit avec lui). Relâcher fige le rayon.
+ *    Tant que le doigt/bouton reste enfoncé, le point d'arrivée suit le
+ *    curseur en direct (segment pointillé + cote au bout du segment +
+ *    cercle qui grandit/rétrécit avec lui). Relâcher fige le rayon.
  *
  * La mesure complète reste ensuite affichée 3 secondes puis disparaît
  * automatiquement — le bouton "📷 Capture" (screenshotTool.js) n'est
@@ -21,8 +21,16 @@
  * Comme AddPointTool, le mode reste actif (bouton "allumé") tant qu'on ne
  * le désactive pas explicitement ; activer cet outil désactive AddPointTool
  * et vice-versa (un seul mode d'interaction à la fois). Le glisser-déposer
- * de la carte est désactivé tant que l'outil est actif (sinon un geste de
- * positionnement déplacerait la vue au lieu de poser un point).
+ * et le pincer-zoomer de la carte sont désactivés tant que l'outil est
+ * actif (sinon un geste de positionnement déplacerait/zoomerait la vue).
+ *
+ * Événements Pointer natifs (pointerdown/move/up), pas les événements
+ * souris relayés par Leaflet (map.on('mousedown', ...)) : sur smartphone,
+ * Leaflet gère lui-même les événements tactiles pour son propre usage
+ * (pan, pincer-zoomer) et n'émet alors pas les événements souris de
+ * compatibilité dont dépendait une version précédente de cet outil, qui ne
+ * fonctionnait de ce fait qu'à la souris. Les événements Pointer couvrent
+ * uniformément souris, tactile et stylet.
  */
 const AMGT4CEM_MeasureTool = {
   _map: null,
@@ -31,6 +39,7 @@ const AMGT4CEM_MeasureTool = {
   // 'idleAwaitingRadius' (centre fixé, attend la presse du rayon) |
   // 'draggingRadius'
   _state: 'idle',
+  _pointerId: null,
   _center: null,
   _centerMarker: null,
   _line: null,
@@ -44,31 +53,26 @@ const AMGT4CEM_MeasureTool = {
     // Pane dédiée, au-dessus de tout le reste (Métro, UrbIS Topo, Plans
     // patrimoine...) pour que la mesure soit toujours visible quel que soit
     // l'ordre d'ajout de ces couches. pointer-events:none : elle ne doit
-    // jamais intercepter un clic/une presse.
+    // jamais intercepter une pression.
     const pane = map.createPane('amgtMeasurePane');
     pane.style.zIndex = 650;
     pane.style.pointerEvents = 'none';
 
-    this._onMouseDown = (e) => this._handlePress(e.latlng);
-    this._onMouseMove = (e) => this._handleMove(e.latlng);
-    this._onMouseUp = () => this._handleRelease();
     // Une presse pour poser le centre ou le rayon tombe souvent sur une
     // station/un tunnel/un objet UrbIS Topo... qui ouvrirait sinon sa
     // propre popup par-dessus la mesure : on la referme immédiatement tant
     // que l'outil est actif.
     this._onPopupOpen = (e) => e.popup.close();
 
-    // Capture de pointeur : sans elle, un geste rapide à la souris réelle
-    // qui sort brièvement de la zone de la carte arrête de recevoir les
-    // événements mousemove/mouseup (ils partent vers l'élément sous le
-    // curseur à ce moment-là) et le tracé se fige au lieu de suivre le
-    // relâchement.
+    // pointerdown sur le conteneur de la carte (là où le geste doit
+    // démarrer) ; pointermove/pointerup/pointercancel sur window, pour
+    // rester robuste si le doigt/curseur sort de la carte en cours de
+    // geste (capture de pointeur ci-dessous, en complément).
     const container = map.getContainer();
-    container.addEventListener('pointerdown', (e) => {
-      if (this._active && container.setPointerCapture) {
-        try { container.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-      }
-    });
+    container.addEventListener('pointerdown', (e) => this._onPointerDown(e));
+    window.addEventListener('pointermove', (e) => this._onPointerMove(e));
+    window.addEventListener('pointerup', (e) => this._onPointerUp(e));
+    window.addEventListener('pointercancel', (e) => this._onPointerUp(e));
   },
 
   isActive() {
@@ -80,9 +84,10 @@ const AMGT4CEM_MeasureTool = {
     this._active = true;
     this._state = 'idle';
     this._map.dragging.disable();
+    if (this._map.tap) this._map.tap.disable();
+    if (this._map.touchZoom) this._map.touchZoom.disable();
     this._map.getContainer().classList.add('amgt-placing-mode');
     document.getElementById('amgt-measure-btn').classList.add('amgt-btn--active');
-    this._map.on('mousedown', this._onMouseDown);
     this._map.on('popupopen', this._onPopupOpen);
   },
 
@@ -90,12 +95,12 @@ const AMGT4CEM_MeasureTool = {
     if (!this._active) return;
     this._active = false;
     this._map.dragging.enable();
+    if (this._map.tap) this._map.tap.enable();
+    if (this._map.touchZoom) this._map.touchZoom.enable();
     this._map.getContainer().classList.remove('amgt-placing-mode');
     document.getElementById('amgt-measure-btn').classList.remove('amgt-btn--active');
-    this._map.off('mousedown', this._onMouseDown);
-    this._map.off('mousemove', this._onMouseMove);
     this._map.off('popupopen', this._onPopupOpen);
-    document.removeEventListener('mouseup', this._onMouseUp);
+    this._pointerId = null;
     this._state = 'idle';
     this._clearMeasurement();
   },
@@ -103,6 +108,29 @@ const AMGT4CEM_MeasureTool = {
   toggle() {
     if (this._active) this.deactivate();
     else this.activate();
+  },
+
+  _onPointerDown(e) {
+    if (!this._active || this._pointerId !== null) return;
+    this._pointerId = e.pointerId;
+    const container = this._map.getContainer();
+    if (container.setPointerCapture) {
+      try { container.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    }
+    e.preventDefault();
+    this._handlePress(this._map.mouseEventToLatLng(e));
+  },
+
+  _onPointerMove(e) {
+    if (e.pointerId !== this._pointerId) return;
+    e.preventDefault();
+    this._handleMove(this._map.mouseEventToLatLng(e));
+  },
+
+  _onPointerUp(e) {
+    if (e.pointerId !== this._pointerId) return;
+    this._pointerId = null;
+    this._handleRelease();
   },
 
   _handlePress(latlng) {
@@ -128,12 +156,7 @@ const AMGT4CEM_MeasureTool = {
       this._labelMarker = this._buildLabelMarker(latlng, '0 m');
       document.getElementById('amgt-screenshot-btn').classList.remove('amgt-hidden');
       this._state = 'draggingRadius';
-    } else {
-      return;
     }
-
-    this._map.on('mousemove', this._onMouseMove);
-    document.addEventListener('mouseup', this._onMouseUp);
   },
 
   _handleMove(latlng) {
@@ -151,9 +174,6 @@ const AMGT4CEM_MeasureTool = {
   },
 
   _handleRelease() {
-    this._map.off('mousemove', this._onMouseMove);
-    document.removeEventListener('mouseup', this._onMouseUp);
-
     if (this._state === 'draggingCenter') {
       this._state = 'idleAwaitingRadius';
     } else if (this._state === 'draggingRadius') {
