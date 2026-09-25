@@ -174,14 +174,10 @@ const AMGT4CEM_CONFIG = {
       '#c0ca33', '#00acc1', '#f4511e', '#3949ab', '#7cb342',
     ],
     // Présélection au tout premier lancement (avant toute personnalisation) :
-    // reprend les trois familles proposées lors d'une itération précédente
-    // (grilles de ventilation, chambres/taques d'égout, avaloirs).
-    defaultSelectionCodes: [
-      'BR14L',
-      'CR6101P', 'CR6102P', 'CR6103P', 'CR6104P',
-      'CR6105P', 'CR6106P', 'CR6107P', 'CR6109P', 'CR6102L', 'CR6108L',
-      'CR6203P', 'CR6204P', 'CR6205P',
-    ],
+    // uniquement les grilles de ventilation. Les autres familles (chambres/
+    // taques, avaloirs...) restent disponibles dans le sélecteur mais ne
+    // sont plus cochées par défaut.
+    defaultSelectionCodes: ['BR14L'],
   },
 
   // --- Plans patrimoine (à la demande) ---

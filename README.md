@@ -169,15 +169,17 @@ chambres et taques d'égout, avaloirs, mobilier urbain, marquages
 routiers, etc.
 
 Le choix des types à afficher se fait à part, via le lien
-**"(modifier la sélection)"** juste en dessous de cette case, qui ouvre un
-sélecteur plein écran listant l'intégralité du catalogue d'objets (une
-centaine de types), classé par thème (Voirie, Assainissement et égouttage,
-Marquages et signalisation routière, Mobilier urbain, Transport en
-commun, Bâtiments...) avec un champ de recherche. Cocher/décocher un type
-l'affiche/le masque immédiatement sur la carte (si la case "UrbIS Topo" est
-elle-même cochée), avec une couleur assignée automatiquement. Le menu ne
-liste pas les types actuellement sélectionnés : seule la case globale et le
-lien de sélection y apparaissent.
+**"(modifier la sélection)"**, qui ouvre un sélecteur plein écran listant
+l'intégralité du catalogue d'objets (une centaine de types), classé par
+thème (Voirie, Assainissement et égouttage, Marquages et signalisation
+routière, Mobilier urbain, Transport en commun, Bâtiments...) avec un champ
+de recherche. Cocher/décocher un type l'affiche/le masque immédiatement sur
+la carte (si la case "UrbIS Topo" est elle-même cochée), avec une couleur
+assignée automatiquement. Le menu ne liste pas les types actuellement
+sélectionnés : seule la case globale y apparaît. Le lien de sélection, comme
+le curseur d'opacité, ne s'affiche que lorsqu'on clique sur l'icône
+**curseurs** de la case UrbIS Topo — les deux partagent le même volet
+repliable, pour ne pas encombrer le menu par défaut.
 
 Chaque thème a sa propre case "tout cocher/décocher" (à côté de son titre,
 état indéterminé si seule une partie des types du thème est sélectionnée),
@@ -186,8 +188,7 @@ Le bouton **💾** en haut du sélecteur enregistre la sélection courante comme
 sélection par défaut de cet appareil — utilisée à la prochaine fois que
 l'application démarre sans aucune sélection enregistrée (première visite,
 ou après effacement des données du navigateur), à la place de la
-présélection intégrée au code (grilles de ventilation, chambres/taques,
-avaloirs).
+présélection intégrée au code (grilles de ventilation seules).
 
 Voir `data/urbisTopoCatalog.js` pour le catalogue complet,
 `src/urbisTopoSelectionStore.js` pour la sélection (persistée dans
@@ -286,7 +287,10 @@ depuis un service externe — contrairement à UrbIS Topo). Même principe que
 UrbIS Topo : le choix des plans à afficher se fait via le lien
 **"(modifier la sélection)"**, qui ouvre un sélecteur plein écran listant
 le catalogue disponible (voir `data/patrimoineCatalog.js`) ; rien n'est
-présélectionné par défaut.
+présélectionné par défaut. Le lien de sélection, comme le curseur
+d'opacité, ne s'affiche que lorsqu'on clique sur l'icône **curseurs** de la
+case Plans patrimoine — les deux partagent le même volet repliable, pour ne
+pas encombrer le menu par défaut.
 
 V1 (trois fichiers, EPSG:31370, voir `data/patrimoine-*.json`) :
 - **Plans d'ensemble au 1/500e** : 36 planches (emprise en polygone, tracée
