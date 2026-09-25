@@ -158,6 +158,11 @@ const AMGT4CEM_MeasureTool = {
   _onPointerUp(e) {
     if (e.pointerId !== this._pointerId) return;
     this._pointerId = null;
+    // Une dernière mise à jour avec la position exacte du relâchement
+    // (pas le dernier "move" enregistré, qui peut être légèrement en
+    // retard sur un appareil moins réactif) : la cote et le cercle doivent
+    // se figer pile là où on relâche, pas à une position intermédiaire.
+    this._handleMove(this._eventToLatLng(e));
     this._handleRelease();
   },
 

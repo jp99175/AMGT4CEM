@@ -92,11 +92,15 @@ fichier `Metro.json` (sans quitter la page).
 12. Bouton **📏 Mesurer** : effet dynamique en deux gestes
     presser-glisser-relâcher. Pressez sur la carte pour poser le centre
     d'un cercle : tant que le bouton reste enfoncé, le déplacer suit le
-    curseur en direct ; relâchez pour le figer. Pressez à nouveau pour
-    tracer le rayon depuis ce centre : tant que le bouton reste enfoncé,
-    le point d'arrivée suit le curseur en direct (segment pointillé + cote
+    curseur en direct ; relâchez pour le figer exactement à l'endroit du
+    relâchement (pas à la position du dernier mouvement enregistré avant,
+    parfois légèrement différente). Pressez à nouveau pour tracer le rayon
+    depuis ce centre : tant que le bouton reste enfoncé, le point
+    d'arrivée suit le curseur en direct (segment pointillé + cote
     au bout du segment + cercle qui grandit/rétrécit avec lui) ; relâchez
-    pour le figer. La mesure complète reste ensuite affichée 15 secondes
+    pour le figer, là aussi exactement au point de relâchement, jamais à
+    une position atteinte par la souris/le doigt ensuite. La mesure
+    complète reste ensuite affichée 15 secondes
     puis disparaît automatiquement (une nouvelle pression pendant ce délai
     recommence directement une nouvelle mesure). Le bouton **📷 Capture**,
     lui, ne reste visible que 3 secondes après la fin du geste — deux
