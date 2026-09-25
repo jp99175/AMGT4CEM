@@ -657,7 +657,7 @@ html, body {
   white-space: nowrap;
   font-size: 12px;
   font-weight: 600;
-  color: #d32f2f;
+  color: #f50057;
   background: rgba(255,255,255,0.9);
   padding: 1px 5px;
   border-radius: 2px;
@@ -681,7 +681,7 @@ html, body {
   height: 10px;
   margin: -5px 0 0 -5px;
   border-radius: 50%;
-  background: #d32f2f;
+  background: #f50057;
   border: 2px solid #fff;
   box-shadow: 0 0 2px rgba(0,0,0,0.5);
 }

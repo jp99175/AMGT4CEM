@@ -89,7 +89,7 @@ fichier `Metro.json` (sans quitter la page).
     l'URL d'un service externe (fond UrbIS, orthophotos, géocodeur
     d'adresses) si celui-ci change d'adresse un jour, sans devoir modifier
     le code. Voir section 3bis ci-dessous.
-12. Bouton **📏 Mesurer** : effet dynamique en deux gestes
+12. Bouton **📏** (icône seule, "Mesurer" au survol) : effet dynamique en deux gestes
     presser-glisser-relâcher. Pressez sur la carte pour poser le centre
     d'un cercle : tant que le bouton reste enfoncé, le déplacer suit le
     curseur en direct ; relâchez pour le figer exactement à l'endroit du
@@ -107,13 +107,17 @@ fichier `Metro.json` (sans quitter la page).
     plutôt qu'à un clic ultérieur, évite toute image incomplète ou
     incohérente avec ce qui a réellement été mesuré. Vous pouvez donc
     directement coller (Ctrl/Cmd+V) cette image ailleurs (mail, document,
-    autre appli...). Le bouton **📷 Capture**, visible 3 secondes après la
-    fin du geste, ne fait que **sauvegarder** cette même image déjà
-    capturée sous forme de fichier PNG téléchargé, sans refaire de rendu.
-    Si vous ne cliquez pas dessus (ou si une nouvelle mesure démarre
-    entre-temps), l'image est effacée du presse-papier lorsque la mesure
-    disparaît (15 secondes), pour ne pas y laisser traîner une capture
-    oubliée. Le glisser-déposer et le pincer-zoomer de la
+    autre appli...). Le bouton **📷 Capture** ne fait que **sauvegarder**
+    cette même image déjà capturée sous forme de fichier PNG téléchargé,
+    sans refaire de rendu. Le bouton, le cercle, le segment et la cote
+    disparaissent tous ensemble 4 secondes après ce 2e relâchement (une
+    nouvelle pression pendant ce délai recommence directement une nouvelle
+    mesure) ; si vous n'avez pas cliqué sur "Capture" avant leur
+    disparition, l'image est effacée du presse-papier, pour ne pas y
+    laisser traîner une capture oubliée. Cercle et segment sont en
+    magenta (`#f50057`), une couleur qui tranche aussi bien sur le fond de
+    carte que sur les couches orangées (Plans patrimoine) déjà utilisées.
+    Le glisser-déposer et le pincer-zoomer de la
     carte sont désactivés tant que l'outil est actif, pour que ces gestes
     de positionnement ne déplacent/zooment pas la vue. Fonctionne aussi
     bien au doigt (smartphone/tablette) qu'à la souris (événements Pointer

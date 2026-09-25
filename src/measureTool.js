@@ -15,14 +15,23 @@
  * copiée dans le presse-papier (screenshotTool.js, captureToClipboard) :
  * capturer au moment précis du relâchement, plutôt qu'à un clic ultérieur
  * sur "Capture", élimine toute course avec le délai d'affichage de la
- * mesure ou la vitesse de l'appareil. La mesure complète reste ensuite
- * affichée 15 secondes (_visibleDurationMs) puis disparaît automatiquement
- * — une nouvelle pression pendant ce délai recommence directement une
- * nouvelle mesure, et l'image déjà en presse-papier est effacée si elle
- * n'a pas été sauvegardée entre-temps (clearClipboardIfUnsaved). Le bouton
- * "📷 Capture", lui, ne reste visible que 3 secondes
- * (_captureBtnDurationMs) après la fin du geste ; il ne fait que sauver
- * (téléchargement direct) l'image déjà capturée, sans refaire de rendu.
+ * mesure ou la vitesse de l'appareil. Le bouton "📷 Capture" (sauvegarde de
+ * cette même image déjà capturée, sans refaire de rendu), le cercle, le
+ * segment et la cote disparaissent tous ensemble 4 secondes après ce
+ * relâchement (_hideDelayMs) — une nouvelle pression pendant ce délai
+ * recommence directement une nouvelle mesure, et l'image déjà en
+ * presse-papier est effacée si elle n'a pas été sauvegardée entre-temps
+ * (clearClipboardIfUnsaved).
+ *
+ * Le cercle et le segment sont reconstruits une dernière fois, à neuf, au
+ * moment du relâchement (_freezeShapes) plutôt que de garder les mêmes
+ * objets mutés en direct pendant tout le geste : sur un appareil réel
+ * générant de très nombreux événements de déplacement par seconde, le
+ * rendu Canvas de Leaflet peut laisser une trace visible ("un curseur") des
+ * positions intermédiaires du cercle si son suivi interne des zones à
+ * effacer/redessiner n'est pas mis à jour assez vite — un objet flambant
+ * neuf, dessiné une seule fois à sa position finale, ne peut pas hériter
+ * de ce genre de résidu.
  *
  * Comme AddPointTool, le mode reste actif (bouton "allumé") tant qu'on ne
  * le désactive pas explicitement ; activer cet outil désactive AddPointTool
@@ -57,10 +66,9 @@ const AMGT4CEM_MeasureTool = {
   _circle: null,
   _labelMarker: null,
   _clearTimer: null,
-  _captureBtnTimer: null,
-  // Voir l'en-tête du fichier : deux délais volontairement distincts.
-  _visibleDurationMs: 15000,
-  _captureBtnDurationMs: 3000,
+  // Délai avant disparition (bouton Capture, cercle, segment, cote), à
+  // partir du 2e relâchement.
+  _hideDelayMs: 4000,
   // Décalage (px écran) au-dessus du point de contact tactile, pour que le
   // doigt ne cache pas ce qu'il est en train de positionner.
   _touchOffsetPx: 60,
@@ -185,14 +193,14 @@ const AMGT4CEM_MeasureTool = {
     } else if (this._state === 'idleAwaitingRadius') {
       this._line = L.polyline([this._center, latlng], {
         pane: 'amgtMeasurePane',
-        color: '#d32f2f',
+        color: '#f50057',
         weight: 2,
         dashArray: '5,5',
       }).addTo(this._map);
       this._circle = L.circle(this._center, {
         pane: 'amgtMeasurePane',
         radius: 0,
-        color: '#d32f2f',
+        color: '#f50057',
         weight: 2,
         fillOpacity: 0.08,
       }).addTo(this._map);
@@ -221,29 +229,42 @@ const AMGT4CEM_MeasureTool = {
       this._state = 'idleAwaitingRadius';
     } else if (this._state === 'draggingRadius') {
       this._state = 'idle';
-      this._armClearTimer();
-      this._armCaptureBtnTimer();
+      this._freezeShapes();
+      clearTimeout(this._clearTimer);
+      this._clearTimer = setTimeout(() => this._clearMeasurement(), this._hideDelayMs);
       AMGT4CEM_ScreenshotTool.captureToClipboard();
     }
   },
 
-  _armClearTimer() {
-    clearTimeout(this._clearTimer);
-    this._clearTimer = setTimeout(() => this._clearMeasurement(), this._visibleDurationMs);
-  },
+  /** Voir l'en-tête du fichier : reconstruit le cercle/segment à neuf, à
+   * leur position finale, pour ne garder aucune trace d'un rendu Canvas
+   * intermédiaire du geste qui vient de se terminer. */
+  _freezeShapes() {
+    const center = this._center;
+    const [, end] = this._line.getLatLngs();
+    const radius = this._circle.getRadius();
 
-  _armCaptureBtnTimer() {
-    clearTimeout(this._captureBtnTimer);
-    this._captureBtnTimer = setTimeout(() => {
-      document.getElementById('amgt-screenshot-btn').classList.add('amgt-hidden');
-    }, this._captureBtnDurationMs);
+    this._map.removeLayer(this._line);
+    this._map.removeLayer(this._circle);
+
+    this._line = L.polyline([center, end], {
+      pane: 'amgtMeasurePane',
+      color: '#f50057',
+      weight: 2,
+      dashArray: '5,5',
+    }).addTo(this._map);
+    this._circle = L.circle(center, {
+      pane: 'amgtMeasurePane',
+      radius,
+      color: '#f50057',
+      weight: 2,
+      fillOpacity: 0.08,
+    }).addTo(this._map);
   },
 
   _clearMeasurement() {
     clearTimeout(this._clearTimer);
     this._clearTimer = null;
-    clearTimeout(this._captureBtnTimer);
-    this._captureBtnTimer = null;
     if (this._centerMarker) { this._map.removeLayer(this._centerMarker); this._centerMarker = null; }
     if (this._line) { this._map.removeLayer(this._line); this._line = null; }
     if (this._circle) { this._map.removeLayer(this._circle); this._circle = null; }
