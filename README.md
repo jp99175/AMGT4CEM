@@ -57,8 +57,12 @@ fichier `Metro.json` (sans quitter la page).
    (géocodeur UrbIS, voir section 3) s'ajoutent après une courte requête
    réseau. Cliquez un résultat : la carte se recentre et zoome dessus
    automatiquement.
-7. Les coordonnées Lambert du curseur s'affichent en bas à gauche, sous la
-   navigation temporelle quand celle-ci est visible.
+7. Une échelle graphique (en bas à gauche) indique la distance à l'écran.
+   Cliquez dessus pour afficher/masquer les coordonnées Lambert (X, Y),
+   juste au-dessus : une fois affichées, elles se mettent à jour au survol
+   de la carte (souris) et à chaque clic/tap sur la carte (utile aussi sur
+   tablette, sans souris). Voir `src/scaleControl.js` et
+   `src/coordsDisplay.js`.
 8. Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
    carte (vous pouvez continuer à naviguer avant de cliquer) : un marqueur
    provisoire apparaît, les coordonnées X/Y Lambert sont calculées
@@ -287,10 +291,14 @@ depuis un service externe — contrairement à UrbIS Topo). Même principe que
 UrbIS Topo : le choix des plans à afficher se fait via le lien
 **"(modifier la sélection)"**, qui ouvre un sélecteur plein écran listant
 le catalogue disponible (voir `data/patrimoineCatalog.js`) ; rien n'est
-présélectionné par défaut. Le lien de sélection, comme le curseur
-d'opacité, ne s'affiche que lorsqu'on clique sur l'icône **curseurs** de la
-case Plans patrimoine — les deux partagent le même volet repliable, pour ne
-pas encombrer le menu par défaut.
+présélectionné par défaut tant que l'utilisateur n'a pas enregistré sa
+propre sélection avec le bouton **💾** en haut du sélecteur (même principe
+que pour UrbIS Topo : sélection par défaut propre à cet appareil, clé
+`amgt4cem.patrimoine-default.v1`, voir `src/patrimoineSelectionStore.js`).
+Le lien de sélection, comme le curseur d'opacité, ne s'affiche que
+lorsqu'on clique sur l'icône **curseurs** de la case Plans patrimoine — les
+deux partagent le même volet repliable, pour ne pas encombrer le menu par
+défaut.
 
 V1 (trois fichiers, EPSG:31370, voir `data/patrimoine-*.json`) :
 - **Plans d'ensemble au 1/500e** : 36 planches (emprise en polygone, tracée
@@ -354,7 +362,8 @@ src/searchTool.js             recherche station/tunnel/point (remplace le zoom +
 src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
 src/pointsLayer.js           affichage/déplacement des points métier
 src/addPointTool.js          workflow "Ajouter un point"
-src/coordsDisplay.js         affichage des coordonnées Lambert du curseur
+src/scaleControl.js          échelle graphique (bas gauche), bascule l'affichage des coordonnées
+src/coordsDisplay.js         affichage des coordonnées Lambert (X, Y), masqué par défaut
 src/app.js                   assemblage de l'application
 vendor/leaflet, vendor/proj4,
 vendor/proj4leaflet          bibliothèques embarquées localement

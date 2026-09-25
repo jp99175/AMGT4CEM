@@ -466,9 +466,11 @@ html, body {
 }
 
 /* --- Affichage coordonnées --- */
+/* Juste au-dessus de l'échelle graphique (scaleControl.js), qui occupe déjà
+   le coin bas-gauche ; masqué par défaut (voir coordsDisplay.js). */
 #amgt-coords-display {
   position: absolute;
-  bottom: 8px;
+  bottom: 34px;
   left: 8px;
   z-index: 1000;
   background: rgba(255,255,255,0.85);

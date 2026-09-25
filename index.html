@@ -192,8 +192,8 @@
   <button id="amgt-year-latest" class="amgt-chevron-btn" title="Revenir à l'année la plus récente accessible">⏭</button>
 </div>
 
-<!-- Affichage des coordonnées Lambert du curseur -->
-<div id="amgt-coords-display"></div>
+<!-- Affichage des coordonnées Lambert (masqué par défaut, voir scaleControl.js) -->
+<div id="amgt-coords-display" class="amgt-hidden"></div>
 
 <!-- Formulaire de création d'un point métier -->
 <div id="amgt-point-form" class="amgt-hidden">
@@ -245,6 +245,9 @@
   <div class="amgt-fs-picker-header">
     <h2>Plans patrimoine à afficher</h2>
     <div class="amgt-fs-picker-header-actions">
+      <button id="amgt-patrimoine-picker-save-default" class="amgt-btn amgt-btn--icon" title="Enregistrer la sélection actuelle comme sélection par défaut">
+        💾
+      </button>
       <button id="amgt-patrimoine-picker-close" class="amgt-btn" title="Retour à la carte">✕ Fermer</button>
     </div>
   </div>
@@ -273,6 +276,7 @@
 <script src="./src/patrimoinePicker.js"></script>
 <script src="./src/addPointTool.js"></script>
 <script src="./src/coordsDisplay.js"></script>
+<script src="./src/scaleControl.js"></script>
 <script src="./src/basemap.js"></script>
 <script src="./src/mapMenu.js"></script>
 <script src="./src/settingsPanel.js"></script>

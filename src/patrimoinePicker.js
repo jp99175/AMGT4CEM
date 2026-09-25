@@ -13,6 +13,14 @@ const AMGT4CEM_PatrimoinePicker = {
     this._overlay = document.getElementById('amgt-patrimoine-picker');
     this._content = document.getElementById('amgt-patrimoine-picker-content');
     document.getElementById('amgt-patrimoine-picker-close').addEventListener('click', () => this.close());
+
+    const saveBtn = document.getElementById('amgt-patrimoine-picker-save-default');
+    const saveBtnDefaultText = saveBtn.textContent;
+    saveBtn.addEventListener('click', () => {
+      AMGT4CEM_PatrimoineSelectionStore.saveCurrentAsDefault();
+      saveBtn.textContent = '✓';
+      setTimeout(() => { saveBtn.textContent = saveBtnDefaultText; }, 1200);
+    });
   },
 
   open() {
