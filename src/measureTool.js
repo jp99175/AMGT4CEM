@@ -11,12 +11,17 @@
  *    curseur en direct (segment pointillé + cote au bout du segment +
  *    cercle qui grandit/rétrécit avec lui). Relâcher fige le rayon.
  *
- * La mesure complète reste ensuite affichée 3 secondes puis disparaît
- * automatiquement — le bouton "📷 Capture" (screenshotTool.js) n'est
- * lui-même visible que pendant que le cercle et la cote le sont (du 1er
- * geste jusqu'à la fin de ce délai), pour permettre d'en garder une image
- * avant qu'elle ne disparaisse. Une nouvelle pression pendant ce délai
- * recommence directement une nouvelle mesure.
+ * La mesure complète reste ensuite affichée 15 secondes (_visibleDurationMs)
+ * puis disparaît automatiquement — une nouvelle pression pendant ce délai
+ * recommence directement une nouvelle mesure. Le bouton "📷 Capture"
+ * (screenshotTool.js), lui, ne reste visible que 3 secondes
+ * (_captureBtnDurationMs) après la fin du geste : deux délais volontairement
+ * distincts, pour que ce qui est visible à l'écran après avoir capturé (ou
+ * après avoir raté la fenêtre de capture) corresponde toujours à ce qui
+ * vient d'être capturé, plutôt que la mesure ne disparaisse juste avant/
+ * pendant qu'on prend la capture (observé sur smartphone : le temps
+ * d'atteindre le bouton, de rendre l'image et d'afficher la notification de
+ * téléchargement peut à lui seul dépasser 3 secondes).
  *
  * Comme AddPointTool, le mode reste actif (bouton "allumé") tant qu'on ne
  * le désactive pas explicitement ; activer cet outil désactive AddPointTool
@@ -51,6 +56,10 @@ const AMGT4CEM_MeasureTool = {
   _circle: null,
   _labelMarker: null,
   _clearTimer: null,
+  _captureBtnTimer: null,
+  // Voir l'en-tête du fichier : deux délais volontairement distincts.
+  _visibleDurationMs: 15000,
+  _captureBtnDurationMs: 3000,
   // Décalage (px écran) au-dessus du point de contact tactile, pour que le
   // doigt ne cache pas ce qu'il est en train de positionner.
   _touchOffsetPx: 60,
@@ -206,19 +215,31 @@ const AMGT4CEM_MeasureTool = {
       this._state = 'idleAwaitingRadius';
     } else if (this._state === 'draggingRadius') {
       this._state = 'idle';
-      clearTimeout(this._clearTimer);
-      this._clearTimer = setTimeout(() => this._clearMeasurement(), 3000);
+      this._armClearTimer();
+      this._armCaptureBtnTimer();
     }
+  },
+
+  _armClearTimer() {
+    clearTimeout(this._clearTimer);
+    this._clearTimer = setTimeout(() => this._clearMeasurement(), this._visibleDurationMs);
+  },
+
+  _armCaptureBtnTimer() {
+    clearTimeout(this._captureBtnTimer);
+    this._captureBtnTimer = setTimeout(() => {
+      document.getElementById('amgt-screenshot-btn').classList.add('amgt-hidden');
+    }, this._captureBtnDurationMs);
   },
 
   /**
    * Appelé par screenshotTool.js autour d'une capture : le rendu peut
    * prendre un temps notable sur un appareil mobile moins puissant, et la
-   * mesure ne doit pas disparaître (délai de 3 secondes) en plein milieu —
-   * sans quoi la capture obtenue est aléatoire selon la vitesse de
-   * l'appareil. On suspend le délai pendant la capture, puis on le relance
-   * à zéro une fois celle-ci terminée (seulement s'il y avait encore une
-   * mesure figée à faire disparaître).
+   * mesure ne doit pas disparaître (délai _visibleDurationMs) en plein
+   * milieu — sans quoi la capture obtenue est aléatoire selon la vitesse
+   * de l'appareil. On suspend le délai pendant la capture, puis on le
+   * relance à zéro une fois celle-ci terminée (seulement s'il y avait
+   * encore une mesure figée à faire disparaître).
    */
   holdDuringCapture() {
     clearTimeout(this._clearTimer);
@@ -227,14 +248,15 @@ const AMGT4CEM_MeasureTool = {
 
   resumeAutoClear() {
     if (this._state === 'idle' && this._circle) {
-      clearTimeout(this._clearTimer);
-      this._clearTimer = setTimeout(() => this._clearMeasurement(), 3000);
+      this._armClearTimer();
     }
   },
 
   _clearMeasurement() {
     clearTimeout(this._clearTimer);
     this._clearTimer = null;
+    clearTimeout(this._captureBtnTimer);
+    this._captureBtnTimer = null;
     if (this._centerMarker) { this._map.removeLayer(this._centerMarker); this._centerMarker = null; }
     if (this._line) { this._map.removeLayer(this._line); this._line = null; }
     if (this._circle) { this._map.removeLayer(this._circle); this._circle = null; }

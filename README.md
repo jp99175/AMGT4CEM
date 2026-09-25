@@ -96,14 +96,18 @@ fichier `Metro.json` (sans quitter la page).
     tracer le rayon depuis ce centre : tant que le bouton reste enfoncé,
     le point d'arrivée suit le curseur en direct (segment pointillé + cote
     au bout du segment + cercle qui grandit/rétrécit avec lui) ; relâchez
-    pour le figer. La mesure complète reste ensuite affichée 3 secondes
+    pour le figer. La mesure complète reste ensuite affichée 15 secondes
     puis disparaît automatiquement (une nouvelle pression pendant ce délai
-    recommence directement une nouvelle mesure). Le bouton **📷 Capture**
-    n'apparaît que pendant que le cercle et la cote sont visibles (du
-    premier geste à la fin de ce délai de 3 secondes) : cliquez dessus
-    dans cette fenêtre pour en garder une image (PNG téléchargé
-    directement, capture de la carte telle qu'affichée à l'écran à cet
-    instant, mesure comprise). Le glisser-déposer et le pincer-zoomer de la
+    recommence directement une nouvelle mesure). Le bouton **📷 Capture**,
+    lui, ne reste visible que 3 secondes après la fin du geste — deux
+    délais volontairement différents, pour que ce qui est affiché à
+    l'écran corresponde toujours à ce qui vient d'être capturé (le temps
+    d'atteindre le bouton, de générer l'image et d'afficher la
+    notification de téléchargement peut à lui seul dépasser 3 secondes sur
+    smartphone). Cliquez sur **📷 Capture** dans sa fenêtre de 3 secondes
+    pour garder une image de la mesure (PNG téléchargé directement,
+    capture de la carte telle qu'affichée à l'écran à cet instant, mesure
+    comprise). Le glisser-déposer et le pincer-zoomer de la
     carte sont désactivés tant que l'outil est actif, pour que ces gestes
     de positionnement ne déplacent/zooment pas la vue. Fonctionne aussi
     bien au doigt (smartphone/tablette) qu'à la souris (événements Pointer
