@@ -68,10 +68,11 @@ fichier `Metro.json` (sans quitter la page).
    carte ; au bout de 5 secondes (ou en recliquant), on revient
    automatiquement à la réglette. Voir `src/scaleControl.js`.
    En bas à droite, sous l'attribution "(c) CIRB/CIBG – UrbIS", un petit
-   repère rouge **BUILD AAAAMMJJ-HHMM** indique l'horodatage de la
-   dernière mise à jour du code déployé (voir `src/buildInfo.js` — site
-   statique, pas de véritable étape de compilation : cette valeur est mise
-   à jour à la main à chaque commit poussé).
+   repère rouge **BUILD AAAAMMJJ-HHMM** (heure locale de Bruxelles, pas
+   UTC) indique l'horodatage de la dernière mise à jour du code déployé
+   (voir `src/buildInfo.js` — site statique, pas de véritable étape de
+   compilation : cette valeur est mise à jour à la main à chaque commit
+   poussé).
 8. Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
    carte (vous pouvez continuer à naviguer avant de cliquer) : un marqueur
    provisoire apparaît, les coordonnées X/Y Lambert sont calculées
