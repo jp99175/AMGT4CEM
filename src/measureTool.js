@@ -11,17 +11,18 @@
  *    curseur en direct (segment pointillé + cote au bout du segment +
  *    cercle qui grandit/rétrécit avec lui). Relâcher fige le rayon.
  *
- * Dès ce 2e relâchement, la carte est aussi immédiatement capturée et
- * copiée dans le presse-papier (screenshotTool.js, captureToClipboard) :
- * capturer au moment précis du relâchement, plutôt qu'à un clic ultérieur
- * sur "Capture", élimine toute course avec le délai d'affichage de la
- * mesure ou la vitesse de l'appareil. Le bouton "📷 Capture" (sauvegarde de
- * cette même image déjà capturée, sans refaire de rendu), le cercle, le
- * segment et la cote disparaissent tous ensemble 4 secondes après ce
- * relâchement (_hideDelayMs) — une nouvelle pression pendant ce délai
- * recommence directement une nouvelle mesure, et l'image déjà en
- * presse-papier est effacée si elle n'a pas été sauvegardée entre-temps
- * (clearClipboardIfUnsaved).
+ * Dès ce 2e relâchement, la carte est aussi immédiatement capturée
+ * (screenshotTool.js, capture) et gardée en mémoire comme un fichier
+ * temporaire — rien n'est écrit où que ce soit (ni presse-papier, ni
+ * disque) avant un clic explicite sur "💾". Capturer au moment précis du
+ * relâchement, plutôt qu'à un clic ultérieur, élimine toute course avec le
+ * délai d'affichage de la mesure ou la vitesse de l'appareil. Le bouton
+ * "💾" (enregistre cette même image déjà capturée, sans refaire de rendu),
+ * le cercle, le segment et la cote disparaissent tous ensemble 4 secondes
+ * après ce relâchement (_hideDelayMs) — une nouvelle pression pendant ce
+ * délai recommence directement une nouvelle mesure, et l'image déjà
+ * capturée est abandonnée si elle n'a pas été enregistrée entre-temps
+ * (discardIfUnsaved).
  *
  * Cette capture ne redessine PAS toute la carte à chaque mesure : un fond
  * (tuiles + couches) n'est capturé qu'au besoin (screenshotTool.js,
@@ -265,7 +266,7 @@ const AMGT4CEM_MeasureTool = {
       this._freezeShapes();
       clearTimeout(this._clearTimer);
       this._clearTimer = setTimeout(() => this._clearMeasurement(), this._hideDelayMs);
-      AMGT4CEM_ScreenshotTool.captureToClipboard();
+      AMGT4CEM_ScreenshotTool.capture();
     }
   },
 
@@ -304,9 +305,10 @@ const AMGT4CEM_MeasureTool = {
     if (this._labelMarker) { this._map.removeLayer(this._labelMarker); this._labelMarker = null; }
     this._center = null;
     document.getElementById('amgt-screenshot-btn').classList.add('amgt-hidden');
-    // Pas de sauvegarde entrée-temps (bouton "Capture" cliqué) : on ne
-    // laisse pas traîner une image de mesure oubliée dans le presse-papier.
-    AMGT4CEM_ScreenshotTool.clearClipboardIfUnsaved();
+    // Pas d'enregistrement entre-temps (bouton "💾" cliqué) : l'image
+    // capturée en mémoire est simplement abandonnée, jamais écrite nulle
+    // part.
+    AMGT4CEM_ScreenshotTool.discardIfUnsaved();
   },
 
   _formatDistance(meters) {
@@ -354,10 +356,10 @@ const AMGT4CEM_MeasureTool = {
   /** Redessine directement (Canvas 2D, pas html2canvas) le cercle, le
    * segment, le point central et la cote de la mesure courante sur un
    * contexte déjà mis à l'échelle pixels CSS — voir screenshotTool.js,
-   * captureToClipboard/_buildCompositeBlob : ceci compose la capture sans
-   * jamais dépendre du réseau (pas de nouveau rendu DOM/tuiles), donc ne
-   * peut jamais perdre ces éléments même si le fond de carte, lui, a du mal
-   * à se recharger. */
+   * capture/_buildCompositeBlob : ceci compose la capture sans jamais
+   * dépendre du réseau (pas de nouveau rendu DOM/tuiles), donc ne peut
+   * jamais perdre ces éléments même si le fond de carte, lui, a du mal à se
+   * recharger. */
   drawOverlayOnContext(ctx) {
     if (!this._center || !this._circle || !this._line) return;
     const map = this._map;

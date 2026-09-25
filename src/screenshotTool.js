@@ -1,21 +1,24 @@
 /**
  * Capture PNG de la carte, associée à l'outil "📏 Mesurer" (measureTool.js) :
  *
- * 1. Dès le 2e relâchement (rayon figé), measureTool.js appelle
- *    captureToClipboard() : la carte est immédiatement capturée à cet
- *    instant exact et copiée dans le presse-papier système (Clipboard API).
- *    Capturer au moment précis du relâchement, plutôt qu'à un clic ultérieur
- *    sur "Capture", élimine toute course avec le délai d'affichage de la
- *    mesure ou la vitesse de l'appareil : l'image obtenue correspond
- *    toujours exactement à ce qui vient d'être tracé, jamais à un état plus
- *    tardif (mesure déjà effacée, souris/doigt déplacé depuis...).
- * 2. Le bouton "📷 Capture" (visible seulement le temps de measureTool.js,
- *    _hideDelayMs) ne fait que SAUVEGARDER cette même image déjà capturée
- *    (téléchargement direct), sans refaire de rendu.
- * 3. Si l'image capturée n'est pas sauvegardée (bouton non cliqué avant la
+ * 1. Dès le 2e relâchement (rayon figé), measureTool.js appelle capture() :
+ *    la carte est immédiatement capturée à cet instant exact et gardée en
+ *    mémoire (Blob), comme un fichier temporaire — RIEN n'est envoyé ni
+ *    écrit où que ce soit (ni presse-papier, ni disque) tant que
+ *    l'utilisateur n'a pas explicitement demandé de la garder. Capturer au
+ *    moment précis du relâchement, plutôt qu'à un clic ultérieur sur
+ *    "💾", élimine toute course avec le délai d'affichage de la mesure ou
+ *    la vitesse de l'appareil : l'image obtenue correspond toujours
+ *    exactement à ce qui vient d'être tracé, jamais à un état plus tardif
+ *    (mesure déjà effacée, souris/doigt déplacé depuis...).
+ * 2. Le bouton "💾" (visible seulement le temps de measureTool.js,
+ *    _hideDelayMs) déclenche le SEUL moment où cette image quitte la
+ *    mémoire : téléchargement direct du fichier PNG, sans refaire de rendu.
+ * 3. Si l'image capturée n'est pas enregistrée (bouton non cliqué avant la
  *    disparition de la mesure, ou nouvelle mesure démarrée entre-temps),
- *    measureTool.js appelle clearClipboardIfUnsaved() pour ne pas laisser
- *    une image de mesure oubliée dans le presse-papier de l'utilisateur.
+ *    measureTool.js appelle discardIfUnsaved() : la référence au Blob est
+ *    simplement abandonnée (garbage collectée par le navigateur), rien n'a
+ *    jamais quitté la mémoire de l'onglet.
  *
  * Fond capturé une seule fois par activation (pas à chaque mesure) :
  * régénérer TOUTE l'image (tuiles + couches) à chaque capture, via
@@ -45,16 +48,6 @@
  * (réseau métro, UrbIS Topo, Plans patrimoine) et la mesure elle-même,
  * dessinées directement dans la page/en Canvas 2D, sont toujours capturées.
  *
- * Limite Clipboard API : l'écriture presse-papier nécessite un contexte de
- * geste utilisateur actif, qu'un rendu asynchrone (parfois lent) ferait
- * perdre si on attendait son résultat avant d'appeler clipboard.write() —
- * on lui passe donc directement une Promise<Blob> en argument (technique
- * recommandée), en appelant clipboard.write() de façon synchrone dès le
- * relâchement. Si le navigateur ne supporte pas l'écriture presse-papier
- * d'image (ou refuse la permission), seule cette copie échoue
- * silencieusement ; la sauvegarde via le bouton "Capture" reste disponible
- * indépendamment.
- *
  * Rendu Canvas (voir app.js, preferCanvas) plutôt que SVG pour les couches
  * (Métro, UrbIS Topo, Plans patrimoine...) : plus fiable pour html2canvas
  * lors de la capture du fond. Leaflet repeint son canvas de façon
@@ -64,6 +57,8 @@
  */
 const AMGT4CEM_ScreenshotTool = {
   _map: null,
+  // Image de la mesure courante, gardée en mémoire comme un fichier
+  // temporaire (jamais écrite nulle part tant que save() n'est pas appelé).
   _blobPromise: null,
   _saved: false,
   // Fond (tuiles + couches, sans la mesure) capturé une fois par activation
@@ -76,16 +71,9 @@ const AMGT4CEM_ScreenshotTool = {
   },
 
   /** Appelé par measureTool.js au moment précis du 2e relâchement. */
-  captureToClipboard() {
+  capture() {
     this._saved = false;
     this._blobPromise = this._buildCompositeBlob();
-
-    if (navigator.clipboard && window.ClipboardItem) {
-      navigator.clipboard
-        .write([new ClipboardItem({ 'image/png': this._blobPromise })])
-        .catch((err) => console.warn('[AMGT4CEM] Copie presse-papier impossible :', err));
-    }
-
     this._blobPromise.catch((err) => console.error('[AMGT4CEM] Capture d\'écran impossible :', err));
   },
 
@@ -146,16 +134,12 @@ const AMGT4CEM_ScreenshotTool = {
     return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   },
 
-  /** Appelé par measureTool.js quand la mesure disparaît sans avoir été sauvegardée. */
-  clearClipboardIfUnsaved() {
-    if (this._saved || !this._blobPromise) return;
+  /** Appelé par measureTool.js quand la mesure disparaît sans avoir été
+   * enregistrée : la référence au Blob "temporaire" est simplement
+   * abandonnée (garbage collectée) — rien n'avait quitté la mémoire. */
+  discardIfUnsaved() {
+    if (this._saved) return;
     this._blobPromise = null;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      // Pas de geste utilisateur actif à ce moment (appelé depuis un
-      // minuteur) : le navigateur peut refuser silencieusement, tant pis —
-      // rien de plus fiable n'existe pour "vider" le presse-papier.
-      navigator.clipboard.writeText('').catch(() => { /* ignoré */ });
-    }
   },
 
   async save() {
@@ -165,7 +149,7 @@ const AMGT4CEM_ScreenshotTool = {
     const btn = document.getElementById('amgt-screenshot-btn');
     const originalText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = '⏳ Capture…';
+    btn.textContent = '⏳';
     try {
       const blob = await this._blobPromise;
       const url = URL.createObjectURL(blob);
@@ -175,8 +159,8 @@ const AMGT4CEM_ScreenshotTool = {
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     } catch (err) {
-      console.error('[AMGT4CEM] Sauvegarde de la capture impossible :', err);
-      alert('Sauvegarde de la capture impossible : ' + err.message);
+      console.error('[AMGT4CEM] Enregistrement de la capture impossible :', err);
+      alert('Enregistrement de la capture impossible : ' + err.message);
     } finally {
       btn.disabled = false;
       btn.textContent = originalText;

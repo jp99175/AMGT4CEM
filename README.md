@@ -102,19 +102,19 @@ fichier `Metro.json` (sans quitter la page).
     une position atteinte par la souris/le doigt ensuite.
 
     Dès ce 2e relâchement, la carte est **automatiquement capturée et
-    copiée dans le presse-papier** (pas besoin de cliquer sur quoi que ce
-    soit) : capturer au moment précis où la mesure vient d'être tracée,
-    plutôt qu'à un clic ultérieur, évite toute image incomplète ou
-    incohérente avec ce qui a réellement été mesuré. Vous pouvez donc
-    directement coller (Ctrl/Cmd+V) cette image ailleurs (mail, document,
-    autre appli...). Le bouton **📷 Capture** ne fait que **sauvegarder**
-    cette même image déjà capturée sous forme de fichier PNG téléchargé,
-    sans refaire de rendu. Le bouton, le cercle, le segment et la cote
+    gardée en mémoire, comme un fichier temporaire** (pas besoin de cliquer
+    sur quoi que ce soit) : capturer au moment précis où la mesure vient
+    d'être tracée, plutôt qu'à un clic ultérieur, évite toute image
+    incomplète ou incohérente avec ce qui a réellement été mesuré. Rien
+    n'est écrit où que ce soit (ni presse-papier, ni disque) à ce stade. Le
+    bouton **💾** est le SEUL moment où cette image quitte la mémoire :
+    il déclenche le téléchargement du fichier PNG déjà capturé, sans
+    refaire de rendu. Le bouton, le cercle, le segment et la cote
     disparaissent tous ensemble 4 secondes après ce 2e relâchement (une
     nouvelle pression pendant ce délai recommence directement une nouvelle
-    mesure) ; si vous n'avez pas cliqué sur "Capture" avant leur
-    disparition, l'image est effacée du presse-papier, pour ne pas y
-    laisser traîner une capture oubliée. Cercle et segment sont en
+    mesure) ; si vous n'avez pas cliqué sur "💾" avant leur disparition,
+    l'image capturée est simplement abandonnée (jamais écrite nulle part).
+    Cercle et segment sont en
     magenta (`#f50057`), une couleur qui tranche aussi bien sur le fond de
     carte que sur les couches orangées (Plans patrimoine) déjà utilisées. La
     cote (l'étiquette de distance) est toujours positionnée légèrement
@@ -438,8 +438,8 @@ src/searchTool.js             recherche station/tunnel/point (remplace le zoom +
 src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
 src/pointsLayer.js           affichage/déplacement des points métier
 src/addPointTool.js          workflow "Ajouter un point"
-src/measureTool.js           outil "📏 Mesurer" (segment + cote + cercle, 3s puis disparition)
-src/screenshotTool.js        capture PNG auto au 2e relâchement (presse-papier) + sauvegarde ("Capture")
+src/measureTool.js           outil "📏 Mesurer" (segment + cote + cercle, 4s puis disparition)
+src/screenshotTool.js        capture PNG auto au 2e relâchement (mémoire uniquement) + enregistrement ("💾")
 src/scaleControl.js          réglette graduée (bas gauche), alterne au clic avec les coordonnées Lambert
 src/buildInfo.js             horodatage de la dernière mise à jour (à mettre à jour à chaque commit)
 src/buildInfoControl.js      affiche "BUILD ..." en bas à droite, sous l'attribution
