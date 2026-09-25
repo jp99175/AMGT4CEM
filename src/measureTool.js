@@ -24,15 +24,17 @@
  * (clearClipboardIfUnsaved).
  *
  * Cette capture ne redessine PAS toute la carte à chaque mesure : un fond
- * (tuiles + couches) n'est capturé qu'une fois par activation de l'outil
- * (screenshotTool.js, _ensureBackground), réutilisé pour toutes les mesures
- * suivantes tant qu'on reste actif (le glisser/pincer-zoomer étant désactivé
- * pendant ce temps, ce fond ne peut pas devenir obsolète). Seuls le cercle,
- * le segment, le point central et la cote de LA mesure courante sont
- * redessinés à chaque capture, directement en Canvas 2D (drawOverlayOnContext
- * ci-dessous) à partir de leur géométrie déjà connue — jamais via un nouveau
- * rendu DOM/réseau, donc jamais perdus si le réseau est capricieux au moment
- * de la capture.
+ * (tuiles + couches) n'est capturé qu'au besoin (screenshotTool.js,
+ * _ensureBackground), réutilisé pour toutes les mesures suivantes tant que
+ * la vue affichée ne peut pas avoir changé — invalidé à chaque
+ * activate()/deactivate() de cet outil, ET par tout changement de fond de
+ * carte/couche pendant qu'il reste actif (basemap.js, mapMenu.js : le menu
+ * ☰ Carte reste utilisable, seuls le glisser et le pincer-zoomer sont
+ * désactivés). Seuls le cercle, le segment, le point central et la cote de
+ * LA mesure courante sont redessinés à chaque capture, directement en
+ * Canvas 2D (drawOverlayOnContext ci-dessous) à partir de leur géométrie
+ * déjà connue — jamais via un nouveau rendu DOM/réseau, donc jamais perdus
+ * si le réseau est capricieux au moment de la capture.
  *
  * Le cercle et le segment sont reconstruits une dernière fois, à neuf, au
  * moment du relâchement (_freezeShapes) plutôt que de garder les mêmes

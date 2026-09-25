@@ -23,18 +23,21 @@
  * réel : useCORS force une RE-REQUÊTE réseau de chaque tuile/image
  * cross-origin (WMS UrbIS/Bruciel...) indépendante de l'image déjà chargée
  * et visible à l'écran, et cette re-requête peut échouer selon le réseau du
- * moment même quand la tuile d'origine est parfaitement affichée. Comme le
- * glisser/pincer-zoomer de la carte sont désactivés tant que l'outil
- * "Mesurer" est actif (measureTool.js), la vue ne peut pas changer entre
- * deux mesures d'une même activation : un seul fond (_ensureBackground) est
- * donc capturé au besoin, mis en cache, puis réutilisé pour toutes les
- * mesures suivantes de cette activation (invalidé par measureTool.js à
- * chaque activate()/deactivate()). Seuls le cercle, le segment, le point
- * central et la cote — dont la géométrie exacte est déjà connue, aucun
- * réseau impliqué — sont redessinés à CHAQUE capture, directement en
- * Canvas 2D (measureTool.js, drawOverlayOnContext), puis composés par-dessus
- * ce fond : ces éléments ne peuvent donc plus jamais disparaître d'une
- * capture pour une raison réseau.
+ * moment même quand la tuile d'origine est parfaitement affichée. Un seul
+ * fond (_ensureBackground) est donc capturé au besoin, mis en cache, puis
+ * réutilisé pour toutes les mesures suivantes — TANT QUE la vue affichée
+ * n'a pas pu changer : invalidé (invalidateBackground) par measureTool.js à
+ * chaque activate()/deactivate() de l'outil "Mesurer" (glisser/pincer-zoomer
+ * de la carte désactivés entre les deux, mais PAS le menu ☰ Carte, resté
+ * utilisable), ET par tout changement de fond de carte ou de couche pendant
+ * ce temps (basemap.js, _setActiveLayer ; mapMenu.js, cases à cocher et
+ * curseurs d'opacité) — sans quoi une bascule UrbIS -> orthophoto en cours
+ * de mesure resterait invisible dans les captures suivantes de la même
+ * activation. Seuls le cercle, le segment, le point central et la cote —
+ * dont la géométrie exacte est déjà connue, aucun réseau impliqué — sont
+ * redessinés à CHAQUE capture, directement en Canvas 2D (measureTool.js,
+ * drawOverlayOnContext), puis composés par-dessus ce fond : ces éléments ne
+ * peuvent donc plus jamais disparaître d'une capture pour une raison réseau.
  *
  * Limite connue : si le fond WMS n'a pas pu être capturé du tout (service
  * indisponible dès la 1re capture de l'activation), il reste blanc dans

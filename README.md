@@ -140,11 +140,12 @@ fichier `Metro.json` (sans quitter la page).
     révélé peu fiable selon le réseau du moment (des tuiles pourtant bien
     visibles à l'écran pouvaient manquer dans l'image, `useCORS` forçant une
     nouvelle requête réseau indépendante de la tuile déjà chargée). Le fond
-    de carte n'est donc capturé qu'**une fois par activation** de l'outil
-    (réutilisé pour toutes les mesures suivantes tant qu'on reste actif, le
-    glisser/zoom étant désactivés entre-temps) ; seuls le cercle, le
-    segment, le point central et la cote — dont la géométrie exacte est
-    déjà connue — sont redessinés à **chaque** capture directement en
+    de carte n'est donc **recapturé que quand la vue a pu changer** (mis en
+    cache sinon) : à l'activation de l'outil, et à chaque changement de
+    fond de carte ou de couche (☰ Carte reste utilisable pendant une
+    mesure, seuls le glisser et le pincer-zoomer sont désactivés) ; seuls le
+    cercle, le segment, le point central et la cote — dont la géométrie
+    exacte est déjà connue — sont redessinés à **chaque** capture directement en
     Canvas 2D (sans passer par `html2canvas`, donc sans dépendance réseau),
     puis composés par-dessus ce fond.
     Activer **✚ Ajouter un point** désactive **📏 Mesurer** et inversement

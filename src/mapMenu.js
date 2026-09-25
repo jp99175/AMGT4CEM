@@ -145,6 +145,7 @@ const AMGT4CEM_MapMenu = {
     // parcourent toujours ensemble en pratique, inutile de les distinguer
     // ici (la recherche, elle, continue de les différencier).
     document.getElementById('amgt-layer-metro').addEventListener('change', (e) => {
+      AMGT4CEM_ScreenshotTool.invalidateBackground();
       if (!this._metroLayers) return;
       if (e.target.checked) {
         this._metroLayers.MS.addTo(map);
@@ -156,6 +157,7 @@ const AMGT4CEM_MapMenu = {
     });
 
     document.getElementById('amgt-layer-points').addEventListener('change', (e) => {
+      AMGT4CEM_ScreenshotTool.invalidateBackground();
       if (e.target.checked) pointsGroup.addTo(map);
       else map.removeLayer(pointsGroup);
     });
@@ -165,10 +167,12 @@ const AMGT4CEM_MapMenu = {
     // actuellement sélectionnés. Le choix des types se fait à part, via
     // "(modifier la sélection)" -> urbisTopoPicker.js.
     document.getElementById('amgt-layer-urbistopo').addEventListener('change', (e) => {
+      AMGT4CEM_ScreenshotTool.invalidateBackground();
       AMGT4CEM_UrbisTopoLayer.setEnabled(e.target.checked);
     });
 
     document.getElementById('amgt-layer-patrimoine').addEventListener('change', (e) => {
+      AMGT4CEM_ScreenshotTool.invalidateBackground();
       AMGT4CEM_PatrimoineLayer.setEnabled(e.target.checked);
     });
   },
@@ -207,6 +211,7 @@ const AMGT4CEM_MapMenu = {
       });
 
       slider.addEventListener('input', () => {
+        AMGT4CEM_ScreenshotTool.invalidateBackground();
         const newFactor = Number(slider.value) / 100;
         apply(newFactor);
         AMGT4CEM_LayerOpacityStore.setFactor(key, newFactor);
