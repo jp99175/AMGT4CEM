@@ -465,20 +465,36 @@ html, body {
   font-variant-numeric: tabular-nums;
 }
 
-/* --- Affichage coordonnées --- */
-/* Juste au-dessus de l'échelle graphique (scaleControl.js), qui occupe déjà
-   le coin bas-gauche ; masqué par défaut (voir coordsDisplay.js). */
-#amgt-coords-display {
-  position: absolute;
-  bottom: 34px;
-  left: 8px;
-  z-index: 1000;
+/* --- Échelle / coordonnées (scaleControl.js) --- */
+/* Contrôle unique en bas à gauche : alterne au clic entre l'échelle
+   graphique (par défaut) et les coordonnées Lambert du dernier point
+   survolé/cliqué (5 secondes, puis retour automatique à l'échelle). */
+.amgt-scale-control {
+  cursor: pointer;
   background: rgba(255,255,255,0.85);
   padding: 3px 8px;
+  border-radius: 3px;
+  user-select: none;
+}
+
+.amgt-scale-svg line {
+  stroke: #333;
+  stroke-width: 1.3;
+}
+
+.amgt-scale-label {
+  font-size: 11px;
+  color: #333;
+  text-align: center;
+  margin-top: 1px;
+}
+
+.amgt-scale-coords {
+  display: block;
   font-size: 12px;
   font-family: "SFMono-Regular", Consolas, monospace;
-  border-radius: 3px;
-  pointer-events: none;
+  color: #333;
+  white-space: nowrap;
 }
 
 /* --- Mode placement d'un point --- */

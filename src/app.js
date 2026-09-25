@@ -29,7 +29,6 @@
   AMGT4CEM_Basemap.init(map);
   AMGT4CEM_Basemap.showUrbis();
 
-  AMGT4CEM_CoordsDisplay.init(map);
   AMGT4CEM_ScaleControl.init(map);
   const pointsGroup = AMGT4CEM_PointsLayer.init(map);
   AMGT4CEM_UrbisTopoLayer.init(map);

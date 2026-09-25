@@ -57,12 +57,14 @@ fichier `Metro.json` (sans quitter la page).
    (géocodeur UrbIS, voir section 3) s'ajoutent après une courte requête
    réseau. Cliquez un résultat : la carte se recentre et zoome dessus
    automatiquement.
-7. Une échelle graphique (en bas à gauche) indique la distance à l'écran.
-   Cliquez dessus pour afficher/masquer les coordonnées Lambert (X, Y),
-   juste au-dessus : une fois affichées, elles se mettent à jour au survol
-   de la carte (souris) et à chaque clic/tap sur la carte (utile aussi sur
-   tablette, sans souris). Voir `src/scaleControl.js` et
-   `src/coordsDisplay.js`.
+7. Une réglette graduée façon "latte" (en bas à gauche) indique la distance
+   à l'écran, avec des graduations principales aux deux bouts et des
+   sous-graduations plus courtes à l'unité en dessous (ex. tous les 1 km
+   si elle affiche "5 km", tous les 10 m si elle affiche "50 m"). Cliquez
+   dessus pour afficher à la place les coordonnées Lambert (X, Y) du
+   dernier point survolé/cliqué sur la carte ; au bout de 5 secondes (ou
+   en recliquant), on revient automatiquement à la réglette. Voir
+   `src/scaleControl.js`.
 8. Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
    carte (vous pouvez continuer à naviguer avant de cliquer) : un marqueur
    provisoire apparaît, les coordonnées X/Y Lambert sont calculées
@@ -366,8 +368,7 @@ src/searchTool.js             recherche station/tunnel/point (remplace le zoom +
 src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
 src/pointsLayer.js           affichage/déplacement des points métier
 src/addPointTool.js          workflow "Ajouter un point"
-src/scaleControl.js          échelle graphique (bas gauche), bascule l'affichage des coordonnées
-src/coordsDisplay.js         affichage des coordonnées Lambert (X, Y), masqué par défaut
+src/scaleControl.js          réglette graduée (bas gauche), alterne au clic avec les coordonnées Lambert
 src/app.js                   assemblage de l'application
 vendor/leaflet, vendor/proj4,
 vendor/proj4leaflet          bibliothèques embarquées localement
