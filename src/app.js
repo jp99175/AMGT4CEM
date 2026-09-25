@@ -13,6 +13,12 @@
     // droite (voir searchTool.js). Le zoom reste possible à la molette, au
     // pincement et au double-clic.
     zoomControl: false,
+    // Attribution ajoutée "à la main" juste après (et non automatiquement
+    // ici) : pour un coin bas, Leaflet insère chaque nouveau contrôle
+    // au-dessus des précédents (voir Control.addTo), donc l'ordre d'ajout
+    // détermine l'empilement visuel. On ajoute le repère "BUILD..." AVANT
+    // l'attribution pour qu'il reste sous elle (voir plus bas).
+    attributionControl: false,
     maxZoom: AMGT4CEM_CONFIG.maxZoom,
     // Vue par défaut le temps que Metro.json soit chargé (recentrée ensuite
     // sur l'emprise réelle du réseau).
@@ -20,11 +26,17 @@
     zoom: 12,
   });
   AMGT4CEM_SearchTool.init(map);
+
+  // Ajouté avant l'attribution (voir commentaire sur attributionControl
+  // ci-dessus) pour apparaître sous "(c) CIRB - UrbIS", pas au-dessus.
+  AMGT4CEM_BuildInfoControl.init(map);
   // Retire le lien "Leaflet" du contrôle d'attribution (sans obligation légale :
   // la licence BSD-2-Clause de Leaflet n'exige pas d'affichage à l'écran, voir
   // README). Les attributions des sources de données (UrbIS, Bruciel...)
-  // restent affichées, elles.
-  map.attributionControl.setPrefix(false);
+  // restent affichées, elles. Créé ici, AVANT l'ajout des fonds de plan, pour
+  // que leurs attributions (passées en option des couches) soient bien
+  // captées par ce contrôle.
+  map.attributionControl = L.control.attribution({ prefix: false }).addTo(map);
 
   AMGT4CEM_Basemap.init(map);
   AMGT4CEM_Basemap.showUrbis();

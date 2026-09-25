@@ -174,9 +174,13 @@ const AMGT4CEM_MapMenu = {
   },
 
   /**
-   * Icône curseurs (☰ Carte, section Couches) : ouvre/ferme un curseur
-   * d'opacité par couche (Métro, Points métier, UrbIS Topo), comme dans
-   * MobiGIS. Réglage persistant par appareil (voir layerOpacityStore.js).
+   * Icône curseurs (☰ Carte, section Couches) : ouvre/ferme un sous-volet
+   * par couche (Métro, Points métier, UrbIS Topo, Plans patrimoine)
+   * regroupant le curseur d'opacité et, pour les deux derniers, le lien
+   * "(modifier la sélection)" — comme dans MobiGIS. Réglage d'opacité
+   * persistant par appareil (voir layerOpacityStore.js). Un clic en dehors
+   * d'un sous-volet ouvert (y compris sur un autre sous-volet, ou sur la
+   * carte) le referme, comme le menu ☰ Carte et le panneau ⚙ Paramètres.
    */
   _initOpacityControls() {
     const layers = [
@@ -186,10 +190,13 @@ const AMGT4CEM_MapMenu = {
       { key: 'patrimoine', apply: (factor) => AMGT4CEM_PatrimoineLayer.setOpacity(factor) },
     ];
 
+    const pairs = [];
+
     for (const { key, apply } of layers) {
       const toggleBtn = document.querySelector(`.amgt-opacity-toggle-btn[data-layer="${key}"]`);
       const sliderRow = document.querySelector(`.amgt-opacity-slider-row[data-layer="${key}"]`);
       const slider = sliderRow.querySelector('.amgt-opacity-slider');
+      pairs.push({ toggleBtn, sliderRow });
 
       const factor = AMGT4CEM_LayerOpacityStore.getFactor(key);
       slider.value = String(Math.round(factor * 100));
@@ -205,5 +212,13 @@ const AMGT4CEM_MapMenu = {
         AMGT4CEM_LayerOpacityStore.setFactor(key, newFactor);
       });
     }
+
+    document.addEventListener('click', (e) => {
+      for (const { toggleBtn, sliderRow } of pairs) {
+        if (sliderRow.classList.contains('amgt-hidden')) continue;
+        if (sliderRow.contains(e.target) || toggleBtn.contains(e.target)) continue;
+        sliderRow.classList.add('amgt-hidden');
+      }
+    });
   },
 };

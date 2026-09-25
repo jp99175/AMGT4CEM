@@ -46,8 +46,10 @@ fichier `Metro.json` (sans quitter la page).
    pour vos points métier (section 6) — cette catégorie est amenée à
    s'enrichir (constats/signalements...).
    L'icône **☰ curseurs** à côté de chaque couche, dans les trois
-   catégories, ouvre un réglage d'opacité individuel (comme dans MobiGIS),
-   mémorisé par appareil. Le bouton **⤢ Réinitialiser la vue** revient à
+   catégories, ouvre un sous-volet de réglage d'opacité individuel (comme
+   dans MobiGIS), mémorisé par appareil — un clic ailleurs (sur un autre
+   sous-volet, sur la carte, ...) le referme, comme le menu ☰ Carte et le
+   panneau ⚙ Paramètres. Le bouton **⤢ Réinitialiser la vue** revient à
    l'emprise générale du réseau et remet le fond UrbIS grisé.
 6. Bouton **🔍** (haut droite) : ouvre un champ de recherche sur les
    stations, tunnels (Metro.json), points métier et adresses (noms de
@@ -57,14 +59,19 @@ fichier `Metro.json` (sans quitter la page).
    (géocodeur UrbIS, voir section 3) s'ajoutent après une courte requête
    réseau. Cliquez un résultat : la carte se recentre et zoome dessus
    automatiquement.
-7. Une réglette graduée façon "latte" (en bas à gauche) indique la distance
-   à l'écran, avec des graduations principales aux deux bouts et des
-   sous-graduations plus courtes à l'unité en dessous (ex. tous les 1 km
-   si elle affiche "5 km", tous les 10 m si elle affiche "50 m"). Cliquez
-   dessus pour afficher à la place les coordonnées Lambert (X, Y) du
-   dernier point survolé/cliqué sur la carte ; au bout de 5 secondes (ou
-   en recliquant), on revient automatiquement à la réglette. Voir
-   `src/scaleControl.js`.
+7. Une réglette graduée façon "latte" (en bas à gauche), avec sa valeur
+   affichée à droite du segment, indique la distance à l'écran :
+   graduations principales aux deux bouts et sous-graduations plus courtes
+   à l'unité (ex. tous les 1 km si elle affiche "5 km", tous les 10 m si
+   elle affiche "50 m"). Cliquez dessus pour afficher à la place les
+   coordonnées Lambert (X, Y) du dernier point survolé/cliqué sur la
+   carte ; au bout de 5 secondes (ou en recliquant), on revient
+   automatiquement à la réglette. Voir `src/scaleControl.js`.
+   En bas à droite, sous l'attribution "(c) CIRB/CIBG – UrbIS", un petit
+   repère rouge **BUILD AAAAMMJJ-HHMM** indique l'horodatage de la
+   dernière mise à jour du code déployé (voir `src/buildInfo.js` — site
+   statique, pas de véritable étape de compilation : cette valeur est mise
+   à jour à la main à chaque commit poussé).
 8. Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
    carte (vous pouvez continuer à naviguer avant de cliquer) : un marqueur
    provisoire apparaît, les coordonnées X/Y Lambert sont calculées
@@ -369,6 +376,8 @@ src/pointsStore.js           micro-base de données (localStorage, schéma ouver
 src/pointsLayer.js           affichage/déplacement des points métier
 src/addPointTool.js          workflow "Ajouter un point"
 src/scaleControl.js          réglette graduée (bas gauche), alterne au clic avec les coordonnées Lambert
+src/buildInfo.js             horodatage de la dernière mise à jour (à mettre à jour à chaque commit)
+src/buildInfoControl.js      affiche "BUILD ..." en bas à droite, sous l'attribution
 src/app.js                   assemblage de l'application
 vendor/leaflet, vendor/proj4,
 vendor/proj4leaflet          bibliothèques embarquées localement

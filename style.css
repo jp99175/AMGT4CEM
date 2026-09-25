@@ -475,6 +475,9 @@ html, body {
   padding: 3px 8px;
   border-radius: 3px;
   user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .amgt-scale-svg line {
@@ -485,8 +488,7 @@ html, body {
 .amgt-scale-label {
   font-size: 11px;
   color: #333;
-  text-align: center;
-  margin-top: 1px;
+  white-space: nowrap;
 }
 
 .amgt-scale-coords {
@@ -626,4 +628,14 @@ html, body {
   margin: 4px 0 0;
   padding-left: 18px;
   font-size: 12px;
+}
+
+/* --- Horodatage de build (buildInfoControl.js) --- */
+/* Sous l'attribution "(c) CIRB - UrbIS" (même coin bas droit) : diagnostic
+   uniquement, discret. */
+.amgt-build-info {
+  font-size: 10px;
+  color: #c62828;
+  padding: 0 4px 2px;
+  pointer-events: none;
 }
