@@ -108,7 +108,13 @@ fichier `Metro.json` (sans quitter la page).
     de positionnement ne déplacent/zooment pas la vue. Fonctionne aussi
     bien au doigt (smartphone/tablette) qu'à la souris (événements Pointer
     natifs plutôt que les événements souris relayés par Leaflet, que le
-    tactile ne déclenche pas). Activer
+    tactile ne déclenche pas). Au doigt, le point réellement positionné est
+    décalé de 60 px vers le haut par rapport au point de contact, pour que
+    le doigt ne cache pas ce qu'il est en train de placer (pas de décalage
+    à la souris). La capture d'une mesure figée (bouton **📷 Capture**) met
+    en pause son délai de disparition de 3 secondes pendant le rendu, pour
+    un résultat fiable même si ce rendu prend un instant sur un appareil
+    mobile moins puissant. Activer
     **✚ Ajouter un point** désactive **📏 Mesurer** et inversement (un seul
     outil actif à la fois). Voir `src/measureTool.js` et
     `src/screenshotTool.js`.

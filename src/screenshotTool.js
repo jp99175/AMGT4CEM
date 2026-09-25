@@ -11,6 +11,12 @@
  * elles restent blanches dans la capture, mais les couches vectorielles
  * (réseau métro, UrbIS Topo, Plans patrimoine, mesure en cours...), qui
  * sont dessinées directement dans la page, sont toujours capturées.
+ *
+ * Pendant la capture, measureTool.js suspend le délai de 3 secondes qui
+ * fait disparaître une mesure figée (voir holdDuringCapture/
+ * resumeAutoClear) : sur un appareil mobile moins puissant, html2canvas
+ * peut prendre un temps notable, et sans cette pause la mesure pouvait
+ * disparaître en plein milieu du rendu, rendant la capture aléatoire.
  */
 const AMGT4CEM_ScreenshotTool = {
   init(map) {
@@ -23,6 +29,11 @@ const AMGT4CEM_ScreenshotTool = {
     const originalText = btn.textContent;
     btn.disabled = true;
     btn.textContent = '⏳ Capture…';
+    // Le rendu html2canvas peut prendre un temps notable sur un appareil
+    // mobile moins puissant : on empêche la mesure en cours de disparaître
+    // (délai de 3s) pendant ce temps, sinon la capture obtenue est
+    // aléatoire selon la vitesse de l'appareil.
+    AMGT4CEM_MeasureTool.holdDuringCapture();
     try {
       const canvas = await html2canvas(this._map.getContainer(), {
         useCORS: true,
@@ -38,6 +49,7 @@ const AMGT4CEM_ScreenshotTool = {
     } finally {
       btn.disabled = false;
       btn.textContent = originalText;
+      AMGT4CEM_MeasureTool.resumeAutoClear();
     }
   },
 

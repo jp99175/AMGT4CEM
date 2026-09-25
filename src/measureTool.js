@@ -31,6 +31,11 @@
  * compatibilité dont dépendait une version précédente de cet outil, qui ne
  * fonctionnait de ce fait qu'à la souris. Les événements Pointer couvrent
  * uniformément souris, tactile et stylet.
+ *
+ * Au doigt, le point réellement positionné (_eventToLatLng) est décalé
+ * vers le haut par rapport au point de contact : sinon le doigt cache
+ * lui-même le centre/la cote/le bord du cercle pendant qu'on les
+ * positionne. Pas de décalage à la souris (le curseur, fin, ne cache rien).
  */
 const AMGT4CEM_MeasureTool = {
   _map: null,
@@ -46,6 +51,9 @@ const AMGT4CEM_MeasureTool = {
   _circle: null,
   _labelMarker: null,
   _clearTimer: null,
+  // Décalage (px écran) au-dessus du point de contact tactile, pour que le
+  // doigt ne cache pas ce qu'il est en train de positionner.
+  _touchOffsetPx: 60,
 
   init(map) {
     this._map = map;
@@ -129,19 +137,28 @@ const AMGT4CEM_MeasureTool = {
       try { container.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     }
     e.preventDefault();
-    this._handlePress(this._map.mouseEventToLatLng(e));
+    this._handlePress(this._eventToLatLng(e));
   },
 
   _onPointerMove(e) {
     if (e.pointerId !== this._pointerId) return;
     e.preventDefault();
-    this._handleMove(this._map.mouseEventToLatLng(e));
+    this._handleMove(this._eventToLatLng(e));
   },
 
   _onPointerUp(e) {
     if (e.pointerId !== this._pointerId) return;
     this._pointerId = null;
     this._handleRelease();
+  },
+
+  /** Position réelle à utiliser (voir _touchOffsetPx en tête de fichier). */
+  _eventToLatLng(e) {
+    let point = this._map.mouseEventToContainerPoint(e);
+    if (e.pointerType === 'touch') {
+      point = point.subtract([0, this._touchOffsetPx]);
+    }
+    return this._map.containerPointToLatLng(point);
   },
 
   _handlePress(latlng) {
@@ -189,6 +206,27 @@ const AMGT4CEM_MeasureTool = {
       this._state = 'idleAwaitingRadius';
     } else if (this._state === 'draggingRadius') {
       this._state = 'idle';
+      clearTimeout(this._clearTimer);
+      this._clearTimer = setTimeout(() => this._clearMeasurement(), 3000);
+    }
+  },
+
+  /**
+   * Appelé par screenshotTool.js autour d'une capture : le rendu peut
+   * prendre un temps notable sur un appareil mobile moins puissant, et la
+   * mesure ne doit pas disparaître (délai de 3 secondes) en plein milieu —
+   * sans quoi la capture obtenue est aléatoire selon la vitesse de
+   * l'appareil. On suspend le délai pendant la capture, puis on le relance
+   * à zéro une fois celle-ci terminée (seulement s'il y avait encore une
+   * mesure figée à faire disparaître).
+   */
+  holdDuringCapture() {
+    clearTimeout(this._clearTimer);
+    this._clearTimer = null;
+  },
+
+  resumeAutoClear() {
+    if (this._state === 'idle' && this._circle) {
       clearTimeout(this._clearTimer);
       this._clearTimer = setTimeout(() => this._clearMeasurement(), 3000);
     }
