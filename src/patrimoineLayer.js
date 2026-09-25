@@ -11,7 +11,11 @@
  *   couleur attribuée à la sélection. Si la planche porte un numéro de
  *   référence (propriété "sheet_ref", absente ou null pour certaines
  *   planches du jeu de données), ce numéro est aussi affiché comme
- *   étiquette de texte au centre de la planche.
+ *   étiquette de texte au centre de la planche. Certaines emprises se
+ *   chevauchent (constaté sur ce jeu de données) : l'infobulle au clic
+ *   liste alors toutes les planches dont l'emprise contient le point
+ *   cliqué, pas seulement celle au-dessus visuellement (voir
+ *   _sheetRefsAt/_pointInRing).
  * - Point avec un attribut "text" ou "numero" : une étiquette de texte
  *   (nom de station, numéro de planche/interstation...) — affichée comme
  *   telle, pas comme un simple point coloré, pour rester lisible.
@@ -98,7 +102,7 @@ const AMGT4CEM_PatrimoineLayer = {
   _buildSubGroup(features, color) {
     const group = L.layerGroup();
     for (const feature of features) {
-      const layer = this._buildLeafletLayer(feature, color);
+      const layer = this._buildLeafletLayer(feature, color, features);
       if (layer) group.addLayer(layer);
 
       // Emprise de planche avec un numéro de référence (sheet_ref) : affiche
@@ -114,7 +118,7 @@ const AMGT4CEM_PatrimoineLayer = {
     return group;
   },
 
-  _buildLeafletLayer(feature, color) {
+  _buildLeafletLayer(feature, color, siblingFeatures) {
     const geom = feature.geometry;
     if (!geom) return null;
     const props = feature.properties || {};
@@ -133,7 +137,18 @@ const AMGT4CEM_PatrimoineLayer = {
         fillOpacity: 0,
         opacity: this._opacityFactor,
       });
-      polygon.bindPopup(this._buildPolygonPopup(props));
+      // Certaines planches se chevauchent (constaté sur le jeu de données
+      // fourni) : un clic dans une zone de recouvrement ne devrait, avec un
+      // simple bindPopup, révéler que la planche au-dessus dans l'ordre
+      // d'affichage. On recalcule donc à chaque clic, sur le point réel
+      // cliqué, la liste de toutes les planches dont l'emprise le contient.
+      polygon.on('click', (e) => {
+        const refs = this._sheetRefsAt(e.latlng, siblingFeatures || [feature]);
+        L.popup()
+          .setLatLng(e.latlng)
+          .setContent(this._buildPolygonPopup(props, refs))
+          .openOn(this._map);
+      });
       return polygon;
     }
 
@@ -190,12 +205,59 @@ const AMGT4CEM_PatrimoineLayer = {
     return marker;
   },
 
-  _buildPolygonPopup(props) {
+  /**
+   * Numéros de planche (sheet_ref) de toutes les planches dont l'emprise
+   * contient ce point (converti en Lambert) — normalement une seule, sauf
+   * dans les zones où plusieurs planches se chevauchent.
+   */
+  _sheetRefsAt(latlng, features) {
+    const { x, y } = AMGT4CEM_CRS.latLngToLambert(latlng);
+    const refs = [];
+    for (const f of features) {
+      if (!f.geometry || f.geometry.type !== 'Polygon') continue;
+      if (!this._pointInRing([x, y], f.geometry.coordinates[0])) continue;
+      const ref = f.properties && f.properties.sheet_ref;
+      if (ref) refs.push(ref);
+    }
+    return refs;
+  },
+
+  /** Test point-dans-polygone (ray casting), coordonnées Lambert des deux côtés. */
+  _pointInRing([x, y], ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i];
+      const [xj, yj] = ring[j];
+      const crosses = (yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+      if (crosses) inside = !inside;
+    }
+    return inside;
+  },
+
+  _buildPolygonPopup(props, overlappingRefs) {
     const container = document.createElement('div');
     container.className = 'amgt-popup';
+
+    const refs = overlappingRefs && overlappingRefs.length > 0
+      ? overlappingRefs
+      : (props && props.sheet_ref ? [props.sheet_ref] : []);
+
     const title = document.createElement('strong');
-    title.textContent = (props && props.sheet_ref) ? `Planche ${props.sheet_ref}` : "Plan d'ensemble 1/500e";
-    container.appendChild(title);
+    if (refs.length > 1) {
+      title.textContent = 'Planches superposées à cet endroit :';
+      container.appendChild(title);
+      const list = document.createElement('ul');
+      list.className = 'amgt-popup-list';
+      for (const ref of refs) {
+        const li = document.createElement('li');
+        li.textContent = ref;
+        list.appendChild(li);
+      }
+      container.appendChild(list);
+    } else {
+      title.textContent = refs[0] ? `Planche ${refs[0]}` : "Plan d'ensemble 1/500e";
+      container.appendChild(title);
+    }
     return container;
   },
 

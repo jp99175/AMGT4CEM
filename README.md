@@ -306,7 +306,11 @@ V1 (trois fichiers, EPSG:31370, voir `data/patrimoine-*.json`) :
   totalité du réseau (99 % en largeur, 104 % en hauteur de l'emprise de
   `Metro.json`) ; leur numéro de référence (propriété `sheet_ref`, ex.
   `1000-109`, présente sur les 36 planches) est affiché comme étiquette de
-  texte au centre de la planche.
+  texte au centre de la planche. Certaines emprises se chevauchent dans le
+  jeu de données fourni : un clic dans une zone de recouvrement liste dans
+  l'infobulle **toutes** les planches concernées à cet endroit précis, pas
+  seulement celle affichée au-dessus visuellement (voir `_sheetRefsAt` dans
+  `src/patrimoineLayer.js`).
 - **Numéros interstation** : repères numérotés le long des tronçons entre
   stations.
 - **Noms de station** : toponymes bilingues FR/NL et repères associés.

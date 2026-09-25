@@ -605,3 +605,9 @@ html, body {
 .amgt-popup td {
   padding: 2px 0;
 }
+
+.amgt-popup-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+}
