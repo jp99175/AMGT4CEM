@@ -89,7 +89,13 @@
     document.getElementById('amgt-manual-load').classList.add('amgt-hidden');
   }
 
-  AMGT4CEM_MetroData.tryAutoLoad(onMetroLoaded, () => {
+  // Chargement automatique normal : Shapefile (voir shpLoader.js et le
+  // commentaire sur metroShpBaseUrl, config.js). Le bouton de secours
+  // (chargement manuel d'un .json) ne sert qu'en dernier recours, si ce
+  // fetch échoue (ex : ouverture en file:// sans serveur local).
+  AMGT4CEM_ShpLoader.load(AMGT4CEM_CONFIG.metroShpBaseUrl, onMetroLoaded, (err) => {
+    console.warn('[AMGT4CEM] Chargement automatique de Metro.shp impossible ' +
+      '(probablement une ouverture en file:// sans serveur local) :', err);
     document.getElementById('amgt-manual-load').classList.remove('amgt-hidden');
   });
 

@@ -6,10 +6,11 @@ sans backend).
 
 ## 1. Lancer l'application
 
-L'application est une page statique. `Metro.json` est chargé via `fetch()`,
-ce qui **ne fonctionne pas** si vous ouvrez `index.html` directement en
-double-clic (`file://`) — c'est une restriction des navigateurs, pas un bug.
-Servez le dossier avec un petit serveur HTTP local :
+L'application est une page statique. Le réseau métro de référence est chargé
+via `fetch()` depuis `Metro_export_SHP/Metro.shp`/`.dbf` (Shapefile — voir
+section 4bis), ce qui **ne fonctionne pas** si vous ouvrez `index.html`
+directement en double-clic (`file://`) — c'est une restriction des
+navigateurs, pas un bug. Servez le dossier avec un petit serveur HTTP local :
 
 ```bash
 cd AMGT4CEM
@@ -22,8 +23,9 @@ Puis ouvrez : http://localhost:8000/
 fonctionnent tout aussi bien.)*
 
 Si malgré tout vous ouvrez la page en `file://`, l'application le détecte
-automatiquement et affiche un bouton pour sélectionner manuellement le
-fichier `Metro.json` (sans quitter la page).
+automatiquement et affiche un bouton pour sélectionner manuellement un
+fichier `.json` de secours (`Metro.json`, tenu à jour en parallèle du
+Shapefile — sans quitter la page).
 
 ## 2. Tester le scénario principal
 
@@ -328,8 +330,9 @@ mise à jour mensuelle du produit (section 9).
 
 ## 3bis. Toutes les sources de données sont-elles externes ? Que faire si l'une change ?
 
-Oui, à quelques exceptions près : `Metro.json` (jamais réécrit, voir
-section 4) et les fichiers "Plans patrimoine" (section 3ter) sont fournis
+Oui, à quelques exceptions près : `Metro_export_SHP/` (export Shapefile
+depuis Civil 3D, voir section 4bis ; `Metro.json` en garde une copie de
+secours) et les fichiers "Plans patrimoine" (section 3ter) sont fournis
 par l'utilisateur et servis localement, et la micro-base de points métier
 vit uniquement dans le `localStorage` du navigateur (section 6). Tout le
 reste — fond UrbIS, orthophotos Bruciel, géocodeur d'adresses, UrbIS Topo —
@@ -405,7 +408,9 @@ catalogue à la fois.
 
 ## 4. Analyse de Metro.json (référence)
 
-- Format : `FeatureCollection` GeoJSON (sortie de service WFS GeoServer).
+- Format historique (toujours tenu à jour comme fichier de secours, voir
+  4bis) : `FeatureCollection` GeoJSON (à l'origine, sortie de service WFS
+  GeoServer).
 - CRS déclaré explicitement dans le fichier : `urn:ogc:def:crs:EPSG::31370`
   → Belgian Lambert 72, utilisé tel quel comme référentiel métier de
   l'application (pas de conversion définitive en lat/lon).
@@ -417,6 +422,43 @@ catalogue à la fois.
   cohérente avec l'étendue réelle de la Région bruxelloise une fois
   reprojetée en WGS84 (vérifié).
 
+## 4bis. Donnée de référence : Shapefile, pas GeoJSON
+
+Le réseau métro (stations + tunnels) est maintenant tenu à jour dans
+**AutoCAD Civil 3D**, puis exporté en Shapefile vers `Metro_export_SHP/`
+(`Metro.shp`, `.dbf`, `.prj`, `.cst`, `.idx`, `.shx`) — format choisi parce
+que Civil 3D l'édite et l'exporte nativement (Map 3D intégré, sans plugin ni
+droits admin), contrairement à GeoJSON ou GeoPackage.
+
+Workflow de mise à jour d'un plan :
+1. Adapter le plan dans Civil 3D.
+2. Exporter en Shapefile, en réutilisant les mêmes noms de champs
+   (`ogc_fid`, `name_fr`, `name_nl`, `niveau`, `type`) et le même CRS
+   (EPSG:31370).
+3. Remplacer les fichiers dans `Metro_export_SHP/` du dépôt.
+4. Publier (commit + push) : l'application recharge automatiquement la
+   nouvelle version au prochain chargement de page, aucune étape de
+   conversion externe (QGIS, GDAL...) n'est nécessaire.
+
+Lecture entièrement côté navigateur (`src/shpLoader.js`, ~150 lignes, aucune
+bibliothèque tierce) : parseur binaire minimal pour `.shp` (type Polygon
+uniquement, c'est le seul utilisé ici) et `.dbf` (texte décodé en
+ISO-8859-1, voir `Metro.cst`). Aucune reprojection n'est faite à la lecture
+— les coordonnées Lambert72 brutes sont conservées telles quelles, exactement
+comme le faisait l'ancien `Metro.json` ; c'est `AMGT4CEM_CRS.lambertToLatLng`
+(`crs.js`, appelé par `metroLayer.js`) qui convertit à l'affichage.
+
+Point de vigilance rencontré en pratique : l'export Civil 3D testé ne
+contenait pas de fichier `.shx` (index des formes, normalement l'un des 3
+fichiers minimaux d'un Shapefile avec `.shp`/`.dbf`) — à surveiller sur les
+prochains exports ; `shpLoader.js` ne le lit pas (il n'en a pas besoin, il
+lit `.shp` séquentiellement), mais un autre logiciel GIS pourrait le
+réclamer.
+
+`Metro.json` reste dans le dépôt et à jour (régénéré à partir du Shapefile)
+uniquement comme donnée de secours pour le chargement manuel (voir section
+1) — le chargement automatique normal ne le lit plus.
+
 ## 5. Architecture
 
 ```
@@ -426,8 +468,10 @@ src/settingsStore.js         surcharges utilisateur des URLs de services (⚙ Pa
 src/settingsPanel.js         panneau "⚙ Paramètres"
 src/layerOpacityStore.js     opacité individuelle des couches (icône curseurs, persistée)
 src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
-src/metroData.js             chargement Metro.json (fetch, avec repli FileReader)
+src/shpLoader.js             lecture Shapefile (Metro_export_SHP/) côté navigateur, sans bibliothèque tierce
+src/metroData.js             chargement manuel de secours (.json, FileReader) si le Shapefile échoue
 src/metroLayer.js            construction des couches Leaflet Stations/Tunnels
+Metro_export_SHP/            donnée de référence (export Shapefile depuis Civil 3D, voir section 4bis)
 src/basemap.js                fonds de plan (UrbIS, Orthophoto, Bruciel)
 data/urbisTopoCatalog.js     catalogue complet des types d'objets UrbIS Topo (référence)
 src/urbisTopoSelectionStore.js sélection utilisateur des types UrbIS Topo affichés
@@ -454,10 +498,11 @@ vendor/proj4leaflet,
 vendor/html2canvas           bibliothèques embarquées localement
 ```
 
-`Metro.json` (donnée de référence) et la micro-base de points métier
+`Metro_export_SHP/` (donnée de référence) et la micro-base de points métier
 (`pointsStore.js`) sont deux sources totalement indépendantes : la première
-n'est jamais réécrite ; la seconde peut être remplacée plus tard par un
-vrai backend sans toucher à la cartographie.
+n'est modifiée que par un nouvel export Civil 3D (jamais par l'application
+elle-même) ; la seconde peut être remplacée plus tard par un vrai backend
+sans toucher à la cartographie.
 
 ## 6. Micro-base de données
 

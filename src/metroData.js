@@ -1,36 +1,20 @@
 /**
- * Chargement de Metro.json (données cartographiques de référence).
+ * Chargement MANUEL de secours des données cartographiques de référence,
+ * au format GeoJSON.
  *
- * Contrainte technique (voir cahier des charges, section 14) :
- * un fetch() vers un fichier local échoue lorsque la page est ouverte en
- * file:// (restrictions CORS des navigateurs sur XMLHttpRequest/fetch pour
- * les URLs locales). On tente donc fetch() en priorité (cas normal :
- * application servie par un petit serveur HTTP local, cf. README), et on
- * bascule automatiquement sur une sélection manuelle de fichier
- * (input[type=file] + FileReader) si le fetch échoue.
- *
- * Dans tous les cas, Metro.json n'est jamais modifié : il est uniquement lu.
+ * Le chargement automatique normal se fait désormais depuis le Shapefile
+ * (Metro_export_SHP/, voir shpLoader.js et metroShpBaseUrl dans config.js) —
+ * c'est le format que Civil 3D édite nativement. Ce module ne sert plus
+ * qu'au bouton de secours (#amgt-manual-load), pour le cas où même ce
+ * fetch() échouerait (ex : ouverture en file:// sans serveur local, voir
+ * cahier des charges section 14 — un fetch() vers un fichier local échoue
+ * dans ce mode, restriction CORS des navigateurs) : sélection manuelle d'un
+ * fichier .json (input[type=file] + FileReader), pour dépanner sans avoir à
+ * relancer un serveur local.
  */
 const AMGT4CEM_MetroData = {
   /**
-   * @param {(geojson: object) => void} onLoaded
-   * @param {() => void} onNeedsManualFile - appelé si le chargement automatique échoue
-   */
-  async tryAutoLoad(onLoaded, onNeedsManualFile) {
-    try {
-      const response = await fetch(AMGT4CEM_CONFIG.metroDataUrl);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const geojson = await response.json();
-      onLoaded(geojson);
-    } catch (err) {
-      console.warn('[AMGT4CEM] Chargement automatique de Metro.json impossible ' +
-        '(probablement une ouverture en file:// sans serveur local) :', err);
-      onNeedsManualFile();
-    }
-  },
-
-  /**
-   * Charge Metro.json à partir d'un fichier choisi par l'utilisateur.
+   * Charge un GeoJSON à partir d'un fichier choisi par l'utilisateur.
    * @param {File} file
    * @param {(geojson: object) => void} onLoaded
    * @param {(err: Error) => void} onError

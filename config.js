@@ -19,6 +19,17 @@ const AMGT4CEM_CONFIG = {
   },
 
   // --- Données cartographiques de référence ---
+  // Format de base : Shapefile (Metro_export_SHP/Metro.shp + .dbf + .prj),
+  // pas GeoJSON ni GeoPackage — c'est le format qu'AutoCAD Civil 3D édite
+  // nativement (Map 3D intégré, sans plugin), contrairement aux deux
+  // autres. Les mises à jour de plan se font dans Civil 3D ; l'export
+  // remplace ces fichiers dans le dépôt ; l'app les lit directement côté
+  // navigateur (src/shpLoader.js), sans conversion externe (pas de QGIS/
+  // GDAL à installer). metroDataUrl (Metro.json) reste en secours pour le
+  // seul chargement manuel (bouton de secours si le fetch échoue, voir
+  // metroData.js) — le chargement automatique normal passe par le
+  // Shapefile.
+  metroShpBaseUrl: './Metro_export_SHP/Metro',
   metroDataUrl: './Metro.json',
 
   // Petite emprise (2km x 2km, centre de Bruxelles) utilisée uniquement pour
