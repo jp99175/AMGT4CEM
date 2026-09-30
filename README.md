@@ -54,8 +54,9 @@ Shapefile — sans quitter la page).
    panneau ⚙ Paramètres. Le bouton **⤢ Réinitialiser la vue** revient à
    l'emprise générale du réseau et remet le fond UrbIS grisé.
 6. Bouton **🔍** (haut droite) : ouvre un champ de recherche sur les
-   stations, tunnels (Metro.json), points métier et adresses (noms de
-   rues). Tapez un nom (les accents sont ignorés dans la recherche, ex.
+   stations, tunnels (couche Metro, chargée depuis le Shapefile), points
+   métier et adresses (noms de rues). Tapez un nom (les accents sont
+   ignorés dans la recherche, ex.
    "de brouckere" trouve "De Brouckère") : les résultats stations/tunnels/
    points apparaissent immédiatement, puis les adresses correspondantes
    (géocodeur UrbIS, voir section 3) s'ajoutent après une courte requête
@@ -406,10 +407,13 @@ Liste volontairement ouverte : d'autres plans (constats, relevés...)
 pourront s'y ajouter au fur et à mesure, un fichier et une entrée de
 catalogue à la fois.
 
-## 4. Analyse de Metro.json (référence)
+## 4. Analyse de Metro.json (format historique — remplacé comme référence par le Shapefile, voir 4bis)
 
-- Format historique (toujours tenu à jour comme fichier de secours, voir
-  4bis) : `FeatureCollection` GeoJSON (à l'origine, sortie de service WFS
+Ce format n'est plus la donnée de référence (voir section 4bis) ; il reste
+documenté ici pour mémoire, et parce que `Metro.json` en est toujours
+dérivé comme fichier de secours.
+
+- Format : `FeatureCollection` GeoJSON (à l'origine, sortie de service WFS
   GeoServer).
 - CRS déclaré explicitement dans le fichier : `urn:ogc:def:crs:EPSG::31370`
   → Belgian Lambert 72, utilisé tel quel comme référentiel métier de
