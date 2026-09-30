@@ -398,6 +398,10 @@ clic dans une zone où plusieurs planches se chevauchent (constaté sur ce
 jeu de données) liste toujours **toutes** celles concernées à cet endroit
 précis, pas seulement celle au-dessus visuellement — logique reprise telle
 quelle dans `src/metroLayer.js` (`_sheetRefsAt`) au moment de la migration.
+La même case affiche aussi **PE_info** (`Metro_export_SHP/MetroInfo.shp`,
+type `"PE_info"`) : les repères de transition entre tronçons de
+construction (D0, D1, G1a...) relevés dans INFRAVIEW.pdf — voir le détail
+en section 4bis (méthode, précision, limites).
 
 **Numéros interstation** et **Noms de station** sont des **étiquettes de
 texte** (le contenu du champ `text` ou `numero`, affiché tel quel, pas un
@@ -485,6 +489,54 @@ séquentiellement), mais un autre logiciel GIS pourrait le réclamer.
 uniquement comme donnée de secours pour le chargement manuel (voir section
 1) — le chargement automatique normal ne le lit plus.
 
+### PE_info : tronçons de construction (MetroInfo.shp)
+
+Un second fichier, `Metro_export_SHP/MetroInfo.shp` (+ `.dbf`/`.prj`/`.cpg`/
+`.shx`), complète Metro.shp avec des points `type = "PE_info"` (attribut
+`code`) : les repères de transition entre **tronçons de construction**
+(ex. `D0`, `D1`, `G1a`...) visibles sur le plan **INFRAVIEW** de la STIB
+("Bruxelles Infrastructure — Station & Interstation", `DITP`, juillet
+2025) — chaque petit triangle gris du plan y marque la frontière entre
+deux tronçons identifiés par un code. Fichier séparé de Metro.shp car un
+`.shp` ne peut contenir qu'un seul type de forme : Polygon pour Metro.shp,
+Point ici — `src/shpLoader.js` gère les deux (type 1 en plus du type 5).
+
+Origine et méthode (digitisation automatique, pas de relevé manuel) :
+INFRAVIEW est un PDF vectoriel exporté d'AutoCAD Civil 3D (pas un scan) —
+triangles et codes y sont des objets vectoriels réels, extraits
+programmatiquement (couleur/taille/forme du triangle, motif textuel du
+code) plutôt que lus sur une image. Les coordonnées du PDF n'étant pas
+géoréférencées, une transformation affine (échelle + rotation +
+translation) a été calée sur 43 stations déjà connues de Metro.shp
+(symbole du plan ↔ centroïde du polygone MS correspondant, identifiés via
+le numéro de référence STIB imprimé sur le plan et la légende
+"NUMERO STATION" du même PDF) — résidu médian de calage ~13 à 25 m. Les
+points obtenus sont ensuite plaqués sur le polygone `MT` (tunnel) le plus
+proche : ces triangles marquent par définition un point du tracé du
+tunnel, la précision du seul calage (jusqu'à plusieurs dizaines de mètres)
+n'étant pas suffisante pour les placer dessus sans cette correction.
+
+Limites connues, volontairement documentées plutôt que masquées :
+- 117 triangles détectés au total dans le PDF ; 11 exclus faute
+  d'association fiable à un code voisin (distance triangle → code trop
+  grande, cas ambigus) — 106 points dans `MetroInfo.shp`.
+- L'association triangle → code retenue est la **plus proche** au sens
+  géométrique, pas une lecture garantie de la topologie exacte du schéma
+  (un tronçon a deux extrémités, donc potentiellement deux triangles —
+  normal sur un tracé à deux voies, où chaque code apparaît souvent deux
+  fois).
+- Précision de position : de l'ordre de la dizaine à quelques dizaines de
+  mètres le long du tunnel — suffisant pour repérer un tronçon sur la
+  carte, pas pour un relevé topographique.
+
+Affichage : `src/metroLayer.js` construit ces points en `L.marker` (petit
+triangle gris, popup affichant le `code` au clic, pas d'étiquette
+permanente). Couche liée à **PE** dans le sélecteur "Plans patrimoine"
+(même case à cocher "Plans d'ensemble (1/500e)" — voir section 3bis et
+`src/patrimoineLayer.js#registerExternalLayer`) : PE_info n'a pas
+d'existence indépendante côté affichage, il complète l'information des
+planches.
+
 ## 5. Architecture
 
 ```
@@ -496,8 +548,8 @@ src/layerOpacityStore.js     opacité individuelle des couches (icône curseurs,
 src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
 src/shpLoader.js             lecture Shapefile (Metro_export_SHP/) côté navigateur, sans bibliothèque tierce
 src/metroData.js             chargement manuel de secours (.json, FileReader) si le Shapefile échoue
-src/metroLayer.js            construction des couches Leaflet Stations/Tunnels
-Metro_export_SHP/            donnée de référence (export Shapefile depuis Civil 3D, voir section 4bis)
+src/metroLayer.js            construction des couches Leaflet Stations/Tunnels/Planches/PE_info
+Metro_export_SHP/            donnée de référence : Metro.shp (Polygon) + MetroInfo.shp (Point, PE_info) — voir section 4bis
 src/basemap.js                fonds de plan (UrbIS, Orthophoto, Bruciel)
 data/urbisTopoCatalog.js     catalogue complet des types d'objets UrbIS Topo (référence)
 src/urbisTopoSelectionStore.js sélection utilisateur des types UrbIS Topo affichés

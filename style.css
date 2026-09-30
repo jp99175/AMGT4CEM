@@ -599,6 +599,27 @@ html, body {
   box-shadow: 0 0 2px rgba(0,0,0,0.4);
 }
 
+/* Conteneur du marqueur "PE_info" (L.divIcon) : même principe que
+   .amgt-patrimoine-label, fond/bordure Leaflet par défaut retirés. */
+.amgt-pe-info-icon {
+  background: transparent;
+  border: none;
+  width: 0;
+  height: 0;
+}
+
+/* Triangle gris plein, fidèle au symbole d'origine (INFRAVIEW.pdf) marquant
+   une transition entre deux tronçons de construction. */
+.amgt-pe-info-triangle {
+  display: block;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 8px solid #757575;
+  transform: translate(-5px, -8px);
+}
+
 @keyframes amgt-pulse {
   0% { transform: scale(1); }
   50% { transform: scale(1.2); }

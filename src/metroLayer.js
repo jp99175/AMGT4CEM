@@ -1,24 +1,53 @@
 /**
  * Construction des couches Leaflet à partir des données de référence
- * (Metro_export_SHP/Metro.shp, voir shpLoader.js).
+ * (Metro_export_SHP/Metro.shp + MetroInfo.shp, voir shpLoader.js — les deux
+ * FeatureCollections sont fusionnées par app.js avant l'appel à build()).
  *
- * FeatureCollection de 192 polygones (aucune ligne/point), avec un seul
- * attribut de classification utile : `type` = "MS" (emprise de station, 69
- * entités), "MT" (emprise de tunnel, 87 entités) ou "PE" (plan d'ensemble au
- * 1/500e, 36 entités — attribut propre : `sheet_ref`, le numéro de planche ;
- * pas de nom FR/NL, une planche n'en a pas). Chaque polygone est un seul
- * anneau extérieur, sans trou. CRS : EPSG:31370 (Belgian Lambert 72).
+ * Metro.shp : 192 polygones (aucune ligne/point), avec un seul attribut de
+ * classification utile : `type` = "MS" (emprise de station, 69 entités),
+ * "MT" (emprise de tunnel, 87 entités) ou "PE" (plan d'ensemble au 1/500e,
+ * 36 entités — attribut propre : `sheet_ref`, le numéro de planche ; pas de
+ * nom FR/NL, une planche n'en a pas). Chaque polygone est un seul anneau
+ * extérieur, sans trou. CRS : EPSG:31370 (Belgian Lambert 72).
+ *
+ * MetroInfo.shp : 106 points, `type` = "PE_info" — repères de transition
+ * entre tronçons de construction (attribut `code`, ex. "D1", "G1a"),
+ * relevés dans INFRAVIEW.pdf (STIB, plan "Station & Interstation
+ * Infrastructure") : chaque triangle gris du plan y marque la frontière
+ * entre deux tronçons identifiés par un code. Fichier Shapefile séparé de
+ * Metro.shp (Point, pas Polygon — un .shp ne peut pas mélanger les deux
+ * types de forme). Position calée par transformation affine sur les
+ * stations déjà connues de Metro.shp (43 points de calage, ~13 à 25 m de
+ * résidu médian), puis plaquée sur le tunnel (MT) le plus proche — ces
+ * triangles marquent par définition un point du tracé du tunnel, la
+ * précision issue du calage seul (jusqu'à plusieurs dizaines de mètres)
+ * n'étant pas suffisante pour les placer dessus sans cette correction.
+ * Digitisation automatique (extraction vectorielle du PDF — coordonnées
+ * réelles des tracés, pas une lecture de pixels — pas de relevé manuel) :
+ * voir le README section 4bis pour le détail de la méthode et ses limites
+ * (11 triangles sur 117 exclus, association triangle → code la plus proche
+ * trop incertaine au-delà d'un certain seuil de distance).
  *
  * Les planches (PE) sont de larges zones qui recouvrent des stations/
  * tunnels : voir app.js (ordre d'ajout des couches, PE en dessous) pour que
  * cliquer sur une station ouvre bien sa popup, pas celle de la planche
- * sous-jacente.
+ * sous-jacente. Les repères PE_info, eux, sont des L.marker (divIcon) : ils
+ * vivent dans le markerPane de Leaflet, TOUJOURS au-dessus du canvas des
+ * polygones MS/MT/PE quel que soit l'ordre d'ajout (bringToBack ne
+ * s'applique qu'aux Path, pas aux marker) — donc capables d'intercepter un
+ * clic destiné à une station/un tunnel proche à l'écran, en particulier à
+ * faible zoom (voir app.js, `metroInfoMinZoom` : pas affichés du tout
+ * en dessous de ce niveau).
  */
 const AMGT4CEM_METRO_TYPES = {
   MS: { label: 'Stations', color: '#c0392b', fillOpacity: 0.55, weight: 1 },
   MT: { label: 'Tunnels', color: '#2c3e50', fillOpacity: 0.35, weight: 1 },
   PE: { label: "Plans d'ensemble (1/500e)", color: '#b8860b', fillOpacity: 0.06, weight: 1 },
 };
+// PE_info n'est volontairement PAS dans AMGT4CEM_METRO_TYPES ci-dessus : ce
+// sont des L.marker (pas de fillOpacity/weight de type Path), et cette
+// table est aussi parcourue par mapMenu.js (_applyMetroOpacity) avec
+// `layer.setStyle(...)`, une méthode que L.Marker n'a pas.
 
 /** kind (recherche) et libellé associés à chaque type de polygone. */
 const AMGT4CEM_METRO_KIND_BY_TYPE = { MS: 'station', MT: 'tunnel', PE: 'planche' };
@@ -33,6 +62,7 @@ const AMGT4CEM_MetroLayer = {
       MS: L.layerGroup(),
       MT: L.layerGroup(),
       PE: L.layerGroup(),
+      PE_info: L.layerGroup(),
     };
     const bounds = L.latLngBounds([]);
     const searchIndex = [];
@@ -45,6 +75,14 @@ const AMGT4CEM_MetroLayer = {
     for (const feature of geojson.features || []) {
       const props = feature.properties || {};
       const type = props.type;
+
+      if (type === 'PE_info' && feature.geometry && feature.geometry.type === 'Point') {
+        const marker = this._buildInfoMarker(feature);
+        marker.addTo(layersByType.PE_info);
+        bounds.extend(marker.getLatLng());
+        continue;
+      }
+
       const style = AMGT4CEM_METRO_TYPES[type];
       if (!style || !feature.geometry || feature.geometry.type !== 'Polygon') continue;
       if (type === 'PE') peFeatures.push(feature);
@@ -150,6 +188,43 @@ const AMGT4CEM_MetroLayer = {
       if (crosses) inside = !inside;
     }
     return inside;
+  },
+
+  /**
+   * Repère ponctuel "PE_info" (transition entre deux tronçons de
+   * construction, voir en-tête du fichier) : un petit triangle gris (CSS,
+   * .amgt-pe-info-triangle), fidèle au symbole du plan d'origine. Pas
+   * d'étiquette permanente (même choix que pour les planches PE) — le code
+   * du tronçon s'affiche au clic.
+   */
+  _buildInfoMarker(feature) {
+    const props = feature.properties || {};
+    const latlng = AMGT4CEM_CRS.lambertToLatLng(feature.geometry.coordinates);
+    const icon = L.divIcon({
+      className: 'amgt-pe-info-icon',
+      html: '<span class="amgt-pe-info-triangle"></span>',
+      iconSize: [10, 10],
+      iconAnchor: [5, 5],
+      popupAnchor: [0, -5],
+    });
+    const marker = L.marker(latlng, { icon });
+    marker.bindPopup(this._buildInfoPopupHtml(props));
+    marker.off('click');
+    marker.on('click', (e) => {
+      if (AMGT4CEM_AddPointTool.isActive()) {
+        L.DomEvent.stopPropagation(e);
+        AMGT4CEM_AddPointTool.handleMapClick(e);
+      } else {
+        marker.openPopup();
+      }
+    });
+    return marker;
+  },
+
+  _buildInfoPopupHtml(props) {
+    return `<div class="amgt-popup"><table>` +
+      `<tr><th>Tronçon</th><td>${props.code || '?'}</td></tr>` +
+      `</table></div>`;
   },
 
   _buildPePopupHtml(refs) {

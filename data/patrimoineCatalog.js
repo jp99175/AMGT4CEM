@@ -16,6 +16,11 @@
  * (curseur "Métro"), pas par la pastille de couleur du sélecteur ici.
  * data/patrimoine-plans-ensemble-500e.json n'est donc plus chargé par l'app,
  * mais conservé (et sa géométrie reste la source de la fusion ci-dessus).
+ * Les repères "PE_info" (Metro_export_SHP/MetroInfo.shp, transitions entre
+ * tronçons de construction relevées dans INFRAVIEW.pdf — voir README
+ * section 4bis) sont affichés/masqués par la même case : pas d'entrée de
+ * catalogue séparée, ils sont fusionnés dans le même groupe Leaflet que PE
+ * avant l'enregistrement (voir app.js).
  *
  * Liste volontairement ouverte : d'autres plans pourront s'y ajouter au fur
  * et à mesure (voir le sélecteur "modifier la sélection").

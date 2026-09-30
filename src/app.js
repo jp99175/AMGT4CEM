@@ -77,16 +77,62 @@
   AMGT4CEM_ScreenshotTool.init(map);
 
   function onMetroLoaded(geojson) {
-    const { layersByType, bounds, searchIndex } = AMGT4CEM_MetroLayer.build(geojson);
-    // PE (planches) n'est pas ajoutée directement ici : sa visibilité est
-    // pilotée depuis le sélecteur "Plans patrimoine" (voir
+    // MetroInfo.shp (repères "PE_info", voir metroLayer.js) est un fichier à
+    // part (Point, alors que Metro.shp est Polygon — un .shp ne mélange pas
+    // les deux) : chargé séparément, fusionné avec les entités de Metro.shp
+    // avant l'unique appel à build(). Son absence/échec (ex : fichier pas
+    // encore déployé) ne doit pas empêcher le reste de l'app de fonctionner
+    // — dégradation silencieuse (juste un avertissement en console), comme
+    // le reste des couches optionnelles de cette app.
+    AMGT4CEM_ShpLoader.load(AMGT4CEM_CONFIG.metroInfoShpBaseUrl, (infoGeojson) => {
+      finishMetroLoad(geojson.features.concat(infoGeojson.features));
+    }, (err) => {
+      console.warn('[AMGT4CEM] Chargement de MetroInfo.shp (repères PE_info) impossible, couche ignorée :', err);
+      finishMetroLoad(geojson.features);
+    });
+  }
+
+  function finishMetroLoad(features) {
+    const { layersByType, bounds, searchIndex } = AMGT4CEM_MetroLayer.build({
+      type: 'FeatureCollection',
+      features,
+    });
+    // PE (planches) et PE_info (repères de transition entre tronçons) ne
+    // sont pas ajoutées directement ici : leur visibilité est pilotée
+    // ensemble depuis le sélecteur "Plans patrimoine" (voir
     // patrimoineCatalog.js, entrée `external: true`, et
-    // patrimoineLayer.js#registerExternalLayer) — reste néanmoins ajoutée
-    // AVANT MS/MT dans le DOM Leaflet dès que le sélecteur l'affiche,
-    // puisqu'elle est construite avant eux ci-dessous : ce sont de larges
-    // zones qui recouvrent des stations/tunnels, elles ne doivent jamais
-    // passer devant et intercepter leur clic (voir metroLayer.js).
-    AMGT4CEM_PatrimoineLayer.registerExternalLayer('plans-ensemble-500e', layersByType.PE);
+    // patrimoineLayer.js#registerExternalLayer), sous une seule case à
+    // cocher — d'où leur fusion dans un groupe commun. Les polygones PE
+    // restent néanmoins ajoutés à ce groupe AVANT MS/MT construits juste en
+    // dessous : ce sont de larges zones qui recouvrent des stations/
+    // tunnels, elles ne doivent jamais passer devant et intercepter leur
+    // clic (voir metroLayer.js et patrimoineLayer.js#registerExternalLayer,
+    // bringToBack()).
+    const peAndInfoGroup = L.layerGroup();
+    layersByType.PE.eachLayer((l) => peAndInfoGroup.addLayer(l));
+    layersByType.PE_info.eachLayer((l) => peAndInfoGroup.addLayer(l));
+    AMGT4CEM_PatrimoineLayer.registerExternalLayer('plans-ensemble-500e', peAndInfoGroup);
+
+    // PE_info (L.marker) vit dans le markerPane de Leaflet, TOUJOURS
+    // au-dessus du canvas des polygones MS/MT/PE quel que soit l'ordre
+    // d'ajout (bringToBack ne s'applique qu'aux Path) : à l'échelle du
+    // réseau entier, ses petits marqueurs peuvent donc intercepter un clic
+    // destiné à une station proche de quelques pixels à l'écran (même si
+    // distante de plusieurs dizaines de mètres en réalité). On les retire
+    // du groupe en dessous du zoom minimal (config.js) plutôt que de
+    // risquer ça — comme pour UrbIS Topo (urbisTopoLayer.js), où l'affichage
+    // est lui aussi coupé en dessous d'un certain zoom.
+    const updatePeInfoZoomVisibility = () => {
+      const show = map.getZoom() >= AMGT4CEM_CONFIG.metroInfoMinZoom;
+      layersByType.PE_info.eachLayer((l) => {
+        const isIn = peAndInfoGroup.hasLayer(l);
+        if (show && !isIn) peAndInfoGroup.addLayer(l);
+        else if (!show && isIn) peAndInfoGroup.removeLayer(l);
+      });
+    };
+    map.on('zoomend', updatePeInfoZoomVisibility);
+    updatePeInfoZoomVisibility();
+
     layersByType.MS.addTo(map);
     layersByType.MT.addTo(map);
     AMGT4CEM_MapMenu.setMetroLayers(layersByType);
