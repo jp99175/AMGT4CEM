@@ -97,19 +97,20 @@
       type: 'FeatureCollection',
       features,
     });
-    // PE (planches) et PE_info (repères de transition entre tronçons) ne
-    // sont pas ajoutées directement ici : leur visibilité est pilotée
-    // ensemble depuis le sélecteur "Plans patrimoine" (voir
-    // patrimoineCatalog.js, entrée `external: true`, et
-    // patrimoineLayer.js#registerExternalLayer), sous une seule case à
-    // cocher — d'où leur fusion dans un groupe commun. Les polygones PE
-    // restent néanmoins ajoutés à ce groupe AVANT MS/MT construits juste en
-    // dessous : ce sont de larges zones qui recouvrent des stations/
-    // tunnels, elles ne doivent jamais passer devant et intercepter leur
-    // clic (voir metroLayer.js et patrimoineLayer.js#registerExternalLayer,
-    // bringToBack()).
+    // PE (planches), PE_label (référence de planche tracée dans l'emprise)
+    // et PE_info (repères de transition entre tronçons) ne sont pas
+    // ajoutées directement ici : leur visibilité est pilotée ensemble
+    // depuis le sélecteur "Plans patrimoine" (voir patrimoineCatalog.js,
+    // entrée `external: true`, et patrimoineLayer.js#registerExternalLayer),
+    // sous une seule case à cocher — d'où leur fusion dans un groupe
+    // commun. Les polygones PE restent néanmoins ajoutés à ce groupe AVANT
+    // MS/MT construits juste en dessous : ce sont de larges zones qui
+    // recouvrent des stations/tunnels, elles ne doivent jamais passer
+    // devant et intercepter leur clic (voir metroLayer.js et
+    // patrimoineLayer.js#registerExternalLayer, bringToBack()).
     const peAndInfoGroup = L.layerGroup();
     layersByType.PE.eachLayer((l) => peAndInfoGroup.addLayer(l));
+    layersByType.PE_label.eachLayer((l) => peAndInfoGroup.addLayer(l));
     layersByType.PE_info.eachLayer((l) => peAndInfoGroup.addLayer(l));
     AMGT4CEM_PatrimoineLayer.registerExternalLayer('plans-ensemble-500e', peAndInfoGroup);
 

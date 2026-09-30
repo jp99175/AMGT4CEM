@@ -398,10 +398,12 @@ clic dans une zone où plusieurs planches se chevauchent (constaté sur ce
 jeu de données) liste toujours **toutes** celles concernées à cet endroit
 précis, pas seulement celle au-dessus visuellement — logique reprise telle
 quelle dans `src/metroLayer.js` (`_sheetRefsAt`) au moment de la migration.
-La même case affiche aussi **PE_info** (`Metro_export_SHP/MetroInfo.shp`,
-type `"PE_info"`) : les repères de transition entre tronçons de
-construction (D0, D1, G1a...) relevés dans INFRAVIEW.pdf — voir le détail
-en section 4bis (méthode, précision, limites).
+La même case affiche aussi **PE_info** et **PE_label**
+(`Metro_export_SHP/MetroInfo.shp`) : les repères de transition entre
+tronçons de construction (D0, D1, G1a...) relevés dans INFRAVIEW.pdf, et le
+texte des références de planches (1000-236...) tracé dans l'emprise des
+planches elles-mêmes — voir le détail en section 4bis (méthode, précision,
+limites).
 
 **Numéros interstation** et **Noms de station** sont des **étiquettes de
 texte** (le contenu du champ `text` ou `numero`, affiché tel quel, pas un
@@ -489,61 +491,85 @@ séquentiellement), mais un autre logiciel GIS pourrait le réclamer.
 uniquement comme donnée de secours pour le chargement manuel (voir section
 1) — le chargement automatique normal ne le lit plus.
 
-### PE_info : tronçons de construction (MetroInfo.shp)
+### PE_info et PE_label (MetroInfo.shp)
 
 Un second fichier, `Metro_export_SHP/MetroInfo.shp` (+ `.dbf`/`.prj`/`.cpg`/
-`.shx`), complète Metro.shp avec 106 entités `type = "PE_info"` (attribut
-`code`) : les repères de transition entre **tronçons de construction**
-(ex. `D0`, `D1`, `G1a`...) visibles sur le plan **INFRAVIEW** de la STIB
-("Bruxelles Infrastructure — Station & Interstation", `DITP`, juillet
-2025) — chaque petit triangle gris du plan y marque la frontière entre
-deux tronçons identifiés par un code. Fichier séparé de Metro.shp par
-prudence (les deux sont en réalité du même type de forme Polygon).
+`.shx`), complète Metro.shp avec deux types d'entités, toutes deux du
+même principe : du texte/des symboles reproduits en **vrais polygones**
+(tracés de contours), pas en étiquette HTML — fichier séparé de Metro.shp
+par prudence (les deux sont en réalité du même type de forme Polygon).
 
-Contrairement à MS/MT/PE (un seul anneau extérieur par entité), une entité
-PE_info combine **plusieurs formes disjointes** dans le même enregistrement
-Polygon — le triangle ET le contour de chaque caractère du code — pour
-reproduire tel quel le symbole d'INFRAVIEW.pdf plutôt qu'une étiquette de
-texte HTML (premier essai, jugé pas assez fidèle au rendu du plan source).
-`src/metroLayer.js` (`_groupRingsIntoShapes`) reconstruit ces formes à
-partir de la liste plate d'anneaux du Shapefile selon la convention ESRI
-standard (anneau horaire = nouvelle forme, antihoraire = trou de la forme
-en cours) et construit un `L.polygon` par forme, tous liés au même popup.
+**PE_info** (186 entités, attribut `code`) : les repères de transition
+entre **tronçons de construction** (ex. `D0`, `D1`, `G1a`...) visibles sur
+le plan **INFRAVIEW** de la STIB ("Bruxelles Infrastructure — Station &
+Interstation", `DITP`, juillet 2025) — chaque petit triangle gris du plan
+y marque la frontière entre deux tronçons identifiés par un code. Deux
+sous-types d'entités, séparées :
+- **106 triangles** (une entité par triangle réel du plan) : coordonnées
+  vectorielles extraites directement du PDF (ce sont de vraies formes
+  vectorielles dans le fichier, pas des pixels), orientation fidèle à
+  chacune.
+- **80 codes** (une entité par code **unique**) : le texte des codes,
+  étant du texte PDF classique (police référencée, pas des contours
+  vectoriels), a été retracé par traitement d'image (rendu du PDF à très
+  haute résolution, seuillage colorimétrique pour isoler le gris du texte
+  des lignes de tunnel bleues/magenta voisines, puis `cv2.findContours`
+  avec hiérarchie pour obtenir le contour extérieur ET les trous de chaque
+  caractère — "D0" a un trou dans le "D" et un dans le "0", etc.).
 
-Origine et méthode (digitisation automatique, pas de relevé manuel) :
-INFRAVIEW est un PDF vectoriel exporté d'AutoCAD Civil 3D (pas un scan) —
-triangles et texte y sont des objets vectoriels réels. Les triangles ont
-été extraits directement de leurs coordonnées vectorielles dans le PDF ;
-le texte des codes, étant du texte PDF classique (police référencée, pas
-des contours vectoriels), a été retracé par traitement d'image (rendu du
-PDF à très haute résolution, seuillage colorimétrique pour isoler le gris
-du texte des lignes de tunnel bleues/magenta voisines, puis
-`cv2.findContours` avec hiérarchie pour obtenir le contour extérieur ET
-les trous de chaque caractère — "D0" a un trou dans le "D" et un dans le
-"0", etc.). Les coordonnées du PDF n'étant pas géoréférencées, une
-transformation affine (échelle + rotation + translation) a été calée sur
-43 stations déjà connues de Metro.shp (symbole du plan ↔ centroïde du
+Triangle et code sont des entités **séparées** plutôt que combinées en une
+seule (un premier essai les combinait) : un code peut être partagé par
+deux triangles (tracé à deux voies — normal, une ligne peut avoir deux
+voies parallèles), et dupliquer le texte par triangle empilait deux fois
+le même texte au même endroit, illisible. Séparer les deux résout ça
+puisqu'un code n'est tracé qu'une seule fois, quel que soit son nombre de
+triangles associés.
+
+Position : chaque entité garde la position **brute** issue de la
+transformation affine (échelle + rotation + translation) calée sur 43
+stations déjà connues de Metro.shp (symbole du plan ↔ centroïde du
 polygone MS correspondant, identifiés via le numéro de référence STIB
 imprimé sur le plan et la légende "NUMERO STATION" du même PDF) — résidu
-médian de calage ~13 à 25 m. Triangle et code sont ensuite plaqués
-ENSEMBLE (translation identique, pour rester l'un à côté de l'autre comme
-sur le plan source) sur le polygone `MT` (tunnel) le plus proche : ces
-triangles marquent par définition un point du tracé du tunnel, la
-précision du seul calage (jusqu'à plusieurs dizaines de mètres) n'étant
-pas suffisante pour les placer dessus sans cette correction.
+médian de calage ~13 à 25 m. **Aucun recalage individuel** sur le tunnel
+(MT) le plus proche (essayé, puis abandonné) : une transformation affine
+globale préserve par construction les distances/l'absence de
+chevauchement du plan source, alors qu'un recalage propre à chaque repère
+est une translation différente pour chacun — deux repères proches peuvent
+alors dériver l'un vers l'autre et se chevaucher (confirmé en pratique :
+25 paires en chevauchement avec un recalage individuel, 0 sans). Le calage
+brut reste donc plus proche de "l'implantation telle qu'elle est dans le
+PDF", au prix d'un décalage de quelques mètres à quelques dizaines de
+mètres par rapport au tracé exact du tunnel.
 
 Limites connues, volontairement documentées plutôt que masquées :
 - 117 triangles détectés au total dans le PDF ; 11 exclus faute
   d'association fiable à un code voisin (distance triangle → code trop
-  grande, cas ambigus) — 106 entités dans `MetroInfo.shp`.
+  grande, cas ambigus) — 106 entités triangle dans `MetroInfo.shp`.
 - L'association triangle → code retenue est la **plus proche** au sens
-  géométrique, pas une lecture garantie de la topologie exacte du schéma
-  (un tronçon a deux extrémités, donc potentiellement deux triangles —
-  normal sur un tracé à deux voies, où chaque code apparaît souvent deux
-  fois).
+  géométrique, pas une lecture garantie de la topologie exacte du schéma.
 - Précision de position : de l'ordre de la dizaine à quelques dizaines de
-  mètres le long du tunnel — suffisant pour repérer un tronçon sur la
-  carte, pas pour un relevé topographique.
+  mètres — suffisant pour repérer un tronçon sur la carte, pas pour un
+  relevé topographique.
+
+**PE_label** (36 entités, attribut `code` réutilisé pour la référence de
+planche, ex. `1000-236`) : le texte de `sheet_ref` (voir Metro.shp/PE),
+tracé dans l'emprise de chaque planche — même principe que PE_info (police
+système rendue puis contours extraits, cette fois sans PDF source, juste
+le texte lui-même), centré sur un point garanti à l'intérieur de l'emprise
+(`representative_point` de shapely, pas le centroïde : certaines planches
+sont concaves, leur centroïde géométrique peut tomber hors de la forme).
+Non interactif (`interactive: false` côté Leaflet) : un clic doit
+atteindre la planche en dessous (son popup gère déjà le cas de plusieurs
+planches superposées, voir plus haut), pas s'arrêter sur l'étiquette.
+
+Toutes ces entités (MS/MT/PE exceptés, qui n'ont jamais qu'un seul anneau
+extérieur) combinent **plusieurs formes disjointes** dans le même
+enregistrement Polygon (plusieurs "parties", au sens Shapefile) — le
+triangle ET chaque caractère pour PE_info, chaque caractère pour PE_label.
+`src/metroLayer.js` (`_groupRingsIntoShapes`) reconstruit ces formes à
+partir de la liste plate d'anneaux du Shapefile selon la convention ESRI
+standard (anneau horaire = nouvelle forme, antihoraire = trou de la forme
+en cours) et construit un `L.polygon` par forme.
 
 Affichage et z-order : contrairement aux planches PE (larges zones qui
 doivent rester SOUS les stations/tunnels pour ne pas intercepter leur
@@ -552,10 +578,12 @@ doivent donc rester AU-DESSUS de MS/MT, sinon invisibles au clic. Marqués
 via `polygon._amgtBringToFront` (metroLayer.js), traité par
 `src/patrimoineLayer.js#registerExternalLayer` en deux passes (tous les
 `bringToBack` d'abord, puis tous les `bringToFront`), pour finir au-dessus
-de tout même si la couche est activée après coup. Couche liée à **PE**
-dans le sélecteur "Plans patrimoine" (même case à cocher "Plans d'ensemble
-(1/500e)" — voir section 3bis) : PE_info n'a pas d'existence indépendante
-côté affichage, il complète l'information des planches.
+de tout même si la couche est activée après coup — PE_label n'a pas ce
+problème (non interactif, peu importe son rang de superposition pour le
+clic). PE_info et PE_label sont liés à **PE** dans le sélecteur "Plans
+patrimoine" (même case à cocher "Plans d'ensemble (1/500e)" — voir section
+3bis) : ni l'un ni l'autre n'a d'existence indépendante côté affichage, ils
+complètent l'information des planches et du réseau.
 
 ## 5. Architecture
 
@@ -568,8 +596,8 @@ src/layerOpacityStore.js     opacité individuelle des couches (icône curseurs,
 src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
 src/shpLoader.js             lecture Shapefile (Metro_export_SHP/) côté navigateur, sans bibliothèque tierce
 src/metroData.js             chargement manuel de secours (.json, FileReader) si le Shapefile échoue
-src/metroLayer.js            construction des couches Leaflet Stations/Tunnels/Planches/PE_info
-Metro_export_SHP/            donnée de référence : Metro.shp (MS/MT/PE) + MetroInfo.shp (PE_info) — voir section 4bis
+src/metroLayer.js            construction des couches Leaflet Stations/Tunnels/Planches/PE_info/PE_label
+Metro_export_SHP/            donnée de référence : Metro.shp (MS/MT/PE) + MetroInfo.shp (PE_info/PE_label) — voir section 4bis
 src/basemap.js                fonds de plan (UrbIS, Orthophoto, Bruciel)
 data/urbisTopoCatalog.js     catalogue complet des types d'objets UrbIS Topo (référence)
 src/urbisTopoSelectionStore.js sélection utilisateur des types UrbIS Topo affichés
