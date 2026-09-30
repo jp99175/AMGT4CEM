@@ -33,10 +33,20 @@ const AMGT4CEM_ScaledText = {
   /**
    * @param {L.LatLng} latlng
    * @param {string} text
-   * @param {{color: string, heightMeters: number, minPx?: number, maxPx?: number}} opts
+   * @param {{color: string, heightMeters: number, minPx?: number, maxPx?: number, rotationDeg?: number}} opts
    * @returns {L.Marker}
    */
   createMarker(latlng, text, opts) {
+    // La rotation (degrés CSS, horaire) est fixe pour un repère donné — pas
+    // recalculée au zoom comme le font-size — reprise telle quelle du texte
+    // source dans INFRAVIEW.pdf (voir metroLayer.js). translate(-50%,-50%)
+    // doit s'appliquer AVANT rotate() (ordre d'écriture CSS = ordre
+    // d'application de droite à gauche) pour que la rotation tourne autour
+    // du centre du texte, pas de son coin haut-gauche (ancre du marqueur).
+    const rotationDeg = opts.rotationDeg || 0;
+    const transform = rotationDeg
+      ? ` transform:translate(-50%,-50%) rotate(${rotationDeg}deg);`
+      : '';
     const marker = L.marker(latlng, {
       // Non interactif : ce texte est purement visuel, un clic doit
       // atteindre la forme en dessous (triangle PE_info, planche PE) —
@@ -47,7 +57,7 @@ const AMGT4CEM_ScaledText = {
       keyboard: false,
       icon: L.divIcon({
         className: 'amgt-scaled-text-icon',
-        html: `<span class="amgt-scaled-text" style="color:${opts.color}">${text}</span>`,
+        html: `<span class="amgt-scaled-text" style="color:${opts.color};${transform}">${text}</span>`,
         iconAnchor: [0, 0],
       }),
     });

@@ -512,9 +512,21 @@ Infrastructure", `DITP`, juillet 2025) ou dérivés de Metro.shp lui-même :
     pour un seul code dans le PDF) : centre du texte dans le PDF.
   - `type = "PE_label"` (36, un par planche, attribut `code` réutilisé
     pour la référence, ex. `1000-236`) : texte de `sheet_ref` (voir
-    Metro.shp/PE), centré sur un point garanti à l'intérieur de l'emprise
-    (`representative_point` de shapely, pas le centroïde : certaines
-    planches sont concaves).
+    Metro.shp/PE). Position ET rotation (attribut `angle`, degrés CSS,
+    horaire) reprises telles quelles du texte source dans INFRAVIEW.pdf —
+    même transformation affine que les triangles/codes PE_info pour la
+    position, angle du texte PDF (`LTChar.matrix`, `atan2(b, a)`) converti
+    du repère PDF au repère écran pour la rotation — sauf sur 8 planches
+    sur 36 où cette position brute tombe hors de l'emprise de la planche
+    (dérive de la transformation affine plus marquée en périphérie de
+    plan) : dans ce seul cas, recalée par interpolation vers le
+    `representative_point` de shapely (pas le centroïde : certaines
+    planches sont concaves) jusqu'à retomber dans l'emprise — la rotation,
+    elle, reste toujours celle du PDF, y compris pour ces 8 planches.
+    Un même `sheet_ref` peut apparaître deux fois (`3000-126`, deux
+    planches distinctes qui partagent ce numéro) : les deux occurrences du
+    texte dans le PDF sont alors assignées chacune à la planche la plus
+    proche.
 
 **Rendu du texte — texte HTML à taille réelle, pas des polygones.** Un
 premier essai avait tracé ce texte en vrais polygones (contours de
@@ -531,8 +543,13 @@ grossit/rétrécit avec le zoom exactement comme sur INFRAVIEW.pdf, pas à
 taille d'écran fixe. Couleurs reprises telles quelles du PDF (RGB exact
 des objets texte, pas une approximation) : gris pour les codes de
 tronçon, orange pour les références de planche — même teinte que les
-repères "4000-138"... visibles sur le plan lui-même. Les deux sont non
-interactifs (`interactive: false` + CSS `pointer-events: none`, les deux
+repères "4000-138"... visibles sur le plan lui-même. La rotation
+(`PE_label` uniquement — les codes de tronçon `PE_info` restent
+horizontaux) est appliquée en CSS (`transform: rotate(...)`, fixe, pas
+recalculée au zoom contrairement au `font-size`) directement sur le
+`<span>`, `translate(-50%, -50%)` d'abord pour que la rotation tourne
+autour du centre du texte et non du coin d'ancrage du marqueur. Les deux
+sont non interactifs (`interactive: false` + CSS `pointer-events: none`, les deux
 nécessaires : un `<span>` visible sans cette règle CSS intercepterait
 physiquement le clic au niveau du navigateur, quoi que l'option Leaflet
 décide de son côté) : un clic doit atteindre la forme en dessous

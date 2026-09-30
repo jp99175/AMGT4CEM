@@ -41,9 +41,15 @@
  *   seul code) : centre du texte dans le PDF, même transformation affine
  *   que les triangles.
  * - `type = "PE_label"` (36, un par planche) : texte de `sheet_ref` (voir
- *   Metro.shp/PE), centré sur un point garanti à l'intérieur de l'emprise
- *   (`representative_point` de shapely, pas le centroïde : certaines
- *   planches sont concaves).
+ *   Metro.shp/PE), position ET rotation (`angle`, degrés CSS) reprises
+ *   telles quelles d'INFRAVIEW.pdf (même transformation affine que les
+ *   triangles PE_info, angle du texte source converti du repère PDF au
+ *   repère écran) — sauf si cette position brute tombe hors de l'emprise
+ *   de sa planche (dérive de la transformation affine plus marquée en
+ *   périphérie de plan, 8 planches sur 36 concernées) : dans ce cas
+ *   seulement, recalée par interpolation vers le `representative_point`
+ *   (shapely, pas le centroïde : certaines planches sont concave) jusqu'à
+ *   retomber dans l'emprise, rotation conservée telle quelle.
  * Les deux sont non interactifs : un clic doit atteindre la forme en
  * dessous (triangle pour PE_info, planche pour PE_label), pas s'arrêter
  * sur le texte.
@@ -331,6 +337,7 @@ const AMGT4CEM_MetroLayer = {
     const marker = AMGT4CEM_ScaledText.createMarker(latlng, props.code || '', {
       color: style.color,
       heightMeters: style.heightMeters,
+      rotationDeg: props.angle || 0,
     });
     marker.addTo(group);
     bounds.extend(latlng);
