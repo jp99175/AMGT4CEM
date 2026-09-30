@@ -424,14 +424,23 @@ catalogue à la fois.
 
 ## 4bis. Donnée de référence : Shapefile, pas GeoJSON
 
-Le réseau métro (stations + tunnels) est maintenant tenu à jour dans
-**AutoCAD Civil 3D**, puis exporté en Shapefile vers `Metro_export_SHP/`
-(`Metro.shp`, `.dbf`, `.prj`, `.cst`, `.idx`, `.shx`) — format choisi parce
-que Civil 3D l'édite et l'exporte nativement (Map 3D intégré, sans plugin ni
-droits admin), contrairement à GeoJSON ou GeoPackage.
+Le réseau métro (stations + tunnels) est maintenant tenu en **Shapefile**
+dans `Metro_export_SHP/` (`Metro.shp`, `.dbf`, `.prj`, `.cst`, `.idx`,
+`.shx`) — format délibérément choisi pour être exploitable à la fois par
+**AutoCAD Civil 3D** (édite et exporte le Shapefile nativement, Map 3D
+intégré, sans plugin ni droits admin) et par cette application, contrairement
+à GeoJSON ou GeoPackage qui ne satisfont que l'un des deux côtés (voir
+discussion dans l'historique du projet).
+
+Origine de la donnée de référence : export WFS du service public MobiGIS
+(`data.mobility.brussels`, couche `bm_public_transport:Metro`, requête
+conservée dans `Metro_export_SHP/wfsrequest.txt`), qui produit justement un
+Shapefile (`outputFormat=shape-zip`) en EPSG:31370. Ce même fichier peut
+ensuite être ouvert et adapté dans Civil 3D.
 
 Workflow de mise à jour d'un plan :
-1. Adapter le plan dans Civil 3D.
+1. Adapter le plan dans Civil 3D (à partir du Shapefile existant, ou d'un
+   nouvel export WFS MobiGIS si une resynchronisation complète est voulue).
 2. Exporter en Shapefile, en réutilisant les mêmes noms de champs
    (`ogc_fid`, `name_fr`, `name_nl`, `niveau`, `type`) et le même CRS
    (EPSG:31370).
@@ -448,12 +457,12 @@ ISO-8859-1, voir `Metro.cst`). Aucune reprojection n'est faite à la lecture
 comme le faisait l'ancien `Metro.json` ; c'est `AMGT4CEM_CRS.lambertToLatLng`
 (`crs.js`, appelé par `metroLayer.js`) qui convertit à l'affichage.
 
-Point de vigilance rencontré en pratique : l'export Civil 3D testé ne
+Point de vigilance rencontré en pratique : le premier export testé ne
 contenait pas de fichier `.shx` (index des formes, normalement l'un des 3
 fichiers minimaux d'un Shapefile avec `.shp`/`.dbf`) — à surveiller sur les
-prochains exports ; `shpLoader.js` ne le lit pas (il n'en a pas besoin, il
-lit `.shp` séquentiellement), mais un autre logiciel GIS pourrait le
-réclamer.
+prochains exports, qu'ils viennent de Civil 3D ou d'un nouvel export WFS ;
+`shpLoader.js` ne le lit pas (il n'en a pas besoin, il lit `.shp`
+séquentiellement), mais un autre logiciel GIS pourrait le réclamer.
 
 `Metro.json` reste dans le dépôt et à jour (régénéré à partir du Shapefile)
 uniquement comme donnée de secours pour le chargement manuel (voir section
