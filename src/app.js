@@ -78,10 +78,15 @@
 
   function onMetroLoaded(geojson) {
     const { layersByType, bounds, searchIndex } = AMGT4CEM_MetroLayer.build(geojson);
-    // PE (planches) en premier, donc en dessous : ce sont de larges zones
-    // qui recouvrent des stations/tunnels, elles ne doivent jamais passer
-    // devant et intercepter leur clic (voir metroLayer.js).
-    layersByType.PE.addTo(map);
+    // PE (planches) n'est pas ajoutée directement ici : sa visibilité est
+    // pilotée depuis le sélecteur "Plans patrimoine" (voir
+    // patrimoineCatalog.js, entrée `external: true`, et
+    // patrimoineLayer.js#registerExternalLayer) — reste néanmoins ajoutée
+    // AVANT MS/MT dans le DOM Leaflet dès que le sélecteur l'affiche,
+    // puisqu'elle est construite avant eux ci-dessous : ce sont de larges
+    // zones qui recouvrent des stations/tunnels, elles ne doivent jamais
+    // passer devant et intercepter leur clic (voir metroLayer.js).
+    AMGT4CEM_PatrimoineLayer.registerExternalLayer('plans-ensemble-500e', layersByType.PE);
     layersByType.MS.addTo(map);
     layersByType.MT.addTo(map);
     AMGT4CEM_MapMenu.setMetroLayers(layersByType);

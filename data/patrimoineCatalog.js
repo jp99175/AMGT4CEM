@@ -6,11 +6,16 @@
  * src/patrimoineLayer.js, à la demande (voir patrimoineSelectionStore.js /
  * patrimoinePicker.js pour la sélection).
  *
- * Les plans d'ensemble au 1/500e n'y figurent plus depuis leur fusion dans
- * Metro_export_SHP/Metro.shp (type "PE", voir metroLayer.js) : ils sont
- * désormais toujours affichés avec le reste du réseau métro, plus besoin de
- * les sélectionner ici séparément — data/patrimoine-plans-ensemble-500e.json
- * est conservé dans l'historique Git mais n'est plus chargé par l'app.
+ * Les plans d'ensemble au 1/500e ont été fusionnés dans
+ * Metro_export_SHP/Metro.shp (type "PE", géométrie + popups gérés par
+ * metroLayer.js) : cette entrée n'a donc pas de `file` propre (`external:
+ * true`), sa case à cocher ne fait qu'afficher/masquer la couche Leaflet
+ * déjà construite par metroLayer.js, enregistrée auprès de ce module via
+ * AMGT4CEM_PatrimoineLayer.registerExternalLayer() (voir app.js). Couleur
+ * et opacité de cette couche restent gérées par metroLayer.js/mapMenu.js
+ * (curseur "Métro"), pas par la pastille de couleur du sélecteur ici.
+ * data/patrimoine-plans-ensemble-500e.json n'est donc plus chargé par l'app,
+ * mais conservé (et sa géométrie reste la source de la fusion ci-dessus).
  *
  * Liste volontairement ouverte : d'autres plans pourront s'y ajouter au fur
  * et à mesure (voir le sélecteur "modifier la sélection").
@@ -25,5 +30,10 @@ const AMGT4CEM_PATRIMOINE_CATALOG = [
     id: 'nom-station',
     label: 'Noms de station',
     file: './data/patrimoine-nom-station.json',
+  },
+  {
+    id: 'plans-ensemble-500e',
+    label: "Plans d'ensemble (1/500e)",
+    external: true,
   },
 ];

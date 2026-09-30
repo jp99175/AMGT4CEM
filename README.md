@@ -386,21 +386,28 @@ V1 (deux fichiers, EPSG:31370, voir `data/patrimoine-*.json`) :
   stations.
 - **Noms de station** : toponymes bilingues FR/NL et repères associés.
 
-Les **plans d'ensemble au 1/500e** (36 planches) n'y figurent plus : ils ont
-migré dans `Metro_export_SHP/Metro.shp` (type `"PE"`, voir section 4bis) et
-s'affichent désormais toujours avec le reste du réseau métro, sans passer
-par ce sélecteur. Le clic dans une zone où plusieurs planches se
-chevauchent (constaté sur ce jeu de données) liste toujours **toutes**
-celles concernées à cet endroit précis, pas seulement celle au-dessus
-visuellement — logique reprise telle quelle dans `src/metroLayer.js`
-(`_sheetRefsAt`) au moment de la migration.
+Les **plans d'ensemble au 1/500e** (36 planches) ont migré dans
+`Metro_export_SHP/Metro.shp` (type `"PE"`, géométrie et popups gérés par
+`src/metroLayer.js`, voir section 4bis) — mais restent une entrée de ce
+sélecteur (`data/patrimoineCatalog.js`, `external: true`) : la case à
+cocher affiche/masque simplement la couche déjà construite par
+`metroLayer.js` (voir `src/patrimoineLayer.js#registerExternalLayer`), sans
+recharger de fichier séparé ni proposer de couleur (la couleur/opacité des
+planches reste réglée avec le reste du réseau métro, curseur "Métro"). Le
+clic dans une zone où plusieurs planches se chevauchent (constaté sur ce
+jeu de données) liste toujours **toutes** celles concernées à cet endroit
+précis, pas seulement celle au-dessus visuellement — logique reprise telle
+quelle dans `src/metroLayer.js` (`_sheetRefsAt`) au moment de la migration.
 
-Ce sont des **étiquettes de texte** (le contenu du champ `text` ou `numero`,
-affiché tel quel, pas un simple point coloré) — voir `src/patrimoineLayer.js`.
-La géométrie "point" du catalogue UrbIS Topo, par
-comparaison, n'affiche qu'une pastille colorée : ici le texte réel du plan
-est ce qui compte. Aucun filtrage par zoom/emprise n'est nécessaire (les
-volumes sont très modestes, quelques centaines d'objets au plus par plan).
+**Numéros interstation** et **Noms de station** sont des **étiquettes de
+texte** (le contenu du champ `text` ou `numero`, affiché tel quel, pas un
+simple point coloré) — voir `src/patrimoineLayer.js`. La géométrie "point"
+du catalogue UrbIS Topo, par comparaison, n'affiche qu'une pastille
+colorée : ici le texte réel du plan est ce qui compte. Aucun filtrage par
+zoom/emprise n'est nécessaire (les volumes sont très modestes, quelques
+centaines d'objets au plus par plan). **Plans d'ensemble (1/500e)** est la
+seule entrée `external` du catalogue (pas de fichier, pas d'étiquette de
+texte) : voir plus haut.
 
 Liste volontairement ouverte : d'autres plans (constats, relevés...)
 pourront s'y ajouter au fur et à mesure, un fichier et une entrée de

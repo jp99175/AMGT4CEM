@@ -144,13 +144,19 @@ const AMGT4CEM_MapMenu = {
   },
 
   _initLayerControls(map, pointsGroup) {
-    // Une seule case pour Stations + Tunnels + Planches : les trois se
-    // parcourent toujours ensemble en pratique, inutile de les distinguer
-    // ici (la recherche, elle, continue de les différencier).
+    // Une seule case pour Stations + Tunnels : les deux se parcourent
+    // toujours ensemble en pratique, inutile de les distinguer ici (la
+    // recherche, elle, continue de les différencier). Les Planches (PE) en
+    // sont exclues : leur affichage/masquage est piloté depuis le
+    // sélecteur "Plans patrimoine" (voir patrimoineCatalog.js, entrée
+    // `external: true`, et patrimoineLayer.js#registerExternalLayer) —
+    // seule leur opacité reste réglée ici (_applyMetroOpacity), avec le
+    // reste du réseau.
     document.getElementById('amgt-layer-metro').addEventListener('change', (e) => {
       AMGT4CEM_ScreenshotTool.invalidateBackground();
       if (!this._metroLayers) return;
       for (const type of Object.keys(AMGT4CEM_METRO_TYPES)) {
+        if (type === 'PE') continue;
         const group = this._metroLayers[type];
         if (!group) continue;
         if (e.target.checked) group.addTo(map);

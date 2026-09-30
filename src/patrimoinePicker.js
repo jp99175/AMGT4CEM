@@ -52,11 +52,18 @@ const AMGT4CEM_PatrimoinePicker = {
       this._render(); // reflète la nouvelle pastille de couleur immédiatement
     });
 
-    const dot = document.createElement('span');
-    dot.className = 'amgt-topo-color-dot';
-    if (selection[entry.id]) dot.style.background = selection[entry.id];
+    // Couches "external" (ex : planches PE) : pas de pastille de couleur,
+    // leur rendu a sa propre couleur fixe (voir metroLayer.js), pas
+    // sélectionnable ici.
+    if (!entry.external) {
+      const dot = document.createElement('span');
+      dot.className = 'amgt-topo-color-dot';
+      if (selection[entry.id]) dot.style.background = selection[entry.id];
+      row.append(checkbox, dot, document.createTextNode(' ' + entry.label));
+      return row;
+    }
 
-    row.append(checkbox, dot, document.createTextNode(' ' + entry.label));
+    row.append(checkbox, document.createTextNode(' ' + entry.label));
     return row;
   },
 };

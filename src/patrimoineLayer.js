@@ -11,12 +11,15 @@
  * point coloré, pour rester lisible.
  *
  * Ce module gérait aussi des emprises Polygon (plans d'ensemble au 1/500e,
- * avec gestion des chevauchements au clic) : cette couche a été fusionnée
+ * avec gestion des chevauchements au clic) : cette géométrie a été fusionnée
  * dans Metro_export_SHP/Metro.shp (type "PE", voir metroLayer.js et son
- * README section 4bis) et retirée de data/patrimoineCatalog.js — le code
- * de gestion des polygones (avec son detail des planches superposées) a
- * migré avec elle dans metroLayer.js, plutôt que de rester ici sans plus
- * aucune donnée à traiter.
+ * README section 4bis), avec le code de gestion des polygones (dont le
+ * detail des planches superposées) qui a migré avec elle dans
+ * metroLayer.js. La couche "Plans d'ensemble (1/500e)" reste cependant
+ * une entrée du catalogue ici (data/patrimoineCatalog.js, `external:
+ * true`) : elle n'a pas de fichier propre à charger, mais sa visibilité
+ * (afficher/masquer) reste pilotée depuis ce sélecteur, comme les autres
+ * couches patrimoine — voir registerExternalLayer() ci-dessous.
  */
 const AMGT4CEM_PatrimoineLayer = {
   _map: null,
@@ -25,6 +28,7 @@ const AMGT4CEM_PatrimoineLayer = {
   _opacityFactor: 1,
   _cache: {}, // id -> features[]
   _subGroups: {}, // id -> L.LayerGroup
+  _externalLayers: {}, // id -> L.LayerGroup déjà construit ailleurs (voir registerExternalLayer)
 
   init(map) {
     this._map = map;
@@ -38,10 +42,28 @@ const AMGT4CEM_PatrimoineLayer = {
     this.refresh();
   },
 
-  /** Réglage d'opacité (icône curseurs du menu ☰ Carte), 0 à 1. */
+  /**
+   * Enregistre une couche Leaflet déjà construite ailleurs (ex : les
+   * planches "PE" de metroLayer.js, voir app.js) pour un id du catalogue
+   * marqué `external: true`. Peut être appelé avant ou après que
+   * l'utilisateur ait sélectionné cet id (le chargement du réseau Métro est
+   * asynchrone) : si déjà sélectionné, la couche est affichée immédiatement.
+   */
+  registerExternalLayer(id, layerGroup) {
+    this._externalLayers[id] = layerGroup;
+    this.refresh();
+  },
+
+  /**
+   * Réglage d'opacité (icône curseurs du menu ☰ Carte), 0 à 1. Les couches
+   * externes (ex : planches PE) n'y sont pas soumises : leur opacité reste
+   * gérée par leur propre module (curseur "Métro" pour PE) pour éviter que
+   * deux curseurs n'agissent sur la même couche.
+   */
   setOpacity(factor) {
     this._opacityFactor = factor;
-    for (const group of Object.values(this._subGroups)) {
+    for (const [id, group] of Object.entries(this._subGroups)) {
+      if (this._externalLayers[id] === group) continue;
       group.eachLayer((layer) => {
         if (layer instanceof L.Marker) layer.setOpacity(factor);
         else if (layer.setStyle) layer.setStyle({ opacity: factor });
@@ -77,6 +99,23 @@ const AMGT4CEM_PatrimoineLayer = {
       if (this._subGroups[id]) continue;
       const entry = AMGT4CEM_PATRIMOINE_CATALOG.find((e) => e.id === id);
       if (!entry) continue;
+
+      if (entry.external) {
+        const layer = this._externalLayers[id];
+        if (!layer) continue; // pas encore construite (Metro.shp en cours de chargement) : registerExternalLayer() rappellera refresh()
+        this._subGroups[id] = layer;
+        layer.addTo(this._group);
+        // Les planches PE doivent toujours rester SOUS les stations/tunnels
+        // (voir metroLayer.js) pour qu'un clic sur une station ouvre bien sa
+        // popup, pas celle de la planche sous-jacente. À l'affichage initial
+        // l'ordre d'ajout (PE avant MS/MT, voir app.js) suffit, mais cette
+        // couche peut aussi être (dés)activée bien plus tard via cette case
+        // à cocher — sans bringToBack() elle passerait alors devant MS/MT
+        // déjà présents (ordre d'ajout au renderer canvas = ordre d'empilement).
+        layer.eachLayer((l) => { if (typeof l.bringToBack === 'function') l.bringToBack(); });
+        continue;
+      }
+
       try {
         const features = await this._loadFeatures(entry);
         const subGroup = this._buildSubGroup(features, selection[id]);
