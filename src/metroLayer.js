@@ -192,20 +192,28 @@ const AMGT4CEM_MetroLayer = {
 
   /**
    * Repère ponctuel "PE_info" (transition entre deux tronçons de
-   * construction, voir en-tête du fichier) : un petit triangle gris (CSS,
-   * .amgt-pe-info-triangle), fidèle au symbole du plan d'origine. Pas
-   * d'étiquette permanente (même choix que pour les planches PE) — le code
-   * du tronçon s'affiche au clic.
+   * construction, voir en-tête du fichier) : triangle gris + code du
+   * tronçon en étiquette permanente à côté, fidèle au rendu d'INFRAVIEW.pdf
+   * (contrairement aux planches PE, dont l'étiquette avait été jugée
+   * superflue — ici au contraire le code EST l'information recherchée en un
+   * coup d'œil, comme sur le plan d'origine). Le popup au clic reste
+   * disponible (coordonnées précises) mais n'est plus la seule façon de
+   * lire le code.
    */
   _buildInfoMarker(feature) {
     const props = feature.properties || {};
     const latlng = AMGT4CEM_CRS.lambertToLatLng(feature.geometry.coordinates);
+    const code = props.code || '';
+    // iconAnchor à [0,0] volontairement : l'origine de l'icône reste
+    // exactement le point géographique du marqueur, tout le positionnement
+    // (triangle + code) se fait ensuite en CSS (transform), voir style.css
+    // — évite de cumuler deux mécanismes de décalage différents.
     const icon = L.divIcon({
       className: 'amgt-pe-info-icon',
-      html: '<span class="amgt-pe-info-triangle"></span>',
-      iconSize: [10, 10],
-      iconAnchor: [5, 5],
-      popupAnchor: [0, -5],
+      html: '<span class="amgt-pe-info-triangle"></span>' +
+        `<span class="amgt-pe-info-code">${code}</span>`,
+      iconAnchor: [0, 0],
+      popupAnchor: [0, -16],
     });
     const marker = L.marker(latlng, { icon });
     marker.bindPopup(this._buildInfoPopupHtml(props));
