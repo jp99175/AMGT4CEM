@@ -27,7 +27,14 @@ Une fois la carte affichée :
 1. Activer la couche **Plans d'ensemble (1/500e)** (menu ☰ Carte → Plans
    patrimoine) si ce n'est pas déjà fait — les étiquettes doivent être
    visibles pour être éditées.
-2. Cliquer sur le bouton **🧲 Étiquettes planches** en bas à droite.
+2. Entrer en mode édition, au choix :
+   - cliquer directement sur le **texte d'une étiquette** sur la carte
+     (ex. « 1000-236 ») ;
+   - ou cliquer sur le bouton **🧲 Étiquettes planches** en bas à droite.
+
+   Les deux ouvrent le même mode édition, pour toutes les étiquettes à la
+   fois (cliquer sur une étiquette précise ne fait qu'y raccourcir l'accès,
+   ça n'active pas qu'elle seule).
 3. Pour chaque étiquette apparaissent deux poignées :
    - **point orange** : glisser pour déplacer l'étiquette. En s'approchant
      à moins de 12 m d'un point gris (généré tous les 15 m le long du

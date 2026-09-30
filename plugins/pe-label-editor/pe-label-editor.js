@@ -80,6 +80,7 @@
       if (!entries.length) return false;
       this._entries = entries;
       this._applyOverrides();
+      for (const entry of entries) this._makeLabelClickable(entry);
       return true;
     },
 
@@ -126,6 +127,7 @@
     },
 
     _activate() {
+      if (this._active) return; // déjà actif (ex. double-clic rapide sur une étiquette) : rien à refaire
       if (!this._ensureIndexed()) {
         alert(
           "Aucune étiquette de planche visible.\n\n" +
@@ -194,6 +196,44 @@
     _readAngleDeg(span) {
       const m = /rotate\(\s*(-?[\d.]+)deg\s*\)/.exec(span.style.transform || '');
       return m ? parseFloat(m[1]) : 0;
+    },
+
+    /**
+     * Rend le texte de l'étiquette lui-même cliquable pour entrer
+     * directement en mode édition (sans passer par le bouton 🧲) : le
+     * `<span>` du texte a `pointer-events: none` dans le CSS de l'appli
+     * (style.css, volontaire — un clic doit normalement traverser jusqu'à
+     * la planche en dessous, voir metroLayer.js). Ce plugin ne touche pas
+     * ce fichier : il pose juste un style inline (plus prioritaire que la
+     * règle de classe) sur CET élément précis, en overlay, comme il le fait
+     * déjà pour `transform`/`font-size`.
+     *
+     * `marker.on('add', ...)` (même mécanisme que scaledText.js) : Leaflet
+     * recrée l'élément DOM du divIcon à chaque fois que le marqueur
+     * redevient visible (ex. la couche "Plans d'ensemble" désactivée puis
+     * réactivée) — sans ce ré-abonnement, le style inline et l'écouteur de
+     * clic seraient perdus après un tel cycle.
+     */
+    _makeLabelClickable(entry) {
+      entry.marker.on('add', () => this._bindLabelClick(entry));
+      this._bindLabelClick(entry);
+    },
+
+    _bindLabelClick(entry) {
+      const el = entry.marker.getElement();
+      const span = el ? el.querySelector('.amgt-scaled-text') : null;
+      if (!span) return;
+      entry.span = span; // l'élément peut avoir été recréé depuis l'indexation initiale
+      span.style.pointerEvents = 'auto';
+      span.style.cursor = 'pointer';
+      span.title = "Cliquer pour déplacer/orienter cette étiquette (plugin d'édition)";
+      if (span._amgtPleClickBound) return; // déjà abonné sur CET élément, ne pas empiler les écouteurs
+      span._amgtPleClickBound = true;
+      span.addEventListener('click', (e) => {
+        L.DomEvent.stopPropagation(e); // pas de clic-traversant vers la planche en dessous dans ce cas précis
+        L.DomEvent.preventDefault(e);
+        this._activate();
+      });
     },
 
     // ---- Persistance (localStorage + export/import JSON) ----------------
