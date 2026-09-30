@@ -599,12 +599,47 @@ html, body {
   box-shadow: 0 0 2px rgba(0,0,0,0.4);
 }
 
-/* PE_info (repères de transition entre tronçons de construction) n'utilise
-   plus de marqueur CSS : depuis leur passage en vrais polygones (triangle +
-   contour de chaque caractère du code, extraits du PDF), ce sont des
-   L.polygon classiques stylés via AMGT4CEM_METRO_TYPES.PE_info
-   (metroLayer.js), pas de règle CSS dédiée nécessaire ici.
-   Voir historique Git pour l'ancien style .amgt-pe-info-* (L.divIcon). */
+/* Conteneur des textes PE_info (codes de tronçon)/PE_label (références de
+   planche) — voir scaledText.js. Fond/bordure Leaflet par défaut retirés,
+   comme .amgt-patrimoine-label ; `pointer-events: none` en plus (et pas
+   seulement l'option Leaflet `interactive: false`) pour garantir que ce
+   texte, purement visuel, ne bloque JAMAIS physiquement un clic destiné à
+   la forme en dessous (triangle PE_info, planche PE) — un <span> visible
+   sans cette règle intercepterait le clic au niveau du DOM/navigateur,
+   quoi que Leaflet décide de son côté. */
+.amgt-scaled-text-icon {
+  background: transparent;
+  border: none;
+  pointer-events: none;
+  /* PAS de `position` ici : Leaflet pose déjà `position: absolute` sur ce
+     même élément (classe `.leaflet-marker-icon`, feuille de style
+     Leaflet) pour son propre positionnement par transform — la
+     réaffecter (même à `relative`) le ferait retomber dans le flux normal
+     du document et casserait complètement son placement. Un élément
+     `position: absolute` est déjà un contexte de positionnement valide
+     pour ses enfants `position: absolute` (le span ci-dessous) : rien de
+     plus à poser ici. */
+}
+
+/* Le texte lui-même : centré sur le point d'ancrage (translate -50%/-50%,
+   fonctionne quelle que soit sa taille/largeur rendue, contrairement à un
+   iconAnchor Leaflet fixé à la création). Taille (font-size) posée en
+   ligne par scaledText.js à chaque zoom, pas ici — seul le style fixe
+   (graisse, police, interligne) est réglé en CSS. Pas de fond encadré :
+   rendu proche d'INFRAVIEW.pdf (texte brut sur le fond de carte), un léger
+   liseré blanc (text-shadow) suffit à rester lisible sur tout fond. */
+.amgt-scaled-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-block;
+  white-space: nowrap;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 3px #fff;
+}
 
 @keyframes amgt-pulse {
   0% { transform: scale(1); }

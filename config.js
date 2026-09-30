@@ -31,13 +31,16 @@ const AMGT4CEM_CONFIG = {
   // Shapefile.
   metroShpBaseUrl: './Metro_export_SHP/Metro',
   metroDataUrl: './Metro.json',
-  // Fichier annexe (même répertoire, même CRS) : repères "PE_info"
+  // Fichiers annexes (même répertoire, même CRS) : repères "PE_info"
   // (transitions entre tronçons de construction D0/D1/G1a/... relevées dans
-  // INFRAVIEW.pdf — STIB, voir metroLayer.js et le README section 4bis).
-  // Shapefile séparé de Metro.shp : chaque entité PE_info combine plusieurs
-  // formes (triangle + contour de chaque caractère du code) dans un même
-  // enregistrement Polygon, une entité distincte par repère.
+  // INFRAVIEW.pdf — STIB) et références de planches "PE_label", voir
+  // metroLayer.js et le README section 4bis. Séparés de Metro.shp (et l'un
+  // de l'autre) par type de forme : MetroInfo.shp ne contient que les
+  // triangles (Polygon, une entité par triangle réel du plan) ;
+  // MetroLabels.shp ne contient que les points d'ancrage des textes
+  // PE_info/PE_label, rendus en HTML par scaledText.js (Point).
   metroInfoShpBaseUrl: './Metro_export_SHP/MetroInfo',
+  metroLabelsShpBaseUrl: './Metro_export_SHP/MetroLabels',
 
   // Petite emprise (2km x 2km, centre de Bruxelles) utilisée uniquement pour
   // sonder si un fond WMS répond avant de le proposer (voir basemap.js) —

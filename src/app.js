@@ -53,6 +53,7 @@
   AMGT4CEM_Basemap.showUrbis();
 
   AMGT4CEM_ScaleControl.init(map);
+  AMGT4CEM_ScaledText.initMap(map);
   const pointsGroup = AMGT4CEM_PointsLayer.init(map);
   AMGT4CEM_UrbisTopoLayer.init(map);
   AMGT4CEM_UrbisTopoPicker.init();
@@ -77,17 +78,23 @@
   AMGT4CEM_ScreenshotTool.init(map);
 
   function onMetroLoaded(geojson) {
-    // MetroInfo.shp (repères "PE_info", voir metroLayer.js) est un fichier à
-    // part (Point, alors que Metro.shp est Polygon — un .shp ne mélange pas
-    // les deux) : chargé séparément, fusionné avec les entités de Metro.shp
-    // avant l'unique appel à build(). Son absence/échec (ex : fichier pas
-    // encore déployé) ne doit pas empêcher le reste de l'app de fonctionner
-    // — dégradation silencieuse (juste un avertissement en console), comme
-    // le reste des couches optionnelles de cette app.
+    // MetroInfo.shp (triangles PE_info, Polygon) et MetroLabels.shp (points
+    // d'ancrage des textes PE_info/PE_label, Point) sont des fichiers à part
+    // (Metro.shp est Polygon — un .shp ne mélange pas deux types de forme) :
+    // chargés séparément, fusionnés avec les entités de Metro.shp avant
+    // l'unique appel à build(). Leur absence/échec (ex : fichier pas encore
+    // déployé) ne doit pas empêcher le reste de l'app de fonctionner —
+    // dégradation silencieuse (juste un avertissement en console), comme le
+    // reste des couches optionnelles de cette app.
     AMGT4CEM_ShpLoader.load(AMGT4CEM_CONFIG.metroInfoShpBaseUrl, (infoGeojson) => {
-      finishMetroLoad(geojson.features.concat(infoGeojson.features));
+      AMGT4CEM_ShpLoader.load(AMGT4CEM_CONFIG.metroLabelsShpBaseUrl, (labelsGeojson) => {
+        finishMetroLoad(geojson.features.concat(infoGeojson.features, labelsGeojson.features));
+      }, (err) => {
+        console.warn('[AMGT4CEM] Chargement de MetroLabels.shp (textes PE_info/PE_label) impossible, couche ignorée :', err);
+        finishMetroLoad(geojson.features.concat(infoGeojson.features));
+      });
     }, (err) => {
-      console.warn('[AMGT4CEM] Chargement de MetroInfo.shp (repères PE_info) impossible, couche ignorée :', err);
+      console.warn('[AMGT4CEM] Chargement de MetroInfo.shp (triangles PE_info) impossible, couche ignorée :', err);
       finishMetroLoad(geojson.features);
     });
   }
@@ -112,6 +119,7 @@
     layersByType.PE.eachLayer((l) => peAndInfoGroup.addLayer(l));
     layersByType.PE_label.eachLayer((l) => peAndInfoGroup.addLayer(l));
     layersByType.PE_info.eachLayer((l) => peAndInfoGroup.addLayer(l));
+    layersByType.PE_info_text.eachLayer((l) => peAndInfoGroup.addLayer(l));
     AMGT4CEM_PatrimoineLayer.registerExternalLayer('plans-ensemble-500e', peAndInfoGroup);
 
     layersByType.MS.addTo(map);

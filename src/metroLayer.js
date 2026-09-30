@@ -1,7 +1,8 @@
 /**
  * Construction des couches Leaflet à partir des données de référence
- * (Metro_export_SHP/Metro.shp + MetroInfo.shp, voir shpLoader.js — les deux
- * FeatureCollections sont fusionnées par app.js avant l'appel à build()).
+ * (Metro_export_SHP/Metro.shp + MetroInfo.shp + MetroLabels.shp, voir
+ * shpLoader.js — les trois FeatureCollections sont fusionnées par app.js
+ * avant l'appel à build()).
  *
  * Metro.shp : 192 polygones (aucune ligne/point), avec un seul attribut de
  * classification utile : `type` = "MS" (emprise de station, 69 entités),
@@ -10,70 +11,83 @@
  * nom FR/NL, une planche n'en a pas). Chaque polygone est un seul anneau
  * extérieur, sans trou. CRS : EPSG:31370 (Belgian Lambert 72).
  *
- * MetroInfo.shp : entités "PE_info" (186) et "PE_label" (36). Fichier
- * Shapefile séparé de Metro.shp par prudence (les deux sont en réalité du
- * même type de forme Polygon).
+ * MetroInfo.shp (106 entités `type = "PE_info"`, Polygon) : les TRIANGLES
+ * de transition entre tronçons de construction relevés dans INFRAVIEW.pdf
+ * (STIB, plan "Station & Interstation Infrastructure", attribut `code` —
+ * ex. "D1", "G1a") — chaque petit triangle gris du plan y marque la
+ * frontière entre deux tronçons identifiés par un code. Coordonnées
+ * vectorielles extraites directement du PDF (ce sont de vraies formes
+ * vectorielles dans le fichier, pas des pixels), orientation fidèle à
+ * chacune. Position brute issue de la transformation affine (échelle +
+ * rotation + translation) calée sur 43 stations déjà connues de Metro.shp
+ * (résidu médian ~13-25 m) — AUCUN recalage individuel sur le tunnel (MT)
+ * le plus proche (essayé, puis abandonné : un recalage propre à chaque
+ * repère casse le caractère "préserve les distances" d'une transformation
+ * affine globale et peut faire dériver deux repères l'un vers l'autre ;
+ * préférer la position du plan source, quitte à être décalé de quelques
+ * mètres du tracé exact, plutôt que de résoudre l'un en cassant l'autre).
+ * Voir le README section 4bis pour le détail de la méthode et ses limites
+ * (11 triangles sur 117 exclus, association triangle → code trop
+ * incertaine au-delà d'un certain seuil de distance).
  *
- * PE_info (attribut `code`, ex. "D1", "G1a") : repères de transition entre
- * tronçons de construction relevés dans INFRAVIEW.pdf (STIB, plan "Station
- * & Interstation Infrastructure") — chaque petit triangle gris du plan y
- * marque la frontière entre deux tronçons identifiés par un code. Deux
- * sous-types d'entités, chacune combinant PLUSIEURS formes disjointes dans
- * le même enregistrement Polygon (plusieurs "parties", au sens Shapefile) :
- * - le TRIANGLE (une entité par triangle réel du plan, 106 au total —
- *   coordonnées vectorielles extraites directement du PDF, orientation
- *   fidèle) ;
- * - le CODE (une entité par code UNIQUE, 80 au total — le texte PDF n'est
- *   pas vectoriel (police référencée), retracé par traitement d'image :
- *   rendu à très haute résolution, seuillage colorimétrique pour isoler le
- *   gris du texte des lignes de tunnel bleues/magenta voisines, puis
- *   cv2.findContours avec hiérarchie pour les trous de chaque caractère —
- *   le "0" de D0, le "a" de G1a...).
- * Triangle et code sont volontairement des entités SÉPARÉES plutôt que
- * combinées en une seule (comme un premier essai l'avait fait) : un code
- * peut être partagé par deux triangles (tracé à deux voies), et le dupliquer
- * par triangle empilait deux fois le même texte au même endroit. Chacun
- * garde la position brute issue de la transformation affine calée sur 43
- * stations déjà connues de Metro.shp (résidu médian ~13-25 m) — AUCUN
- * recalage individuel sur le tunnel (MT) le plus proche (essayé, puis
- * abandonné : un recalage propre à chaque repère casse le caractère
- * "préserve les distances" d'une transformation affine globale et peut
- * faire dériver deux repères l'un vers l'autre ; préférer la position du
- * plan source, quitte à être décalé de quelques mètres du tracé exact,
- * plutôt que de résoudre l'un en cassant l'autre). Voir le README section
- * 4bis pour le détail de la méthode et ses limites (11 triangles sur 117
- * exclus, association triangle → code trop incertaine au-delà d'un certain
- * seuil de distance).
+ * MetroLabels.shp (116 entités, Point) : les points d'ancrage des CODES et
+ * des RÉFÉRENCES DE PLANCHE, rendus en texte HTML (pas en polygone — un
+ * premier essai avait tracé ce texte en contours de caractères extraits,
+ * jugé après coup moins lisible qu'un texte HTML classique) dont la taille
+ * suit le zoom pour simuler une hauteur réelle constante (voir
+ * scaledText.js) :
+ * - `type = "PE_info"` (80, un par code UNIQUE — partagé par ses éventuels
+ *   deux triangles, un tracé à deux voies ayant deux triangles pour un
+ *   seul code) : centre du texte dans le PDF, même transformation affine
+ *   que les triangles.
+ * - `type = "PE_label"` (36, un par planche) : texte de `sheet_ref` (voir
+ *   Metro.shp/PE), centré sur un point garanti à l'intérieur de l'emprise
+ *   (`representative_point` de shapely, pas le centroïde : certaines
+ *   planches sont concaves).
+ * Les deux sont non interactifs : un clic doit atteindre la forme en
+ * dessous (triangle pour PE_info, planche pour PE_label), pas s'arrêter
+ * sur le texte.
  *
- * PE_label (attribut `code`, réutilisé pour la référence de planche, ex.
- * "1000-236") : le texte de `sheet_ref` (voir Metro.shp/PE) tracé de la
- * même façon (police système rendue puis contours extraits, cette fois
- * sans PDF source — juste le texte lui-même), centré sur un point garanti
- * à l'intérieur de l'emprise (`representative_point`, pas le centroïde :
- * certaines planches sont concaves). Affichage non interactif
- * (`interactive: false`) : un clic doit atteindre la planche en dessous
- * (son popup gère déjà le cas de plusieurs planches superposées), pas
- * s'arrêter sur l'étiquette.
- *
- * Une entité PE_info/PE_label est donc rendue comme PLUSIEURS L.polygon
- * (un par forme disjointe). _groupRingsIntoShapes() reconstruit ces formes
- * à partir de la liste plate d'anneaux du Shapefile, selon la convention
- * ESRI standard : un anneau horaire démarre une nouvelle forme, un anneau
- * antihoraire est un trou de la forme en cours.
+ * Les triangles PE_info (seuls encore en Polygon) combinent parfois
+ * plusieurs formes par entité — non, en fait une seule (un triangle par
+ * entité) : `_groupRingsIntoShapes()` reste néanmoins générique (utile si
+ * un futur type Polygon multi-formes en a besoin), reconstruit les formes
+ * à partir de la liste plate d'anneaux du Shapefile selon la convention
+ * ESRI standard (anneau horaire = nouvelle forme, antihoraire = trou).
  *
  * Les planches (PE) sont de larges zones qui recouvrent des stations/
  * tunnels : voir app.js (ordre d'ajout des couches, PE en dessous) pour que
  * cliquer sur une station ouvre bien sa popup, pas celle de la planche
- * sous-jacente — PE_info, étant lui aussi rendu en L.polygon (canvas) mais
- * délibérément plaqué SUR un tunnel, suit la règle inverse (voir
- * patrimoineLayer.js#registerExternalLayer, bringToBack()/bringToFront()).
+ * sous-jacente — les triangles PE_info, étant eux aussi rendus en
+ * L.polygon (canvas) mais délibérément plaqués SUR un tunnel, suivent la
+ * règle inverse (voir patrimoineLayer.js#registerExternalLayer,
+ * bringToBack()/bringToFront()). Les textes (L.marker, markerPane) n'ont
+ * pas ce problème : non interactifs, ils ne peuvent jamais intercepter de
+ * clic quel que soit leur rang d'empilement.
  */
+// Uniquement les types encore rendus en L.polygon (Path : fillOpacity/
+// weight s'appliquent, voir mapMenu.js _applyMetroOpacity qui parcourt
+// cette table et appelle layer.setStyle(...) sur chaque groupe — une
+// méthode que L.Marker n'a pas). Les textes PE_info/PE_label (L.marker,
+// voir _buildScaledLabel) ont leur propre style, passé directement au
+// constructeur du marqueur, pas via cette table.
 const AMGT4CEM_METRO_TYPES = {
   MS: { label: 'Stations', color: '#c0392b', fillOpacity: 0.55, weight: 1 },
   MT: { label: 'Tunnels', color: '#2c3e50', fillOpacity: 0.35, weight: 1 },
   PE: { label: "Plans d'ensemble (1/500e)", color: '#b8860b', fillOpacity: 0.06, weight: 1 },
   PE_info: { label: 'Repères tronçons', color: '#575757', fillOpacity: 1, weight: 0 },
-  PE_label: { label: 'Références planches', color: '#8a6508', fillOpacity: 0.85, weight: 0 },
+};
+
+// Couleurs des textes PE_info/PE_label (L.marker, voir _buildScaledLabel),
+// reprises telles quelles d'INFRAVIEW.pdf (couleur RGB exacte des objets
+// texte du PDF, pas une approximation) : gris pour les codes de tronçon,
+// orange pour les références de planche/plan (même teinte que les
+// repères "4000-138"... visibles sur le plan lui-même). Hauteur réelle
+// visée ~42 m, dérivée de la taille de police d'origine dans le PDF
+// (~8pt) une fois passée par l'échelle du calage affine (~5.3 m/pt).
+const AMGT4CEM_LABEL_STYLES = {
+  PE_info: { color: '#575757', heightMeters: 42 },
+  PE_label: { color: '#ff7f00', heightMeters: 42 },
 };
 
 /** kind (recherche) et libellé associés à chaque type de polygone. */
@@ -89,8 +103,9 @@ const AMGT4CEM_MetroLayer = {
       MS: L.layerGroup(),
       MT: L.layerGroup(),
       PE: L.layerGroup(),
-      PE_info: L.layerGroup(),
-      PE_label: L.layerGroup(),
+      PE_info: L.layerGroup(), // triangles (L.polygon)
+      PE_info_text: L.layerGroup(), // codes de tronçon (L.marker, texte)
+      PE_label: L.layerGroup(), // références de planche (L.marker, texte)
     };
     const bounds = L.latLngBounds([]);
     const searchIndex = [];
@@ -105,13 +120,17 @@ const AMGT4CEM_MetroLayer = {
       const type = props.type;
 
       if (type === 'PE_info') {
-        if (!feature.geometry || feature.geometry.type !== 'Polygon') continue;
-        this._buildInfoShapes(feature, layersByType.PE_info, bounds);
+        if (!feature.geometry) continue;
+        if (feature.geometry.type === 'Polygon') {
+          this._buildInfoShapes(feature, layersByType.PE_info, bounds); // triangle
+        } else if (feature.geometry.type === 'Point') {
+          this._buildScaledLabel(feature, layersByType.PE_info_text, bounds, AMGT4CEM_LABEL_STYLES.PE_info);
+        }
         continue;
       }
       if (type === 'PE_label') {
-        if (!feature.geometry || feature.geometry.type !== 'Polygon') continue;
-        this._buildLabelShapes(feature, layersByType.PE_label, bounds);
+        if (!feature.geometry || feature.geometry.type !== 'Point') continue;
+        this._buildScaledLabel(feature, layersByType.PE_label, bounds, AMGT4CEM_LABEL_STYLES.PE_label);
         continue;
       }
 
@@ -268,9 +287,12 @@ const AMGT4CEM_MetroLayer = {
    * shpLoader.js) en formes indépendantes [anneau extérieur, ...trous],
    * selon la convention ESRI standard : un anneau à sens horaire démarre
    * une nouvelle forme, un anneau antihoraire est un trou de la forme en
-   * cours (déterminé ici par l'aire signée, formule du lacet). Seuls
-   * PE_info et PE_label en ont besoin — MS/MT/PE n'ont jamais qu'un anneau
-   * extérieur.
+   * cours (déterminé ici par l'aire signée, formule du lacet). Seuls les
+   * triangles PE_info en ont besoin (MS/MT/PE n'ont jamais qu'un anneau
+   * extérieur ; en pratique un triangle n'a lui-même qu'une seule forme,
+   * sans trou — ce regroupement générique reste néanmoins la façon la plus
+   * directe de lire un Polygon Shapefile sans supposer par avance son
+   * nombre de parties).
    */
   _groupRingsIntoShapes(rings) {
     const shapes = [];
@@ -295,26 +317,23 @@ const AMGT4CEM_MetroLayer = {
   },
 
   /**
-   * Étiquette "PE_label" (référence de planche tracée dans l'emprise de la
-   * planche, voir en-tête du fichier) : non interactive (`interactive:
-   * false`) — un clic doit atteindre la planche en dessous, qui gère déjà
-   * elle-même le cas de plusieurs planches superposées (_sheetRefsAt), pas
-   * s'arrêter sur le texte de l'étiquette.
+   * Texte PE_info (code de tronçon) ou PE_label (référence de planche) :
+   * L.marker texte dont la taille suit le zoom (voir scaledText.js), pour
+   * un rendu proche d'INFRAVIEW.pdf (texte à taille réelle constante, pas
+   * une taille d'écran fixe). Non interactif : un clic doit atteindre la
+   * forme en dessous (triangle pour PE_info, planche pour PE_label — cette
+   * dernière gère déjà elle-même le cas de plusieurs planches superposées,
+   * _sheetRefsAt), pas s'arrêter sur le texte.
    */
-  _buildLabelShapes(feature, group, bounds) {
-    const style = AMGT4CEM_METRO_TYPES.PE_label;
-    const shapes = this._groupRingsIntoShapes(feature.geometry.coordinates);
-    for (const rings of shapes) {
-      const latlngRings = rings.map((ring) => ring.map(AMGT4CEM_CRS.lambertToLatLng));
-      const polygon = L.polygon(latlngRings, {
-        stroke: false,
-        fillColor: style.color,
-        fillOpacity: style.fillOpacity,
-        interactive: false,
-      });
-      polygon.addTo(group);
-      bounds.extend(polygon.getBounds());
-    }
+  _buildScaledLabel(feature, group, bounds, style) {
+    const props = feature.properties || {};
+    const latlng = AMGT4CEM_CRS.lambertToLatLng(feature.geometry.coordinates);
+    const marker = AMGT4CEM_ScaledText.createMarker(latlng, props.code || '', {
+      color: style.color,
+      heightMeters: style.heightMeters,
+    });
+    marker.addTo(group);
+    bounds.extend(latlng);
   },
 
   _buildInfoPopupHtml(props) {
