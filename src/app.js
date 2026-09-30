@@ -113,26 +113,6 @@
     layersByType.PE_info.eachLayer((l) => peAndInfoGroup.addLayer(l));
     AMGT4CEM_PatrimoineLayer.registerExternalLayer('plans-ensemble-500e', peAndInfoGroup);
 
-    // PE_info (L.marker) vit dans le markerPane de Leaflet, TOUJOURS
-    // au-dessus du canvas des polygones MS/MT/PE quel que soit l'ordre
-    // d'ajout (bringToBack ne s'applique qu'aux Path) : à l'échelle du
-    // réseau entier, ses petits marqueurs peuvent donc intercepter un clic
-    // destiné à une station proche de quelques pixels à l'écran (même si
-    // distante de plusieurs dizaines de mètres en réalité). On les retire
-    // du groupe en dessous du zoom minimal (config.js) plutôt que de
-    // risquer ça — comme pour UrbIS Topo (urbisTopoLayer.js), où l'affichage
-    // est lui aussi coupé en dessous d'un certain zoom.
-    const updatePeInfoZoomVisibility = () => {
-      const show = map.getZoom() >= AMGT4CEM_CONFIG.metroInfoMinZoom;
-      layersByType.PE_info.eachLayer((l) => {
-        const isIn = peAndInfoGroup.hasLayer(l);
-        if (show && !isIn) peAndInfoGroup.addLayer(l);
-        else if (!show && isIn) peAndInfoGroup.removeLayer(l);
-      });
-    };
-    map.on('zoomend', updatePeInfoZoomVisibility);
-    updatePeInfoZoomVisibility();
-
     layersByType.MS.addTo(map);
     layersByType.MT.addTo(map);
     AMGT4CEM_MapMenu.setMetroLayers(layersByType);

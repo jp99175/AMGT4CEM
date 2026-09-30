@@ -105,14 +105,26 @@ const AMGT4CEM_PatrimoineLayer = {
         if (!layer) continue; // pas encore construite (Metro.shp en cours de chargement) : registerExternalLayer() rappellera refresh()
         this._subGroups[id] = layer;
         layer.addTo(this._group);
-        // Les planches PE doivent toujours rester SOUS les stations/tunnels
-        // (voir metroLayer.js) pour qu'un clic sur une station ouvre bien sa
-        // popup, pas celle de la planche sous-jacente. À l'affichage initial
-        // l'ordre d'ajout (PE avant MS/MT, voir app.js) suffit, mais cette
-        // couche peut aussi être (dés)activée bien plus tard via cette case
-        // à cocher — sans bringToBack() elle passerait alors devant MS/MT
-        // déjà présents (ordre d'ajout au renderer canvas = ordre d'empilement).
-        layer.eachLayer((l) => { if (typeof l.bringToBack === 'function') l.bringToBack(); });
+        // Cette couche externe peut combiner des enfants aux besoins de
+        // z-order opposés (voir metroLayer.js) : les planches PE doivent
+        // rester SOUS les stations/tunnels (pour qu'un clic sur une station
+        // ouvre bien sa popup, pas celle de la planche sous-jacente), alors
+        // que les repères PE_info doivent au contraire rester AU-DESSUS —
+        // ils sont délibérément plaqués SUR un tunnel (MT), un simple
+        // bringToBack() les rendrait donc totalement inaccessibles au clic.
+        // Marqués via `_amgtBringToFront` posé par metroLayer.js. Deux
+        // passes séparées (pas une seule boucle) : bringToFront doit
+        // s'appliquer APRÈS tous les bringToBack pour finir au-dessus de
+        // tout, y compris MS/MT déjà présents sur la carte. À l'affichage
+        // initial l'ordre d'ajout (PE avant MS/MT, voir app.js) suffirait
+        // seul, mais cette couche peut aussi être (dés)activée bien plus
+        // tard via cette case à cocher, une fois MS/MT déjà sur la carte.
+        layer.eachLayer((l) => {
+          if (!l._amgtBringToFront && typeof l.bringToBack === 'function') l.bringToBack();
+        });
+        layer.eachLayer((l) => {
+          if (l._amgtBringToFront && typeof l.bringToFront === 'function') l.bringToFront();
+        });
         continue;
       }
 

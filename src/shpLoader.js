@@ -11,10 +11,12 @@
  * .prj/...) remplace les fichiers du dépôt, et cette app les lit
  * directement, sans étape de conversion externe (QGIS, GDAL...).
  *
- * Ne gère QUE le sous-ensemble nécessaire à Metro.shp (type de forme
- * Polygon, code 5) et MetroInfo.shp (type de forme Point, code 1, voir
- * metroLayer.js — type "PE_info"), coordonnées 2D (pas de Z/M), un ou
- * plusieurs anneaux par entité pour le Polygon. Les coordonnées lues restent dans le CRS
+ * Ne gère QUE le sous-ensemble nécessaire à Metro.shp et MetroInfo.shp :
+ * type de forme Polygon (code 5) uniquement, coordonnées 2D (pas de Z/M),
+ * un ou plusieurs anneaux par entité (MetroInfo.shp — type "PE_info", voir
+ * metroLayer.js — combine plusieurs formes disjointes dans un même
+ * enregistrement : triangle + contour de chaque caractère du code).
+ * Les coordonnées lues restent dans le CRS
  * natif du fichier (Lambert72, EPSG:31370 — voir Metro.prj) : AUCUNE
  * reprojection n'est faite ici, exactement comme l'ancien Metro.json.
  * C'est AMGT4CEM_CRS.lambertToLatLng (crs.js), appelé par metroLayer.js,
@@ -69,9 +71,8 @@ const AMGT4CEM_ShpLoader = {
     return response.arrayBuffer();
   },
 
-  /** Lit toutes les géométries d'un .shp. Types pris en charge : Polygon (5,
-   * Metro.shp — stations, tunnels, planches) et Point (1, MetroInfo.shp —
-   * repères ponctuels type "PE_info"). */
+  /** Lit toutes les géométries d'un .shp. Seul le type Polygon (5) est pris
+   * en charge : c'est le seul utilisé par Metro.shp et MetroInfo.shp. */
   _parseShp(buffer) {
     const view = new DataView(buffer);
     const geometries = [];
@@ -107,15 +108,9 @@ const AMGT4CEM_ShpLoader = {
           return points.slice(start, end);
         });
         geometries.push({ type: 'Polygon', coordinates: rings });
-      } else if (shapeType === 1) {
-        // Point : X, Y (2 doubles, pas de bbox ni de parties).
-        let p = recordStart + 4;
-        const x = view.getFloat64(p, true); p += 8;
-        const y = view.getFloat64(p, true);
-        geometries.push({ type: 'Point', coordinates: [x, y] });
       } else {
         throw new Error(
-          `Type de forme Shapefile non pris en charge : ${shapeType} (seuls Polygon/5 et Point/1 sont gérés par cette app)`
+          `Type de forme Shapefile non pris en charge : ${shapeType} (seul Polygon/5 est géré par cette app)`
         );
       }
 

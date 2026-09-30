@@ -599,46 +599,12 @@ html, body {
   box-shadow: 0 0 2px rgba(0,0,0,0.4);
 }
 
-/* Conteneur du marqueur "PE_info" (L.divIcon) : même principe que
-   .amgt-patrimoine-label, fond/bordure Leaflet par défaut retirés — taille
-   0x0, les deux enfants (triangle + code) se positionnent par transform
-   directement par rapport au point géographique du marqueur. */
-.amgt-pe-info-icon {
-  background: transparent;
-  border: none;
-  width: 0;
-  height: 0;
-}
-
-/* Triangle gris plein, fidèle au symbole d'INFRAVIEW.pdf marquant une
-   transition entre deux tronçons de construction — taille alignée sur
-   celle du plan d'origine (les 10x8px initiaux étaient trop discrets à
-   l'écran une fois rapportés à l'échelle de cette carte). */
-.amgt-pe-info-triangle {
-  display: block;
-  width: 0;
-  height: 0;
-  border-left: 11px solid transparent;
-  border-right: 11px solid transparent;
-  border-bottom: 18px solid #6b6b6b;
-  transform: translate(-11px, -18px);
-}
-
-/* Code du tronçon (D0, D1, G1a...) affiché en permanence à côté du
-   triangle, comme sur INFRAVIEW.pdf — pas de fond (juste un liseré blanc
-   via text-shadow pour rester lisible sur tout fond de carte), même esprit
-   que l'annotation technique du plan d'origine plutôt que le style
-   "étiquette encadrée" des autres couches Plans patrimoine. */
-.amgt-pe-info-code {
-  position: absolute;
-  display: inline-block;
-  white-space: nowrap;
-  font-size: 16px;
-  font-weight: 800;
-  color: #575757;
-  text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
-  transform: translate(8px, -38px);
-}
+/* PE_info (repères de transition entre tronçons de construction) n'utilise
+   plus de marqueur CSS : depuis leur passage en vrais polygones (triangle +
+   contour de chaque caractère du code, extraits du PDF), ce sont des
+   L.polygon classiques stylés via AMGT4CEM_METRO_TYPES.PE_info
+   (metroLayer.js), pas de règle CSS dédiée nécessaire ici.
+   Voir historique Git pour l'ancien style .amgt-pe-info-* (L.divIcon). */
 
 @keyframes amgt-pulse {
   0% { transform: scale(1); }

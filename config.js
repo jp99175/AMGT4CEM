@@ -31,21 +31,13 @@ const AMGT4CEM_CONFIG = {
   // Shapefile.
   metroShpBaseUrl: './Metro_export_SHP/Metro',
   metroDataUrl: './Metro.json',
-  // Fichier annexe (même répertoire, même CRS) : repères ponctuels "PE_info"
+  // Fichier annexe (même répertoire, même CRS) : repères "PE_info"
   // (transitions entre tronçons de construction D0/D1/G1a/... relevées dans
   // INFRAVIEW.pdf — STIB, voir metroLayer.js et le README section 4bis).
-  // Shapefile Point séparé de Metro.shp car le format Shapefile ne permet
-  // pas de mélanger Polygon et Point dans un même fichier .shp.
+  // Shapefile séparé de Metro.shp : chaque entité PE_info combine plusieurs
+  // formes (triangle + contour de chaque caractère du code) dans un même
+  // enregistrement Polygon, une entité distincte par repère.
   metroInfoShpBaseUrl: './Metro_export_SHP/MetroInfo',
-  // En dessous de ce zoom, les repères PE_info ne sont pas affichés (même
-  // logique que urbisTopo.minZoom ci-dessous, pour la même raison : à
-  // l'échelle du réseau entier, une centaine de petits marqueurs ponctuels
-  // se chevauchent/se confondent visuellement ET, étant des L.marker (donc
-  // hors du canvas, toujours au-dessus), peuvent intercepter un clic
-  // destiné à une station ou un tunnel situés à des dizaines de mètres en
-  // réalité mais à quelques pixels d'écran à ce niveau de zoom — voir
-  // app.js, écouteur "zoomend").
-  metroInfoMinZoom: 16,
 
   // Petite emprise (2km x 2km, centre de Bruxelles) utilisée uniquement pour
   // sonder si un fond WMS répond avant de le proposer (voir basemap.js) —
