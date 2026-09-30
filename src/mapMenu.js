@@ -63,20 +63,23 @@ const AMGT4CEM_MapMenu = {
   },
 
   /**
-   * Réglage d'opacité de la couche Métro (icône curseurs) : Stations et
-   * Tunnels n'ont pas la même opacité de remplissage d'origine
+   * Réglage d'opacité de la couche Métro (icône curseurs) : Stations,
+   * Tunnels et Planches n'ont pas la même opacité de remplissage d'origine
    * (AMGT4CEM_METRO_TYPES, voir metroLayer.js) — le facteur s'applique en
-   * multiplicateur sur chacune, jamais en remplacement absolu.
+   * multiplicateur sur chacune, jamais en remplacement absolu. Boucle sur
+   * tous les types déclarés (pas de liste MS/MT/PE en dur ici) pour qu'un
+   * futur type supplémentaire n'ait qu'un seul endroit à mettre à jour.
    */
   _applyMetroOpacity(factor) {
     this._metroOpacityFactor = factor;
     if (!this._metroLayers) return;
 
-    const applyGroup = (group, base) => {
+    for (const type of Object.keys(AMGT4CEM_METRO_TYPES)) {
+      const group = this._metroLayers[type];
+      const base = AMGT4CEM_METRO_TYPES[type];
+      if (!group) continue;
       group.eachLayer((layer) => layer.setStyle({ opacity: factor, fillOpacity: base.fillOpacity * factor }));
-    };
-    applyGroup(this._metroLayers.MS, AMGT4CEM_METRO_TYPES.MS);
-    applyGroup(this._metroLayers.MT, AMGT4CEM_METRO_TYPES.MT);
+    }
   },
 
   _initBasemapControls() {
@@ -141,18 +144,17 @@ const AMGT4CEM_MapMenu = {
   },
 
   _initLayerControls(map, pointsGroup) {
-    // Une seule case pour Stations + Tunnels (Metro.json) : les deux se
+    // Une seule case pour Stations + Tunnels + Planches : les trois se
     // parcourent toujours ensemble en pratique, inutile de les distinguer
     // ici (la recherche, elle, continue de les différencier).
     document.getElementById('amgt-layer-metro').addEventListener('change', (e) => {
       AMGT4CEM_ScreenshotTool.invalidateBackground();
       if (!this._metroLayers) return;
-      if (e.target.checked) {
-        this._metroLayers.MS.addTo(map);
-        this._metroLayers.MT.addTo(map);
-      } else {
-        map.removeLayer(this._metroLayers.MS);
-        map.removeLayer(this._metroLayers.MT);
+      for (const type of Object.keys(AMGT4CEM_METRO_TYPES)) {
+        const group = this._metroLayers[type];
+        if (!group) continue;
+        if (e.target.checked) group.addTo(map);
+        else map.removeLayer(group);
       }
     });
 

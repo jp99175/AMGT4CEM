@@ -381,24 +381,23 @@ lorsqu'on clique sur l'icône **curseurs** de la case Plans patrimoine — les
 deux partagent le même volet repliable, pour ne pas encombrer le menu par
 défaut.
 
-V1 (trois fichiers, EPSG:31370, voir `data/patrimoine-*.json`) :
-- **Plans d'ensemble au 1/500e** : 36 planches (emprise en polygone, tracée
-  avec sa couleur d'origine quand le fichier la fournit) couvrant la quasi-
-  totalité du réseau (99 % en largeur, 104 % en hauteur de l'emprise de
-  `Metro.json`) ; leur numéro de référence (propriété `sheet_ref`, ex.
-  `1000-109`, présente sur les 36 planches) est affiché comme étiquette de
-  texte au centre de la planche. Certaines emprises se chevauchent dans le
-  jeu de données fourni : un clic dans une zone de recouvrement liste dans
-  l'infobulle **toutes** les planches concernées à cet endroit précis, pas
-  seulement celle affichée au-dessus visuellement (voir `_sheetRefsAt` dans
-  `src/patrimoineLayer.js`).
+V1 (deux fichiers, EPSG:31370, voir `data/patrimoine-*.json`) :
 - **Numéros interstation** : repères numérotés le long des tronçons entre
   stations.
 - **Noms de station** : toponymes bilingues FR/NL et repères associés.
 
-Ce sont des **étiquettes de texte** (le contenu du champ `text`, `numero`
-ou `sheet_ref`, affiché tel quel, pas un simple point coloré) — voir
-`src/patrimoineLayer.js`. La géométrie "point" du catalogue UrbIS Topo, par
+Les **plans d'ensemble au 1/500e** (36 planches) n'y figurent plus : ils ont
+migré dans `Metro_export_SHP/Metro.shp` (type `"PE"`, voir section 4bis) et
+s'affichent désormais toujours avec le reste du réseau métro, sans passer
+par ce sélecteur. Le clic dans une zone où plusieurs planches se
+chevauchent (constaté sur ce jeu de données) liste toujours **toutes**
+celles concernées à cet endroit précis, pas seulement celle au-dessus
+visuellement — logique reprise telle quelle dans `src/metroLayer.js`
+(`_sheetRefsAt`) au moment de la migration.
+
+Ce sont des **étiquettes de texte** (le contenu du champ `text` ou `numero`,
+affiché tel quel, pas un simple point coloré) — voir `src/patrimoineLayer.js`.
+La géométrie "point" du catalogue UrbIS Topo, par
 comparaison, n'affiche qu'une pastille colorée : ici le texte réel du plan
 est ce qui compte. Aucun filtrage par zoom/emprise n'est nécessaire (les
 volumes sont très modestes, quelques centaines d'objets au plus par plan).
@@ -418,23 +417,30 @@ dérivé comme fichier de secours.
 - CRS déclaré explicitement dans le fichier : `urn:ogc:def:crs:EPSG::31370`
   → Belgian Lambert 72, utilisé tel quel comme référentiel métier de
   l'application (pas de conversion définitive en lat/lon).
-- 156 entités, toutes en géométrie `Polygon` (aucune ligne/point) :
+- 192 entités, toutes en géométrie `Polygon` (aucune ligne/point) :
   - `type = "MS"` (69 entités) : emprises de stations.
   - `type = "MT"` (87 entités) : emprises de tunnels.
-- Attributs : `ogc_fid`, `name_fr`, `name_nl`, `niveau`, `type`.
-- Emprise (bbox) : X ∈ [142502.65, 156765.94], Y ∈ [166820.13, 176367.30],
+  - `type = "PE"` (36 entités) : plans d'ensemble au 1/500e (planches),
+    fusionnées ici depuis l'ancien `data/patrimoine-plans-ensemble-500e.json`
+    — voir section 4bis.
+- Attributs : `ogc_fid`, `name_fr`, `name_nl`, `niveau`, `type`, `sheet_ref`
+  (numéro de planche, uniquement rempli pour `type = "PE"`).
+- Emprise (bbox) : X ∈ [142502.65, 156823.81], Y ∈ [166628.36, 176534.41],
   cohérente avec l'étendue réelle de la Région bruxelloise une fois
-  reprojetée en WGS84 (vérifié).
+  reprojetée en WGS84 (vérifié) — légèrement plus large que l'emprise du
+  seul réseau métro, les planches débordant de quelques dizaines à ~190 m
+  sur trois côtés.
 
 ## 4bis. Donnée de référence : Shapefile, pas GeoJSON
 
-Le réseau métro (stations + tunnels) est maintenant tenu en **Shapefile**
-dans `Metro_export_SHP/` (`Metro.shp`, `.dbf`, `.prj`, `.cst`, `.idx`,
-`.shx`) — format délibérément choisi pour être exploitable à la fois par
-**AutoCAD Civil 3D** (édite et exporte le Shapefile nativement, Map 3D
-intégré, sans plugin ni droits admin) et par cette application, contrairement
-à GeoJSON ou GeoPackage qui ne satisfont que l'un des deux côtés (voir
-discussion dans l'historique du projet).
+Le réseau métro (stations, tunnels, et depuis leur fusion les plans
+d'ensemble au 1/500e — types `MS`/`MT`/`PE`, voir section 4) est maintenant
+tenu en **Shapefile** dans `Metro_export_SHP/` (`Metro.shp`, `.dbf`, `.prj`,
+`.cst`, `.idx`, `.shx`) — format délibérément choisi pour être exploitable
+à la fois par **AutoCAD Civil 3D** (édite et exporte le Shapefile
+nativement, Map 3D intégré, sans plugin ni droits admin) et par cette
+application, contrairement à GeoJSON ou GeoPackage qui ne satisfont que
+l'un des deux côtés (voir discussion dans l'historique du projet).
 
 Origine de la donnée de référence : export WFS du service public MobiGIS
 (`data.mobility.brussels`, couche `bm_public_transport:Metro`, requête

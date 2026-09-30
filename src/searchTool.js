@@ -163,7 +163,7 @@ const AMGT4CEM_SearchTool = {
   },
 
   _kindLabel(kind) {
-    return { station: 'Station', tunnel: 'Tunnel', point: 'Point métier', address: 'Adresse' }[kind] || kind;
+    return { station: 'Station', tunnel: 'Tunnel', planche: 'Planche', point: 'Point métier', address: 'Adresse' }[kind] || kind;
   },
 
   _renderResults(resultsEl, results, close) {

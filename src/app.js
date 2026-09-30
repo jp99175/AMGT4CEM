@@ -78,6 +78,10 @@
 
   function onMetroLoaded(geojson) {
     const { layersByType, bounds, searchIndex } = AMGT4CEM_MetroLayer.build(geojson);
+    // PE (planches) en premier, donc en dessous : ce sont de larges zones
+    // qui recouvrent des stations/tunnels, elles ne doivent jamais passer
+    // devant et intercepter leur clic (voir metroLayer.js).
+    layersByType.PE.addTo(map);
     layersByType.MS.addTo(map);
     layersByType.MT.addTo(map);
     AMGT4CEM_MapMenu.setMetroLayers(layersByType);
