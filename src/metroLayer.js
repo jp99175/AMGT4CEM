@@ -30,7 +30,7 @@
  * (11 triangles sur 117 exclus, association triangle → code trop
  * incertaine au-delà d'un certain seuil de distance).
  *
- * MetroLabels.shp (116 entités, Point) : les points d'ancrage des CODES et
+ * MetroLabels.shp (117 entités, Point) : les points d'ancrage des CODES et
  * des RÉFÉRENCES DE PLANCHE, rendus en texte HTML (pas en polygone — un
  * premier essai avait tracé ce texte en contours de caractères extraits,
  * jugé après coup moins lisible qu'un texte HTML classique) dont la taille
@@ -40,16 +40,18 @@
  *   deux triangles, un tracé à deux voies ayant deux triangles pour un
  *   seul code) : centre du texte dans le PDF, même transformation affine
  *   que les triangles.
- * - `type = "PE_label"` (36, un par planche) : texte de `sheet_ref` (voir
- *   Metro.shp/PE), position ET rotation (`angle`, degrés CSS) reprises
- *   telles quelles d'INFRAVIEW.pdf (même transformation affine que les
- *   triangles PE_info, angle du texte source converti du repère PDF au
- *   repère écran) — sauf si cette position brute tombe hors de l'emprise
- *   de sa planche (dérive de la transformation affine plus marquée en
- *   périphérie de plan, 8 planches sur 36 concernées) : dans ce cas
- *   seulement, recalée par interpolation vers le `representative_point`
- *   (shapely, pas le centroïde : certaines planches sont concave) jusqu'à
- *   retomber dans l'emprise, rotation conservée telle quelle.
+ * - `type = "PE_label"` (37 : un par planche, `3000-126` en ayant deux
+ *   comme dans le PDF) : texte de `sheet_ref` (voir Metro.shp/PE),
+ *   position ET rotation (`angle`, degrés CSS) reprises telles quelles
+ *   d'INFRAVIEW.pdf (même transformation affine que les triangles
+ *   PE_info, angle du texte source converti du repère PDF au repère
+ *   écran) — sauf si cette position brute tombe hors de l'emprise
+ *   Metro.shp de sa planche (7 planches, là où ces emprises s'écartent le
+ *   plus des contours du PDF — voir README 4bis "Emprises des
+ *   planches") : dans ce cas seulement, recalée par interpolation vers le
+ *   `representative_point` (shapely, pas le centroïde : certaines
+ *   planches sont concaves) jusqu'à retomber dans l'emprise, rotation
+ *   conservée telle quelle.
  * Les deux sont non interactifs : un clic doit atteindre la forme en
  * dessous (triangle pour PE_info, planche pour PE_label), pas s'arrêter
  * sur le texte.

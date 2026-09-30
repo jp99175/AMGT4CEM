@@ -504,29 +504,44 @@ Infrastructure", `DITP`, juillet 2025) ou dérivés de Metro.shp lui-même :
   Coordonnées vectorielles extraites directement du PDF (ce sont de vraies
   formes vectorielles dans le fichier, pas des pixels), orientation
   fidèle à chacune.
-- `Metro_export_SHP/MetroLabels.shp` (Point, 116 entités) : les points
+- `Metro_export_SHP/MetroLabels.shp` (Point, 117 entités) : les points
   d'ancrage du **texte** correspondant, affiché en HTML (pas en polygone —
   voir plus bas) :
   - `type = "PE_info"` (80, un par code **unique** — un code peut être
     partagé par deux triangles, tracé à deux voies ayant deux triangles
     pour un seul code dans le PDF) : centre du texte dans le PDF.
-  - `type = "PE_label"` (36, un par planche, attribut `code` réutilisé
-    pour la référence, ex. `1000-236`) : texte de `sheet_ref` (voir
-    Metro.shp/PE). Position ET rotation (attribut `angle`, degrés CSS,
+  - `type = "PE_label"` (37 : une par planche, sauf `3000-126` qui porte
+    deux étiquettes dans le PDF — grande planche — et les garde ici ;
+    attribut `code` réutilisé pour la référence, ex. `1000-236`) : les 37
+    textes orange du PDF, chacun rattaché à la planche de même
+    `sheet_ref`. Position ET rotation (attribut `angle`, degrés CSS,
     horaire) reprises telles quelles du texte source dans INFRAVIEW.pdf —
     même transformation affine que les triangles/codes PE_info pour la
     position, angle du texte PDF (`LTChar.matrix`, `atan2(b, a)`) converti
-    du repère PDF au repère écran pour la rotation — sauf sur 8 planches
-    sur 36 où cette position brute tombe hors de l'emprise de la planche
-    (dérive de la transformation affine plus marquée en périphérie de
-    plan) : dans ce seul cas, recalée par interpolation vers le
-    `representative_point` de shapely (pas le centroïde : certaines
-    planches sont concaves) jusqu'à retomber dans l'emprise — la rotation,
-    elle, reste toujours celle du PDF, y compris pour ces 8 planches.
-    Un même `sheet_ref` peut apparaître deux fois (`3000-126`, deux
-    planches distinctes qui partagent ce numéro) : les deux occurrences du
-    texte dans le PDF sont alors assignées chacune à la planche la plus
-    proche.
+    du repère PDF au repère écran pour la rotation — sauf sur 7 planches
+    où cette position brute tombe hors de l'emprise Metro.shp de la
+    planche (voir "Emprises des planches" ci-dessous) : dans ce seul cas,
+    recalée par interpolation vers le `representative_point` de shapely
+    (pas le centroïde : certaines planches sont concaves) jusqu'à retomber
+    dans l'emprise (24 à 95 m) — la rotation, elle, reste toujours celle
+    du PDF.
+
+**Emprises des planches — contrôle contre INFRAVIEW.pdf.** Le PDF trace
+aussi le contour de chaque planche (36 contours orange, même teinte que
+les références). Transformés en Lambert par le même calage affine, ils
+s'apparient un à un avec les 36 polygones PE de Metro.shp, et chacune
+des 37 références du PDF tombe dans le contour de sa planche. Ce contrôle
+a révélé une erreur d'attribut, corrigée : la planche qui couvre Gare
+Centrale (`ogc_fid` 181) portait `sheet_ref = "3000-126"` (doublon hérité
+de l'ancien `data/patrimoine-plans-ensemble-500e.json`, corrigé aussi,
+ainsi que `Metro.json`) alors que le PDF la numérote **`4000-202`**.
+Reste un écart de **géométrie**, non corrigé ici faute de source faisant
+foi : les emprises Metro.shp sont décalées par rapport aux contours du
+PDF d'une dizaine de mètres au centre jusqu'à ~150 m aux extrémités
+ouest (série `1000-39` → `1000-251`) et est (`4000-292`, `4000-212`) —
+en partie un facteur d'échelle (~1 %), en partie irrégulier. Le calage
+PDF → Lambert n'en est pas la cause : les stations proches de ces
+planches y tombent à 1–15 m près.
 
 **Rendu du texte — texte HTML à taille réelle, pas des polygones.** Un
 premier essai avait tracé ce texte en vrais polygones (contours de

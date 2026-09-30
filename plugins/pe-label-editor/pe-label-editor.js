@@ -26,7 +26,7 @@
  * maintient le Shapefile si on veut les rendre permanents.
  */
 (function () {
-  const STORAGE_KEY = 'amgt4cem-ple-overrides-v1';
+  const STORAGE_KEY = 'amgt4cem-ple-overrides-v2'; // v2 : clés "code#rang" (v1 indexait par position, invalide depuis l'ajout de 4000-202)
   const SNAP_SPACING_M = 15; // distance entre deux points d'accroche générés le long d'un bord de planche
   const SNAP_RADIUS_M = 12; // rayon d'accroche magnétique (mètres réels, pas des pixels — stable à tout niveau de zoom)
   const ROTATE_HANDLE_PX = 46; // distance écran (px) entre une étiquette et sa poignée de rotation
@@ -166,16 +166,22 @@
     /** Un marqueur PE_label sans élément DOM n'est pas affiché (couche masquée) — on l'ignore. */
     _indexVisibleLabels() {
       const out = [];
-      let i = 0;
+      const seen = {};
       AMGT4CEM_MapMenu._metroLayers.PE_label.eachLayer((marker) => {
         const el = marker.getElement();
         if (!el) return;
         const span = el.querySelector('.amgt-scaled-text');
         if (!span) return;
         const latlng = marker.getLatLng();
+        const code = span.textContent.trim();
+        // Clé stable "code#rang" (ex. "3000-126#1" pour sa 2e étiquette),
+        // pas un simple index : un réglage sauvegardé reste attaché à la
+        // bonne étiquette même si MetroLabels.shp est régénéré dans un autre
+        // ordre ou gagne/perd une ligne.
+        seen[code] = (seen[code] || 0) + 1;
         out.push({
-          id: i++,
-          code: span.textContent.trim(),
+          key: `${code}#${seen[code] - 1}`,
+          code,
           marker,
           span,
           moveHandle: null,
@@ -257,7 +263,7 @@
 
     _applyOverrides() {
       for (const entry of this._entries) {
-        const o = this._overrides[entry.id];
+        const o = this._overrides[entry.key];
         if (!o) continue;
         entry.lat = o.lat;
         entry.lng = o.lng;
@@ -273,7 +279,7 @@
     },
 
     _persistEntry(entry) {
-      this._overrides[entry.id] = { lat: entry.lat, lng: entry.lng, angle: entry.angle };
+      this._overrides[entry.key] = { lat: entry.lat, lng: entry.lng, angle: entry.angle };
       this._saveOverrides();
     },
 
@@ -503,7 +509,7 @@
     },
 
     _exportJson() {
-      const out = this._entries.map((e) => ({ id: e.id, code: e.code, lat: e.lat, lng: e.lng, angle: e.angle }));
+      const out = this._entries.map((e) => ({ key: e.key, code: e.code, lat: e.lat, lng: e.lng, angle: e.angle }));
       const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -519,10 +525,10 @@
       reader.onload = () => {
         try {
           const data = JSON.parse(reader.result);
-          const byId = {};
-          for (const row of data) byId[row.id] = row;
+          const byKey = {};
+          for (const row of data) byKey[row.key] = row;
           for (const entry of this._entries) {
-            const row = byId[entry.id];
+            const row = byKey[entry.key];
             if (!row) continue;
             entry.lat = row.lat;
             entry.lng = row.lng;
