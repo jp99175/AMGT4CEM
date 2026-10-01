@@ -26,15 +26,25 @@ const AMGT4CEM_SettingsStore = {
    * défaut de config.js plutôt que d'être enregistré tel quel.
    */
   save(overrides) {
-    const cleaned = {};
+    // Fusion avec l'existant : chaque onglet de la fenêtre de paramètres
+    // n'enregistre que ses propres champs, sans effacer ceux des autres.
+    const merged = this.getOverrides();
     for (const [key, value] of Object.entries(overrides)) {
-      if (value) cleaned[key] = value;
+      if (value) merged[key] = value;
+      else delete merged[key];
     }
-    localStorage.setItem(this._key, JSON.stringify(cleaned));
+    localStorage.setItem(this._key, JSON.stringify(merged));
   },
 
-  reset() {
-    localStorage.removeItem(this._key);
+  /** @param {string[]} [keys] - ne réinitialise que ces champs ; sans argument, tous. */
+  reset(keys) {
+    if (!keys) {
+      localStorage.removeItem(this._key);
+      return;
+    }
+    const merged = this.getOverrides();
+    for (const key of keys) delete merged[key];
+    localStorage.setItem(this._key, JSON.stringify(merged));
   },
 
   /**
@@ -44,6 +54,7 @@ const AMGT4CEM_SettingsStore = {
    */
   applyToConfig(config) {
     const o = this.getOverrides();
+    this.defaultRelayUrl = config.peLabelAnchorsRelayUrl || ''; // valeur de config.js, avant surcharge (pour y revenir)
 
     if (o.urbisUrl) config.basemaps.urbis.url = o.urbisUrl;
     if (o.urbisLayers) config.basemaps.urbis.layers = o.urbisLayers;
@@ -56,5 +67,7 @@ const AMGT4CEM_SettingsStore = {
     }
 
     if (o.geocoderUrl) config.geocoder.url = o.geocoderUrl;
+
+    if (o.relayUrl) config.peLabelAnchorsRelayUrl = o.relayUrl;
   },
 };

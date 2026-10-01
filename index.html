@@ -131,45 +131,109 @@
     <input type="range" min="0" max="100" value="100" class="amgt-opacity-slider" />
   </div>
 
+  <h3>Paramètres</h3>
+  <button id="amgt-open-settings-link" class="amgt-link-btn" title="Sources de données, serveur d'enregistrement, fonds de plan">
+    ⚙ Sources, serveur, fonds de plan…
+  </button>
+
   <button id="amgt-reset-view-btn" class="amgt-link-btn" title="Revenir à l'emprise générale du réseau">
     ⤢ Réinitialiser la vue
   </button>
 </div>
 
-<!-- Panneau : corriger les URLs des services externes si l'un d'eux change
-     d'adresse (UrbIS, orthophotos, géocodeur). Exclusif avec le menu ☰ Carte. -->
+<!-- Fenêtre de paramètres (⚙), à onglets. Exclusive avec le menu ☰ Carte.
+     1. Sources : corriger les URLs des services externes (UrbIS, orthophotos,
+        géocodeur) si l'un d'eux change d'adresse.
+     2. Serveur : communication avec le serveur d'enregistrement (relais) —
+        réservé aux administrateurs.
+     3. Fonds de plan : modifications des données de fond (nouveau shapefile,
+        mode édition des étiquettes de planche) — réservé aux administrateurs. -->
 <div id="amgt-settings-panel" class="amgt-hidden">
-  <h3>Sources de données</h3>
-  <p class="amgt-settings-hint">
-    À corriger uniquement si l'un de ces services externes change d'adresse.
-    Laissez un champ vide pour revenir à sa valeur par défaut.
-  </p>
-
-  <label class="amgt-settings-row">
-    Fond UrbIS &mdash; URL du service WMS
-    <input type="text" id="amgt-settings-urbis-url" />
-  </label>
-  <label class="amgt-settings-row">
-    Fond UrbIS &mdash; nom de la couche
-    <input type="text" id="amgt-settings-urbis-layers" />
-  </label>
-  <label class="amgt-settings-row">
-    Orthophotos historiques (1935&ndash;1996) &mdash; URL du service WMS
-    <input type="text" id="amgt-settings-bruciel-hist-url" />
-  </label>
-  <label class="amgt-settings-row">
-    Orthophotos récentes (2004&ndash;2022) &mdash; URL du service WMS
-    <input type="text" id="amgt-settings-bruciel-recent-url" />
-  </label>
-  <label class="amgt-settings-row">
-    Recherche d'adresses &mdash; URL du géocodeur
-    <input type="text" id="amgt-settings-geocoder-url" />
-  </label>
-
-  <div class="amgt-form-actions">
-    <button id="amgt-settings-reset" class="amgt-btn">Réinitialiser</button>
-    <button id="amgt-settings-save" class="amgt-btn amgt-btn--primary">Enregistrer</button>
+  <div class="amgt-tabs" role="tablist">
+    <button type="button" class="amgt-tab amgt-tab--active" role="tab" data-tab="sources">Sources</button>
+    <button type="button" class="amgt-tab amgt-tab--admin" role="tab" data-tab="server">Serveur</button>
+    <button type="button" class="amgt-tab amgt-tab--admin" role="tab" data-tab="basemaps">Fonds de plan</button>
   </div>
+
+  <section class="amgt-tab-pane" data-pane="sources">
+    <h3>Sources de données</h3>
+    <p class="amgt-settings-hint">
+      À corriger uniquement si l'un de ces services externes change d'adresse.
+      Laissez un champ vide pour revenir à sa valeur par défaut.
+    </p>
+
+    <label class="amgt-settings-row">
+      Fond UrbIS &mdash; URL du service WMS
+      <input type="text" id="amgt-settings-urbis-url" />
+    </label>
+    <label class="amgt-settings-row">
+      Fond UrbIS &mdash; nom de la couche
+      <input type="text" id="amgt-settings-urbis-layers" />
+    </label>
+    <label class="amgt-settings-row">
+      Orthophotos historiques (1935&ndash;1996) &mdash; URL du service WMS
+      <input type="text" id="amgt-settings-bruciel-hist-url" />
+    </label>
+    <label class="amgt-settings-row">
+      Orthophotos récentes (2004&ndash;2022) &mdash; URL du service WMS
+      <input type="text" id="amgt-settings-bruciel-recent-url" />
+    </label>
+    <label class="amgt-settings-row">
+      Recherche d'adresses &mdash; URL du géocodeur
+      <input type="text" id="amgt-settings-geocoder-url" />
+    </label>
+
+    <div class="amgt-form-actions">
+      <button id="amgt-settings-reset" class="amgt-btn">Réinitialiser</button>
+      <button id="amgt-settings-save" class="amgt-btn amgt-btn--primary">Enregistrer</button>
+    </div>
+  </section>
+
+  <section class="amgt-tab-pane amgt-hidden" data-pane="server">
+    <h3>Communication avec le serveur</h3>
+    <p class="amgt-settings-hint">
+      Le serveur d'enregistrement (relais) écrit dans le dépôt les
+      modifications faites dans l'application. Réservé aux administrateurs.
+    </p>
+
+    <label class="amgt-settings-row">
+      Adresse du relais d'enregistrement
+      <input type="text" id="amgt-settings-relay-url" placeholder="https://…workers.dev" autocomplete="off" />
+    </label>
+    <label class="amgt-settings-row">
+      Code administrateur
+      <input type="password" id="amgt-settings-admin-code" autocomplete="off" />
+    </label>
+    <p class="amgt-settings-hint">
+      Le code n'est gardé que le temps de cet onglet du navigateur, jamais
+      enregistré sur l'appareil.
+    </p>
+    <p id="amgt-settings-relay-status" class="amgt-settings-status" hidden></p>
+
+    <div class="amgt-form-actions">
+      <button id="amgt-settings-relay-reset" class="amgt-btn">Réinitialiser</button>
+      <button id="amgt-settings-relay-test" class="amgt-btn">Tester</button>
+      <button id="amgt-settings-relay-save" class="amgt-btn amgt-btn--primary">Enregistrer</button>
+    </div>
+  </section>
+
+  <section class="amgt-tab-pane amgt-hidden" data-pane="basemaps">
+    <h3>Modifications des fonds de plan</h3>
+    <p class="amgt-settings-hint">Réservé aux administrateurs.</p>
+
+    <div class="amgt-settings-action">
+      <button id="amgt-settings-edit-labels" class="amgt-btn amgt-btn--primary">✥ Mode édition des étiquettes de planche</button>
+      <p class="amgt-settings-hint">
+        Affiche la couche « Plans d'ensemble » et ouvre l'outil de placement des
+        références de planche (clic dans le texte d'une étiquette).
+      </p>
+    </div>
+
+    <div class="amgt-settings-action">
+      <button id="amgt-settings-load-shapefile" class="amgt-btn" disabled>Charger un nouveau shapefile…</button>
+      <p class="amgt-settings-hint">À venir : remplacer les données Metro_export_SHP depuis l'application (nécessite l'enregistrement sur le serveur).</p>
+    </div>
+  </section>
 </div>
 
 <!-- Recherche (station, tunnel, point métier) : remplace le contrôle de zoom

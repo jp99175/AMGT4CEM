@@ -19,9 +19,16 @@ l'instant.
 
 ## Utilisation
 
-Servir le site normalement (le plugin a besoin d'http(s), pas de `file://`),
-puis ouvrir `plugins/pe-label-editor/index.html` au lieu de `index.html`
-(la page charge l'appli telle quelle et y ajoute ce plugin à la fin).
+**Depuis l'application** : ⚙ Paramètres > onglet **Fonds de plan** > **Mode
+édition des étiquettes de planche**. Cela affiche la couche « Plans
+d'ensemble », charge ce plugin à la demande (une seule fois) et ouvre son
+panneau d'administration ; **Quitter l'édition** (dans ce panneau) recharge la
+page et revient au mode normal. La couleur des étiquettes repositionnées
+(ci-dessous) n'apparaît que dans ce mode.
+
+Alternative (développement) : ouvrir `plugins/pe-label-editor/index.html` au
+lieu de `index.html` (la page charge l'appli telle quelle et y ajoute ce
+plugin à la fin). Dans les deux cas le site doit être servi en http(s).
 
 1. Afficher la couche **Plans d'ensemble (1/500e)** (menu ☰ Carte → Plans
    patrimoine).
@@ -89,15 +96,17 @@ plugin voit les étiquettes à leur nouvelle place.
 - **Enregistrer dans l'application** (panneau d'administration, qui
   s'ouvre après **Appliquer** ou avec le bouton **✥ Étiquettes planches**)
   envoie TOUTES les définitions au relais serveur `relay/`, qui commit le
-  fichier dans le dépôt. Il demande le **code administrateur** du relais
-  (gardé le temps de l'onglet seulement). Les autres visiteurs voient le
+  fichier dans le dépôt. Il utilise l'**adresse du relais** et le **code
+  administrateur** saisis dans ⚙ Paramètres > Serveur (le code est gardé le
+  temps de l'onglet seulement, redemandé sinon). Les autres visiteurs voient le
   changement après le redéploiement de GitHub Pages (~1 min).
 - Le panneau indique le nombre de modifications **non enregistrées** ;
   **Appliquer** seul applique la modification à l'écran (perdue au
   rechargement tant qu'elle n'est pas enregistrée).
 - **Le relais est à déployer une fois** (compte Cloudflare gratuit, jeton
-  GitHub) : voir `relay/README.md`, puis renseigner `peLabelAnchorsRelayUrl`
-  dans `config.js`. Tant que ce n'est pas fait, « Enregistrer » affiche un
+  GitHub) : voir `relay/README.md`, puis renseigner son adresse dans
+  ⚙ Paramètres > Serveur (bouton **Tester** pour vérifier la connexion et le
+  code), ou dans `config.js` (`peLabelAnchorsRelayUrl`). Tant que ce n'est pas fait, « Enregistrer » affiche un
   message explicite et n'écrit rien.
 - Autres boutons du panneau : **Exporter JSON** (copie manuelle, repli si le
   relais est indisponible), **Importer JSON**, **Tout réinitialiser** (à

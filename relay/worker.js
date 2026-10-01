@@ -42,7 +42,7 @@ function corsHeaders(request, env) {
   const headers = { Vary: 'Origin' };
   if (origin && allowed.includes(origin)) {
     headers['Access-Control-Allow-Origin'] = origin;
-    headers['Access-Control-Allow-Methods'] = 'PUT, OPTIONS';
+    headers['Access-Control-Allow-Methods'] = 'GET, PUT, OPTIONS';
     headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type';
     headers['Access-Control-Max-Age'] = '86400';
   }
@@ -77,12 +77,14 @@ export default {
   async fetch(request, env) {
     const cors = corsHeaders(request, env);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method !== 'PUT') return json(405, { error: 'Méthode non autorisée' }, cors);
+    if (request.method !== 'PUT' && request.method !== 'GET') return json(405, { error: 'Méthode non autorisée' }, cors);
 
     const auth = request.headers.get('Authorization') || '';
     if (!auth.startsWith('Bearer ') || !safeEqual(auth.slice(7), env.ADMIN_TOKEN || '')) {
       return json(401, { error: 'Code administrateur refusé' }, cors);
     }
+    // GET : contrôle de connexion (« Tester » dans ⚙ Paramètres > Serveur) — vérifie le code, n'écrit rien.
+    if (request.method === 'GET') return json(200, { ok: true }, cors);
     const raw = await request.text();
     if (raw.length > MAX_BODY_BYTES) return json(413, { error: 'Contenu trop volumineux' }, cors);
     let body;

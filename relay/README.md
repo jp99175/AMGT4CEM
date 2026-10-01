@@ -34,16 +34,19 @@ Prérequis : un compte Cloudflare (gratuit), Node.js installé.
    ```
    `wrangler deploy` affiche l'adresse du relais
    (`https://amgt4cem-pe-label-relay.<compte>.workers.dev`).
-4. Dans `config.js`, renseigner cette adresse :
-   ```js
-   peLabelAnchorsRelayUrl: 'https://amgt4cem-pe-label-relay.<compte>.workers.dev',
-   ```
-5. Dans le plugin, **Enregistrer** demande le code administrateur de
-   l'étape 3 (gardé le temps de l'onglet seulement, jamais sur disque).
+4. Dans l'application : ⚙ Paramètres > onglet **Serveur** : coller l'adresse
+   du relais et le code administrateur de l'étape 3, puis **Tester**
+   (« Relais joignable, code administrateur accepté ») et **Enregistrer**.
+   L'adresse est gardée sur l'appareil (pour la rendre permanente pour tous,
+   la mettre dans `config.js` : `peLabelAnchorsRelayUrl`) ; le code n'est
+   gardé que le temps de l'onglet, jamais sur disque.
+5. Dans le mode édition des étiquettes, **Enregistrer dans l'application**
+   utilise cette adresse et ce code.
 
 ## Ce que fait / refuse le relais
 
-- Accepte uniquement `PUT` avec `Authorization: Bearer <code administrateur>`
+- `GET` avec le code administrateur : simple contrôle de connexion (bouton **Tester** de ⚙ Paramètres > Serveur), n'écrit rien.
+- Pour écrire, accepte uniquement `PUT` avec `Authorization: Bearer <code administrateur>`
   (comparaison à temps constant) depuis une origine autorisée.
 - Valide le format : `{ "version": 1, "labels": { "1000-236#0": { r1, a1,
   r2?, a2? } } }` — points de référence parmi les 8 connus, coordonnées dans

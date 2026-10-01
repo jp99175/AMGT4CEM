@@ -37,7 +37,6 @@
 (function () {
   const MIN_SPACING_M = 5; // un point remarquable n'est ajouté que s'il n'y en a pas déjà un à moins de 5 m (échelle réelle du plan)
   const CORNER_MIN_TURN_DEG = 1; // un sommet qui dévie de moins de ça n'est pas un vrai coin
-  const ADMIN_CODE_SESSION_KEY = 'amgt4cem-admin-code'; // sessionStorage : le temps de l'onglet, jamais écrit sur disque
 
   // Les 8 points de la boîte de texte (définis par l'application, sans « center »).
   const REFS = Object.fromEntries(Object.entries(AMGT4CEM_ScaledText.REFS).filter(([k]) => k !== 'center'));
@@ -92,9 +91,22 @@
     _toggleBtn: null,
     _panel: null,
 
-    /** Point de branchement du futur mode « édition » réservé aux administrateurs. */
+    /** Réservé aux administrateurs : AMGT4CEM_CONFIG.adminMode (config.js), point de branchement du futur mode « édition ». */
     isAdmin() {
-      return true;
+      return AMGT4CEM_CONFIG.adminMode !== false;
+    },
+
+    /**
+     * Ouvre le panneau d'administration (appelé par ⚙ Paramètres > Fonds de
+     * plan, qui charge ce plugin à la demande).
+     */
+    open() {
+      if (!this.isAdmin()) return;
+      if (!this._map) {
+        setTimeout(() => this.open(), 300); // l'application n'a pas fini de construire ses couches
+        return;
+      }
+      if (!this._panel && !this._edit) this._openAdminPanel();
     },
 
     init() {
@@ -618,7 +630,8 @@
         );
         return false;
       }
-      let code = sessionStorage.getItem(ADMIN_CODE_SESSION_KEY);
+      // Code saisi dans ⚙ Paramètres > Serveur (gardé le temps de l'onglet), sinon demandé ici.
+      let code = AMGT4CEM_PeLabelAnchors.getAdminCode();
       if (!code) {
         code = prompt("Code administrateur (celui du relais d'enregistrement) :");
         if (!code) return false;
@@ -626,11 +639,11 @@
       try {
         report('Enregistrement…');
         await AMGT4CEM_PeLabelAnchors.save(this._currentLabels(), code);
-        sessionStorage.setItem(ADMIN_CODE_SESSION_KEY, code);
+        AMGT4CEM_PeLabelAnchors.setAdminCode(code);
         report('Enregistré dans l\'application (visible par tous après le redéploiement du site, ~1 min).');
         return true;
       } catch (err) {
-        sessionStorage.removeItem(ADMIN_CODE_SESSION_KEY); // un code refusé ne doit pas rester en mémoire
+        AMGT4CEM_PeLabelAnchors.setAdminCode(''); // un code refusé ne doit pas rester en mémoire
         report(err.message);
         return false;
       }
@@ -674,6 +687,7 @@
           <label class="amgt-ple-import-btn">Importer JSON<input type="file" accept="application/json" data-action="import" /></label>
           <button type="button" data-action="reset-all">Tout réinitialiser</button>
           <button type="button" data-action="close">Fermer</button>
+          <button type="button" data-action="quit" title="Recharge la page : l'application revient en mode normal">Quitter l'édition</button>
         </div>`;
       document.body.appendChild(panel);
       this._panel = panel;
@@ -686,6 +700,11 @@
       panel.querySelector('[data-action="import"]').addEventListener('change', (e) => this._importJson(e));
       panel.querySelector('[data-action="reset-all"]').addEventListener('click', () => this._resetAll());
       panel.querySelector('[data-action="close"]').addEventListener('click', () => this._closeAdminPanel());
+      panel.querySelector('[data-action="quit"]').addEventListener('click', () => {
+        const dirty = this._dirtyKeys().length;
+        if (dirty && !confirm(`${dirty} modification(s) non enregistrée(s) seront perdues. Quitter l'édition ?`)) return;
+        window.location.reload();
+      });
     },
 
     /** `keepFlash` : ne pas masquer le message qu'on vient d'afficher. */

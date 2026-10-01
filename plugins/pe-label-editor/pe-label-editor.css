@@ -8,7 +8,7 @@
 .amgt-ple-toggle-btn {
   position: fixed;
   right: 12px;
-  bottom: 12px;
+  bottom: 64px; /* au-dessus de l'attribution et du repère BUILD, qu'il ne doit pas masquer */
   z-index: 10000;
   padding: 8px 14px;
   font: 14px/1.2 sans-serif;
@@ -28,9 +28,12 @@
 .amgt-ple-panel {
   position: fixed;
   right: 12px;
-  bottom: 56px;
+  bottom: 108px;
   z-index: 10000;
   width: 300px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 170px);
+  overflow-y: auto;
   padding: 12px 14px;
   font: 13px/1.4 sans-serif;
   background: #fff;

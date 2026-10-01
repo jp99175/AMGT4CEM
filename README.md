@@ -88,10 +88,16 @@ Shapefile — sans quitter la page).
     repositionner : les coordonnées Lambert sont recalculées et enregistrées
     automatiquement. Le bouton **🗑 Supprimer ce point** dans la popup
     l'efface définitivement (demande confirmation).
-11. Icône **⚙** en haut à droite du menu **☰ Carte** : permet de corriger
-    l'URL d'un service externe (fond UrbIS, orthophotos, géocodeur
-    d'adresses) si celui-ci change d'adresse un jour, sans devoir modifier
-    le code. Voir section 3bis ci-dessous.
+11. Icône **⚙** en haut à droite du menu **☰ Carte**, ou lien **⚙ Sources,
+    serveur, fonds de plan…** de la section **Paramètres** (au-dessus de
+    « Réinitialiser la vue ») : ouvre la fenêtre de paramètres, à trois
+    onglets — **Sources** (corriger l'URL d'un service externe — fond UrbIS,
+    orthophotos, géocodeur — si celui-ci change d'adresse, sans modifier le
+    code ; voir section 3bis), **Serveur** (adresse du relais d'enregistrement
+    et code administrateur, bouton **Tester**) et **Fonds de plan** (lancer le
+    mode édition des étiquettes de planche ; charger un nouveau shapefile :
+    à venir). Les onglets Serveur et Fonds de plan sont réservés aux
+    administrateurs (`adminMode`, `config.js`, pour l'instant vrai pour tous).
 12. Bouton **📏** (icône seule, "Mesurer" au survol) : effet dynamique en deux gestes
     presser-glisser-relâcher. Pressez sur la carte pour poser le centre
     d'un cercle : tant que le bouton reste enfoncé, le déplacer suit le
@@ -344,7 +350,7 @@ permanente côté application.
 Ces URLs sont en dur dans `config.js`. Si l'un de ces services change
 d'adresse (migration de serveur, changement de nom de domaine...), il n'est
 pas nécessaire de modifier le code : l'icône **⚙** en haut à droite du menu
-**☰ Carte** ouvre un panneau permettant de corriger :
+**☰ Carte** ouvre la fenêtre de paramètres ; son onglet **Sources** permet de corriger :
 
 - l'URL du service WMS du fond UrbIS et le nom de sa couche,
 - l'URL du service WMS des orthophotos historiques (1935&ndash;1996),
@@ -662,7 +668,7 @@ du réseau.
 index.html, style.css        interface
 config.js                    configuration (CRS, services, clés de stockage)
 src/settingsStore.js         surcharges utilisateur des URLs de services (⚙ Paramètres)
-src/settingsPanel.js         panneau "⚙ Paramètres"
+src/settingsPanel.js         fenêtre "⚙ Paramètres" à onglets (Sources / Serveur / Fonds de plan)
 src/layerOpacityStore.js     opacité individuelle des couches (icône curseurs, persistée)
 src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
 src/shpLoader.js             lecture Shapefile (Metro_export_SHP/) côté navigateur, sans bibliothèque tierce

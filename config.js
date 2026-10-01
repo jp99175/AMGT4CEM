@@ -48,7 +48,15 @@ const AMGT4CEM_CONFIG = {
   // par un relais serveur à déployer une fois (relay/README.md) dont
   // l'adresse se renseigne ici — vide : enregistrement non configuré.
   peLabelAnchorsUrl: './data/pe-label-anchors.json',
+  // Vide par défaut ; se renseigne aussi dans ⚙ Paramètres > Serveur (valeur
+  // gardée sur cet appareil, voir settingsStore.js), qui prime sur celle-ci.
   peLabelAnchorsRelayUrl: '',
+
+  // Onglets « Serveur » et « Fonds de plan » de ⚙ Paramètres, et mode édition
+  // des étiquettes de planche : réservés aux administrateurs. Point de
+  // branchement du futur mode « édition » : remplacer cette valeur par le
+  // contrôle d'accès réel (pour l'instant tout le monde est administrateur).
+  adminMode: true,
 
   // Petite emprise (2km x 2km, centre de Bruxelles) utilisée uniquement pour
   // sonder si un fond WMS répond avant de le proposer (voir basemap.js) —

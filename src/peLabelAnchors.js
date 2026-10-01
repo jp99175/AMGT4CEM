@@ -49,6 +49,45 @@ const AMGT4CEM_PeLabelAnchors = {
   },
 
   /**
+   * Code administrateur du relais : gardé en sessionStorage (le temps de
+   * l'onglet, jamais écrit sur le disque de l'appareil).
+   */
+  getAdminCode() {
+    try {
+      return sessionStorage.getItem('amgt4cem-admin-code') || '';
+    } catch (err) {
+      return '';
+    }
+  },
+
+  setAdminCode(code) {
+    try {
+      if (code) sessionStorage.setItem('amgt4cem-admin-code', code);
+      else sessionStorage.removeItem('amgt4cem-admin-code');
+    } catch (err) {
+      /* sessionStorage indisponible : le code sera redemandé */
+    }
+  },
+
+  /**
+   * Vérifie la connexion au relais et le code administrateur, sans rien
+   * écrire (GET). Retourne un message lisible ; rejette si le relais est
+   * injoignable ou refuse le code.
+   */
+  async checkConnection(url, code) {
+    if (!url) throw new Error("Adresse du relais non renseignée.");
+    let response;
+    try {
+      response = await fetch(url, { method: 'GET', headers: { Authorization: `Bearer ${code}` } });
+    } catch (err) {
+      throw new Error(`Relais injoignable (${err.message}) : vérifier l'adresse, et que le site y est autorisé (ALLOWED_ORIGINS).`);
+    }
+    if (response.status === 401) throw new Error('Relais joignable, mais code administrateur refusé.');
+    if (!response.ok) throw new Error(`Relais joignable, réponse inattendue (HTTP ${response.status}).`);
+    return 'Relais joignable, code administrateur accepté.';
+  },
+
+  /**
    * Enregistre l'ensemble des définitions dans le dépôt, via le relais.
    * @param {Object} labels - { clé: { r1, a1, r2?, a2? } } (étiquettes SANS définition : absentes)
    * @param {string} adminCode - code administrateur attendu par le relais
