@@ -96,7 +96,8 @@ Shapefile — sans quitter la page).
     code ; voir section 3bis), **Serveur** (adresse du relais d'enregistrement
     et code administrateur, bouton **Tester**) et **Fonds de plan** (lancer le
     mode édition des étiquettes de planche ; charger un nouveau shapefile :
-    à venir). La fenêtre est **réservée aux administrateurs** : son ouverture
+    à venir — il devra accepter un ou plusieurs fichiers du dossier du
+    shapefile : .shp, .dbf, .shx, .prj, .cpg…, pas seulement le .shp). La fenêtre est **réservée aux administrateurs** : son ouverture
     passe par `AMGT4CEM_Admin.requestAccess()` (`src/admin.js`), où se
     branchera le mot de passe administrateur (pas encore implémenté : accès
     ouvert tant que `adminMode` vaut vrai dans `config.js`). Ce sont des

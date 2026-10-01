@@ -116,6 +116,7 @@
           console.error('[pe-label-editor] Carte Leaflet introuvable, plugin non démarré.');
           return;
         }
+        this._suppressAppBubbles();
         this._loadPlanches();
         this._buildToggleButton();
         // Les étiquettes n'existent dans le DOM que quand la couche « Plans
@@ -127,6 +128,22 @@
           }, 1500);
         }
       });
+    },
+
+    /**
+     * Mode édition : plus d'infobulles de l'application (popups des planches,
+     * stations, points, couches UrbIS Topo ; info-bulles Leaflet), qui
+     * gênent le choix des points. Seule reste la bulle du plugin (titre de
+     * l'étiquette + icône « déplacer »), ouverte par `L.popup().openOn(map)`
+     * et non par `openPopup` d'une couche. Le patch dure jusqu'au
+     * rechargement de la page (« Quitter l'édition »).
+     */
+    _suppressAppBubbles() {
+      L.Layer.include({
+        openPopup() { return this; },
+        openTooltip() { return this; },
+      });
+      this._map.closePopup(); // une infobulle ouverte avant le lancement du mode édition
     },
 
     /**
@@ -217,7 +234,6 @@
       if (!this.isAdmin()) return;
       span.style.pointerEvents = 'auto';
       span.style.cursor = 'pointer';
-      span.title = "Cliquer pour afficher la bulle d'info (et déplacer l'étiquette)";
       if (span._amgtPleBound) return;
       span._amgtPleBound = true;
       span.addEventListener('click', (e) => {

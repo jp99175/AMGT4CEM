@@ -19,6 +19,12 @@ l'instant.
 
 ## Utilisation
 
+**Infobulles désactivées** : tant que le plugin est chargé (mode édition), les
+infobulles de l'application (planches, stations, points, UrbIS Topo) ne
+s'ouvrent plus, pour ne pas gêner le choix des points. Seule reste la bulle
+du plugin (« Planche … » + icône déplacer). Elles reviennent à la sortie
+(**Quitter l'édition**).
+
 **Depuis l'application** : ⚙ Paramètres > onglet **Fonds de plan** > **Mode
 édition des étiquettes de planche**. Cela affiche la couche « Plans
 d'ensemble », charge ce plugin à la demande (une seule fois) et ouvre son
