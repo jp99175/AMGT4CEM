@@ -154,10 +154,11 @@
   border-color: #1b5cb4;
 }
 
-/* Points remarquables du cadre de la planche : coin (carré), intersection
-   (losange), milieu de segment (rond). Le dessin est un ::before : Leaflet
-   pose lui-même un `transform` en ligne sur l'élément du marqueur, qui
-   écraserait toute rotation posée sur l'élément. */
+/* Points remarquables du cadre de la planche, une forme par catégorie :
+   sommet (carré plein), centre de côté (carré plus petit, clair),
+   intersection (rond), centre de segment délimité (losange). Le dessin est un
+   ::before : Leaflet pose lui-même un `transform` en ligne sur l'élément du
+   marqueur, qui écraserait toute rotation posée sur l'élément. */
 .amgt-ple-cand {
   cursor: pointer;
 }
@@ -171,18 +172,26 @@
   border: 2px solid #888;
 }
 
-.amgt-ple-cand--corner::before {
-  border-radius: 2px;
+.amgt-ple-cand--vertex::before {
+  border-radius: 1px;
+  border-color: #444;
+}
+
+.amgt-ple-cand--side::before {
+  inset: 4px;
+  border-width: 1.5px;
+  border-radius: 1px;
 }
 
 .amgt-ple-cand--intersection::before {
-  inset: 3px;
-  border-radius: 2px;
-  transform: rotate(45deg);
+  border-radius: 50%;
+  border-color: #b8860b;
 }
 
 .amgt-ple-cand--middle::before {
-  border-radius: 50%;
+  inset: 3px;
+  border-radius: 1px;
+  transform: rotate(45deg);
 }
 
 .amgt-ple-cand:hover::before {

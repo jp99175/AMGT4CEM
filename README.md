@@ -569,8 +569,9 @@ Le plugin d'édition (`plugins/pe-label-editor/`, voir son README) permet
 à un administrateur de redéfinir cet ancrage étiquette par étiquette : clic
 dans le texte → bulle d'info avec l'icône « déplacer » → choix d'un point
 de référence parmi les 8 de la boîte de texte, d'un point d'ancrage parmi
-les points remarquables du cadre (coins, intersections entre planches,
-milieux de segments), puis d'un second point de référence et d'un autre
+les points remarquables du cadre (sommets, centres des côtés,
+intersections entre planches, centres des segments qu'ils délimitent ;
+aucun point à moins de 5 m d'un autre), puis d'un second point de référence et d'un autre
 point du cadre dont l'alignement avec les deux premiers fixe l'orientation
 (rotation minimale).
 

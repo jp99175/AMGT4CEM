@@ -29,10 +29,18 @@ puis ouvrir `plugins/pe-label-editor/index.html` au lieu de `index.html`
    lequel) :
    1. **Point de référence du texte** : l'un des **8 points** de sa boîte,
       affichés sur le texte — 4 coins et 4 milieux de bord.
-   2. **Point d'ancrage sur la planche** : un point remarquable du cadre
-      de la planche — un **coin**, une **intersection** avec une autre
-      planche, ou le **milieu d'un segment** (segment = portion de cadre
-      entre deux de ces points). Le point de référence est posé dessus.
+   2. **Point d'ancrage sur la planche** : un point remarquable du cadre,
+      dans cet ordre de priorité, chacun avec sa forme :
+      1. les **sommets** du polygone (carré plein) ;
+      2. le **centre de chaque côté** du polygone (petit carré clair) ;
+      3. les **intersections** avec d'autres planches (rond doré) ;
+      4. le **centre de chaque segment** que les points précédents délimitent
+         sur le cadre (losange).
+
+      Un point n'est ajouté que s'il a une valeur ajoutée : aucun autre
+      point remarquable à moins de **5 m** (échelle réelle du plan) — en cas
+      de doute, la catégorie la plus prioritaire l'emporte. Le point de
+      référence est posé sur le point choisi.
    3. **Second point de référence du texte** : un autre des 8 points.
    4. **Autre point remarquable de la planche**.
 

@@ -13,9 +13,10 @@
  * étiquette, en quatre choix :
  *   1. point de référence du texte (R1) : l'un des 8 points de sa boîte —
  *      4 coins et 4 milieux de bord ;
- *   2. point d'ancrage (A1) sur la planche : un coin du cadre, une
- *      intersection avec une autre planche, ou le milieu d'un segment
- *      (segment = portion de cadre entre deux de ces points). R1 est posé sur A1 ;
+ *   2. point d'ancrage (A1) sur la planche : un point remarquable de son
+ *      cadre — sommets, centres des côtés, intersections avec d'autres
+ *      planches, centres des segments que ces points délimitent (voir
+ *      _remarkablePoints). R1 est posé sur A1 ;
  *   3. second point de référence du texte (R2), un autre des 8 ;
  *   4. un autre point remarquable de la planche (A2).
  * L'orientation en découle : R1 (= A1), R2 et A2 sont alignés, par la
@@ -40,8 +41,8 @@
  */
 (function () {
   const STORAGE_KEY = 'amgt4cem-ple-overrides-v4'; // v4 : modèle à 4 points (R1/A1/R2/A2), incompatible avec les v1-v3 (position + angle libres)
-  const MERGE_EPS_M = 0.5; // deux points remarquables plus proches que ça sont confondus
-  const CORNER_MIN_TURN_DEG = 1; // un sommet qui dévie de moins de ça n'est pas un coin
+  const MIN_SPACING_M = 5; // un point remarquable n'est ajouté que s'il n'y en a pas déjà un à moins de 5 m (échelle réelle du plan)
+  const CORNER_MIN_TURN_DEG = 1; // un sommet qui dévie de moins de ça n'est pas un vrai coin
 
   // Les 8 points de la boîte de texte : fraction de la largeur (x) et de la hauteur (y, vers le bas).
   const REFS = {
@@ -56,11 +57,16 @@
   };
   // Valeur d'origine (champ `side` de MetroLabels.shp) -> point de référence équivalent.
   const SIDE_TO_REF = { top: 'tc', bottom: 'bc', left: 'ml', right: 'mr' };
-  const KIND_LABEL = { corner: 'coin', intersection: 'intersection avec une autre planche', middle: 'milieu de segment' };
+  const KIND_LABEL = {
+    vertex: 'sommet du cadre',
+    side: 'milieu de côté du cadre',
+    intersection: 'intersection avec une autre planche',
+    middle: 'milieu de segment entre points remarquables',
+  };
 
   const SLOTS = [
     { id: 'r1', kind: 'ref', title: '1. Point de référence du texte', hint: "Cliquez l'un des 8 points sur le texte." },
-    { id: 'a1', kind: 'planche', title: "2. Point d'ancrage sur la planche", hint: 'Cliquez un coin, une intersection ou un milieu de segment du cadre.' },
+    { id: 'a1', kind: 'planche', title: "2. Point d'ancrage sur la planche", hint: 'Cliquez un sommet, un milieu de côté, une intersection ou un milieu de segment du cadre.' },
     { id: 'r2', kind: 'ref', title: '3. Second point de référence du texte', hint: 'Cliquez un autre des 8 points du texte.' },
     { id: 'a2', kind: 'planche', title: '4. Autre point remarquable de la planche', hint: 'Cliquez un autre point du cadre : il sera aligné avec les deux points précédents.' },
   ];
@@ -297,50 +303,81 @@
     },
 
     /**
-     * Points remarquables du cadre d'une planche : coins, intersections avec
-     * les autres planches, puis milieux des segments que ces points découpent
-     * sur le cadre. [{ x, y, kind }] en Lambert.
+     * Points remarquables du cadre d'une planche, dans cet ordre :
+     *   1. les sommets du polygone                                  (kind 'vertex')
+     *   2. le centre de chaque côté du polygone                     (kind 'side')
+     *   3. les intersections avec les autres planches               (kind 'intersection')
+     *   4. le centre de chaque segment que les points 1 à 3 délimitent
+     *      sur le cadre                                             (kind 'middle')
+     * Un point n'est ajouté que s'il a une valeur ajoutée : aucun autre point
+     * remarquable déjà retenu à moins de MIN_SPACING_M (mètres réels, le
+     * contour étant en Lambert). Chaque point garde donc la forme de sa
+     * catégorie la plus prioritaire. [{ x, y, kind }] en Lambert.
      */
     _remarkablePoints(planche) {
       const ring = planche.ring;
       const n = ring.length;
-      const raw = []; // { x, y, kind, edge, t } ; (edge, t) = position le long du cadre
+      // Abscisse curviligne le long du cadre : cum[i] = longueur du cadre jusqu'au sommet i.
+      const cum = [0];
+      for (let i = 0; i < n; i++) cum.push(cum[i] + Math.hypot(ring[(i + 1) % n][0] - ring[i][0], ring[(i + 1) % n][1] - ring[i][1]));
+      const total = cum[n];
+      const mod = (v) => ((v % total) + total) % total;
+      const pointAt = (sv) => {
+        sv = mod(sv);
+        let i = 0;
+        while (i < n - 1 && cum[i + 1] <= sv) i++;
+        const t = (sv - cum[i]) / (cum[i + 1] - cum[i]);
+        const q = ring[(i + 1) % n];
+        return [ring[i][0] + t * (q[0] - ring[i][0]), ring[i][1] + t * (q[1] - ring[i][1])];
+      };
+      const out = [];
+      const accept = (xy, kind, sv) => {
+        if (out.some((q) => Math.hypot(q.x - xy[0], q.y - xy[1]) < MIN_SPACING_M)) return;
+        out.push({ x: xy[0], y: xy[1], kind, s: mod(sv) });
+      };
+
+      // 1. sommets (un sommet quasi aligné avec ses voisins n'est pas un vrai coin)
+      const corners = [];
       for (let i = 0; i < n; i++) {
         const a = ring[(i + n - 1) % n];
         const b = ring[i];
         const c = ring[(i + 1) % n];
         const t1 = Math.atan2(b[1] - a[1], b[0] - a[0]);
         const t2 = Math.atan2(c[1] - b[1], c[0] - b[0]);
-        const diff = Math.abs(Math.atan2(Math.sin(t2 - t1), Math.cos(t2 - t1))) * (180 / Math.PI); // 0 si alignés
-        if (diff > CORNER_MIN_TURN_DEG) raw.push({ x: b[0], y: b[1], kind: 'corner', edge: i, t: 0 });
+        if (Math.abs(Math.atan2(Math.sin(t2 - t1), Math.cos(t2 - t1))) * (180 / Math.PI) > CORNER_MIN_TURN_DEG) corners.push(i);
       }
+      for (const i of corners) accept(ring[i], 'vertex', cum[i]);
+
+      // 2. centre de chaque côté (portion de cadre entre deux sommets consécutifs)
+      corners.forEach((ci, k) => {
+        const cj = corners[(k + 1) % corners.length];
+        const len = corners.length === 1 ? total : mod(cum[cj] - cum[ci]);
+        accept(pointAt(cum[ci] + len / 2), 'side', cum[ci] + len / 2);
+      });
+
+      // 3. intersections avec les autres planches
+      const hits = [];
       for (let i = 0; i < n; i++) {
-        const p = ring[i];
-        const q = ring[(i + 1) % n];
         for (const other of this._planches) {
           if (other === planche) continue;
           const m = other.ring.length;
           for (let j = 0; j < m; j++) {
-            const hit = this._segIntersect(p, q, other.ring[j], other.ring[(j + 1) % m]);
-            if (hit) raw.push({ x: hit.x, y: hit.y, kind: 'intersection', edge: i, t: hit.t });
+            const hit = this._segIntersect(ring[i], ring[(i + 1) % n], other.ring[j], other.ring[(j + 1) % m]);
+            if (hit) hits.push({ xy: [hit.x, hit.y], sv: cum[i] + hit.t * (cum[i + 1] - cum[i]) });
           }
         }
       }
-      raw.sort((a, b) => a.edge - b.edge || a.t - b.t);
-      const pts = [];
-      for (const r of raw) {
-        if (pts.some((q) => Math.hypot(q.x - r.x, q.y - r.y) < MERGE_EPS_M)) continue;
-        pts.push(r);
-      }
-      const out = pts.map((p) => ({ x: p.x, y: p.y, kind: p.kind }));
-      if (pts.length > 1) {
-        for (let i = 0; i < pts.length; i++) {
-          const a = pts[i];
-          const b = pts[(i + 1) % pts.length];
-          out.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, kind: 'middle' });
-        }
-      }
-      return out;
+      hits.sort((a, b) => a.sv - b.sv);
+      for (const h of hits) accept(h.xy, 'intersection', h.sv);
+
+      // 4. centre de chaque segment délimité, le long du cadre, par les points 1 à 3
+      const base = out.slice().sort((a, b) => a.s - b.s);
+      base.forEach((p, k) => {
+        const q = base[(k + 1) % base.length];
+        const len = base.length === 1 ? total : mod(q.s - p.s);
+        accept(pointAt(p.s + len / 2), 'middle', p.s + len / 2);
+      });
+      return out.map(({ x, y, kind }) => ({ x, y, kind }));
     },
 
     /** Intersection stricte de deux segments [p,q] et [r,s] : { x, y, t } (t = position sur [p,q]) ou null. */
