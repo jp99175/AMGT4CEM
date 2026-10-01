@@ -1,1 +1,6 @@
-{"version": 1, "settings": {}}
+{
+  "version": 1,
+  "settings": {
+    "relayUrl": "https://amgt4cem-relay.jp99175.workers.dev"
+  }
+}
