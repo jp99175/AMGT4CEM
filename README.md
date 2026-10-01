@@ -96,8 +96,12 @@ Shapefile — sans quitter la page).
     code ; voir section 3bis), **Serveur** (adresse du relais d'enregistrement
     et code administrateur, bouton **Tester**) et **Fonds de plan** (lancer le
     mode édition des étiquettes de planche ; charger un nouveau shapefile :
-    à venir). Les onglets Serveur et Fonds de plan sont réservés aux
-    administrateurs (`adminMode`, `config.js`, pour l'instant vrai pour tous).
+    à venir). La fenêtre est **réservée aux administrateurs** : son ouverture
+    passe par `AMGT4CEM_Admin.requestAccess()` (`src/admin.js`), où se
+    branchera le mot de passe administrateur (pas encore implémenté : accès
+    ouvert tant que `adminMode` vaut vrai dans `config.js`). Ce sont des
+    **paramètres généraux**, enregistrés sur le serveur et communs à tous les
+    visiteurs — rien n'est gardé localement.
 12. Bouton **📏** (icône seule, "Mesurer" au survol) : effet dynamique en deux gestes
     presser-glisser-relâcher. Pressez sur la carte pour poser le centre
     d'un cercle : tant que le bouton reste enfoncé, le déplacer suit le
@@ -357,11 +361,19 @@ pas nécessaire de modifier le code : l'icône **⚙** en haut à droite du menu
 - l'URL du service WMS des orthophotos récentes (2004&ndash;2022),
 - l'URL du géocodeur d'adresses.
 
-Ces valeurs sont enregistrées à part (`localStorage`, clé
-`amgt4cem.settings.v1`, voir `src/settingsStore.js`), propres à cet appareil
-comme les points métier, et appliquées au rechargement de la page. Un champ
-laissé vide revient à la valeur par défaut de `config.js`. Le bouton
-**Réinitialiser** efface toutes les surcharges en une fois.
+Ces valeurs sont des **paramètres généraux de l'application**, pas des
+réglages de l'appareil : **Enregistrer** les envoie au serveur (relais
+`relay/`, route `/settings`), qui les commit dans `data/app-settings.json`
+(dépôt). L'application lit ce fichier à chaque démarrage
+(`src/settingsStore.js`, avant toute création de couche) : tous les visiteurs
+les voient, après le redéploiement de GitHub Pages (~1 min). Seules les
+valeurs différentes de `config.js` sont enregistrées ; fichier absent ou vide
+= valeurs par défaut de `config.js`. Le bouton **Valeurs par défaut** remplit
+les champs avec celles de `config.js` (à enregistrer ensuite). Cette fenêtre
+est réservée aux administrateurs (voir section 1, item 11) ; l'enregistrement
+exige l'adresse du relais et le code administrateur (onglet **Serveur**). Les
+anciens réglages locaux (`localStorage`, clé `amgt4cem.settings.v1`) ne sont
+plus lus et sont effacés au démarrage.
 
 Cela ne couvre que les adresses de service (le cas le plus probable :
 migration d'un serveur entier) : les noms de couches par année pour les
@@ -667,7 +679,8 @@ du réseau.
 ```
 index.html, style.css        interface
 config.js                    configuration (CRS, services, clés de stockage)
-src/settingsStore.js         surcharges utilisateur des URLs de services (⚙ Paramètres)
+src/admin.js                 accès administrateur (point de branchement du futur mot de passe)
+src/settingsStore.js         paramètres généraux partagés (data/app-settings.json) : lecture au démarrage, enregistrement via le relais
 src/settingsPanel.js         fenêtre "⚙ Paramètres" à onglets (Sources / Serveur / Fonds de plan)
 src/layerOpacityStore.js     opacité individuelle des couches (icône curseurs, persistée)
 src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
@@ -761,8 +774,17 @@ piste ci-dessus (petit relais serveur) :
 - le plugin `plugins/pe-label-editor/` (administrateurs) l'enregistre via le
   relais `relay/` (Cloudflare Worker, à déployer une fois : `relay/README.md`),
   qui commit le fichier dans le dépôt ; GitHub Pages le redéploie ;
-- tant que `peLabelAnchorsRelayUrl` (`config.js`) est vide, l'enregistrement
-  est refusé avec un message explicite (l'export JSON reste possible).
+- tant qu'aucune adresse de relais n'est connue (paramètre général `relayUrl`,
+  `data/app-settings.json`, ou `peLabelAnchorsRelayUrl` de `config.js`),
+  l'enregistrement est refusé avec un message explicite (l'export JSON reste
+  possible).
+
+Le même relais enregistre les **paramètres généraux** de l'application
+(route `/settings` → `data/app-settings.json`, fenêtre ⚙ Paramètres) :
+adresses des services externes et adresse du relais elle-même. La toute
+première fois, l'adresse du relais se saisit dans ⚙ Paramètres > Serveur avec
+le code administrateur ; le relais l'écrit dans le fichier partagé, d'où tous
+les visiteurs la lisent ensuite.
 
 Les points métier (`pointsStore.js`) restent en `localStorage` : le relais
 pourra être étendu à ces données si la piste est retenue.

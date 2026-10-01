@@ -1,8 +1,14 @@
 # Relais d'enregistrement (Cloudflare Worker)
 
-Permet à l'application d'**enregistrer dans le dépôt** les définitions
-d'ancrage/orientation des références de planche (`data/pe-label-anchors.json`),
-modifiées par un administrateur avec le plugin `plugins/pe-label-editor/`.
+Permet à l'application d'**enregistrer dans le dépôt** les données modifiées
+par un administrateur :
+
+- `PUT /anchors` : définitions d'ancrage/orientation des références de planche
+  (`data/pe-label-anchors.json`), modifiées avec le plugin
+  `plugins/pe-label-editor/` ;
+- `PUT /settings` : paramètres généraux de l'application — adresses des
+  services externes et adresse du relais (`data/app-settings.json`),
+  modifiés dans ⚙ Paramètres.
 
 Pourquoi un relais : un navigateur ne peut pas écrire directement dans le
 dépôt (l'API GitHub refuse les requêtes préparatoires CORS d'un navigateur,
@@ -37,9 +43,11 @@ Prérequis : un compte Cloudflare (gratuit), Node.js installé.
 4. Dans l'application : ⚙ Paramètres > onglet **Serveur** : coller l'adresse
    du relais et le code administrateur de l'étape 3, puis **Tester**
    (« Relais joignable, code administrateur accepté ») et **Enregistrer**.
-   L'adresse est gardée sur l'appareil (pour la rendre permanente pour tous,
-   la mettre dans `config.js` : `peLabelAnchorsRelayUrl`) ; le code n'est
-   gardé que le temps de l'onglet, jamais sur disque.
+   L'adresse (adresse **sans** `/anchors` ni `/settings` : l'application
+   ajoute la route) est alors écrite par le relais dans
+   `data/app-settings.json` : c'est un paramètre général, lu par tous les
+   visiteurs après le redéploiement de GitHub Pages. Le code n'est gardé que
+   le temps de l'onglet (`sessionStorage`), jamais sur disque.
 5. Dans le mode édition des étiquettes, **Enregistrer dans l'application**
    utilise cette adresse et ce code.
 
@@ -51,7 +59,10 @@ Prérequis : un compte Cloudflare (gratuit), Node.js installé.
 - Valide le format : `{ "version": 1, "labels": { "1000-236#0": { r1, a1,
   r2?, a2? } } }` — points de référence parmi les 8 connus, coordonnées dans
   l'emprise de la Belgique, aucun champ en trop, 200 Ko maximum.
-- N'écrit que `data/pe-label-anchors.json` (contenu trié : un enregistrement
+- `PUT /settings` : `{ "version": 1, "settings": { urbisUrl?, urbisLayers?,
+  brucielHistoriqueUrl?, brucielRecentUrl?, geocoderUrl?, relayUrl? } }` —
+  clés connues seulement, adresses en `https://` (ou `http://localhost`).
+- N'écrit que `data/pe-label-anchors.json` et `data/app-settings.json` (contenu trié : un enregistrement
   sans changement réel ne crée aucun commit).
 - Le jeton GitHub n'est jamais renvoyé au navigateur.
 

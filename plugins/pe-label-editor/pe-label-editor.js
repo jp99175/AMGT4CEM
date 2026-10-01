@@ -91,9 +91,9 @@
     _toggleBtn: null,
     _panel: null,
 
-    /** Réservé aux administrateurs : AMGT4CEM_CONFIG.adminMode (config.js), point de branchement du futur mode « édition ». */
+    /** Réservé aux administrateurs : voir src/admin.js (futur mot de passe administrateur). */
     isAdmin() {
-      return AMGT4CEM_CONFIG.adminMode !== false;
+      return AMGT4CEM_Admin.isAdmin();
     },
 
     /**

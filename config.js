@@ -48,14 +48,21 @@ const AMGT4CEM_CONFIG = {
   // par un relais serveur à déployer une fois (relay/README.md) dont
   // l'adresse se renseigne ici — vide : enregistrement non configuré.
   peLabelAnchorsUrl: './data/pe-label-anchors.json',
-  // Vide par défaut ; se renseigne aussi dans ⚙ Paramètres > Serveur (valeur
-  // gardée sur cet appareil, voir settingsStore.js), qui prime sur celle-ci.
+  // Adresse du relais d'enregistrement. Vide par défaut : elle se renseigne
+  // dans ⚙ Paramètres > Serveur, qui l'enregistre sur le serveur avec les
+  // autres paramètres généraux (data/app-settings.json) et prime alors sur
+  // cette valeur pour tous les visiteurs.
   peLabelAnchorsRelayUrl: '',
 
-  // Onglets « Serveur » et « Fonds de plan » de ⚙ Paramètres, et mode édition
-  // des étiquettes de planche : réservés aux administrateurs. Point de
-  // branchement du futur mode « édition » : remplacer cette valeur par le
-  // contrôle d'accès réel (pour l'instant tout le monde est administrateur).
+  // Paramètres généraux enregistrés sur le serveur (adresses des services
+  // externes et du relais, modifiables par un administrateur dans ⚙ Paramètres
+  // — voir src/settingsStore.js). Seules les valeurs qui diffèrent de ce
+  // fichier de configuration y figurent.
+  appSettingsUrl: './data/app-settings.json',
+
+  // Accès administrateur à la fenêtre ⚙ Paramètres et au mode édition des
+  // étiquettes de planche. Ouvert à tous pour l'instant : le mot de passe
+  // administrateur se branchera dans src/admin.js (AMGT4CEM_Admin.requestAccess).
   adminMode: true,
 
   // Petite emprise (2km x 2km, centre de Bruxelles) utilisée uniquement pour

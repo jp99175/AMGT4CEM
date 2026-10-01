@@ -142,24 +142,27 @@
 </div>
 
 <!-- Fenêtre de paramètres (⚙), à onglets. Exclusive avec le menu ☰ Carte.
-     1. Sources : corriger les URLs des services externes (UrbIS, orthophotos,
-        géocodeur) si l'un d'eux change d'adresse.
-     2. Serveur : communication avec le serveur d'enregistrement (relais) —
-        réservé aux administrateurs.
+     Réservée aux administrateurs (mot de passe à venir, voir src/admin.js).
+     Ce sont des paramètres GÉNÉRAUX : enregistrés sur le serveur, communs à
+     tous les visiteurs — pas des réglages de l'appareil.
+     1. Sources : adresses des services externes (UrbIS, orthophotos,
+        géocodeur), à corriger si l'un d'eux change d'adresse.
+     2. Serveur : communication avec le serveur d'enregistrement (relais).
      3. Fonds de plan : modifications des données de fond (nouveau shapefile,
-        mode édition des étiquettes de planche) — réservé aux administrateurs. -->
+        mode édition des étiquettes de planche). -->
 <div id="amgt-settings-panel" class="amgt-hidden">
   <div class="amgt-tabs" role="tablist">
     <button type="button" class="amgt-tab amgt-tab--active" role="tab" data-tab="sources">Sources</button>
-    <button type="button" class="amgt-tab amgt-tab--admin" role="tab" data-tab="server">Serveur</button>
-    <button type="button" class="amgt-tab amgt-tab--admin" role="tab" data-tab="basemaps">Fonds de plan</button>
+    <button type="button" class="amgt-tab" role="tab" data-tab="server">Serveur</button>
+    <button type="button" class="amgt-tab" role="tab" data-tab="basemaps">Fonds de plan</button>
   </div>
 
   <section class="amgt-tab-pane" data-pane="sources">
     <h3>Sources de données</h3>
     <p class="amgt-settings-hint">
-      À corriger uniquement si l'un de ces services externes change d'adresse.
-      Laissez un champ vide pour revenir à sa valeur par défaut.
+      Paramètres généraux, enregistrés sur le serveur et communs à tous les
+      visiteurs. À corriger uniquement si l'un de ces services externes change
+      d'adresse.
     </p>
 
     <label class="amgt-settings-row">
@@ -183,8 +186,10 @@
       <input type="text" id="amgt-settings-geocoder-url" />
     </label>
 
+    <p id="amgt-settings-sources-status" class="amgt-settings-status" hidden></p>
+
     <div class="amgt-form-actions">
-      <button id="amgt-settings-reset" class="amgt-btn">Réinitialiser</button>
+      <button id="amgt-settings-reset" class="amgt-btn" title="Remplit les champs avec les adresses de config.js (à enregistrer ensuite)">Valeurs par défaut</button>
       <button id="amgt-settings-save" class="amgt-btn amgt-btn--primary">Enregistrer</button>
     </div>
   </section>
@@ -192,8 +197,10 @@
   <section class="amgt-tab-pane amgt-hidden" data-pane="server">
     <h3>Communication avec le serveur</h3>
     <p class="amgt-settings-hint">
-      Le serveur d'enregistrement (relais) écrit dans le dépôt les
-      modifications faites dans l'application. Réservé aux administrateurs.
+      Paramètres généraux, enregistrés sur le serveur et communs à tous les
+      visiteurs. Le serveur d'enregistrement (relais) écrit dans le dépôt les
+      modifications faites dans l'application. Enregistrer ici envoie aussi
+      les adresses de l'onglet Sources.
     </p>
 
     <label class="amgt-settings-row">
@@ -205,13 +212,13 @@
       <input type="password" id="amgt-settings-admin-code" autocomplete="off" />
     </label>
     <p class="amgt-settings-hint">
-      Le code n'est gardé que le temps de cet onglet du navigateur, jamais
-      enregistré sur l'appareil.
+      Le code administrateur n'est jamais enregistré : il n'est gardé que le
+      temps de cet onglet du navigateur, pour s'identifier auprès du relais.
     </p>
     <p id="amgt-settings-relay-status" class="amgt-settings-status" hidden></p>
 
     <div class="amgt-form-actions">
-      <button id="amgt-settings-relay-reset" class="amgt-btn">Réinitialiser</button>
+      <button id="amgt-settings-relay-reset" class="amgt-btn" title="Remplit le champ avec l'adresse de config.js (à enregistrer ensuite)">Valeur par défaut</button>
       <button id="amgt-settings-relay-test" class="amgt-btn">Tester</button>
       <button id="amgt-settings-relay-save" class="amgt-btn amgt-btn--primary">Enregistrer</button>
     </div>
@@ -219,8 +226,6 @@
 
   <section class="amgt-tab-pane amgt-hidden" data-pane="basemaps">
     <h3>Modifications des fonds de plan</h3>
-    <p class="amgt-settings-hint">Réservé aux administrateurs.</p>
-
     <div class="amgt-settings-action">
       <button id="amgt-settings-edit-labels" class="amgt-btn amgt-btn--primary">✥ Mode édition des étiquettes de planche</button>
       <p class="amgt-settings-hint">
@@ -334,6 +339,7 @@
 <script src="./src/buildInfo.js"></script>
 <script src="./data/urbisTopoCatalog.js"></script>
 <script src="./data/patrimoineCatalog.js"></script>
+<script src="./src/admin.js"></script>
 <script src="./src/settingsStore.js"></script>
 <script src="./src/layerOpacityStore.js"></script>
 <script src="./src/crs.js"></script>

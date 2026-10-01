@@ -2,10 +2,12 @@
  * Point d'entrée de l'application : assemble les modules (fond de plan,
  * couche Metro, points métier, outils de navigation et de création).
  */
-(function () {
-  // Applique d'éventuelles surcharges utilisateur (panneau ⚙ Paramètres) des
-  // URLs de services externes AVANT que basemap.js/searchTool.js ne lisent
-  // AMGT4CEM_CONFIG.
+(async function () {
+  // Paramètres généraux (adresses des services externes et du serveur
+  // d'enregistrement, communs à tous, enregistrés sur le serveur — voir
+  // settingsStore.js) : lus et appliqués AVANT que basemap.js/searchTool.js ne
+  // lisent AMGT4CEM_CONFIG. load() ne rejette jamais (délai borné).
+  await AMGT4CEM_SettingsStore.load();
   AMGT4CEM_SettingsStore.applyToConfig(AMGT4CEM_CONFIG);
 
   const map = L.map('map', {

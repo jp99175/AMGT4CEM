@@ -1,14 +1,18 @@
 /**
- * Relais d'enregistrement des définitions d'ancrage des références de planche
- * (Cloudflare Worker). Reçoit un PUT de l'application, vérifie le code
- * administrateur, valide le contenu, puis enregistre data/pe-label-anchors.json
- * dans le dépôt GitHub (API Contents, appelée de serveur à serveur : pas de
- * mur CORS comme depuis un navigateur — voir README section 6).
+ * Relais d'enregistrement (Cloudflare Worker) des données modifiées dans
+ * l'application. Reçoit un PUT de l'application, vérifie le code
+ * administrateur, valide le contenu, puis l'enregistre dans le dépôt GitHub
+ * (API Contents, appelée de serveur à serveur : pas de mur CORS comme depuis
+ * un navigateur — voir README section 6). Deux routes :
+ *   PUT /anchors   définitions d'ancrage des références de planche  -> data/pe-label-anchors.json
+ *   PUT /settings  paramètres généraux de l'application             -> data/app-settings.json
+ *   GET (toute route) contrôle de connexion et du code, n'écrit rien.
  *
  * Variables (wrangler.toml ou tableau de bord Cloudflare) :
  *   GITHUB_REPO      "jp99175/AMGT4CEM"
  *   GITHUB_BRANCH    branche déployée par GitHub Pages
- *   FILE_PATH        (optionnel) défaut "data/pe-label-anchors.json"
+ *   FILE_PATH        (optionnel) fichier des ancrages, défaut "data/pe-label-anchors.json"
+ *   SETTINGS_PATH    (optionnel) fichier des paramètres, défaut "data/app-settings.json"
  *   ALLOWED_ORIGINS  origines autorisées, séparées par des virgules
  *                    (ex. "https://jp99175.github.io,http://localhost:8765")
  * Secrets (`wrangler secret put ...`) :
@@ -19,6 +23,10 @@ const REFS = ['tl', 'tc', 'tr', 'ml', 'mr', 'bl', 'bc', 'br'];
 const KEY_RE = /^[0-9A-Za-z.-]{1,20}#\d{1,3}$/;
 const MAX_BODY_BYTES = 200 * 1024;
 // Emprise large de la Belgique : rejette les coordonnées absurdes (lat/lng inversés, Lambert collé par erreur...).
+const SETTING_URL_KEYS = ['urbisUrl', 'brucielHistoriqueUrl', 'brucielRecentUrl', 'geocoderUrl', 'relayUrl'];
+const SETTING_KEYS = [...SETTING_URL_KEYS, 'urbisLayers'];
+// Adresses de services : https obligatoire (http seulement vers localhost, pour tester en local).
+const isServiceUrl = (v) => typeof v === 'string' && v.length <= 400 && /^(https:\/\/[^\s]+|http:\/\/localhost(:\d+)?(\/[^\s]*)?)$/.test(v);
 const inBelgium = (p) => Array.isArray(p) && p.length === 2 && p[0] > 49.4 && p[0] < 51.6 && p[1] > 2.5 && p[1] < 6.5;
 
 export function validate(body) {
@@ -32,6 +40,18 @@ export function validate(body) {
     if (has2 && (!REFS.includes(d.r2) || !inBelgium(d.a2) || d.r2 === d.r1)) return `Définition invalide pour ${key} (r2/a2)`;
     const extra = Object.keys(d).filter((k) => !['r1', 'a1', 'r2', 'a2'].includes(k));
     if (extra.length) return `Champ inattendu pour ${key} : ${extra[0]}`;
+  }
+  return null;
+}
+
+/** Paramètres généraux : { version: 1, settings: { urbisUrl?, urbisLayers?, ... } } — que des clés connues, des adresses valides. */
+export function validateSettings(body) {
+  if (!body || typeof body !== 'object' || body.version !== 1 || typeof body.settings !== 'object' || body.settings === null || Array.isArray(body.settings)) {
+    return 'Format attendu : { "version": 1, "settings": { ... } }';
+  }
+  for (const [key, value] of Object.entries(body.settings)) {
+    if (!SETTING_KEYS.includes(key)) return `Paramètre inconnu : ${key}`;
+    if (SETTING_URL_KEYS.includes(key) ? !isServiceUrl(value) : typeof value !== 'string' || !/^[\w:.,-]{1,100}$/.test(value)) return `Valeur invalide pour ${key}`;
   }
   return null;
 }
@@ -85,6 +105,14 @@ export default {
     }
     // GET : contrôle de connexion (« Tester » dans ⚙ Paramètres > Serveur) — vérifie le code, n'écrit rien.
     if (request.method === 'GET') return json(200, { ok: true }, cors);
+    const route = new URL(request.url).pathname.replace(/\/+$/, '').split('/').pop();
+    const targets = {
+      anchors: { path: env.FILE_PATH || 'data/pe-label-anchors.json', validate, key: 'labels', message: "Étiquettes de planche : mise à jour des ancrages (via l'application)" },
+      settings: { path: env.SETTINGS_PATH || 'data/app-settings.json', validate: validateSettings, key: 'settings', message: "Paramètres généraux : mise à jour (via l'application)" },
+    };
+    const target = targets[route];
+    if (!target) return json(404, { error: 'Route inconnue (attendu : /anchors ou /settings)' }, cors);
+
     const raw = await request.text();
     if (raw.length > MAX_BODY_BYTES) return json(413, { error: 'Contenu trop volumineux' }, cors);
     let body;
@@ -93,13 +121,14 @@ export default {
     } catch (err) {
       return json(400, { error: 'JSON invalide' }, cors);
     }
-    const problem = validate(body);
+    const problem = target.validate(body);
     if (problem) return json(400, { error: problem }, cors);
 
-    const path = env.FILE_PATH || 'data/pe-label-anchors.json';
+    const path = target.path;
     // Contenu canonique (clés triées) : un enregistrement sans changement réel ne crée pas de commit parasite.
-    const labels = Object.fromEntries(Object.keys(body.labels).sort().map((k) => [k, body.labels[k]]));
-    const content = JSON.stringify({ version: 1, labels }, null, 2) + '\n';
+    const entries = body[target.key];
+    const sorted = Object.fromEntries(Object.keys(entries).sort().map((k) => [k, entries[k]]));
+    const content = JSON.stringify({ version: 1, [target.key]: sorted }, null, 2) + '\n';
     let binary = '';
     for (const byte of new TextEncoder().encode(content)) binary += String.fromCharCode(byte);
     const encoded = btoa(binary);
@@ -115,7 +144,7 @@ export default {
       return json(502, { error: `Lecture GitHub impossible (HTTP ${current.status})` }, cors);
     }
     const put = await github(env, 'PUT', path, {
-      message: 'Étiquettes de planche : mise à jour des ancrages (via l\'application)',
+      message: target.message,
       content: encoded,
       branch: env.GITHUB_BRANCH,
       ...(sha ? { sha } : {}),

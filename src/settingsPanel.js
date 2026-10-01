@@ -1,21 +1,26 @@
 /**
  * Fenêtre "⚙ Paramètres" à onglets (ouverte par l'engrenage du menu ☰ Carte,
- * ou par le lien « Sources, serveur, fonds de plan » du même menu) :
+ * ou par le lien « Sources, serveur, fonds de plan » du même menu).
  *
- * 1. Sources : corriger les URLs des services externes (UrbIS, orthophotos,
- *    géocodeur d'adresses) si l'un d'eux venait à changer d'adresse, sans
- *    devoir modifier config.js.
- * 2. Serveur (administrateurs) : adresse du relais d'enregistrement et code
- *    administrateur — la communication avec le serveur qui écrit dans le
- *    dépôt les modifications faites dans l'application (voir
- *    peLabelAnchors.js et relay/README.md).
- * 3. Fonds de plan (administrateurs) : modifications des données de fond —
- *    lancement du mode édition des étiquettes de planche (plugin
- *    plugins/pe-label-editor/, chargé à la demande) ; chargement d'un
- *    nouveau shapefile : à venir.
+ * RÉSERVÉE AUX ADMINISTRATEURS : l'ouverture passe par
+ * AMGT4CEM_Admin.requestAccess() (src/admin.js), où se branchera le mot de
+ * passe administrateur — pas encore implémenté, accès ouvert pour l'instant.
  *
- * Les onglets 2 et 3 n'existent que si AMGT4CEM_CONFIG.adminMode (point de
- * branchement du futur mode « édition »).
+ * Ce sont des paramètres GÉNÉRAUX, pas des réglages de l'appareil : enregistrés
+ * sur le serveur (data/app-settings.json, via le relais d'enregistrement),
+ * communs à tous les visiteurs, appliqués au démarrage (voir settingsStore.js).
+ * Rien n'est gardé dans le navigateur, hormis le code administrateur, le temps
+ * de l'onglet (sessionStorage), pour s'identifier auprès du relais.
+ *
+ * 1. Sources : adresses des services externes (UrbIS, orthophotos, géocodeur
+ *    d'adresses), à corriger si l'un d'eux venait à changer d'adresse.
+ * 2. Serveur : adresse du relais d'enregistrement (la communication de
+ *    l'interface avec le serveur qui modifie les données) et code
+ *    administrateur ; bouton Tester. Enregistrer envoie TOUS les paramètres
+ *    généraux (onglets Sources et Serveur).
+ * 3. Fonds de plan : modifications des données de fond — lancement du mode
+ *    édition des étiquettes de planche (plugin plugins/pe-label-editor/, chargé
+ *    à la demande) ; chargement d'un nouveau shapefile : à venir.
  *
  * Exclusif avec le menu "☰ Carte" (un seul panneau ouvert à la fois, même
  * position à l'écran) — voir mapMenu.js pour la réciproque.
@@ -35,15 +40,16 @@ const AMGT4CEM_SettingsPanel = {
     this._initServerTab();
     this._initBasemapsTab(panel);
 
-    const fillFields = () => {
-      this._fillSources();
-      this._fillServer();
-    };
-    const toggle = () => {
-      const opening = panel.classList.contains('amgt-hidden');
+    const toggle = async () => {
+      if (!panel.classList.contains('amgt-hidden')) {
+        panel.classList.add('amgt-hidden');
+        return;
+      }
+      // Accès administrateur (futur mot de passe) : sans lui, la fenêtre ne s'ouvre pas.
+      if (!(await AMGT4CEM_Admin.requestAccess())) return;
       menuPanel.classList.add('amgt-hidden');
-      panel.classList.toggle('amgt-hidden');
-      if (opening) fillFields();
+      this._fillFields();
+      panel.classList.remove('amgt-hidden');
     };
     btn.addEventListener('click', toggle);
     link.addEventListener('click', toggle);
@@ -58,12 +64,6 @@ const AMGT4CEM_SettingsPanel = {
   // ---- Onglets -------------------------------------------------------------
 
   _initTabs(panel) {
-    const tabs = Array.from(panel.querySelectorAll('.amgt-tab'));
-    // Onglets réservés aux administrateurs : absents (pas seulement masqués) pour les autres.
-    if (!AMGT4CEM_CONFIG.adminMode) {
-      for (const tab of panel.querySelectorAll('.amgt-tab--admin')) tab.remove();
-      for (const pane of panel.querySelectorAll('[data-pane="server"], [data-pane="basemaps"]')) pane.remove();
-    }
     const show = (name) => {
       for (const tab of panel.querySelectorAll('.amgt-tab')) {
         const active = tab.dataset.tab === name;
@@ -72,106 +72,101 @@ const AMGT4CEM_SettingsPanel = {
       }
       for (const pane of panel.querySelectorAll('.amgt-tab-pane')) pane.classList.toggle('amgt-hidden', pane.dataset.pane !== name);
     };
-    for (const tab of tabs) tab.addEventListener('click', () => show(tab.dataset.tab));
+    this._showTab = show;
+    for (const tab of panel.querySelectorAll('.amgt-tab')) tab.addEventListener('click', () => show(tab.dataset.tab));
     show('sources');
   },
 
-  // ---- 1. Sources ----------------------------------------------------------
+  // ---- Champs (paramètres généraux) ------------------------------------------
 
-  _sourceFields() {
+  _fields() {
     return {
       urbisUrl: document.getElementById('amgt-settings-urbis-url'),
       urbisLayers: document.getElementById('amgt-settings-urbis-layers'),
       brucielHistoriqueUrl: document.getElementById('amgt-settings-bruciel-hist-url'),
       brucielRecentUrl: document.getElementById('amgt-settings-bruciel-recent-url'),
       geocoderUrl: document.getElementById('amgt-settings-geocoder-url'),
+      relayUrl: document.getElementById('amgt-settings-relay-url'),
     };
   },
 
-  _fillSources() {
-    const fields = this._sourceFields();
-    const histEntry = AMGT4CEM_CONFIG.basemaps.bruciel.entries.find((e) => e.year <= 1996);
-    const recentEntry = AMGT4CEM_CONFIG.basemaps.bruciel.entries.find((e) => e.year >= 2004);
-    fields.urbisUrl.value = AMGT4CEM_CONFIG.basemaps.urbis.url;
-    fields.urbisLayers.value = AMGT4CEM_CONFIG.basemaps.urbis.layers;
-    fields.brucielHistoriqueUrl.value = histEntry ? histEntry.url : '';
-    fields.brucielRecentUrl.value = recentEntry ? recentEntry.url : '';
-    fields.geocoderUrl.value = AMGT4CEM_CONFIG.geocoder.url;
+  /** Remplit les champs avec les valeurs en vigueur (défauts de config.js + paramètres généraux). */
+  _fillFields() {
+    const current = AMGT4CEM_SettingsStore.current();
+    for (const [key, input] of Object.entries(this._fields())) input.value = current[key] || '';
+    document.getElementById('amgt-settings-admin-code').value = AMGT4CEM_PeLabelAnchors.getAdminCode();
+    this._status('sources', '');
+    this._status('relay', '');
   },
 
-  _initSourcesTab() {
-    const fields = this._sourceFields();
-    document.getElementById('amgt-settings-save').addEventListener('click', () => {
-      AMGT4CEM_SettingsStore.save({
-        urbisUrl: fields.urbisUrl.value.trim(),
-        urbisLayers: fields.urbisLayers.value.trim(),
-        brucielHistoriqueUrl: fields.brucielHistoriqueUrl.value.trim(),
-        brucielRecentUrl: fields.brucielRecentUrl.value.trim(),
-        geocoderUrl: fields.geocoderUrl.value.trim(),
-      });
-      // Un rechargement garantit que toutes les couches déjà construites
-      // (basemap.js les prépare une fois à l'init) repartent bien des
-      // nouvelles URLs, plutôt que de tenter une mise à jour à chaud partielle.
-      alert('Paramètres enregistrés. La page va se recharger pour les appliquer.');
-      window.location.reload();
-    });
-
-    document.getElementById('amgt-settings-reset').addEventListener('click', () => {
-      if (!confirm('Revenir aux adresses de service par défaut de l\'application ?')) return;
-      // Seulement les adresses de cet onglet : l'adresse du relais (onglet Serveur) est conservée.
-      AMGT4CEM_SettingsStore.reset(Object.keys(fields));
-      window.location.reload();
-    });
-  },
-
-  // ---- 2. Serveur ----------------------------------------------------------
-
-  _fillServer() {
-    const url = document.getElementById('amgt-settings-relay-url');
-    const code = document.getElementById('amgt-settings-admin-code');
-    if (!url) return; // onglet absent (pas administrateur)
-    url.value = AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl || '';
-    code.value = AMGT4CEM_PeLabelAnchors.getAdminCode();
-    this._serverStatus('');
-  },
-
-  _serverStatus(message, kind) {
-    const el = document.getElementById('amgt-settings-relay-status');
-    if (!el) return;
+  _status(which, message, kind) {
+    const el = document.getElementById(which === 'relay' ? 'amgt-settings-relay-status' : 'amgt-settings-sources-status');
     el.textContent = message;
     el.hidden = !message;
     el.className = `amgt-settings-status${kind ? ` amgt-settings-status--${kind}` : ''}`;
   },
 
+  /**
+   * Enregistre TOUS les paramètres généraux sur le serveur, via le relais.
+   * L'adresse du relais utilisée est celle du champ (c'est ainsi qu'on
+   * l'enregistre la toute première fois, avant qu'elle soit connue de tous).
+   * @param {'sources'|'relay'} which - où afficher le résultat
+   */
+  async _saveAll(which) {
+    const fields = this._fields();
+    const values = Object.fromEntries(Object.entries(fields).map(([key, input]) => [key, input.value.trim()]));
+    const code = document.getElementById('amgt-settings-admin-code').value.trim() || AMGT4CEM_PeLabelAnchors.getAdminCode();
+    const relayUrl = values.relayUrl || AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl;
+    if (!relayUrl || !code) {
+      this._showTab('server');
+      this._status('relay', "Pour enregistrer sur le serveur : renseigner l'adresse du relais et le code administrateur.", 'error');
+      return;
+    }
+    this._status(which, 'Enregistrement sur le serveur…');
+    try {
+      await AMGT4CEM_SettingsStore.save(values, relayUrl, code);
+      AMGT4CEM_PeLabelAnchors.setAdminCode(code);
+      this._status(which, 'Enregistré sur le serveur. Appliqué à tous les visiteurs après le redéploiement du site (~1 min) ; rechargez ensuite la page.', 'ok');
+    } catch (err) {
+      AMGT4CEM_PeLabelAnchors.setAdminCode(''); // un code refusé ne doit pas rester en mémoire
+      this._status(which, err.message, 'error');
+    }
+  },
+
+  // ---- 1. Sources ----------------------------------------------------------
+
+  _initSourcesTab() {
+    document.getElementById('amgt-settings-save').addEventListener('click', () => this._saveAll('sources'));
+
+    document.getElementById('amgt-settings-reset').addEventListener('click', () => {
+      // Remplit seulement les champs de cet onglet avec les adresses de config.js ; rien n'est enregistré avant « Enregistrer ».
+      const fields = this._fields();
+      for (const key of ['urbisUrl', 'urbisLayers', 'brucielHistoriqueUrl', 'brucielRecentUrl', 'geocoderUrl']) {
+        fields[key].value = AMGT4CEM_SettingsStore.defaults[key] || '';
+      }
+      this._status('sources', "Valeurs par défaut remplies : « Enregistrer » pour les envoyer au serveur.");
+    });
+  },
+
+  // ---- 2. Serveur ----------------------------------------------------------
+
   _initServerTab() {
-    const url = document.getElementById('amgt-settings-relay-url');
-    if (!url) return; // onglet absent (pas administrateur)
+    const fields = this._fields();
     const code = document.getElementById('amgt-settings-admin-code');
 
-    document.getElementById('amgt-settings-relay-save').addEventListener('click', () => {
-      const value = url.value.trim();
-      AMGT4CEM_SettingsStore.save({ relayUrl: value });
-      // Prise en compte immédiate (rien n'est construit à partir de cette valeur au démarrage) ;
-      // vide : retour à la valeur de config.js.
-      AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl = value || AMGT4CEM_SettingsStore.defaultRelayUrl;
-      AMGT4CEM_PeLabelAnchors.setAdminCode(code.value.trim());
-      this._serverStatus('Enregistré sur cet appareil (adresse) et pour cet onglet (code).', 'ok');
-    });
+    document.getElementById('amgt-settings-relay-save').addEventListener('click', () => this._saveAll('relay'));
 
     document.getElementById('amgt-settings-relay-reset').addEventListener('click', () => {
-      AMGT4CEM_SettingsStore.reset(['relayUrl']);
-      AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl = AMGT4CEM_SettingsStore.defaultRelayUrl;
-      AMGT4CEM_PeLabelAnchors.setAdminCode('');
-      this._fillServer();
-      this._serverStatus('Adresse et code réinitialisés.');
+      fields.relayUrl.value = AMGT4CEM_SettingsStore.defaults.relayUrl || '';
+      this._status('relay', "Valeur par défaut remplie : « Enregistrer » pour l'envoyer au serveur.");
     });
 
     document.getElementById('amgt-settings-relay-test').addEventListener('click', async () => {
-      this._serverStatus('Test en cours…');
+      this._status('relay', 'Test en cours…');
       try {
-        this._serverStatus(await AMGT4CEM_PeLabelAnchors.checkConnection(url.value.trim(), code.value.trim()), 'ok');
+        this._status('relay', await AMGT4CEM_PeLabelAnchors.checkConnection(fields.relayUrl.value.trim(), code.value.trim()), 'ok');
       } catch (err) {
-        this._serverStatus(err.message, 'error');
+        this._status('relay', err.message, 'error');
       }
     });
   },
@@ -179,9 +174,7 @@ const AMGT4CEM_SettingsPanel = {
   // ---- 3. Fonds de plan ----------------------------------------------------
 
   _initBasemapsTab(panel) {
-    const btn = document.getElementById('amgt-settings-edit-labels');
-    if (!btn) return; // onglet absent (pas administrateur)
-    btn.addEventListener('click', () => {
+    document.getElementById('amgt-settings-edit-labels').addEventListener('click', () => {
       panel.classList.add('amgt-hidden');
       this._launchLabelEditor();
     });

@@ -78,7 +78,7 @@ const AMGT4CEM_PeLabelAnchors = {
     if (!url) throw new Error("Adresse du relais non renseignée.");
     let response;
     try {
-      response = await fetch(url, { method: 'GET', headers: { Authorization: `Bearer ${code}` } });
+      response = await fetch(url.replace(/\/+$/, '') + '/', { method: 'GET', headers: { Authorization: `Bearer ${code}` } });
     } catch (err) {
       throw new Error(`Relais injoignable (${err.message}) : vérifier l'adresse, et que le site y est autorisé (ALLOWED_ORIGINS).`);
     }
@@ -88,21 +88,32 @@ const AMGT4CEM_PeLabelAnchors = {
   },
 
   /**
-   * Enregistre l'ensemble des définitions dans le dépôt, via le relais.
+   * Enregistre l'ensemble des définitions dans le dépôt, via le relais (adresse : paramètres généraux).
    * @param {Object} labels - { clé: { r1, a1, r2?, a2? } } (étiquettes SANS définition : absentes)
    * @param {string} adminCode - code administrateur attendu par le relais
    * @returns {Promise<void>} rejetée avec un Error au message lisible en cas d'échec
    */
   async save(labels, adminCode) {
-    if (!this.isSaveConfigured()) {
-      throw new Error("Enregistrement partagé non configuré : renseigner peLabelAnchorsRelayUrl (config.js, voir relay/README.md).");
+    await this.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, 'anchors', { version: 1, labels }, adminCode);
+    this._labels = JSON.parse(JSON.stringify(labels));
+  },
+
+  /**
+   * Envoie un contenu au relais (PUT <relais>/<route>). Sert aussi à
+   * l'enregistrement des paramètres généraux (settingsStore.js, route
+   * « settings »).
+   */
+  async putToRelay(relayUrl, route, body, adminCode) {
+    if (!relayUrl) {
+      throw new Error("Enregistrement impossible : adresse du relais non renseignée (⚙ Paramètres > Serveur, voir relay/README.md).");
     }
+    if (!adminCode) throw new Error('Code administrateur non renseigné (⚙ Paramètres > Serveur).');
     let response;
     try {
-      response = await fetch(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, {
+      response = await fetch(`${relayUrl.replace(/\/+$/, '')}/${route}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminCode}` },
-        body: JSON.stringify({ version: 1, labels }),
+        body: JSON.stringify(body),
       });
     } catch (err) {
       throw new Error(`Relais injoignable (${err.message}).`);
@@ -116,6 +127,5 @@ const AMGT4CEM_PeLabelAnchors = {
       }
       throw new Error(response.status === 401 ? 'Code administrateur refusé.' : `Enregistrement refusé (HTTP ${response.status}) ${detail}`.trim());
     }
-    this._labels = JSON.parse(JSON.stringify(labels));
   },
 };

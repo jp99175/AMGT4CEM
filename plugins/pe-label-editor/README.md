@@ -97,8 +97,8 @@ plugin voit les étiquettes à leur nouvelle place.
   s'ouvre après **Appliquer** ou avec le bouton **✥ Étiquettes planches**)
   envoie TOUTES les définitions au relais serveur `relay/`, qui commit le
   fichier dans le dépôt. Il utilise l'**adresse du relais** et le **code
-  administrateur** saisis dans ⚙ Paramètres > Serveur (le code est gardé le
-  temps de l'onglet seulement, redemandé sinon). Les autres visiteurs voient le
+  administrateur** des paramètres généraux (⚙ Paramètres > Serveur ; le code
+  est gardé le temps de l'onglet seulement, redemandé sinon). Les autres visiteurs voient le
   changement après le redéploiement de GitHub Pages (~1 min).
 - Le panneau indique le nombre de modifications **non enregistrées** ;
   **Appliquer** seul applique la modification à l'écran (perdue au
@@ -106,7 +106,7 @@ plugin voit les étiquettes à leur nouvelle place.
 - **Le relais est à déployer une fois** (compte Cloudflare gratuit, jeton
   GitHub) : voir `relay/README.md`, puis renseigner son adresse dans
   ⚙ Paramètres > Serveur (bouton **Tester** pour vérifier la connexion et le
-  code), ou dans `config.js` (`peLabelAnchorsRelayUrl`). Tant que ce n'est pas fait, « Enregistrer » affiche un
+  code ; l'adresse est enregistrée sur le serveur comme paramètre général). Tant que ce n'est pas fait, « Enregistrer » affiche un
   message explicite et n'écrit rien.
 - Autres boutons du panneau : **Exporter JSON** (copie manuelle, repli si le
   relais est indisponible), **Importer JSON**, **Tout réinitialiser** (à
