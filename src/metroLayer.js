@@ -56,7 +56,11 @@
  *   planche (`side` : top/bottom/left/right) — pas par son centre : quand
  *   la taille du texte change avec le zoom, il pousse à partir de ce bord
  *   et reste collé à son cadre. Chaque référence tombe dans le contour de
- *   sa propre planche, sans correction.
+ *   sa propre planche, sans correction. Un administrateur peut redéfinir
+ *   l'ancrage et l'orientation d'une étiquette (plugin pe-label-editor) : la
+ *   définition partagée de data/pe-label-anchors.json (peLabelAnchors.js),
+ *   cherchée sous la clé "numéro#rang" (`marker._amgtKey`), remplace alors la
+ *   position d'origine — appliquée par scaledText.js.
  * Les deux sont non interactifs : un clic doit atteindre la forme en
  * dessous (triangle pour PE_info, planche pour PE_label), pas s'arrêter
  * sur le texte.
@@ -127,6 +131,8 @@ const AMGT4CEM_MetroLayer = {
     // : accumulée au fil de la boucle, complète au moment où un clic peut
     // réellement survenir (après le rendu initial), voir _sheetRefsAt.
     const peFeatures = [];
+    // Rang de chaque étiquette de planche parmi celles de même numéro (clé "1000-236#0", "3000-126#1"...) : la clé de ses définitions d'ancrage.
+    const peLabelRank = {};
 
     for (const feature of geojson.features || []) {
       const props = feature.properties || {};
@@ -143,7 +149,10 @@ const AMGT4CEM_MetroLayer = {
       }
       if (type === 'PE_label') {
         if (!feature.geometry || feature.geometry.type !== 'Point') continue;
-        this._buildScaledLabel(feature, layersByType.PE_label, bounds, AMGT4CEM_LABEL_STYLES.PE_label);
+        const code = props.code || '';
+        peLabelRank[code] = (peLabelRank[code] || 0) + 1;
+        const key = `${code}#${peLabelRank[code] - 1}`;
+        this._buildScaledLabel(feature, layersByType.PE_label, bounds, AMGT4CEM_LABEL_STYLES.PE_label, key);
         continue;
       }
 
@@ -338,7 +347,7 @@ const AMGT4CEM_MetroLayer = {
    * dernière gère déjà elle-même le cas de plusieurs planches superposées,
    * _sheetRefsAt), pas s'arrêter sur le texte.
    */
-  _buildScaledLabel(feature, group, bounds, style) {
+  _buildScaledLabel(feature, group, bounds, style, key) {
     const props = feature.properties || {};
     const latlng = AMGT4CEM_CRS.lambertToLatLng(feature.geometry.coordinates);
     const marker = AMGT4CEM_ScaledText.createMarker(latlng, props.code || '', {
@@ -346,7 +355,9 @@ const AMGT4CEM_MetroLayer = {
       heightMeters: style.heightMeters,
       rotationDeg: props.angle || 0,
       side: props.side || undefined,
+      def: key ? AMGT4CEM_PeLabelAnchors.get(key) : undefined, // définition partagée (administrateurs), sinon position d'origine
     });
+    marker._amgtKey = key;
     marker.addTo(group);
     bounds.extend(latlng);
   },

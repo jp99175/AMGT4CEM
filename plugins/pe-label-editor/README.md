@@ -4,8 +4,11 @@ Placer et orienter chaque référence de planche (ex. « 1000-236 ») par
 rapport au cadre de sa planche, en choisissant des points précis plutôt
 qu'en glissant au jugé.
 
-**Ne modifie aucun fichier de l'application.** Tous les fichiers du plugin
-vivent dans ce dossier ; le désinstaller = supprimer ce dossier.
+Le plugin lui-même vit dans ce dossier. L'affichage des définitions
+enregistrées (ancrage, orientation) est fait par l'application
+(`src/scaledText.js`, `src/peLabelAnchors.js`, `src/metroLayer.js`) : sans le
+plugin, les visiteurs voient le résultat ; seul l'enregistrement exige le
+plugin et le relais.
 
 **Réservé aux administrateurs (à terme).** La modification n'est destinée
 qu'aux administrateurs, en mode « édition » : ce plugin n'est chargé que par
@@ -31,11 +34,12 @@ puis ouvrir `plugins/pe-label-editor/index.html` au lieu de `index.html`
       affichés sur le texte — 4 coins et 4 milieux de bord.
    2. **Point d'ancrage sur la planche** : un point remarquable du cadre,
       dans cet ordre de priorité, chacun avec sa forme :
-      1. les **sommets** du polygone (carré plein) ;
-      2. le **centre de chaque côté** du polygone (petit carré clair) ;
-      3. les **intersections** avec d'autres planches (rond doré) ;
-      4. le **centre de chaque segment** que les points précédents délimitent
-         sur le cadre (losange).
+      1. les **sommets** du polygone (pastille carrée foncée) ;
+      2. le **centre de chaque côté** du polygone (pastille carrée foncée) ;
+      3. les **intersections** avec d'autres planches (pastille ronde avec
+         deux diamètres en X) ;
+      4. le **centre de chaque segment** du cadre que délimitent les points
+         des catégories 1 **et** 3 (pastille ronde plus petite et plus claire).
 
       Un point n'est ajouté que s'il a une valeur ajoutée : aucun autre
       point remarquable à moins de **5 m** (échelle réelle du plan) — en cas
@@ -60,22 +64,33 @@ texte pousse à partir de ce point), et l'alignement aussi : la rotation est
 recalculée avec la taille réelle de la boîte, dont le rapport
 largeur/hauteur ne change pas avec le zoom.
 
-## Sauvegarde
+## Enregistrement dans l'application
 
-Ce plugin n'a pas accès aux fichiers du dépôt : les définitions (les 4
-points de chaque étiquette modifiée) sont gardées dans le navigateur
-(`localStorage`, clé `amgt4cem-ple-overrides-v4`), pas partagées avec les
-autres visiteurs. Le bouton **✥ Étiquettes planches** (en bas à droite)
-ouvre le panneau d'administration :
+Les modifications sont **enregistrées dans l'application**, partagées par
+tous les visiteurs — pas dans le navigateur (rien n'est gardé dans
+`localStorage`). Elles vivent dans `data/pe-label-anchors.json` (dépôt), lu
+par l'application elle-même (`src/peLabelAnchors.js`) : un visiteur sans le
+plugin voit les étiquettes à leur nouvelle place.
 
-- **Exporter JSON** : télécharge les définitions, avec le résultat calculé
-  (ancre, point de référence, rotation CSS) — à transmettre à qui maintient
-  `Metro_export_SHP/MetroLabels.shp` pour les rendre permanentes.
-- **Importer JSON** : recharge un export.
-- **Tout réinitialiser**.
+- **Enregistrer** (dans le panneau d'édition d'une étiquette, ou
+  **Enregistrer dans l'application** dans le panneau d'administration)
+  envoie TOUTES les définitions au relais serveur `relay/`, qui commit le
+  fichier dans le dépôt. Il demande le **code administrateur** du relais
+  (gardé le temps de l'onglet seulement). Les autres visiteurs voient le
+  changement après le redéploiement de GitHub Pages (~1 min).
+- Le panneau indique le nombre de modifications **non enregistrées** ;
+  « Terminé (sans enregistrer) » applique la modification à l'écran
+  seulement (perdue au rechargement).
+- **Le relais est à déployer une fois** (compte Cloudflare gratuit, jeton
+  GitHub) : voir `relay/README.md`, puis renseigner `peLabelAnchorsRelayUrl`
+  dans `config.js`. Tant que ce n'est pas fait, « Enregistrer » affiche un
+  message explicite et n'écrit rien.
+- Autres boutons du panneau : **Exporter JSON** (copie manuelle, repli si le
+  relais est indisponible), **Importer JSON**, **Tout réinitialiser** (à
+  enregistrer ensuite pour que ce soit partagé).
 
-Les anciens réglages (versions précédentes du plugin : position et angle
-libres, accroche magnétique) ne sont pas repris : le modèle a changé.
+Les anciens réglages locaux (`localStorage`, versions précédentes du plugin)
+ne sont plus lus.
 
 ## Fichiers
 

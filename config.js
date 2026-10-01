@@ -42,6 +42,14 @@ const AMGT4CEM_CONFIG = {
   metroInfoShpBaseUrl: './Metro_export_SHP/MetroInfo',
   metroLabelsShpBaseUrl: './Metro_export_SHP/MetroLabels',
 
+  // Ancrage/orientation des références de planche, partagés entre visiteurs
+  // (voir src/peLabelAnchors.js). Le fichier est lu par tous ; son
+  // enregistrement (administrateurs, plugin plugins/pe-label-editor/) passe
+  // par un relais serveur à déployer une fois (relay/README.md) dont
+  // l'adresse se renseigne ici — vide : enregistrement non configuré.
+  peLabelAnchorsUrl: './data/pe-label-anchors.json',
+  peLabelAnchorsRelayUrl: '',
+
   // Petite emprise (2km x 2km, centre de Bruxelles) utilisée uniquement pour
   // sonder si un fond WMS répond avant de le proposer (voir basemap.js) —
   // confortablement à l'intérieur de l'emprise de tous les fonds Orthophoto

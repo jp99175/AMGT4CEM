@@ -1,0 +1,9 @@
+# Relais d'enregistrement — déploiement : `npx wrangler deploy` depuis ce dossier (voir README.md).
+name = "amgt4cem-pe-label-relay"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+GITHUB_REPO = "jp99175/AMGT4CEM"
+GITHUB_BRANCH = "claude/amgt4cem-mapping-app-fy2zdt"   # à remplacer par la branche déployée par GitHub Pages
+ALLOWED_ORIGINS = "https://jp99175.github.io"          # + "http://localhost:8765" pour tester en local

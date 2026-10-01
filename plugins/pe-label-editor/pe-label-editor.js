@@ -1,11 +1,8 @@
 /**
  * Plugin "pe-label-editor" — placer et orienter les références de planche
- * (PE_label, ex. "1000-236") par rapport au cadre de leur planche.
- *
- * AUCUN fichier de l'application n'est modifié : le plugin n'utilise que des
- * objets déjà globaux de l'appli (AMGT4CEM_MapMenu, AMGT4CEM_CRS,
- * AMGT4CEM_ShpLoader, AMGT4CEM_CONFIG, Leaflet `L`), depuis un script ajouté
- * en fin de page (voir index.html de ce dossier).
+ * (PE_label, ex. "1000-236") par rapport au cadre de leur planche, et
+ * ENREGISTRER le résultat dans l'application (partagé par tous les
+ * visiteurs), pas dans le navigateur.
  *
  * PRINCIPE
  * Cliquer dans le texte d'une référence ouvre une bulle d'info (numéro de
@@ -14,69 +11,56 @@
  *   1. point de référence du texte (R1) : l'un des 8 points de sa boîte —
  *      4 coins et 4 milieux de bord ;
  *   2. point d'ancrage (A1) sur la planche : un point remarquable de son
- *      cadre — sommets, centres des côtés, intersections avec d'autres
- *      planches, centres des segments que ces points délimitent (voir
- *      _remarkablePoints). R1 est posé sur A1 ;
+ *      cadre (voir _remarkablePoints). R1 est posé sur A1 ;
  *   3. second point de référence du texte (R2), un autre des 8 ;
  *   4. un autre point remarquable de la planche (A2).
  * L'orientation en découle : R1 (= A1), R2 et A2 sont alignés, par la
- * rotation LA MOINS GRANDE de la boîte de texte (en valeur absolue, depuis
- * l'horizontale : texte toujours lisible, jamais à l'envers).
+ * rotation LA MOINS GRANDE de la boîte de texte (texte toujours lisible).
+ * Ce calcul d'affichage est fait par l'application elle-même
+ * (AMGT4CEM_ScaledText.setDefinition, scaledText.js) : le plugin ne fait que
+ * l'interface de choix et l'enregistrement.
  *
- * Tout est recalculé à l'affichage (taille de boîte mesurée dans le DOM) : le
- * rapport largeur/hauteur de la boîte ne change pas avec le zoom, donc le
- * point de référence reste collé à son point d'ancrage et l'alignement est
- * conservé à tous les niveaux de zoom.
+ * ENREGISTREMENT PARTAGÉ : les définitions vivent dans
+ * data/pe-label-anchors.json (dépôt), lu par l'application pour tous les
+ * visiteurs (peLabelAnchors.js). « Enregistrer » les envoie au relais serveur
+ * (relay/) qui écrit ce fichier dans le dépôt ; il faut le code administrateur
+ * du relais. Tant que le relais n'est pas déployé (config.js,
+ * peLabelAnchorsRelayUrl), l'enregistrement est impossible : l'export JSON
+ * sert de solution de repli manuelle. Rien n'est gardé dans localStorage.
  *
- * ACCÈS RÉSERVÉ : cette modification ne doit à terme être accessible qu'aux
- * administrateurs, en mode « édition ». Ce plugin n'est chargé que par sa page
- * de lancement (la page normale de l'appli ne le charge pas) ; en plus,
- * `isAdmin()` ci-dessous est le point de branchement prévu — à remplacer par
- * le contrôle réel (il masque la bulle et l'icône quand il renvoie false).
- *
- * PERSISTANCE : ce plugin n'a pas accès aux fichiers du dépôt. Les
- * définitions sont gardées dans localStorage (par navigateur) et
- * exportables/importables en JSON, à transmettre à qui maintient les données
- * pour les rendre permanentes.
+ * ACCÈS RÉSERVÉ : à terme réservé aux administrateurs, en mode « édition ».
+ * Ce plugin n'est chargé que par sa page de lancement ; `isAdmin()` ci-dessous
+ * est le point de branchement prévu pour le contrôle réel (il masque la bulle
+ * et l'icône quand il renvoie false), en plus du code administrateur exigé par
+ * le relais à l'enregistrement.
  */
 (function () {
-  const STORAGE_KEY = 'amgt4cem-ple-overrides-v4'; // v4 : modèle à 4 points (R1/A1/R2/A2), incompatible avec les v1-v3 (position + angle libres)
   const MIN_SPACING_M = 5; // un point remarquable n'est ajouté que s'il n'y en a pas déjà un à moins de 5 m (échelle réelle du plan)
   const CORNER_MIN_TURN_DEG = 1; // un sommet qui dévie de moins de ça n'est pas un vrai coin
+  const ADMIN_CODE_SESSION_KEY = 'amgt4cem-admin-code'; // sessionStorage : le temps de l'onglet, jamais écrit sur disque
 
-  // Les 8 points de la boîte de texte : fraction de la largeur (x) et de la hauteur (y, vers le bas).
-  const REFS = {
-    tl: { x: 0, y: 0, label: 'coin haut-gauche' },
-    tc: { x: 0.5, y: 0, label: 'milieu du bord haut' },
-    tr: { x: 1, y: 0, label: 'coin haut-droit' },
-    ml: { x: 0, y: 0.5, label: 'milieu du bord gauche' },
-    mr: { x: 1, y: 0.5, label: 'milieu du bord droit' },
-    bl: { x: 0, y: 1, label: 'coin bas-gauche' },
-    bc: { x: 0.5, y: 1, label: 'milieu du bord bas' },
-    br: { x: 1, y: 1, label: 'coin bas-droit' },
-  };
-  // Valeur d'origine (champ `side` de MetroLabels.shp) -> point de référence équivalent.
-  const SIDE_TO_REF = { top: 'tc', bottom: 'bc', left: 'ml', right: 'mr' };
+  // Les 8 points de la boîte de texte (définis par l'application, sans « center »).
+  const REFS = Object.fromEntries(Object.entries(AMGT4CEM_ScaledText.REFS).filter(([k]) => k !== 'center'));
   const KIND_LABEL = {
     vertex: 'sommet du cadre',
     side: 'milieu de côté du cadre',
     intersection: 'intersection avec une autre planche',
-    middle: 'milieu de segment entre points remarquables',
+    middle: 'milieu de segment (sommets / intersections)',
   };
 
   const SLOTS = [
     { id: 'r1', kind: 'ref', title: '1. Point de référence du texte', hint: "Cliquez l'un des 8 points sur le texte." },
-    { id: 'a1', kind: 'planche', title: "2. Point d'ancrage sur la planche", hint: 'Cliquez un sommet, un milieu de côté, une intersection ou un milieu de segment du cadre.' },
+    { id: 'a1', kind: 'planche', title: "2. Point d'ancrage sur la planche", hint: 'Cliquez un point remarquable du cadre (sommet, milieu de côté, intersection, milieu de segment).' },
     { id: 'r2', kind: 'ref', title: '3. Second point de référence du texte', hint: 'Cliquez un autre des 8 points du texte.' },
     { id: 'a2', kind: 'planche', title: '4. Autre point remarquable de la planche', hint: 'Cliquez un autre point du cadre : il sera aligné avec les deux points précédents.' },
   ];
 
   const sameLatLng = (v, c) => !!v && Math.abs(v[0] - c.lat) < 1e-9 && Math.abs(v[1] - c.lng) < 1e-9;
+  const clone = (v) => (v ? JSON.parse(JSON.stringify(v)) : v);
 
   const PeLabelEditor = {
     _map: null,
-    _entries: [], // { key, code, marker, span, orig:{lat,lng,angle,ref}, def, lat, lng, angle, ref }
-    _overrides: {}, // key -> { r1, a1:[lat,lng], r2, a2:[lat,lng] }
+    _entries: [], // { key, code, marker, span, def, lat, lng, angle, ref }
     _planches: [], // [{ code, ring: [[x, y], ...] }] — Lambert, anneau non refermé
     _edit: null, // session de modification en cours
     _toggleBtn: null,
@@ -94,7 +78,6 @@
           console.error('[pe-label-editor] Carte Leaflet introuvable, plugin non démarré.');
           return;
         }
-        this._loadOverrides();
         this._loadPlanches();
         this._buildToggleButton();
         // Les étiquettes n'existent dans le DOM que quand la couche « Plans
@@ -105,7 +88,6 @@
             if (this._ensureIndexed()) clearInterval(this._autoIndexInterval);
           }, 1500);
         }
-        this._map.on('zoomend', () => this._renderAll());
       });
     },
 
@@ -130,55 +112,48 @@
 
     // ---- Indexation des étiquettes ----------------------------------------
 
-    /** Indexe les étiquettes affichées UNE fois (valeurs d'origine conservées) puis applique les définitions sauvegardées. */
+    /** Indexe les étiquettes affichées UNE fois. Leur définition partagée est déjà appliquée par l'application. */
     _ensureIndexed() {
       if (this._entries.length) return true;
       const out = [];
-      const seen = {};
       AMGT4CEM_MapMenu._metroLayers.PE_label.eachLayer((marker) => {
         const span = marker.getElement() && marker.getElement().querySelector('.amgt-scaled-text');
-        if (!span) return;
-        const code = span.textContent.trim();
-        seen[code] = (seen[code] || 0) + 1;
-        // Clé stable "code#rang" (« 3000-126#1 » pour la 2e étiquette de ce numéro).
-        const key = `${code}#${seen[code] - 1}`;
-        const ll = marker.getLatLng();
+        if (!span || !marker._amgtKey) return;
         out.push({
-          key,
-          code,
+          key: marker._amgtKey, // "code#rang", posée par metroLayer.js
+          code: span.textContent.trim(),
           marker,
           span,
-          orig: { lat: ll.lat, lng: ll.lng, angle: this._readAngleDeg(span), ref: SIDE_TO_REF[span.dataset.side] || 'tc' },
-          def: this._overrides[key] || null,
+          def: clone(AMGT4CEM_PeLabelAnchors.get(marker._amgtKey)),
         });
       });
       if (!out.length) return false;
       this._entries = out;
       for (const entry of out) {
-        entry.marker.on('add', () => {
-          this._bindLabel(entry);
-          this._render(entry);
-        });
+        entry.marker.on('add', () => this._bindLabel(entry)); // Leaflet recrée le DOM quand la couche est masquée puis réaffichée
         this._bindLabel(entry);
-        this._render(entry);
+        this._syncPose(entry);
       }
-      this._refreshAdminCount();
+      this._refreshAdminPanel();
       return true;
     },
 
-    _readAngleDeg(span) {
-      const m = /rotate\(\s*(-?[\d.]+)deg\s*\)/.exec(span.style.transform || '');
-      return m ? parseFloat(m[1]) : 0;
+    /** Applique la définition courante de l'entrée via l'application, et relit la pose obtenue. */
+    _syncPose(entry) {
+      const pose = AMGT4CEM_ScaledText.setDefinition(entry.marker, entry.def);
+      if (!pose) return;
+      entry.lat = pose.latlng.lat;
+      entry.lng = pose.latlng.lng;
+      entry.angle = pose.angle;
+      entry.ref = pose.ref;
     },
 
     // ---- Clic dans le texte : bulle d'info + icône « déplacer » ------------
 
     /**
      * Le `<span>` du texte a `pointer-events: none` dans le CSS de l'appli
-     * (voulu : un clic doit traverser jusqu'à la planche). Ce plugin ne touche
-     * pas ce fichier : il pose un style en ligne sur CET élément, et se
-     * ré-abonne à chaque `add` du marqueur (Leaflet recrée le DOM quand la
-     * couche est masquée puis réaffichée).
+     * (voulu : un clic doit traverser jusqu'à la planche). Le plugin pose un
+     * style en ligne sur CET élément seulement, et se ré-abonne à chaque `add`.
      */
     _bindLabel(entry) {
       const span = entry.marker.getElement() && entry.marker.getElement().querySelector('.amgt-scaled-text');
@@ -221,54 +196,6 @@
       L.popup({ closeButton: true, offset: [0, -4] }).setLatLng(latlng).setContent(box).openOn(this._map);
     },
 
-    // ---- Pose d'une étiquette ---------------------------------------------
-
-    _renderAll() {
-      for (const entry of this._entries) this._render(entry);
-    },
-
-    /**
-     * Pose l'étiquette : sans définition, sa position/orientation d'origine
-     * (PDF). Avec R1+A1 : R1 posé sur A1. Avec en plus R2+A2 : rotation qui
-     * aligne R1, R2 et A2.
-     */
-    _render(entry) {
-      if (!entry.span || !entry.marker.getElement()) return;
-      const d = entry.def;
-      let { lat, lng, angle, ref } = entry.orig;
-      if (d && d.r1 && d.a1) {
-        ref = d.r1;
-        [lat, lng] = d.a1;
-        if (d.r2 && d.a2) angle = this._alignAngle(entry, d);
-      }
-      entry.lat = lat;
-      entry.lng = lng;
-      entry.angle = angle;
-      entry.ref = ref;
-      entry.marker.setLatLng([lat, lng]);
-      const r = REFS[ref];
-      entry.span.dataset.ref = ref;
-      entry.span.style.transformOrigin = '0 0';
-      entry.span.style.transform = `rotate(${angle}deg) translate(${-r.x * 100}%,${-r.y * 100}%)`;
-    },
-
-    /**
-     * Rotation CSS (degrés, horaire) qui aligne R1, R2 et A2 : le vecteur
-     * R1→R2 de la boîte (mesurée dans le DOM, sans rotation) doit être
-     * parallèle à A1→A2 à l'écran. Deux solutions à 180° l'une de l'autre :
-     * on garde celle de plus petite valeur absolue (texte lisible).
-     */
-    _alignAngle(entry, d) {
-      const w = entry.span.offsetWidth || 1;
-      const h = entry.span.offsetHeight || 1;
-      const v = { x: (REFS[d.r2].x - REFS[d.r1].x) * w, y: (REFS[d.r2].y - REFS[d.r1].y) * h };
-      const p1 = this._map.project(L.latLng(d.a1), 0);
-      const p2 = this._map.project(L.latLng(d.a2), 0);
-      let theta = (Math.atan2(p2.y - p1.y, p2.x - p1.x) - Math.atan2(v.y, v.x)) * (180 / Math.PI);
-      theta = ((((theta + 90) % 180) + 180) % 180) - 90; // [-90°, 90°[
-      return theta;
-    },
-
     // ---- Points remarquables d'une planche -----------------------------------
 
     /** Charge Metro.shp (même fichier que l'appli, lu séparément) : contours des planches, en Lambert. */
@@ -304,15 +231,15 @@
 
     /**
      * Points remarquables du cadre d'une planche, dans cet ordre :
-     *   1. les sommets du polygone                                  (kind 'vertex')
-     *   2. le centre de chaque côté du polygone                     (kind 'side')
-     *   3. les intersections avec les autres planches               (kind 'intersection')
-     *   4. le centre de chaque segment que les points 1 à 3 délimitent
-     *      sur le cadre                                             (kind 'middle')
+     *   1. les sommets du polygone                                   (kind 'vertex')
+     *   2. le centre de chaque côté du polygone                      (kind 'side')
+     *   3. les intersections avec les autres planches                (kind 'intersection')
+     *   4. le centre de chaque segment du cadre que délimitent les
+     *      points 1 ET 3 (sommets et intersections)                  (kind 'middle')
      * Un point n'est ajouté que s'il a une valeur ajoutée : aucun autre point
      * remarquable déjà retenu à moins de MIN_SPACING_M (mètres réels, le
-     * contour étant en Lambert). Chaque point garde donc la forme de sa
-     * catégorie la plus prioritaire. [{ x, y, kind }] en Lambert.
+     * contour étant en Lambert) — la catégorie la plus prioritaire l'emporte.
+     * [{ x, y, kind }] en Lambert.
      */
     _remarkablePoints(planche) {
       const ring = planche.ring;
@@ -370,8 +297,8 @@
       hits.sort((a, b) => a.sv - b.sv);
       for (const h of hits) accept(h.xy, 'intersection', h.sv);
 
-      // 4. centre de chaque segment délimité, le long du cadre, par les points 1 à 3
-      const base = out.slice().sort((a, b) => a.s - b.s);
+      // 4. centre de chaque segment défini par les points 1 ET 3 — les centres de côté (2) ne délimitent pas
+      const base = out.filter((p) => p.kind === 'vertex' || p.kind === 'intersection').sort((a, b) => a.s - b.s);
       base.forEach((p, k) => {
         const q = base[(k + 1) % base.length];
         const len = base.length === 1 ? total : mod(q.s - p.s);
@@ -402,12 +329,8 @@
         alert('Contour de la planche introuvable (Metro.shp pas encore chargé) : réessayez dans un instant.');
         return;
       }
-      if (this._panel) {
-        this._panel.remove();
-        this._panel = null;
-        if (this._toggleBtn) this._toggleBtn.classList.remove('amgt-ple-active');
-      }
-      const backup = entry.def ? JSON.parse(JSON.stringify(entry.def)) : null;
+      this._closeAdminPanel();
+      const backup = clone(entry.def);
       entry.def = entry.def ? { ...entry.def } : {};
       const cands = this._remarkablePoints(planche).map((p) => {
         const ll = AMGT4CEM_CRS.lambertToLatLng([p.x, p.y]);
@@ -479,8 +402,7 @@
       // Un point devenu identique à son vis-à-vis rendrait l'alignement indéfini : on retire le second.
       if (def.r2 && def.r2 === def.r1) delete def.r2;
       if (def.a2 && def.a1 && def.a2[0] === def.a1[0] && def.a2[1] === def.a1[1]) delete def.a2;
-      this._render(ed.entry);
-      this._saveEntry(ed.entry);
+      this._syncPose(ed.entry);
       const after = SLOTS.findIndex((s, i) => i > ed.slot && !def[s.id]);
       const any = SLOTS.findIndex((s) => !def[s.id]);
       ed.slot = after >= 0 ? after : any >= 0 ? any : ed.slot;
@@ -519,19 +441,24 @@
         <p class="amgt-ple-result"></p>
         <p class="amgt-ple-flash" hidden></p>
         <div class="amgt-ple-actions">
-          <button type="button" data-action="done">Terminé</button>
+          <button type="button" class="amgt-ple-primary" data-action="save">Enregistrer</button>
+          <button type="button" data-action="done">Terminé (sans enregistrer)</button>
           <button type="button" data-action="cancel">Annuler</button>
           <button type="button" data-action="reset">Réinitialiser l'étiquette</button>
         </div>`;
       document.body.appendChild(panel);
       this._panel = panel;
+      panel.querySelector('[data-action="save"]').addEventListener('click', async () => {
+        const ed = this._edit;
+        if (!ed.entry.def.r1 || !ed.entry.def.a1) return this._flash("Choisissez au moins le point de référence (1) et le point d'ancrage (2).");
+        if (await this._saveShared((m) => this._flash(m))) this._endEdit(false);
+      });
       panel.querySelector('[data-action="done"]').addEventListener('click', () => this._endEdit(false));
       panel.querySelector('[data-action="cancel"]').addEventListener('click', () => this._endEdit(true));
       panel.querySelector('[data-action="reset"]').addEventListener('click', () => {
         const ed = this._edit;
         ed.entry.def = {};
-        this._render(ed.entry);
-        this._saveEntry(ed.entry);
+        this._syncPose(ed.entry);
         ed.slot = 0;
         this._refreshEdit();
       });
@@ -578,50 +505,80 @@
       el.textContent = msg;
       el.hidden = false;
       clearTimeout(this._flashTimer);
-      this._flashTimer = setTimeout(() => (el.hidden = true), 3500);
+      this._flashTimer = setTimeout(() => (el.hidden = true), 5000);
     },
 
     _endEdit(cancel) {
       const ed = this._edit;
       if (!ed) return;
-      // Annuler, ou définition sans position (R1+A1 manquants) : on revient à l'état d'avant la session.
-      if (cancel || !ed.entry.def.r1 || !ed.entry.def.a1) {
-        ed.entry.def = ed.backup;
-        this._saveEntry(ed.entry);
-      }
-      this._render(ed.entry);
+      // Annuler, ou définition sans position (R1+A1 manquants) : retour à l'état d'avant la session.
+      if (cancel || !ed.entry.def.r1 || !ed.entry.def.a1) ed.entry.def = ed.backup;
+      this._syncPose(ed.entry);
       for (const dot of ed.refDots) dot.remove();
       for (const m of ed.candMarkers) this._map.removeLayer(m);
       if (ed.line) this._map.removeLayer(ed.line);
       this._edit = null;
       if (this._panel) this._panel.remove();
       this._panel = null;
-      this._refreshAdminCount();
+      this._refreshAdminPanel();
     },
 
-    // ---- Persistance (localStorage + export/import JSON) -------------------------
+    // ---- Enregistrement partagé (dans l'application, via le relais) ---------------
 
-    _loadOverrides() {
+    /** Définitions complètes de toutes les étiquettes : l'état enregistré, corrigé par les entrées indexées. */
+    _currentLabels() {
+      const labels = AMGT4CEM_PeLabelAnchors.all(); // garde aussi d'éventuelles clés d'étiquettes non indexées
+      for (const e of this._entries) {
+        const d = e.def;
+        if (d && d.r1 && d.a1) {
+          const out = { r1: d.r1, a1: d.a1 };
+          if (d.r2 && d.a2) Object.assign(out, { r2: d.r2, a2: d.a2 });
+          labels[e.key] = out;
+        } else {
+          delete labels[e.key];
+        }
+      }
+      return labels;
+    },
+
+    /** Clés dont la définition diffère de ce qui est enregistré. */
+    _dirtyKeys() {
+      const saved = AMGT4CEM_PeLabelAnchors.all();
+      const now = this._currentLabels();
+      return [...new Set([...Object.keys(saved), ...Object.keys(now)])].filter((k) => JSON.stringify(saved[k] || null) !== JSON.stringify(now[k] || null));
+    },
+
+    /**
+     * Enregistre toutes les définitions dans l'application. `report(msg)` affiche
+     * un message à l'endroit voulu. Retourne true si l'enregistrement a réussi.
+     */
+    async _saveShared(report) {
+      if (!AMGT4CEM_PeLabelAnchors.isSaveConfigured()) {
+        report(
+          "Enregistrement impossible : le relais n'est pas configuré (peLabelAnchorsRelayUrl dans config.js, voir relay/README.md). " +
+          'En attendant, « Exporter JSON » garde une copie.'
+        );
+        return false;
+      }
+      let code = sessionStorage.getItem(ADMIN_CODE_SESSION_KEY);
+      if (!code) {
+        code = prompt("Code administrateur (celui du relais d'enregistrement) :");
+        if (!code) return false;
+      }
       try {
-        this._overrides = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        report('Enregistrement…');
+        await AMGT4CEM_PeLabelAnchors.save(this._currentLabels(), code);
+        sessionStorage.setItem(ADMIN_CODE_SESSION_KEY, code);
+        report('Enregistré dans l\'application (visible par tous après le redéploiement du site, ~1 min).');
+        return true;
       } catch (err) {
-        console.warn('[pe-label-editor] localStorage illisible, réglages ignorés :', err);
-        this._overrides = {};
+        sessionStorage.removeItem(ADMIN_CODE_SESSION_KEY); // un code refusé ne doit pas rester en mémoire
+        report(err.message);
+        return false;
       }
     },
 
-    _saveEntry(entry) {
-      const d = entry.def;
-      if (d && Object.keys(d).length) this._overrides[entry.key] = d;
-      else delete this._overrides[entry.key];
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this._overrides));
-      } catch (err) {
-        console.warn('[pe-label-editor] Écriture localStorage impossible :', err);
-      }
-    },
-
-    // ---- Bouton et panneau d'administration (export / import / tout réinitialiser) -----
+    // ---- Bouton et panneau d'administration ----------------------------------------
 
     _buildToggleButton() {
       if (!this.isAdmin()) return;
@@ -629,20 +586,21 @@
       btn.type = 'button';
       btn.className = 'amgt-ple-toggle-btn';
       btn.textContent = '✥ Étiquettes planches';
-      btn.title = "Édition des références de planche (administrateurs) — ne modifie aucun fichier de l'appli";
-      btn.addEventListener('click', () => this._toggleAdminPanel());
+      btn.title = 'Édition des références de planche (administrateurs)';
+      btn.addEventListener('click', () => (this._panel ? this._closeAdminPanel() : this._openAdminPanel()));
       document.body.appendChild(btn);
       this._toggleBtn = btn;
     },
 
-    _toggleAdminPanel() {
+    _closeAdminPanel() {
+      if (this._edit || !this._panel) return;
+      this._panel.remove();
+      this._panel = null;
+      if (this._toggleBtn) this._toggleBtn.classList.remove('amgt-ple-active');
+    },
+
+    _openAdminPanel() {
       if (this._edit) return;
-      if (this._panel) {
-        this._panel.remove();
-        this._panel = null;
-        this._toggleBtn.classList.remove('amgt-ple-active');
-        return;
-      }
       this._toggleBtn.classList.add('amgt-ple-active');
       const panel = document.createElement('div');
       panel.className = 'amgt-ple-panel';
@@ -651,7 +609,9 @@
         <p>Affichez la couche « Plans d'ensemble », puis <b>cliquez dans le texte</b> d'une référence de planche :
         la bulle d'info propose l'icône « déplacer ».</p>
         <p class="amgt-ple-count"></p>
+        <p class="amgt-ple-flash" hidden></p>
         <div class="amgt-ple-actions">
+          <button type="button" class="amgt-ple-primary" data-action="save">Enregistrer dans l'application</button>
           <button type="button" data-action="export">Exporter JSON</button>
           <label class="amgt-ple-import-btn">Importer JSON<input type="file" accept="application/json" data-action="import" /></label>
           <button type="button" data-action="reset-all">Tout réinitialiser</button>
@@ -659,45 +619,37 @@
         </div>`;
       document.body.appendChild(panel);
       this._panel = panel;
-      this._refreshAdminCount();
+      this._refreshAdminPanel();
+      panel.querySelector('[data-action="save"]').addEventListener('click', async () => {
+        await this._saveShared((m) => this._flash(m));
+        this._refreshAdminPanel(true);
+      });
       panel.querySelector('[data-action="export"]').addEventListener('click', () => this._exportJson());
       panel.querySelector('[data-action="import"]').addEventListener('change', (e) => this._importJson(e));
       panel.querySelector('[data-action="reset-all"]').addEventListener('click', () => this._resetAll());
-      panel.querySelector('[data-action="close"]').addEventListener('click', () => this._toggleAdminPanel());
+      panel.querySelector('[data-action="close"]').addEventListener('click', () => this._closeAdminPanel());
     },
 
-    _refreshAdminCount() {
-      if (!this._panel) return;
+    /** `keepFlash` : ne pas masquer le message qu'on vient d'afficher. */
+    _refreshAdminPanel() {
+      if (!this._panel || this._edit) return;
       const el = this._panel.querySelector('.amgt-ple-count');
-      if (el) el.textContent = `${this._entries.length} étiquette(s) affichée(s) · ${Object.keys(this._overrides).length} modifiée(s)`;
+      if (!el) return;
+      const dirty = this._dirtyKeys().length;
+      el.textContent = `${this._entries.length} étiquette(s) affichée(s) · ${dirty ? `${dirty} modification(s) NON enregistrée(s)` : 'tout est enregistré'}`;
     },
 
     _resetAll() {
-      if (!confirm("Réinitialiser TOUTES les étiquettes à leur position/orientation d'origine (PDF) ?")) return;
-      this._overrides = {};
+      if (!confirm("Remettre TOUTES les étiquettes à leur position/orientation d'origine (PDF) ? (À enregistrer ensuite pour que ce soit partagé.)")) return;
       for (const entry of this._entries) {
         entry.def = null;
-        this._render(entry);
+        this._syncPose(entry);
       }
-      try {
-        localStorage.setItem(STORAGE_KEY, '{}');
-      } catch (err) {
-        /* sans effet : la mémoire est déjà vidée */
-      }
-      this._refreshAdminCount();
+      this._refreshAdminPanel();
     },
 
     _exportJson() {
-      const out = this._entries.map((e) => ({
-        key: e.key,
-        code: e.code,
-        def: e.def && e.def.r1 ? e.def : null,
-        // Résultat calculé (pour qui reprend les données) : ancre, point de référence et rotation CSS.
-        lat: e.lat,
-        lng: e.lng,
-        ref: e.ref,
-        angle: e.angle,
-      }));
+      const out = this._entries.map((e) => ({ key: e.key, code: e.code, def: e.def && e.def.r1 && e.def.a1 ? e.def : null, lat: e.lat, lng: e.lng, ref: e.ref, angle: e.angle }));
       const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -718,10 +670,9 @@
             const row = byKey[entry.key];
             if (!row) continue;
             entry.def = row.def || null;
-            this._render(entry);
-            this._saveEntry(entry);
+            this._syncPose(entry);
           }
-          this._refreshAdminCount();
+          this._refreshAdminPanel();
         } catch (err) {
           alert('Fichier JSON invalide : ' + err.message);
         }

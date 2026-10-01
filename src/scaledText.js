@@ -14,6 +14,19 @@
  * HTML normal, mais dont le `font-size` est recalculé à chaque changement
  * de zoom pour correspondre à une hauteur réelle donnée (mètres).
  *
+ * ANCRAGE ET ORIENTATION. Le point du marqueur est l'un des 8 points de la
+ * boîte de texte (4 coins, 4 milieux de bord — `ref`), ou son centre, et la
+ * rotation se fait autour de ce point. Une « définition » (`def`, voir
+ * peLabelAnchors.js) fixe l'ancrage et l'orientation d'une étiquette par
+ * rapport au cadre de sa planche : { r1, a1, r2, a2 } — le point de
+ * référence r1 du texte est posé sur le point a1 de la planche, puis la
+ * boîte tourne autour pour aligner r1, r2 (second point du texte) et a2
+ * (autre point de la planche), par la rotation de plus petite valeur
+ * absolue (texte lisible, jamais à l'envers). Calculé ici, à l'affichage,
+ * avec la taille réelle de la boîte dans le navigateur (son rapport
+ * largeur/hauteur ne change pas avec le zoom) : le point de référence reste
+ * collé à son ancre et l'alignement est conservé à tous les zooms.
+ *
  * Calcul mètres/pixel : projection Web Mercator (celle utilisée par
  * Leaflet par défaut — AMGT4CEM_CRS ne fait que fournir les coordonnées
  * lat/lon affichées dessus, pas un CRS Leaflet personnalisé), formule
@@ -21,17 +34,24 @@
  * équatoriale terrestre, ajustée par le cosinus de la latitude.
  */
 const AMGT4CEM_ScaledText = {
-  _entries: [], // { marker, heightMeters, minPx, maxPx }
+  _entries: [], // { marker, heightMeters, minPx, maxPx, orig, def, pose }
   _map: null,
 
-  /** translate() CSS (en % de la boîte du texte) qui amène le point d'ancrage au milieu du bord `side`. */
-  SIDE_TRANSLATE: {
-    center: '-50%,-50%',
-    top: '-50%,0',
-    bottom: '-50%,-100%',
-    left: '0,-50%',
-    right: '-100%,-50%',
+  /** Les 8 points de la boîte de texte (fraction de la largeur x, de la hauteur y vers le bas) + son centre. */
+  REFS: {
+    tl: { x: 0, y: 0, label: 'coin haut-gauche' },
+    tc: { x: 0.5, y: 0, label: 'milieu du bord haut' },
+    tr: { x: 1, y: 0, label: 'coin haut-droit' },
+    ml: { x: 0, y: 0.5, label: 'milieu du bord gauche' },
+    mr: { x: 1, y: 0.5, label: 'milieu du bord droit' },
+    bl: { x: 0, y: 1, label: 'coin bas-gauche' },
+    bc: { x: 0.5, y: 1, label: 'milieu du bord bas' },
+    br: { x: 1, y: 1, label: 'coin bas-droit' },
+    center: { x: 0.5, y: 0.5, label: 'centre' },
   },
+
+  /** Ancien champ `side` de MetroLabels.shp -> point de référence équivalent. */
+  SIDE_TO_REF: { top: 'tc', bottom: 'bc', left: 'ml', right: 'mr' },
 
   /** À appeler une fois, après création de la carte. */
   initMap(map) {
@@ -42,27 +62,22 @@ const AMGT4CEM_ScaledText = {
   /**
    * @param {L.LatLng} latlng
    * @param {string} text
-   * @param {{color: string, heightMeters: number, minPx?: number, maxPx?: number, rotationDeg?: number, side?: 'top'|'bottom'|'left'|'right'}} opts
-   *   `side` : bord de la boîte de texte auquel le point est ancré, en son
-   *   milieu — le bord le plus proche du cadre de la planche, pour une
-   *   référence de planche (voir metroLayer.js). Sans `side`, le point est
-   *   le centre du texte. Ancrer sur un bord plutôt qu'au centre garde le
-   *   texte collé à son cadre à tout niveau de zoom : quand la taille de
-   *   police change, le texte pousse à partir de ce bord au lieu de
-   *   déborder de part et d'autre d'un centre fixe.
+   * @param {{color: string, heightMeters: number, minPx?: number, maxPx?: number, rotationDeg?: number,
+   *   ref?: string, side?: 'top'|'bottom'|'left'|'right', def?: {r1: string, a1: number[], r2?: string, a2?: number[]}}} opts
+   *   `ref` (ou `side`, ancien nom) : point de la boîte de texte auquel le
+   *   point est ancré — le milieu du bord le plus proche du cadre de la
+   *   planche, pour une référence de planche. Sans lui, le centre du texte.
+   *   `def` : définition d'ancrage/orientation (voir en-tête), prioritaire
+   *   sur `ref`/`rotationDeg`/`latlng` quand elle est complète.
    * @returns {L.Marker}
    */
   createMarker(latlng, text, opts) {
-    // La rotation (degrés CSS, horaire) est fixe pour un repère donné — pas
-    // recalculée au zoom comme le font-size — reprise du texte source dans
-    // INFRAVIEW.pdf (voir metroLayer.js). Rotation autour du point
-    // d'ancrage (transform-origin 0 0 = ce point, voir style.css) APRÈS
-    // translate() — l'ordre CSS s'applique de droite à gauche — pour que le
-    // bord choisi tombe pile sur le point, quelle que soit la rotation.
-    const rotationDeg = opts.rotationDeg || 0;
-    const side = AMGT4CEM_ScaledText.SIDE_TRANSLATE[opts.side] ? opts.side : 'center';
-    const transform = ` transform:rotate(${rotationDeg}deg) translate(${AMGT4CEM_ScaledText.SIDE_TRANSLATE[side]});`;
-    const marker = L.marker(latlng, {
+    const self = AMGT4CEM_ScaledText;
+    const ref = self.REFS[opts.ref] ? opts.ref : self.SIDE_TO_REF[opts.side] || 'center';
+    const orig = { latlng, ref, angle: opts.rotationDeg || 0 };
+    const def = opts.def && opts.def.r1 && opts.def.a1 ? opts.def : null;
+    const start = self._poseOf({ orig, def }, null);
+    const marker = L.marker(start.latlng, {
       // Non interactif : ce texte est purement visuel, un clic doit
       // atteindre la forme en dessous (triangle PE_info, planche PE) —
       // voir aussi la CSS (pointer-events: none) qui le garantit vraiment
@@ -72,7 +87,7 @@ const AMGT4CEM_ScaledText = {
       keyboard: false,
       icon: L.divIcon({
         className: 'amgt-scaled-text-icon',
-        html: `<span class="amgt-scaled-text" data-side="${side}" style="color:${opts.color};${transform}">${text}</span>`,
+        html: `<span class="amgt-scaled-text" data-ref="${start.ref}" style="color:${opts.color};${self._transform(start)}">${text}</span>`,
         iconAnchor: [0, 0],
       }),
     });
@@ -81,6 +96,9 @@ const AMGT4CEM_ScaledText = {
       heightMeters: opts.heightMeters,
       minPx: opts.minPx || 6,
       maxPx: opts.maxPx || 400,
+      orig,
+      def,
+      pose: start,
     };
     this._entries.push(entry);
     // Un marqueur peut être (dés)affiché bien après sa création (case à
@@ -89,6 +107,24 @@ const AMGT4CEM_ScaledText = {
     // moment — fonctionne quel que soit le moment/la raison de l'ajout.
     marker.on('add', () => this._updateOne(entry));
     return marker;
+  },
+
+  /**
+   * Remplace la définition d'ancrage/orientation d'un marqueur (null : retour
+   * à la position et à l'orientation d'origine). Retourne la pose obtenue.
+   */
+  setDefinition(marker, def) {
+    const entry = this._entries.find((e) => e.marker === marker);
+    if (!entry) return null;
+    entry.def = def && def.r1 && def.a1 ? def : null;
+    this._updateOne(entry);
+    return entry.pose;
+  },
+
+  /** Pose actuelle { latlng, ref, angle } d'un marqueur. */
+  getPose(marker) {
+    const entry = this._entries.find((e) => e.marker === marker);
+    return entry ? entry.pose : null;
   },
 
   /** À appeler sur tout changement de zoom (voir initMap). */
@@ -106,6 +142,49 @@ const AMGT4CEM_ScaledText = {
     const metersPerPixel = this._metersPerPixel(map.getCenter().lat, map.getZoom());
     const px = Math.max(entry.minPx, Math.min(entry.maxPx, entry.heightMeters / metersPerPixel));
     span.style.fontSize = `${px}px`;
+    // Après le font-size : l'alignement mesure la boîte de texte à sa taille actuelle.
+    entry.pose = this._poseOf(entry, span);
+    entry.marker.setLatLng(entry.pose.latlng);
+    span.dataset.ref = entry.pose.ref;
+    span.style.transform = this._transform(entry.pose).replace(/^ transform:|;$/g, '');
+  },
+
+  /**
+   * Pose { latlng, ref, angle } : celle d'origine, ou — avec une définition —
+   * r1 posé sur a1, et si r2/a2 sont définis la rotation qui aligne r1, r2 et a2.
+   * `span` (la boîte de texte dans le DOM) sert à mesurer sa largeur/hauteur ;
+   * sans lui (avant l'ajout à la carte), l'angle d'origine est gardé.
+   */
+  _poseOf(entry, span) {
+    const d = entry.def;
+    if (!d) return { latlng: entry.orig.latlng, ref: entry.orig.ref, angle: entry.orig.angle };
+    const pose = { latlng: L.latLng(d.a1), ref: d.r1, angle: entry.orig.angle };
+    if (d.r2 && d.a2 && span && this._map) pose.angle = this._alignAngle(span, d);
+    return pose;
+  },
+
+  /**
+   * Rotation CSS (degrés, horaire) qui aligne r1, r2 et a2 : le vecteur
+   * r1→r2 de la boîte (mesurée sans rotation) doit être parallèle à a1→a2
+   * à l'écran. Deux solutions à 180° l'une de l'autre : celle de plus petite
+   * valeur absolue est retenue.
+   */
+  _alignAngle(span, d) {
+    const R1 = this.REFS[d.r1];
+    const R2 = this.REFS[d.r2];
+    const w = span.offsetWidth || 1;
+    const h = span.offsetHeight || 1;
+    const v = { x: (R2.x - R1.x) * w, y: (R2.y - R1.y) * h };
+    const p1 = this._map.project(L.latLng(d.a1), 0);
+    const p2 = this._map.project(L.latLng(d.a2), 0);
+    const theta = (Math.atan2(p2.y - p1.y, p2.x - p1.x) - Math.atan2(v.y, v.x)) * (180 / Math.PI);
+    return ((((theta + 90) % 180) + 180) % 180) - 90; // [-90°, 90°[
+  },
+
+  /** transform CSS : translate() amène le point de référence sur l'ancre, rotate() tourne autour (origine 0 0, voir style.css). */
+  _transform(pose) {
+    const r = this.REFS[pose.ref];
+    return ` transform:rotate(${pose.angle}deg) translate(${-r.x * 100}%,${-r.y * 100}%);`;
   },
 
   _metersPerPixel(lat, zoom) {

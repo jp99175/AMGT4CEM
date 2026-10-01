@@ -99,7 +99,16 @@
     });
   }
 
+  // Définitions d'ancrage des références de planche (fichier partagé, voir
+  // peLabelAnchors.js) : lues en parallèle du Shapefile, attendues avant la
+  // construction des étiquettes. Ne rejette jamais (absentes = positions d'origine).
+  const anchorsReady = AMGT4CEM_PeLabelAnchors.load();
+
   function finishMetroLoad(features) {
+    anchorsReady.then(() => buildMetro(features));
+  }
+
+  function buildMetro(features) {
     const { layersByType, bounds, searchIndex } = AMGT4CEM_MetroLayer.build({
       type: 'FeatureCollection',
       features,

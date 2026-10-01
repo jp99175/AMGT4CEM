@@ -569,11 +569,17 @@ Le plugin d'édition (`plugins/pe-label-editor/`, voir son README) permet
 à un administrateur de redéfinir cet ancrage étiquette par étiquette : clic
 dans le texte → bulle d'info avec l'icône « déplacer » → choix d'un point
 de référence parmi les 8 de la boîte de texte, d'un point d'ancrage parmi
-les points remarquables du cadre (sommets, centres des côtés,
-intersections entre planches, centres des segments qu'ils délimitent ;
-aucun point à moins de 5 m d'un autre), puis d'un second point de référence et d'un autre
-point du cadre dont l'alignement avec les deux premiers fixe l'orientation
-(rotation minimale).
+les points remarquables du cadre, puis d'un second point de référence et
+d'un autre point du cadre dont l'alignement avec les deux premiers fixe
+l'orientation (rotation minimale). Points remarquables, dans cet ordre :
+sommets du polygone, centres des côtés (pastilles carrées foncées),
+intersections entre planches (pastille ronde barrée d'un X), centres des
+segments que délimitent les sommets ET les intersections (petite pastille
+ronde claire) ; un point n'est ajouté que si aucun autre n'est à moins de
+5 m. La définition (`{ r1, a1, r2, a2 }`) est calculée à l'affichage par
+`AMGT4CEM_ScaledText` (taille de boîte mesurée dans le navigateur) et
+**enregistrée dans l'application** : `data/pe-label-anchors.json`, lu pour
+tous les visiteurs (voir section 6 et `relay/README.md`).
 
 **Noms de station et numéros d'interstation** (couches "Plans patrimoine") :
 leurs points sont les **centres** des textes du PDF ; le texte est donc
@@ -732,4 +738,25 @@ Pour repartir sur un vrai stockage partagé, deux pistes sérieuses :
   `data/points.json` par une vraie base, avec une interface de gestion des
   données comparable à phpMyAdmin. Un compte gratuit à créer.
 
-Le choix n'a pas encore été fait — voir la conversation de développement.
+Le choix n'a pas encore été fait pour les points métier — voir la
+conversation de développement.
+
+### Premier usage du relais : définitions d'ancrage des références de planche
+
+La première donnée qui doit être **partagée** (et non propre à un
+navigateur) est la position/orientation des références de planche
+(`PE_label`), modifiées par un administrateur. Elle utilise la première
+piste ci-dessus (petit relais serveur) :
+
+- le fichier `data/pe-label-anchors.json` (dans le dépôt) est lu par
+  l'application pour tous les visiteurs (`src/peLabelAnchors.js`, appliqué
+  par `src/metroLayer.js` / `src/scaledText.js`) ; absent ou vide, les
+  étiquettes gardent leur position d'origine (`MetroLabels.shp`) ;
+- le plugin `plugins/pe-label-editor/` (administrateurs) l'enregistre via le
+  relais `relay/` (Cloudflare Worker, à déployer une fois : `relay/README.md`),
+  qui commit le fichier dans le dépôt ; GitHub Pages le redéploie ;
+- tant que `peLabelAnchorsRelayUrl` (`config.js`) est vide, l'enregistrement
+  est refusé avec un message explicite (l'export JSON reste possible).
+
+Les points métier (`pointsStore.js`) restent en `localStorage` : le relais
+pourra être étendu à ces données si la piste est retenue.
