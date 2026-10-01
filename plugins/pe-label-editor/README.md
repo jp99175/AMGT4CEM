@@ -104,7 +104,7 @@ plugin voit les étiquettes à leur nouvelle place.
   envoie TOUTES les définitions au relais serveur `relay/`, qui commit le
   fichier dans le dépôt. Il utilise l'**adresse du relais** et le **code
   administrateur** des paramètres généraux (⚙ Paramètres > Serveur ; le code
-  est gardé le temps de l'onglet seulement, redemandé sinon). Les autres visiteurs voient le
+  est masqué, gardé le temps de l'onglet seulement ; s'il manque, le plugin renvoie vers cet onglet). Les autres visiteurs voient le
   changement après le redéploiement de GitHub Pages (~1 min).
 - Le panneau indique le nombre de modifications **non enregistrées** ;
   **Appliquer** seul applique la modification à l'écran (perdue au

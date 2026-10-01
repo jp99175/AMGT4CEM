@@ -641,16 +641,16 @@
     async _saveShared(report) {
       if (!AMGT4CEM_PeLabelAnchors.isSaveConfigured()) {
         report(
-          "Enregistrement impossible : le relais n'est pas configuré (peLabelAnchorsRelayUrl dans config.js, voir relay/README.md). " +
+          "Enregistrement impossible : le relais n'est pas configuré (adresse à renseigner dans ⚙ Paramètres > Serveur, voir relay/README.md). " +
           'En attendant, « Exporter JSON » garde une copie.'
         );
         return false;
       }
-      // Code saisi dans ⚙ Paramètres > Serveur (gardé le temps de l'onglet), sinon demandé ici.
-      let code = AMGT4CEM_PeLabelAnchors.getAdminCode();
+      // Code saisi dans ⚙ Paramètres > Serveur (champ masqué, gardé le temps de l'onglet). Pas de boîte de saisie ici : elle afficherait le code en clair.
+      const code = AMGT4CEM_PeLabelAnchors.getAdminCode();
       if (!code) {
-        code = prompt("Code administrateur (celui du relais d'enregistrement) :");
-        if (!code) return false;
+        report("Code administrateur manquant : le saisir dans ⚙ Paramètres > Serveur, puis réessayer.");
+        return false;
       }
       try {
         report('Enregistrement…');

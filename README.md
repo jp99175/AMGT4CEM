@@ -88,9 +88,7 @@ Shapefile — sans quitter la page).
     repositionner : les coordonnées Lambert sont recalculées et enregistrées
     automatiquement. Le bouton **🗑 Supprimer ce point** dans la popup
     l'efface définitivement (demande confirmation).
-11. Icône **⚙** en haut à droite du menu **☰ Carte**, ou lien **⚙ Sources,
-    serveur, fonds de plan…** de la section **Paramètres** (au-dessus de
-    « Réinitialiser la vue ») : ouvre la fenêtre de paramètres, à trois
+11. Icône **⚙** en haut à droite du menu **☰ Carte** : ouvre la fenêtre de paramètres, à trois
     onglets — **Sources** (corriger l'URL d'un service externe — fond UrbIS,
     orthophotos, géocodeur — si celui-ci change d'adresse, sans modifier le
     code ; voir section 3bis), **Serveur** (adresse du relais d'enregistrement

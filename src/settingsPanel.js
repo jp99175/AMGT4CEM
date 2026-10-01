@@ -1,6 +1,5 @@
 /**
- * Fenêtre "⚙ Paramètres" à onglets (ouverte par l'engrenage du menu ☰ Carte,
- * ou par le lien « Sources, serveur, fonds de plan » du même menu).
+ * Fenêtre "⚙ Paramètres" à onglets (ouverte par l'engrenage du menu ☰ Carte).
  *
  * RÉSERVÉE AUX ADMINISTRATEURS : l'ouverture passe par
  * AMGT4CEM_Admin.requestAccess() (src/admin.js), où se branchera le mot de
@@ -30,7 +29,6 @@ const AMGT4CEM_SettingsPanel = {
 
   init() {
     const btn = document.getElementById('amgt-settings-btn');
-    const link = document.getElementById('amgt-open-settings-link');
     const panel = document.getElementById('amgt-settings-panel');
     const menuPanel = document.getElementById('amgt-map-menu');
     this._panel = panel;
@@ -52,11 +50,10 @@ const AMGT4CEM_SettingsPanel = {
       panel.classList.remove('amgt-hidden');
     };
     btn.addEventListener('click', toggle);
-    link.addEventListener('click', toggle);
 
     document.addEventListener('click', (e) => {
       if (panel.classList.contains('amgt-hidden')) return;
-      if (panel.contains(e.target) || e.target === btn || e.target === link) return;
+      if (panel.contains(e.target) || e.target === btn) return;
       panel.classList.add('amgt-hidden');
     });
   },
@@ -94,9 +91,25 @@ const AMGT4CEM_SettingsPanel = {
   _fillFields() {
     const current = AMGT4CEM_SettingsStore.current();
     for (const [key, input] of Object.entries(this._fields())) input.value = current[key] || '';
-    document.getElementById('amgt-settings-admin-code').value = AMGT4CEM_PeLabelAnchors.getAdminCode();
+    this._showCodeState();
     this._status('sources', '');
     this._status('relay', '');
+  },
+
+  /**
+   * Le champ du code reste TOUJOURS vide : y afficher le code mémorisé
+   * (même masqué) révélerait sa longueur. Un texte fixe indique seulement
+   * qu'un code est déjà gardé pour cet onglet ; champ vide = on l'utilise.
+   */
+  _showCodeState() {
+    const input = document.getElementById('amgt-settings-admin-code');
+    input.value = '';
+    input.placeholder = AMGT4CEM_PeLabelAnchors.getAdminCode() ? 'Code déjà saisi (laisser vide pour le garder)' : 'Code administrateur';
+  },
+
+  /** Code saisi dans le champ, sinon celui gardé pour cet onglet. */
+  _adminCode() {
+    return document.getElementById('amgt-settings-admin-code').value.trim() || AMGT4CEM_PeLabelAnchors.getAdminCode();
   },
 
   _status(which, message, kind) {
@@ -115,7 +128,7 @@ const AMGT4CEM_SettingsPanel = {
   async _saveAll(which) {
     const fields = this._fields();
     const values = Object.fromEntries(Object.entries(fields).map(([key, input]) => [key, input.value.trim()]));
-    const code = document.getElementById('amgt-settings-admin-code').value.trim() || AMGT4CEM_PeLabelAnchors.getAdminCode();
+    const code = this._adminCode();
     const relayUrl = values.relayUrl || AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl;
     if (!relayUrl || !code) {
       this._showTab('server');
@@ -126,9 +139,11 @@ const AMGT4CEM_SettingsPanel = {
     try {
       await AMGT4CEM_SettingsStore.save(values, relayUrl, code);
       AMGT4CEM_PeLabelAnchors.setAdminCode(code);
+      this._showCodeState();
       this._status(which, 'Enregistré sur le serveur. Appliqué à tous les visiteurs après le redéploiement du site (~1 min) ; rechargez ensuite la page.', 'ok');
     } catch (err) {
       AMGT4CEM_PeLabelAnchors.setAdminCode(''); // un code refusé ne doit pas rester en mémoire
+      this._showCodeState();
       this._status(which, err.message, 'error');
     }
   },
@@ -152,7 +167,6 @@ const AMGT4CEM_SettingsPanel = {
 
   _initServerTab() {
     const fields = this._fields();
-    const code = document.getElementById('amgt-settings-admin-code');
 
     document.getElementById('amgt-settings-relay-save').addEventListener('click', () => this._saveAll('relay'));
 
@@ -164,7 +178,7 @@ const AMGT4CEM_SettingsPanel = {
     document.getElementById('amgt-settings-relay-test').addEventListener('click', async () => {
       this._status('relay', 'Test en cours…');
       try {
-        this._status('relay', await AMGT4CEM_PeLabelAnchors.checkConnection(fields.relayUrl.value.trim(), code.value.trim()), 'ok');
+        this._status('relay', await AMGT4CEM_PeLabelAnchors.checkConnection(fields.relayUrl.value.trim(), this._adminCode()), 'ok');
       } catch (err) {
         this._status('relay', err.message, 'error');
       }
