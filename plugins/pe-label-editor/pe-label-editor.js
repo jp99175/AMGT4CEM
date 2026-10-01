@@ -55,6 +55,32 @@
     { id: 'a2', kind: 'planche', title: '4. Autre point remarquable de la planche', hint: 'Cliquez un autre point du cadre : il sera aligné avec les deux points précédents.' },
   ];
 
+  /** Couleur chromatiquement opposée (teinte + 180°, même saturation et luminosité) d'une couleur CSS « rgb(r, g, b) ». */
+  function complementaryColor(css) {
+    const m = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(css || '');
+    if (!m) return css;
+    const [r, g, b] = [m[1], m[2], m[3]].map((v) => v / 255);
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    const d = max - min;
+    let h = 0;
+    let sat = 0;
+    if (d) {
+      sat = d / (1 - Math.abs(2 * l - 1));
+      if (max === r) h = ((g - b) / d) % 6;
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60;
+    }
+    h = (h + 180) % 360;
+    const c = (1 - Math.abs(2 * l - 1)) * sat;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const mm = l - c / 2;
+    const [r1, g1, b1] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+    return `rgb(${[r1, g1, b1].map((v) => Math.round((v + mm) * 255)).join(', ')})`;
+  }
+
   const sameLatLng = (v, c) => !!v && Math.abs(v[0] - c.lat) < 1e-9 && Math.abs(v[1] - c.lng) < 1e-9;
   const clone = (v) => (v ? JSON.parse(JSON.stringify(v)) : v);
 
@@ -125,6 +151,8 @@
           marker,
           span,
           def: clone(AMGT4CEM_PeLabelAnchors.get(marker._amgtKey)),
+          origColor: getComputedStyle(span).color, // couleur d'origine du texte (orange des références de planche)
+          origInline: span.style.color, // …telle que posée par l'application (style en ligne), à restituer
         });
       });
       if (!out.length) return false;
@@ -146,6 +174,20 @@
       entry.lng = pose.latlng.lng;
       entry.angle = pose.angle;
       entry.ref = pose.ref;
+      this._applyColor(entry);
+    },
+
+    /**
+     * En mode édition (ce plugin), une étiquette repositionnée — définition
+     * avec au moins R1 et A1 — est affichée dans la couleur chromatiquement
+     * opposée à sa couleur d'origine : on voit d'un coup d'œil lesquelles ont
+     * été modifiées. La page normale de l'appli ne charge pas ce plugin et
+     * garde la couleur d'origine.
+     */
+    _applyColor(entry) {
+      if (!entry.span) return;
+      const moved = !!(entry.def && entry.def.r1 && entry.def.a1);
+      entry.span.style.color = moved ? complementaryColor(entry.origColor) : entry.origInline;
     },
 
     // ---- Clic dans le texte : bulle d'info + icône « déplacer » ------------
@@ -159,6 +201,7 @@
       const span = entry.marker.getElement() && entry.marker.getElement().querySelector('.amgt-scaled-text');
       if (!span) return;
       entry.span = span;
+      this._applyColor(entry); // le DOM a pu être recréé : la couleur d'origine est revenue
       if (!this.isAdmin()) return;
       span.style.pointerEvents = 'auto';
       span.style.cursor = 'pointer';
@@ -336,7 +379,7 @@
         const ll = AMGT4CEM_CRS.lambertToLatLng([p.x, p.y]);
         return { lat: ll.lat, lng: ll.lng, kind: p.kind };
       });
-      this._edit = { entry, backup, cands, slot: 0, refDots: [], candMarkers: [], line: null };
+      this._edit = { entry, backup, cands, slot: 0, refDots: [], candMarkers: [], line: null, history: [] };
       this._edit.slot = Math.max(0, SLOTS.findIndex((s) => !entry.def[s.id]));
       this._showRefDots(entry);
       this._showCandidates();
@@ -398,6 +441,7 @@
     _setSlot(id, value) {
       const ed = this._edit;
       const def = ed.entry.def;
+      ed.history.push({ def: clone(def), slot: ed.slot }); // pour « Retour »
       def[id] = value;
       // Un point devenu identique à son vis-à-vis rendrait l'alignement indéfini : on retire le second.
       if (def.r2 && def.r2 === def.r1) delete def.r2;
@@ -406,6 +450,17 @@
       const after = SLOTS.findIndex((s, i) => i > ed.slot && !def[s.id]);
       const any = SLOTS.findIndex((s) => !def[s.id]);
       ed.slot = after >= 0 ? after : any >= 0 ? any : ed.slot;
+      this._refreshEdit();
+    },
+
+    /** « Retour » : annule le positionnement du dernier point choisi (et revient à son étape). */
+    _back() {
+      const ed = this._edit;
+      const last = ed && ed.history.pop();
+      if (!last) return;
+      ed.entry.def = last.def;
+      ed.slot = last.slot;
+      this._syncPose(ed.entry);
       this._refreshEdit();
     },
 
@@ -441,23 +496,25 @@
         <p class="amgt-ple-result"></p>
         <p class="amgt-ple-flash" hidden></p>
         <div class="amgt-ple-actions">
-          <button type="button" class="amgt-ple-primary" data-action="save">Enregistrer</button>
-          <button type="button" data-action="done">Terminé (sans enregistrer)</button>
-          <button type="button" data-action="cancel">Annuler</button>
+          <button type="button" data-action="back" title="Annule le positionnement du dernier point choisi">Retour</button>
+          <button type="button" class="amgt-ple-primary" data-action="apply" title="Garde le positionnement et termine">Appliquer</button>
+          <button type="button" data-action="cancel" title="Abandonne : aucun changement">Annuler</button>
           <button type="button" data-action="reset">Réinitialiser l'étiquette</button>
         </div>`;
       document.body.appendChild(panel);
       this._panel = panel;
-      panel.querySelector('[data-action="save"]').addEventListener('click', async () => {
-        const ed = this._edit;
-        if (!ed.entry.def.r1 || !ed.entry.def.a1) return this._flash("Choisissez au moins le point de référence (1) et le point d'ancrage (2).");
-        if (await this._saveShared((m) => this._flash(m))) this._endEdit(false);
+      panel.querySelector('[data-action="back"]').addEventListener('click', () => this._back());
+      panel.querySelector('[data-action="apply"]').addEventListener('click', () => {
+        const d = this._edit.entry.def;
+        if (!d.r1 || !d.a1) return this._flash("Rien à appliquer : choisissez au moins le point de référence (1) et le point d'ancrage (2), ou « Annuler ».");
+        this._endEdit(false);
+        this._openAdminPanel(); // pour enregistrer dans l'application (le panneau indique les modifications non enregistrées)
       });
-      panel.querySelector('[data-action="done"]').addEventListener('click', () => this._endEdit(false));
       panel.querySelector('[data-action="cancel"]').addEventListener('click', () => this._endEdit(true));
       panel.querySelector('[data-action="reset"]').addEventListener('click', () => {
         const ed = this._edit;
         ed.entry.def = {};
+        ed.history = [];
         this._syncPose(ed.entry);
         ed.slot = 0;
         this._refreshEdit();
@@ -493,6 +550,7 @@
         });
         ol.appendChild(li);
       });
+      p.querySelector('[data-action="back"]').disabled = !ed.history.length;
       const res = p.querySelector('.amgt-ple-result');
       if (def.r1 && def.a1 && def.r2 && def.a2) res.textContent = `Rotation : ${ed.entry.angle.toFixed(1)}° (points 1, 3 et 4 alignés, rotation minimale)`;
       else if (def.r1 && def.a1) res.textContent = "Position définie. Choisissez les points 3 et 4 pour l'orientation (sinon : orientation d'origine).";

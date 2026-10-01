@@ -53,8 +53,22 @@ puis ouvrir `plugins/pe-label-editor/index.html` au lieu de `index.html`
    **alignés** par la **rotation la moins grande** de la boîte de texte
    (valeur absolue minimale depuis l'horizontale : le texte reste lisible,
    jamais à l'envers). Un trait pointillé bleu montre la droite d'alignement.
-4. **Terminé** garde le résultat, **Annuler** revient à l'état d'avant,
-   **Réinitialiser l'étiquette** revient à la position d'origine (PDF).
+4. Contrôles du panneau d'une étiquette :
+   - **Retour** : annule le positionnement du dernier point choisi (et
+     revient à son étape) ; inactif tant qu'aucun point n'est choisi ;
+   - **Appliquer** : garde le positionnement et termine (il faut au moins
+     les points 1 et 2) ; le panneau d'administration s'ouvre, avec le
+     nombre de modifications non enregistrées et le bouton **Enregistrer
+     dans l'application** ;
+   - **Annuler** : abandonne, aucun changement ;
+   - **Réinitialiser l'étiquette** : remet la position d'origine (PDF).
+
+**Couleur des étiquettes repositionnées.** En mode édition (page du
+plugin), une étiquette repositionnée — au moins les points 1 et 2
+choisis — s'affiche dans la couleur **chromatiquement opposée** à sa
+couleur d'origine (teinte + 180° : l'orange #ff7f00 devient un bleu), pour
+repérer d'un coup d'œil celles qui ont été modifiées. La page normale de
+l'application, qui ne charge pas le plugin, garde la couleur d'origine.
 
 Si seuls les points 1 et 2 sont choisis, l'étiquette est déplacée mais garde
 son orientation d'origine.
@@ -72,15 +86,15 @@ tous les visiteurs — pas dans le navigateur (rien n'est gardé dans
 par l'application elle-même (`src/peLabelAnchors.js`) : un visiteur sans le
 plugin voit les étiquettes à leur nouvelle place.
 
-- **Enregistrer** (dans le panneau d'édition d'une étiquette, ou
-  **Enregistrer dans l'application** dans le panneau d'administration)
+- **Enregistrer dans l'application** (panneau d'administration, qui
+  s'ouvre après **Appliquer** ou avec le bouton **✥ Étiquettes planches**)
   envoie TOUTES les définitions au relais serveur `relay/`, qui commit le
   fichier dans le dépôt. Il demande le **code administrateur** du relais
   (gardé le temps de l'onglet seulement). Les autres visiteurs voient le
   changement après le redéploiement de GitHub Pages (~1 min).
 - Le panneau indique le nombre de modifications **non enregistrées** ;
-  « Terminé (sans enregistrer) » applique la modification à l'écran
-  seulement (perdue au rechargement).
+  **Appliquer** seul applique la modification à l'écran (perdue au
+  rechargement tant qu'elle n'est pas enregistrée).
 - **Le relais est à déployer une fois** (compte Cloudflare gratuit, jeton
   GitHub) : voir `relay/README.md`, puis renseigner `peLabelAnchorsRelayUrl`
   dans `config.js`. Tant que ce n'est pas fait, « Enregistrer » affiche un

@@ -269,3 +269,8 @@
 .amgt-ple-panel button.amgt-ple-primary:hover {
   background: #e67300;
 }
+
+.amgt-ple-panel button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
