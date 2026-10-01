@@ -565,10 +565,14 @@ point. Position inchangée par rapport au PDF à la taille d'origine ; mais
 quand la taille du texte change avec le zoom (ou est bornée, `minPx`/`maxPx`
 de `src/scaledText.js`), le texte pousse **à partir de ce bord** et reste
 collé à son cadre au lieu de déborder de part et d'autre d'un centre fixe.
-Mêmes principes dans le plugin d'édition (`plugins/pe-label-editor/`) :
-l'accroche magnétique pose ce bord sur le cadre (retrait de 6 m vers
-l'intérieur), oriente le texte selon le bord du cadre et le place à
-l'intérieur de la planche.
+Le plugin d'édition (`plugins/pe-label-editor/`, voir son README) permet
+à un administrateur de redéfinir cet ancrage étiquette par étiquette : clic
+dans le texte → bulle d'info avec l'icône « déplacer » → choix d'un point
+de référence parmi les 8 de la boîte de texte, d'un point d'ancrage parmi
+les points remarquables du cadre (coins, intersections entre planches,
+milieux de segments), puis d'un second point de référence et d'un autre
+point du cadre dont l'alignement avec les deux premiers fixe l'orientation
+(rotation minimale).
 
 **Noms de station et numéros d'interstation** (couches "Plans patrimoine") :
 leurs points sont les **centres** des textes du PDF ; le texte est donc

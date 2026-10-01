@@ -1,71 +1,78 @@
 # Plugin : éditeur d'étiquettes de planches (PE_label)
 
-Petit plugin autonome pour déplacer et réorienter à la souris les
-étiquettes de référence de planche (ex. « 1000-236 »), avec des points
-d'accroche magnétiques le long du contour des planches — utile pour
-corriger à la main les quelques cas où la position/rotation reprise
-d'INFRAVIEW.pdf ne convient pas.
+Placer et orienter chaque référence de planche (ex. « 1000-236 ») par
+rapport au cadre de sa planche, en choisissant des points précis plutôt
+qu'en glissant au jugé.
 
 **Ne modifie aucun fichier de l'application.** Tous les fichiers du plugin
 vivent dans ce dossier ; le désinstaller = supprimer ce dossier.
 
+**Réservé aux administrateurs (à terme).** La modification n'est destinée
+qu'aux administrateurs, en mode « édition » : ce plugin n'est chargé que par
+sa propre page de lancement, et `isAdmin()` (début de `pe-label-editor.js`)
+est le point de branchement prévu pour le contrôle d'accès réel — il masque
+la bulle et l'icône quand il renvoie `false`. Il renvoie `true` pour
+l'instant.
+
 ## Utilisation
 
-Servir le site normalement (ce plugin a besoin d'http(s), pas d'une
-ouverture directe en `file://`), puis ouvrir :
+Servir le site normalement (le plugin a besoin d'http(s), pas de `file://`),
+puis ouvrir `plugins/pe-label-editor/index.html` au lieu de `index.html`
+(la page charge l'appli telle quelle et y ajoute ce plugin à la fin).
 
-```
-plugins/pe-label-editor/index.html
-```
+1. Afficher la couche **Plans d'ensemble (1/500e)** (menu ☰ Carte → Plans
+   patrimoine).
+2. **Cliquer dans le texte** d'une référence de planche : une bulle d'info
+   affiche « Planche 1000-236 » avec l'icône **déplacer** (quatre flèches).
+3. Cliquer l'icône : la modification de CETTE étiquette commence, en
+   quatre choix (un panneau les liste, on peut revenir sur n'importe
+   lequel) :
+   1. **Point de référence du texte** : l'un des **8 points** de sa boîte,
+      affichés sur le texte — 4 coins et 4 milieux de bord.
+   2. **Point d'ancrage sur la planche** : un point remarquable du cadre
+      de la planche — un **coin**, une **intersection** avec une autre
+      planche, ou le **milieu d'un segment** (segment = portion de cadre
+      entre deux de ces points). Le point de référence est posé dessus.
+   3. **Second point de référence du texte** : un autre des 8 points.
+   4. **Autre point remarquable de la planche**.
 
-au lieu de `index.html`. Cette page charge l'application normale (elle
-récupère le vrai `index.html` tel quel) et y ajoute juste ce plugin à la
-fin, après que tous les scripts de l'appli aient fini de s'exécuter.
+   L'orientation en découle : le point de référence (posé sur l'ancre), le
+   second point de référence et le point remarquable de l'étape 4 sont
+   **alignés** par la **rotation la moins grande** de la boîte de texte
+   (valeur absolue minimale depuis l'horizontale : le texte reste lisible,
+   jamais à l'envers). Un trait pointillé bleu montre la droite d'alignement.
+4. **Terminé** garde le résultat, **Annuler** revient à l'état d'avant,
+   **Réinitialiser l'étiquette** revient à la position d'origine (PDF).
 
-Une fois la carte affichée :
+Si seuls les points 1 et 2 sont choisis, l'étiquette est déplacée mais garde
+son orientation d'origine.
 
-1. Activer la couche **Plans d'ensemble (1/500e)** (menu ☰ Carte → Plans
-   patrimoine) si ce n'est pas déjà fait — les étiquettes doivent être
-   visibles pour être éditées.
-2. Entrer en mode édition, au choix :
-   - cliquer directement sur le **texte d'une étiquette** sur la carte
-     (ex. « 1000-236 ») ;
-   - ou cliquer sur le bouton **🧲 Étiquettes planches** en bas à droite.
+Le point de référence reste collé à son ancre à tous les niveaux de zoom (le
+texte pousse à partir de ce point), et l'alignement aussi : la rotation est
+recalculée avec la taille réelle de la boîte, dont le rapport
+largeur/hauteur ne change pas avec le zoom.
 
-   Les deux ouvrent le même mode édition, pour toutes les étiquettes à la
-   fois (cliquer sur une étiquette précise ne fait qu'y raccourcir l'accès,
-   ça n'active pas qu'elle seule).
-3. Chaque étiquette est **ancrée par le milieu du bord de sa boîte de
-   texte le plus proche du cadre de la planche** (et non par son centre) :
-   quand le texte grossit ou rétrécit avec le zoom, il pousse à partir de ce
-   bord et reste collé à son cadre. Deux poignées marquent cette ancre :
-   - **glisser le texte lui-même** (ou le **point orange**, qui est le
-     milieu du bord de référence) : déplace l'étiquette. À moins de 12 m
-     d'un point gris (généré tous les 15 m le long du contour de chaque
-     planche, retrait de 6 m vers l'intérieur), le bord de référence
-     s'y accroche, le texte prend l'**orientation du bord du cadre**
-     (lisible de gauche à droite) et se place **à l'intérieur** de la
-     planche — pratique pour glisser une étiquette le long d'un cadre.
-   - **point bleu** : glisser pour réorienter librement l'étiquette autour
-     de son ancre (toujours disponible, y compris après un accrochage).
-4. Les réglages sont sauvegardés automatiquement dans le navigateur
-   (`localStorage`) à chaque relâchement de souris — ils persistent d'une
-   visite à l'autre sur le même navigateur/appareil, mais ne sont PAS
-   partagés avec les autres visiteurs (ce plugin n'a pas accès au dépôt).
-5. Boutons du panneau :
-   - **Réinitialiser** : revient à la position/orientation d'origine
-     (celle extraite du PDF) pour toutes les étiquettes.
-   - **Exporter JSON** : télécharge les réglages actuels — à transmettre à
-     qui maintient le Shapefile (`Metro_export_SHP/MetroLabels.shp`,
-     champs `code`/`angle`) pour les rendre permanents dans l'application.
-   - **Importer JSON** : recharge des réglages précédemment exportés.
-   - **Fermer** : quitte le mode édition (les réglages restent sauvegardés).
+## Sauvegarde
+
+Ce plugin n'a pas accès aux fichiers du dépôt : les définitions (les 4
+points de chaque étiquette modifiée) sont gardées dans le navigateur
+(`localStorage`, clé `amgt4cem-ple-overrides-v4`), pas partagées avec les
+autres visiteurs. Le bouton **✥ Étiquettes planches** (en bas à droite)
+ouvre le panneau d'administration :
+
+- **Exporter JSON** : télécharge les définitions, avec le résultat calculé
+  (ancre, point de référence, rotation CSS) — à transmettre à qui maintient
+  `Metro_export_SHP/MetroLabels.shp` pour les rendre permanentes.
+- **Importer JSON** : recharge un export.
+- **Tout réinitialiser**.
+
+Les anciens réglages (versions précédentes du plugin : position et angle
+libres, accroche magnétique) ne sont pas repris : le modèle a changé.
 
 ## Fichiers
 
 - `index.html` — page de lancement (récupère l'`index.html` de l'appli et
   y injecte le CSS/JS ci-dessous avant `</body>`).
-- `pe-label-editor.css` — styles du panneau et des poignées.
-- `pe-label-editor.js` — logique du plugin (voir commentaire d'en-tête du
-  fichier pour le détail technique : accès aux objets globaux de l'appli,
-  génération des points d'accroche, persistance).
+- `pe-label-editor.css` — styles de la bulle, des points et des panneaux.
+- `pe-label-editor.js` — logique (voir l'en-tête du fichier : principe,
+  calcul des points remarquables, alignement, persistance).

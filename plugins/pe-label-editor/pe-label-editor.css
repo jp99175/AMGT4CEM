@@ -30,7 +30,7 @@
   right: 12px;
   bottom: 56px;
   z-index: 10000;
-  width: 260px;
+  width: 300px;
   padding: 12px 14px;
   font: 13px/1.4 sans-serif;
   background: #fff;
@@ -72,9 +72,6 @@
   flex: none;
 }
 
-.amgt-ple-panel .amgt-ple-swatch--move { background: #ff7f00; }
-.amgt-ple-panel .amgt-ple-swatch--rotate { background: #2c7be5; }
-.amgt-ple-panel .amgt-ple-swatch--snap { background: #999; }
 
 .amgt-ple-panel .amgt-ple-actions {
   display: flex;
@@ -102,30 +99,153 @@
   display: none;
 }
 
-/* Poignée de déplacement (orange, même teinte que le texte PE_label) et de
-   rotation (bleu, plus petite) — de simples divIcon Leaflet. */
-.amgt-ple-handle {
-  border-radius: 50%;
-  box-sizing: border-box;
-  cursor: grab;
+/* Bulle d'info d'une référence de planche : numéro + icône « déplacer ». */
+.amgt-ple-bubble {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.amgt-ple-handle--move {
-  width: 16px;
-  height: 16px;
+.amgt-ple-move-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: #444;
+  background: #f2f2f2;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.amgt-ple-move-btn:hover {
+  color: #fff;
   background: #ff7f00;
-  border: 2px solid #fff;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  border-color: #cc6600;
 }
 
-.amgt-ple-handle--rotate {
+/* Les 8 points de référence, posés DANS le texte (ils tournent et grossissent avec lui). */
+.amgt-ple-dot {
+  position: absolute;
   width: 11px;
   height: 11px;
-  background: #2c7be5;
-  border: 2px solid #fff;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  box-sizing: border-box;
+  background: #fff;
+  border: 2px solid #666;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  pointer-events: auto;
 }
 
-.amgt-ple-handle:active {
-  cursor: grabbing;
+.amgt-ple-dot:hover {
+  background: #ffe2c2;
+}
+
+.amgt-ple-dot.amgt-ple-role1 {
+  background: #ff7f00;
+  border-color: #cc6600;
+}
+
+.amgt-ple-dot.amgt-ple-role2 {
+  background: #2c7be5;
+  border-color: #1b5cb4;
+}
+
+/* Points remarquables du cadre de la planche : coin (carré), intersection
+   (losange), milieu de segment (rond). Le dessin est un ::before : Leaflet
+   pose lui-même un `transform` en ligne sur l'élément du marqueur, qui
+   écraserait toute rotation posée sur l'élément. */
+.amgt-ple-cand {
+  cursor: pointer;
+}
+
+.amgt-ple-cand::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  box-sizing: border-box;
+  background: #fff;
+  border: 2px solid #888;
+}
+
+.amgt-ple-cand--corner::before {
+  border-radius: 2px;
+}
+
+.amgt-ple-cand--intersection::before {
+  inset: 3px;
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+
+.amgt-ple-cand--middle::before {
+  border-radius: 50%;
+}
+
+.amgt-ple-cand:hover::before {
+  background: #ffe2c2;
+}
+
+.amgt-ple-cand.amgt-ple-role1::before {
+  background: #ff7f00;
+  border-color: #cc6600;
+}
+
+.amgt-ple-cand.amgt-ple-role2::before {
+  background: #2c7be5;
+  border-color: #1b5cb4;
+}
+
+/* Panneau des 4 étapes. */
+.amgt-ple-panel .amgt-ple-steps {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.amgt-ple-panel .amgt-ple-steps li {
+  display: block;
+  padding: 4px 6px;
+  margin: 2px 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.amgt-ple-panel .amgt-ple-steps li b {
+  display: block;
+  font-weight: 600;
+}
+
+.amgt-ple-panel .amgt-ple-steps li span {
+  color: #2a7a2a;
+  font-size: 12px;
+}
+
+.amgt-ple-panel .amgt-ple-steps li em {
+  display: block;
+  color: #555;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.amgt-ple-panel .amgt-ple-steps li.amgt-ple-active {
+  background: #fff3e6;
+  border-color: #ff7f00;
+}
+
+.amgt-ple-panel .amgt-ple-result {
+  font-size: 12px;
+  color: #333;
+}
+
+.amgt-ple-panel .amgt-ple-flash {
+  padding: 4px 6px;
+  font-size: 12px;
+  color: #8a1f11;
+  background: #fde8e4;
+  border-radius: 4px;
 }
