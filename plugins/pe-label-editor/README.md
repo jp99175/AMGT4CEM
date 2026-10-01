@@ -35,14 +35,19 @@ Une fois la carte affichée :
    Les deux ouvrent le même mode édition, pour toutes les étiquettes à la
    fois (cliquer sur une étiquette précise ne fait qu'y raccourcir l'accès,
    ça n'active pas qu'elle seule).
-3. Pour chaque étiquette apparaissent deux poignées :
-   - **point orange** : glisser pour déplacer l'étiquette. En s'approchant
-     à moins de 12 m d'un point gris (généré tous les 15 m le long du
-     contour de chaque planche), elle s'y accroche automatiquement et
-     reprend l'orientation locale du bord — pratique pour aligner
-     l'étiquette le long d'une planche.
-   - **point bleu** : glisser pour réorienter librement l'étiquette
-     (toujours disponible, y compris après un accrochage magnétique).
+3. Chaque étiquette est **ancrée par le milieu du bord de sa boîte de
+   texte le plus proche du cadre de la planche** (et non par son centre) :
+   quand le texte grossit ou rétrécit avec le zoom, il pousse à partir de ce
+   bord et reste collé à son cadre. Deux poignées marquent cette ancre :
+   - **glisser le texte lui-même** (ou le **point orange**, qui est le
+     milieu du bord de référence) : déplace l'étiquette. À moins de 12 m
+     d'un point gris (généré tous les 15 m le long du contour de chaque
+     planche, retrait de 6 m vers l'intérieur), le bord de référence
+     s'y accroche, le texte prend l'**orientation du bord du cadre**
+     (lisible de gauche à droite) et se place **à l'intérieur** de la
+     planche — pratique pour glisser une étiquette le long d'un cadre.
+   - **point bleu** : glisser pour réorienter librement l'étiquette autour
+     de son ancre (toujours disponible, y compris après un accrochage).
 4. Les réglages sont sauvegardés automatiquement dans le navigateur
    (`localStorage`) à chaque relâchement de souris — ils persistent d'une
    visite à l'autre sur le même navigateur/appareil, mais ne sont PAS

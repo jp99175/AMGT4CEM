@@ -491,57 +491,89 @@ séquentiellement), mais un autre logiciel GIS pourrait le réclamer.
 uniquement comme donnée de secours pour le chargement manuel (voir section
 1) — le chargement automatique normal ne le lit plus.
 
-### PE_info et PE_label (MetroInfo.shp + MetroLabels.shp)
+### Éléments d'INFRAVIEW.pdf : calage sur le réseau
 
-Deux fichiers séparés de Metro.shp complètent le réseau avec des éléments
-relevés dans INFRAVIEW.pdf (STIB, plan "Station & Interstation
-Infrastructure", `DITP`, juillet 2025) ou dérivés de Metro.shp lui-même :
+Tout ce qui vient d'INFRAVIEW.pdf (STIB, plan "Station & Interstation
+Infrastructure", `DITP`, juillet 2025) est placé **par rapport au réseau
+métro tel qu'il est dessiné dans ce PDF**, pas d'après un calage de
+coordonnées pris isolément :
 
+- emprises des planches (type `PE` de `Metro.shp`) ;
+- triangles de transition de tronçon (`MetroInfo.shp`) et leurs codes ;
+- références de planche (`MetroLabels.shp`, `PE_label`) ;
+- noms et numéros de station, numéros d'interstation
+  (`data/patrimoine-nom-station.json`, `data/patrimoine-numero-interstation.json`).
+
+**Méthode.** Le réseau du PDF (stations en rouge, tunnels en bleu — 4 934
+formes rouges, 92 anneaux bleus) est recalé sur les polygones `MS`/`MT` de
+`Metro.shp`, qui font référence pour le réseau : recherche, par fenêtres de
+192 m le long du réseau, du décalage qui superpose le mieux les deux dessins
+(corrélation de masques, ~830 fenêtres), puis ajustement robuste d'une
+transformation sur ces décalages. Résultat : une **similitude pure** —
+échelle uniforme **5,28225 m par point PDF**, aucune rotation
+(−0,001°), + translation `(141597,22 ; 164265,49)` — et un décalage
+résiduel médian du réseau de **~0,5 m** (98 % de la surface des polygones
+MS/MT recouverte par le réseau du PDF, contre 48 % avec l'ancien calage).
+Un ajustement plus libre (affine, puis polynômes jusqu'au degré 5) ne
+fait pas mieux : le PDF n'a ni cisaillement ni déformation locale par
+rapport à `Metro.shp`.
+
+**Pourquoi l'ancien calage était faux.** Il avait été ajusté sur 43
+centroïdes de stations (résidu 13–25 m), avec une échelle anisotrope de
+0,2 % qui s'accumule : jusqu'à ~150 m aux extrémités du réseau. Les
+fichiers de planches, de noms de station et de numéros d'interstation
+fournis étaient eux aussi dans un repère déformé (échelle ≈ 1,020 × 0,995,
+léger cisaillement) : ils contiennent exactement les textes et contours du
+PDF (206 textes rouges, 86 numéros bleus, 36 contours orange), à une
+transformation affine près — une seule, la même pour les trois, qui les
+ramène à 0,00 m des centres de texte / contours du PDF recalé. Ils sont
+donc **repositionnés**, pas réinterprétés : mêmes textes, mêmes attributs,
+seules les coordonnées changent.
+
+- `Metro_export_SHP/Metro.shp` : les 36 polygones `PE` sont remplacés par
+  les contours de planche du PDF (36 anneaux de 4 à 10 sommets, appariés un
+  à un aux anciens polygones par recouvrement). Les 156 enregistrements
+  MS/MT et tous les attributs sont **inchangés octet pour octet** ; seuls
+  les enregistrements PE, l'en-tête (boîte englobante) et `Metro.shx` sont
+  réécrits. `Metro.json` et `data/patrimoine-plans-ensemble-500e.json`
+  (copies historiques) reçoivent les mêmes géométries.
+  Une erreur d'attribut a aussi été corrigée au passage : la planche qui
+  couvre Gare Centrale (`ogc_fid` 181) portait `sheet_ref = "3000-126"`
+  (doublon) alors que le PDF la numérote **`4000-202`**.
 - `Metro_export_SHP/MetroInfo.shp` (Polygon, 106 entités `type = "PE_info"`)
   : les **triangles** de transition entre tronçons de construction (ex.
   `D0`, `D1`, `G1a`...) — chaque petit triangle gris du plan y marque la
   frontière entre deux tronçons identifiés par un code (attribut `code`).
-  Coordonnées vectorielles extraites directement du PDF (ce sont de vraies
-  formes vectorielles dans le fichier, pas des pixels), orientation
+  Coordonnées vectorielles extraites directement du PDF, orientation
   fidèle à chacune.
 - `Metro_export_SHP/MetroLabels.shp` (Point, 117 entités) : les points
   d'ancrage du **texte** correspondant, affiché en HTML (pas en polygone —
   voir plus bas) :
   - `type = "PE_info"` (80, un par code **unique** — un code peut être
-    partagé par deux triangles, tracé à deux voies ayant deux triangles
-    pour un seul code dans le PDF) : centre du texte dans le PDF.
+    partagé par deux triangles) : centre du texte dans le PDF.
   - `type = "PE_label"` (37 : une par planche, sauf `3000-126` qui porte
-    deux étiquettes dans le PDF — grande planche — et les garde ici ;
-    attribut `code` réutilisé pour la référence, ex. `1000-236`) : les 37
-    textes orange du PDF, chacun rattaché à la planche de même
-    `sheet_ref`. Position ET rotation (attribut `angle`, degrés CSS,
-    horaire) reprises telles quelles du texte source dans INFRAVIEW.pdf —
-    même transformation affine que les triangles/codes PE_info pour la
-    position, angle du texte PDF (`LTChar.matrix`, `atan2(b, a)`) converti
-    du repère PDF au repère écran pour la rotation — sauf sur 7 planches
-    où cette position brute tombe hors de l'emprise Metro.shp de la
-    planche (voir "Emprises des planches" ci-dessous) : dans ce seul cas,
-    recalée par interpolation vers le `representative_point` de shapely
-    (pas le centroïde : certaines planches sont concaves) jusqu'à retomber
-    dans l'emprise (24 à 95 m) — la rotation, elle, reste toujours celle
-    du PDF.
+    deux étiquettes dans le PDF) : les 37 textes orange du PDF, chacun
+    rattaché à la planche de même `sheet_ref` et tombant dans son propre
+    contour, sans correction. Attributs `angle` (rotation CSS, degrés,
+    horaire, celle du texte du PDF) et `side` (voir ci-dessous).
 
-**Emprises des planches — contrôle contre INFRAVIEW.pdf.** Le PDF trace
-aussi le contour de chaque planche (36 contours orange, même teinte que
-les références). Transformés en Lambert par le même calage affine, ils
-s'apparient un à un avec les 36 polygones PE de Metro.shp, et chacune
-des 37 références du PDF tombe dans le contour de sa planche. Ce contrôle
-a révélé une erreur d'attribut, corrigée : la planche qui couvre Gare
-Centrale (`ogc_fid` 181) portait `sheet_ref = "3000-126"` (doublon hérité
-de l'ancien `data/patrimoine-plans-ensemble-500e.json`, corrigé aussi,
-ainsi que `Metro.json`) alors que le PDF la numérote **`4000-202`**.
-Reste un écart de **géométrie**, non corrigé ici faute de source faisant
-foi : les emprises Metro.shp sont décalées par rapport aux contours du
-PDF d'une dizaine de mètres au centre jusqu'à ~150 m aux extrémités
-ouest (série `1000-39` → `1000-251`) et est (`4000-292`, `4000-212`) —
-en partie un facteur d'échelle (~1 %), en partie irrégulier. Le calage
-PDF → Lambert n'en est pas la cause : les stations proches de ces
-planches y tombent à 1–15 m près.
+**Ancrage des références de planche (`side`).** Le point d'une référence
+n'est pas le centre du texte mais le **milieu du bord de la boîte de texte
+le plus proche du cadre de la planche** (`top`, `bottom`, `left` ou
+`right` — 30 / 6 / 0 / 1 sur les 37), la rotation se faisant autour de ce
+point. Position inchangée par rapport au PDF à la taille d'origine ; mais
+quand la taille du texte change avec le zoom (ou est bornée, `minPx`/`maxPx`
+de `src/scaledText.js`), le texte pousse **à partir de ce bord** et reste
+collé à son cadre au lieu de déborder de part et d'autre d'un centre fixe.
+Mêmes principes dans le plugin d'édition (`plugins/pe-label-editor/`) :
+l'accroche magnétique pose ce bord sur le cadre (retrait de 6 m vers
+l'intérieur), oriente le texte selon le bord du cadre et le place à
+l'intérieur de la planche.
+
+**Noms de station et numéros d'interstation** (couches "Plans patrimoine") :
+leurs points sont les **centres** des textes du PDF ; le texte est donc
+maintenant centré sur son point (`iconSize: [0, 0]` + `translate(-50%, -50%)`),
+alors qu'il partait auparavant du coin haut-gauche, décalé de ~6 px.
 
 **Rendu du texte — texte HTML à taille réelle, pas des polygones.** Un
 premier essai avait tracé ce texte en vrais polygones (contours de
@@ -553,7 +585,7 @@ hinting/anti-aliasing natif du navigateur). Remplacé par du texte HTML
 normal dont le `font-size` est recalculé à chaque changement de zoom
 (`src/scaledText.js`) pour correspondre à une hauteur RÉELLE constante
 (~42 m, dérivée de la taille de police d'origine dans le PDF — ~8pt — une
-fois passée par l'échelle du calage affine, ~5,3 m/pt) : le texte
+fois passée par l'échelle du calage, ~5,28 m/pt) : le texte
 grossit/rétrécit avec le zoom exactement comme sur INFRAVIEW.pdf, pas à
 taille d'écran fixe. Couleurs reprises telles quelles du PDF (RGB exact
 des objets texte, pas une approximation) : gris pour les codes de
@@ -562,8 +594,10 @@ repères "4000-138"... visibles sur le plan lui-même. La rotation
 (`PE_label` uniquement — les codes de tronçon `PE_info` restent
 horizontaux) est appliquée en CSS (`transform: rotate(...)`, fixe, pas
 recalculée au zoom contrairement au `font-size`) directement sur le
-`<span>`, `translate(-50%, -50%)` d'abord pour que la rotation tourne
-autour du centre du texte et non du coin d'ancrage du marqueur. Les deux
+`<span>` avec `translate()` d'abord (selon `side`, voir plus haut) pour
+que la rotation tourne autour du point d'ancrage — milieu du bord de
+référence, ou centre du texte pour les codes de tronçon — et non du coin
+du marqueur. Les deux
 sont non interactifs (`interactive: false` + CSS `pointer-events: none`, les deux
 nécessaires : un `<span>` visible sans cette règle CSS intercepterait
 physiquement le clic au niveau du navigateur, quoi que l'option Leaflet
@@ -573,24 +607,17 @@ elle-même le cas de plusieurs planches superposées, voir plus haut), pas
 s'arrêter sur le texte.
 
 Position des triangles et des codes : chaque entité garde la position
-**brute** issue de la transformation affine (échelle + rotation +
-translation) calée sur 43 stations déjà connues de Metro.shp (symbole du
-plan ↔ centroïde du polygone MS correspondant, identifiés via le numéro
-de référence STIB imprimé sur le plan et la légende "NUMERO STATION" du
-même PDF) — résidu médian de calage ~13 à 25 m. **Aucun recalage
-individuel** sur le tunnel (MT) le plus proche (essayé, puis abandonné) :
-une transformation affine globale préserve par construction les
-distances/l'absence de chevauchement du plan source, alors qu'un recalage
-propre à chaque repère est une translation différente pour chacun — deux
-repères proches peuvent alors dériver l'un vers l'autre et se chevaucher
-(confirmé en pratique : 25 paires en chevauchement avec un recalage
-individuel, 0 sans). Le calage brut reste donc plus proche de
-"l'implantation telle qu'elle est dans le PDF", au prix d'un décalage de
-quelques mètres à quelques dizaines de mètres par rapport au tracé exact
-du tunnel — y compris pour la distance entre un triangle et son propre
-code : le texte n'est pas toujours collé à son triangle sur le plan
-source non plus (souvent quelques dizaines de mètres, une fois
-convertis), et cet écart est reproduit tel quel plutôt que forcé à zéro.
+**brute** donnée par le calage ci-dessus, **sans recalage individuel** sur
+le tunnel (MT) le plus proche (essayé, puis abandonné) : une transformation
+globale préserve par construction les distances/l'absence de chevauchement
+du plan source, alors qu'un recalage propre à chaque repère est une
+translation différente pour chacun — deux repères proches peuvent alors
+dériver l'un vers l'autre et se chevaucher (confirmé en pratique : 25
+paires en chevauchement avec un recalage individuel, 0 sans). Les
+triangles du plan sont d'ailleurs dessinés à côté du tunnel, pas dessus
+(médiane ~23 m du polygone MT le plus proche), et le texte n'est pas
+toujours collé à son triangle non plus : cet écart est celui du plan
+source, reproduit tel quel plutôt que forcé à zéro.
 
 Limites connues, volontairement documentées plutôt que masquées :
 - 117 triangles détectés au total dans le PDF ; 11 exclus faute
@@ -598,9 +625,10 @@ Limites connues, volontairement documentées plutôt que masquées :
   grande, cas ambigus) — 106 entités triangle dans `MetroInfo.shp`.
 - L'association triangle → code retenue est la **plus proche** au sens
   géométrique, pas une lecture garantie de la topologie exacte du schéma.
-- Précision de position : de l'ordre de la dizaine à quelques dizaines de
-  mètres — suffisant pour repérer un tronçon sur la carte, pas pour un
-  relevé topographique.
+- Précision de position : celle du calage sur le réseau (~0,5 m médian)
+  plus celle du plan source (dessin au 1/500e redessiné : quelques mètres)
+  — suffisant pour repérer un tronçon sur la carte, pas pour un relevé
+  topographique.
 
 Affichage et z-order : contrairement aux planches PE (larges zones qui
 doivent rester SOUS les stations/tunnels pour ne pas intercepter leur

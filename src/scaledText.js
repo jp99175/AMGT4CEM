@@ -24,6 +24,15 @@ const AMGT4CEM_ScaledText = {
   _entries: [], // { marker, heightMeters, minPx, maxPx }
   _map: null,
 
+  /** translate() CSS (en % de la boîte du texte) qui amène le point d'ancrage au milieu du bord `side`. */
+  SIDE_TRANSLATE: {
+    center: '-50%,-50%',
+    top: '-50%,0',
+    bottom: '-50%,-100%',
+    left: '0,-50%',
+    right: '-100%,-50%',
+  },
+
   /** À appeler une fois, après création de la carte. */
   initMap(map) {
     this._map = map;
@@ -33,20 +42,26 @@ const AMGT4CEM_ScaledText = {
   /**
    * @param {L.LatLng} latlng
    * @param {string} text
-   * @param {{color: string, heightMeters: number, minPx?: number, maxPx?: number, rotationDeg?: number}} opts
+   * @param {{color: string, heightMeters: number, minPx?: number, maxPx?: number, rotationDeg?: number, side?: 'top'|'bottom'|'left'|'right'}} opts
+   *   `side` : bord de la boîte de texte auquel le point est ancré, en son
+   *   milieu — le bord le plus proche du cadre de la planche, pour une
+   *   référence de planche (voir metroLayer.js). Sans `side`, le point est
+   *   le centre du texte. Ancrer sur un bord plutôt qu'au centre garde le
+   *   texte collé à son cadre à tout niveau de zoom : quand la taille de
+   *   police change, le texte pousse à partir de ce bord au lieu de
+   *   déborder de part et d'autre d'un centre fixe.
    * @returns {L.Marker}
    */
   createMarker(latlng, text, opts) {
     // La rotation (degrés CSS, horaire) est fixe pour un repère donné — pas
-    // recalculée au zoom comme le font-size — reprise telle quelle du texte
-    // source dans INFRAVIEW.pdf (voir metroLayer.js). translate(-50%,-50%)
-    // doit s'appliquer AVANT rotate() (ordre d'écriture CSS = ordre
-    // d'application de droite à gauche) pour que la rotation tourne autour
-    // du centre du texte, pas de son coin haut-gauche (ancre du marqueur).
+    // recalculée au zoom comme le font-size — reprise du texte source dans
+    // INFRAVIEW.pdf (voir metroLayer.js). Rotation autour du point
+    // d'ancrage (transform-origin 0 0 = ce point, voir style.css) APRÈS
+    // translate() — l'ordre CSS s'applique de droite à gauche — pour que le
+    // bord choisi tombe pile sur le point, quelle que soit la rotation.
     const rotationDeg = opts.rotationDeg || 0;
-    const transform = rotationDeg
-      ? ` transform:translate(-50%,-50%) rotate(${rotationDeg}deg);`
-      : '';
+    const side = AMGT4CEM_ScaledText.SIDE_TRANSLATE[opts.side] ? opts.side : 'center';
+    const transform = ` transform:rotate(${rotationDeg}deg) translate(${AMGT4CEM_ScaledText.SIDE_TRANSLATE[side]});`;
     const marker = L.marker(latlng, {
       // Non interactif : ce texte est purement visuel, un clic doit
       // atteindre la forme en dessous (triangle PE_info, planche PE) —
@@ -57,7 +72,7 @@ const AMGT4CEM_ScaledText = {
       keyboard: false,
       icon: L.divIcon({
         className: 'amgt-scaled-text-icon',
-        html: `<span class="amgt-scaled-text" style="color:${opts.color};${transform}">${text}</span>`,
+        html: `<span class="amgt-scaled-text" data-side="${side}" style="color:${opts.color};${transform}">${text}</span>`,
         iconAnchor: [0, 0],
       }),
     });

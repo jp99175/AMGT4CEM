@@ -9,7 +9,26 @@
  * "MT" (emprise de tunnel, 87 entités) ou "PE" (plan d'ensemble au 1/500e,
  * 36 entités — attribut propre : `sheet_ref`, le numéro de planche ; pas de
  * nom FR/NL, une planche n'en a pas). Chaque polygone est un seul anneau
- * extérieur, sans trou. CRS : EPSG:31370 (Belgian Lambert 72).
+ * extérieur, sans trou. CRS : EPSG:31370 (Belgian Lambert 72). Les
+ * emprises PE sont les contours de planche tracés dans INFRAVIEW.pdf,
+ * placés par rapport au réseau comme sur ce plan (voir ci-dessous).
+ *
+ * CALAGE PDF → Lambert (commun à TOUT ce qui vient d'INFRAVIEW.pdf :
+ * emprises PE, triangles et codes de tronçon, références de planche, noms
+ * de station et numéros d'interstation) : le réseau dessiné dans le PDF
+ * (stations en rouge, tunnels en bleu) est recalé sur les polygones MS/MT
+ * de Metro.shp — c'est la position de chaque élément PAR RAPPORT AU
+ * RÉSEAU, telle qu'elle est sur le plan, qui est conservée. Similitude
+ * pure (échelle uniforme 5,28225 m par point PDF, pas de rotation, +
+ * translation) : un ajustement libre (affine, puis polynômes jusqu'au
+ * degré 5) ne trouve ni rotation ni cisaillement, et l'écart médian
+ * résiduel du réseau est ~0,5 m. L'ancien calage sur 43 centroïdes de
+ * stations avait une échelle anisotrope de 0,2 % (cumulée : jusqu'à
+ * ~150 m aux extrémités du réseau), et les anciens fichiers de planches/
+ * noms de station étaient dans un repère déformé de ~2 %. AUCUN recalage
+ * individuel élément par élément (essayé pour les triangles puis
+ * abandonné : une translation propre à chaque repère casse les distances
+ * relatives du plan source). Voir README section 4bis.
  *
  * MetroInfo.shp (106 entités `type = "PE_info"`, Polygon) : les TRIANGLES
  * de transition entre tronçons de construction relevés dans INFRAVIEW.pdf
@@ -18,16 +37,7 @@
  * frontière entre deux tronçons identifiés par un code. Coordonnées
  * vectorielles extraites directement du PDF (ce sont de vraies formes
  * vectorielles dans le fichier, pas des pixels), orientation fidèle à
- * chacune. Position brute issue de la transformation affine (échelle +
- * rotation + translation) calée sur 43 stations déjà connues de Metro.shp
- * (résidu médian ~13-25 m) — AUCUN recalage individuel sur le tunnel (MT)
- * le plus proche (essayé, puis abandonné : un recalage propre à chaque
- * repère casse le caractère "préserve les distances" d'une transformation
- * affine globale et peut faire dériver deux repères l'un vers l'autre ;
- * préférer la position du plan source, quitte à être décalé de quelques
- * mètres du tracé exact, plutôt que de résoudre l'un en cassant l'autre).
- * Voir le README section 4bis pour le détail de la méthode et ses limites
- * (11 triangles sur 117 exclus, association triangle → code trop
+ * chacune (11 triangles sur 117 exclus, association triangle → code trop
  * incertaine au-delà d'un certain seuil de distance).
  *
  * MetroLabels.shp (117 entités, Point) : les points d'ancrage des CODES et
@@ -38,20 +48,15 @@
  * scaledText.js) :
  * - `type = "PE_info"` (80, un par code UNIQUE — partagé par ses éventuels
  *   deux triangles, un tracé à deux voies ayant deux triangles pour un
- *   seul code) : centre du texte dans le PDF, même transformation affine
- *   que les triangles.
+ *   seul code) : centre du texte dans le PDF.
  * - `type = "PE_label"` (37 : un par planche, `3000-126` en ayant deux
  *   comme dans le PDF) : texte de `sheet_ref` (voir Metro.shp/PE),
- *   position ET rotation (`angle`, degrés CSS) reprises telles quelles
- *   d'INFRAVIEW.pdf (même transformation affine que les triangles
- *   PE_info, angle du texte source converti du repère PDF au repère
- *   écran) — sauf si cette position brute tombe hors de l'emprise
- *   Metro.shp de sa planche (7 planches, là où ces emprises s'écartent le
- *   plus des contours du PDF — voir README 4bis "Emprises des
- *   planches") : dans ce cas seulement, recalée par interpolation vers le
- *   `representative_point` (shapely, pas le centroïde : certaines
- *   planches sont concaves) jusqu'à retomber dans l'emprise, rotation
- *   conservée telle quelle.
+ *   rotation (`angle`, degrés CSS) reprise du texte du PDF, et ancré par le
+ *   MILIEU DU BORD de sa boîte de texte le plus proche du cadre de la
+ *   planche (`side` : top/bottom/left/right) — pas par son centre : quand
+ *   la taille du texte change avec le zoom, il pousse à partir de ce bord
+ *   et reste collé à son cadre. Chaque référence tombe dans le contour de
+ *   sa propre planche, sans correction.
  * Les deux sont non interactifs : un clic doit atteindre la forme en
  * dessous (triangle pour PE_info, planche pour PE_label), pas s'arrêter
  * sur le texte.
@@ -340,6 +345,7 @@ const AMGT4CEM_MetroLayer = {
       color: style.color,
       heightMeters: style.heightMeters,
       rotationDeg: props.angle || 0,
+      side: props.side || undefined,
     });
     marker.addTo(group);
     bounds.extend(latlng);

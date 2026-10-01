@@ -590,6 +590,8 @@ html, body {
    planche/interstation...) : le texte lui-même, pas un simple point. */
 .amgt-patrimoine-label__text {
   display: inline-block;
+  /* Les points sont les centres des textes du plan (voir patrimoineLayer.js). */
+  transform: translate(-50%, -50%);
   white-space: nowrap;
   font-size: 11px;
   font-weight: 600;
@@ -638,6 +640,10 @@ html, body {
   line-height: 1;
   pointer-events: none;
   transform: translate(-50%, -50%);
+  /* Rotation autour du point d'ancrage (le marqueur), pas du centre du
+     texte : scaledText.js pose un `transform` en ligne qui amène le bord
+     choisi (`side`) sur ce point puis tourne autour de lui. */
+  transform-origin: 0 0;
   text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 3px #fff;
 }
 

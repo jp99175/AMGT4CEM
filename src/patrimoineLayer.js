@@ -173,7 +173,12 @@ const AMGT4CEM_PatrimoineLayer = {
 
     const marker = L.marker(latlng, {
       opacity: this._opacityFactor,
-      icon: L.divIcon({ className: 'amgt-patrimoine-label', html: label }),
+      // iconSize [0, 0] : point d'ancrage = coin du conteneur (sinon le
+      // divIcon par défaut, 12×12, décale le texte de 6 px) ; le texte est
+      // ensuite centré sur ce point par la CSS. Les points de ces couches
+      // (noms de station, numéros d'interstation, planches) sont les
+      // CENTRES des textes du plan INFRAVIEW.pdf.
+      icon: L.divIcon({ className: 'amgt-patrimoine-label', html: label, iconSize: [0, 0] }),
     });
     marker.bindPopup(this._buildLabelPopup(text, geom.coordinates));
     return marker;

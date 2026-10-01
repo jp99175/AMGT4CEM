@@ -26,9 +26,12 @@
  * maintient le Shapefile si on veut les rendre permanents.
  */
 (function () {
-  const STORAGE_KEY = 'amgt4cem-ple-overrides-v2'; // v2 : clés "code#rang" (v1 indexait par position, invalide depuis l'ajout de 4000-202)
+  const STORAGE_KEY = 'amgt4cem-ple-overrides-v3'; // clés "code#rang" (v2) ; v3 : les positions de base ont été recalées sur le réseau du PDF, d'anciens réglages (faits sur d'anciennes emprises décalées) seraient faux
   const SNAP_SPACING_M = 15; // distance entre deux points d'accroche générés le long d'un bord de planche
   const SNAP_RADIUS_M = 12; // rayon d'accroche magnétique (mètres réels, pas des pixels — stable à tout niveau de zoom)
+  const LABEL_GAP_M = 6; // retrait (m) du bord de référence du texte à l'intérieur du cadre, une fois accroché
+  // translate() CSS qui amène le point d'ancrage au milieu du bord choisi de la boîte de texte (même table que scaledText.js)
+  const SIDE_TRANSLATE = { center: '-50%,-50%', top: '-50%,0', bottom: '-50%,-100%', left: '0,-50%', right: '-100%,-50%' };
   const ROTATE_HANDLE_PX = 46; // distance écran (px) entre une étiquette et sa poignée de rotation
 
   const PeLabelEditor = {
@@ -138,6 +141,7 @@
       }
       this._buildHandles();
       this._active = true;
+      for (const entry of this._entries) entry.span.style.cursor = 'grab';
       this._toggleBtn.classList.add('amgt-ple-active');
       this._buildPanel();
 
@@ -154,6 +158,7 @@
 
     _deactivate() {
       this._active = false;
+      for (const entry of this._entries) entry.span.style.cursor = 'pointer';
       this._toggleBtn.classList.remove('amgt-ple-active');
       this._destroyHandles();
       this._hideSnapPoints();
@@ -191,9 +196,11 @@
           origLat: latlng.lat,
           origLng: latlng.lng,
           origAngle: this._readAngleDeg(span),
+          origSide: span.dataset.side || 'center',
           lat: latlng.lat,
           lng: latlng.lng,
           angle: this._readAngleDeg(span),
+          side: span.dataset.side || 'center',
         });
       });
       return out;
@@ -233,13 +240,48 @@
       span.style.pointerEvents = 'auto';
       span.style.cursor = 'pointer';
       span.title = "Cliquer pour déplacer/orienter cette étiquette (plugin d'édition)";
+      span.style.touchAction = 'none'; // un glissé sur le texte (tactile) ne doit pas faire défiler la page
       if (span._amgtPleClickBound) return; // déjà abonné sur CET élément, ne pas empiler les écouteurs
       span._amgtPleClickBound = true;
+      span.addEventListener('pointerdown', (e) => this._startTextDrag(entry, e));
       span.addEventListener('click', (e) => {
         L.DomEvent.stopPropagation(e); // pas de clic-traversant vers la planche en dessous dans ce cas précis
         L.DomEvent.preventDefault(e);
         this._activate();
       });
+    },
+
+    /**
+     * Mode édition actif : glisser le TEXTE de l'étiquette la déplace (même
+     * accroche magnétique que la poignée orange) — pas besoin de viser un
+     * petit point. Événements « pointer » : souris, tactile et stylet.
+     */
+    _startTextDrag(entry, ev) {
+      if (!this._active || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
+      L.DomEvent.stopPropagation(ev);
+      L.DomEvent.preventDefault(ev);
+      const map = this._map;
+      const span = entry.span;
+      if (span.setPointerCapture) span.setPointerCapture(ev.pointerId);
+      map.dragging.disable(); // sinon la carte se déplace en même temps
+      const p0 = map.mouseEventToContainerPoint(ev);
+      const a0 = map.latLngToContainerPoint([entry.lat, entry.lng]);
+      span.style.cursor = 'grabbing';
+      const move = (e) => {
+        const p = map.mouseEventToContainerPoint(e);
+        this._moveEntryTo(entry, map.containerPointToLatLng(L.point(a0.x + p.x - p0.x, a0.y + p.y - p0.y)));
+      };
+      const up = () => {
+        span.removeEventListener('pointermove', move);
+        span.removeEventListener('pointerup', up);
+        span.removeEventListener('pointercancel', up);
+        map.dragging.enable();
+        span.style.cursor = this._active ? 'grab' : 'pointer';
+        this._persistEntry(entry);
+      };
+      span.addEventListener('pointermove', move);
+      span.addEventListener('pointerup', up);
+      span.addEventListener('pointercancel', up);
     },
 
     // ---- Persistance (localStorage + export/import JSON) ----------------
@@ -267,19 +309,32 @@
         if (!o) continue;
         entry.lat = o.lat;
         entry.lng = o.lng;
-        entry.angle = o.angle;
         entry.marker.setLatLng([o.lat, o.lng]);
-        this._applyAngle(entry, o.angle);
+        this._applyPose(entry, o.angle, o.side || entry.side);
       }
     },
 
-    _applyAngle(entry, angleDeg) {
+    /**
+     * Pose l'orientation ET le bord d'ancrage du texte : le point du marqueur
+     * est le milieu du bord `side` de la boîte de texte (le plus proche du
+     * cadre de la planche), rotation autour de ce point — même transform que
+     * scaledText.js. Ancré sur ce bord, le texte reste collé à son cadre à
+     * tout niveau de zoom (il pousse à partir de ce bord quand sa taille change).
+     */
+    _applyPose(entry, angleDeg, side) {
       entry.angle = angleDeg;
-      entry.span.style.transform = `translate(-50%,-50%) rotate(${angleDeg}deg)`;
+      entry.side = SIDE_TRANSLATE[side] ? side : 'center';
+      entry.span.dataset.side = entry.side;
+      entry.span.style.transformOrigin = '0 0';
+      entry.span.style.transform = `rotate(${angleDeg}deg) translate(${SIDE_TRANSLATE[entry.side]})`;
+    },
+
+    _applyAngle(entry, angleDeg) {
+      this._applyPose(entry, angleDeg, entry.side);
     },
 
     _persistEntry(entry) {
-      this._overrides[entry.key] = { lat: entry.lat, lng: entry.lng, angle: entry.angle };
+      this._overrides[entry.key] = { lat: entry.lat, lng: entry.lng, angle: entry.angle, side: entry.side };
       this._saveOverrides();
     },
 
@@ -336,13 +391,22 @@
     },
 
     _onMoveDrag(entry) {
-      let latlng = entry.moveHandle.getLatLng();
+      this._moveEntryTo(entry, entry.moveHandle.getLatLng());
+    },
+
+    /**
+     * Déplace le point d'ancrage (milieu du bord de référence du texte) vers
+     * `latlng`, avec accroche magnétique : à moins de SNAP_RADIUS_M d'un point
+     * du cadre d'une planche, le bord de référence se pose dessus, le texte
+     * prend l'orientation du bord du cadre et se place à l'intérieur de la planche.
+     */
+    _moveEntryTo(entry, latlng) {
       const snap = this._nearestSnapPoint(latlng);
       if (snap) {
         latlng = L.latLng(snap.lat, snap.lng);
-        entry.moveHandle.setLatLng(latlng);
-        this._applyAngle(entry, snap.angle);
+        this._applyPose(entry, snap.angle, snap.side);
       }
+      entry.moveHandle.setLatLng(latlng);
       entry.lat = latlng.lat;
       entry.lng = latlng.lng;
       entry.marker.setLatLng(latlng);
@@ -383,8 +447,12 @@
             if (!f.properties || f.properties.type !== 'PE') continue;
             if (!f.geometry || f.geometry.type !== 'Polygon') continue;
             const ring = f.geometry.coordinates[0];
+            // Sens du contour (aire signée > 0 : antihoraire, y vers le haut) : donne de quel
+            // côté de chaque bord se trouve l'intérieur de la planche.
+            let area2 = 0;
+            for (let i = 0; i < ring.length - 1; i++) area2 += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
             for (let i = 0; i < ring.length - 1; i++) {
-              points.push(...this._samplePEEdge(ring[i], ring[i + 1]));
+              points.push(...this._samplePEEdge(ring[i], ring[i + 1], area2 > 0 ? 1 : -1));
             }
           }
           this._snapPoints = points;
@@ -400,18 +468,32 @@
       );
     },
 
-    _samplePEEdge([x0, y0], [x1, y1]) {
+    /**
+     * Points d'accroche le long d'un bord du cadre, décalés de LABEL_GAP_M vers
+     * l'INTÉRIEUR de la planche. Chacun porte l'orientation du bord (texte
+     * lisible de gauche à droite : angle ramené dans ]-90°, 90°]) et le bord de
+     * la boîte de texte à poser sur le cadre : 'top' si l'intérieur est sous le
+     * texte, 'bottom' s'il est au-dessus.
+     */
+    _samplePEEdge([x0, y0], [x1, y1], ccw) {
       const dx = x1 - x0;
       const dy = y1 - y0;
       const len = Math.hypot(dx, dy);
       if (len < 1e-6) return [];
-      const angle = (-Math.atan2(dy, dx) * 180) / Math.PI; // Lambert (y haut) -> écran CSS (y bas)
+      const nx = (ccw > 0 ? -dy : dy) / len; // normale vers l'intérieur (repère Lambert, y vers le haut)
+      const ny = (ccw > 0 ? dx : -dx) / len;
+      let angle = (-Math.atan2(dy, dx) * 180) / Math.PI; // Lambert (y haut) -> écran CSS (y bas)
+      if (angle > 90) angle -= 180;
+      if (angle <= -90) angle += 180;
+      const rad = (angle * Math.PI) / 180;
+      // "bas" du texte en repère Lambert = (-sin, -cos) ; intérieur de ce côté -> le bord de référence est le haut
+      const side = nx * -Math.sin(rad) + ny * -Math.cos(rad) > 0 ? 'top' : 'bottom';
       const steps = Math.max(1, Math.round(len / SNAP_SPACING_M));
       const out = [];
       for (let s = 0; s < steps; s++) {
         const t = s / steps;
-        const { lat, lng } = AMGT4CEM_CRS.lambertToLatLng([x0 + dx * t, y0 + dy * t]);
-        out.push({ lat, lng, angle });
+        const { lat, lng } = AMGT4CEM_CRS.lambertToLatLng([x0 + dx * t + nx * LABEL_GAP_M, y0 + dy * t + ny * LABEL_GAP_M]);
+        out.push({ lat, lng, angle, side });
       }
       return out;
     },
@@ -465,8 +547,8 @@
       panel.className = 'amgt-ple-panel';
       panel.innerHTML = `
         <h3>🧲 Étiquettes de planches</h3>
-        <p>Glissez le point orange pour déplacer, le point bleu pour orienter.</p>
-        <div class="amgt-ple-legend"><span class="amgt-ple-swatch amgt-ple-swatch--move"></span> déplacer</div>
+        <p>Glissez le <b>texte</b> (ou le point orange) pour déplacer, le point bleu pour orienter. Le point orange est le milieu du bord du texte le plus proche du cadre : c'est lui qui s'accroche.</p>
+        <div class="amgt-ple-legend"><span class="amgt-ple-swatch amgt-ple-swatch--move"></span> ancrage (milieu du bord de référence)</div>
         <div class="amgt-ple-legend"><span class="amgt-ple-swatch amgt-ple-swatch--rotate"></span> orienter</div>
         <div class="amgt-ple-legend"><span class="amgt-ple-swatch amgt-ple-swatch--snap"></span> accroche magnétique</div>
         <p class="amgt-ple-count"></p>
@@ -502,14 +584,14 @@
         entry.lat = entry.origLat;
         entry.lng = entry.origLng;
         entry.marker.setLatLng([entry.lat, entry.lng]);
-        this._applyAngle(entry, entry.origAngle);
+        this._applyPose(entry, entry.origAngle, entry.origSide);
         entry.moveHandle.setLatLng([entry.lat, entry.lng]);
         entry.rotHandle.setLatLng(this._rotateHandleLatLng(entry));
       }
     },
 
     _exportJson() {
-      const out = this._entries.map((e) => ({ key: e.key, code: e.code, lat: e.lat, lng: e.lng, angle: e.angle }));
+      const out = this._entries.map((e) => ({ key: e.key, code: e.code, lat: e.lat, lng: e.lng, angle: e.angle, side: e.side }));
       const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -533,7 +615,7 @@
             entry.lat = row.lat;
             entry.lng = row.lng;
             entry.marker.setLatLng([row.lat, row.lng]);
-            this._applyAngle(entry, row.angle);
+            this._applyPose(entry, row.angle, row.side || entry.side);
             entry.moveHandle.setLatLng([row.lat, row.lng]);
             entry.rotHandle.setLatLng(this._rotateHandleLatLng(entry));
             this._persistEntry(entry);
