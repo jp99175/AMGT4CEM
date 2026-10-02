@@ -450,12 +450,25 @@
         const ll = AMGT4CEM_CRS.lambertToLatLng([p.x, p.y]);
         return { lat: ll.lat, lng: ll.lng, kind: p.kind };
       });
-      this._edit = { entry, backup, cands, slot: 0, refDots: [], candMarkers: [], line: null, history: [] };
+      this._edit = { entry, backup, cands, slot: 0, refDots: [], candMarkers: [], line: null, history: [], construction: [] };
+      this._showAxis(entry);
       this._edit.slot = Math.max(0, SLOTS.findIndex((s) => !entry.def[s.id]));
       this._showRefDots(entry);
       this._showCandidates();
       this._buildEditPanel();
       this._refreshEdit();
+    },
+
+    /**
+     * Interstation : ligne de construction (axe du tunnel) et son milieu, point d'arrivée
+     * de la ligne de repère (voir interstation.js). Affichés le temps de la modification.
+     */
+    _showAxis(entry) {
+      const tunnel = entry.kind === 'ist' && entry.marker._amgtTunnel;
+      if (!tunnel || !tunnel.axis || tunnel.axis.length < 2) return;
+      const axis = L.polyline(tunnel.axis.map(AMGT4CEM_CRS.lambertToLatLng), { color: '#8e24aa', weight: 2, dashArray: '8 4', interactive: false }).addTo(this._map);
+      const centre = L.circleMarker(AMGT4CEM_CRS.lambertToLatLng(tunnel.center), { radius: 5, color: '#8e24aa', fillColor: '#fff', fillOpacity: 1, weight: 2, interactive: false }).addTo(this._map);
+      this._edit.construction.push(axis, centre);
     },
 
     _showRefDots(entry) {
@@ -645,6 +658,7 @@
       this._syncPose(ed.entry);
       for (const dot of ed.refDots) dot.remove();
       for (const m of ed.candMarkers) this._map.removeLayer(m);
+      for (const l of ed.construction) this._map.removeLayer(l);
       if (ed.line) this._map.removeLayer(ed.line);
       this._edit = null;
       if (this._panel) this._panel.remove();

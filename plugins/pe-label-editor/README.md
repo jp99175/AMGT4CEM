@@ -8,7 +8,10 @@ qu'en glissant au jugé. Même procédure pour les deux : pour un numéro
 d'interstation, le « cadre » est le contour du tronçon (tunnel `MT`) auquel
 il est rattaché, et les intersections proposées sont celles avec les autres
 emprises (stations, tunnels). La ligne de repère suit : elle part toujours du
-centre du tronçon vers l'extrémité du soulignement la plus proche.
+centre du tronçon (milieu de son axe) vers l'extrémité du soulignement la
+plus proche. Pendant la modification d'un numéro d'interstation, l'**axe du
+tunnel** (ligne de construction, pointillé violet) et son milieu sont
+affichés.
 Les définitions des numéros d'interstation sont enregistrées dans le même
 fichier, sous la clé `IS-<numéro>#<rang>`.
 

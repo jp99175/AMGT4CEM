@@ -429,9 +429,11 @@ le plus proche (association faite au chargement, en Lambert). L'étiquette
 est un texte à **taille réelle constante** (comme les références de
 planche, `scaledText.js`), **souligné**, avec une **ligne de repère** qui
 part du **centre du tronçon** et rejoint l'**extrémité du soulignement la
-plus proche** (recalculée à chaque zoom). Centre du tronçon = centre de
-gravité du polygone, ramené à l'intérieur du contour quand il tombe
-dehors (tunnels courbes). Texte et ligne appartiennent au même groupe :
+plus proche** (recalculée à chaque zoom). Centre du tronçon = milieu, mesuré
+le long de l'**axe du tunnel** (ligne de construction tracée entre les deux
+côtés longs de son polygone, voir l'en-tête de `src/interstation.js`) ;
+cet axe et son milieu s'affichent (violet) pendant le déplacement d'une
+étiquette. Texte et ligne appartiennent au même groupe :
 la case « Numéros interstation » les affiche/masque ensemble, et le
 curseur d'opacité de Plans patrimoine s'applique aux deux. **Pas
 d'infobulle** sur l'étiquette ni sur la ligne ; le numéro (« N°
