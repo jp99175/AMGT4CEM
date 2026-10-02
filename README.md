@@ -450,9 +450,11 @@ l'en-tête de `src/interstation.js` pour la construction.
 **Déplacer une étiquette de tronçon** : mode d'édition **séparé** de celui
 des références de planche (⚙ Paramètres > Fonds de plan, bouton « Mode
 édition des étiquettes de tronçon » ; plugin `plugins/pe-label-editor/`, voir
-son README). 1) on **glisse le texte** où l'on veut ; 2) on **identifie le
-tronçon** auquel il se raccroche : le survol d'un tunnel allume son axe, un
-clic le choisit. Position (Lambert 72) et tronçon (`ogc_fid`) sont enregistrés
+son README). Un premier clic **sélectionne** l'étiquette ; 1) on la
+**déplace parallèlement au trajet du pointeur** (appui n'importe où sur la
+carte, souris ou doigt, puis glissement) ; 2) on **identifie le tronçon**
+auquel elle se raccroche : le survol d'un tunnel allume son axe, un clic (ou
+un appui) le choisit. Position (Lambert 72) et tronçon (`ogc_fid`) sont enregistrés
 dans `data/interstation-labels.json` (clé `numéro#rang`), via la route
 `/interstation` du relais (à redéployer, voir `relay/README.md`), et
 remplacent le rattachement automatique pour cette étiquette. Limites du

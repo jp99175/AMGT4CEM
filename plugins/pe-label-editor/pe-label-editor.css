@@ -277,3 +277,9 @@
   opacity: 0.45;
   cursor: default;
 }
+
+/* Étiquette de tronçon sélectionnée (mode tronçons) : contour pointillé autour du texte. */
+.amgt-scaled-text.amgt-ple-selected {
+  outline: 2px dashed #8e24aa;
+  outline-offset: 4px;
+}

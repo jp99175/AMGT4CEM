@@ -27,8 +27,11 @@
  * (AMGT4CEM_ScaledText.setDefinition, scaledText.js) : le plugin ne fait que
  * l'interface de choix et l'enregistrement.
  *
- * TRONÇONS (mode « tronçons »), deux gestes, dans n'importe quel ordre :
- *   1. glisser le texte où l'on veut (déplacement libre, orientation horizontale) ;
+ * TRONÇONS (mode « tronçons »). Un premier clic SÉLECTIONNE l'étiquette ; deux gestes
+ * ensuite, dans n'importe quel ordre :
+ *   1. déplacer le texte, PARALLÈLEMENT au trajet du pointeur : on appuie
+ *      n'importe où sur la carte (souris ou doigt) et on glisse, le texte suit le
+ *      même trajet (la carte est figée pendant ce temps ; orientation horizontale) ;
  *   2. identifier le tronçon auquel il se raccroche : le survol d'un tunnel
  *      allume son axe (ligne de construction, voir interstation.js), un clic le
  *      choisit. Sans choix, le rattachement automatique (contour le plus proche)
@@ -319,7 +322,9 @@
         L.DomEvent.stopPropagation(e); // pas de clic traversant vers la planche en dessous
         L.DomEvent.preventDefault(e);
         if (this._edit) return; // une étiquette est déjà en cours de modification
-        this._openBubble(entry, this._map.mouseEventToLatLng(e));
+        // Tronçons : le premier clic SÉLECTIONNE l'étiquette (la modification commence aussitôt) ; planches : bulle d'info + icône « déplacer ».
+        if (entry.kind === 'ist') this._startEdit(entry);
+        else this._openBubble(entry, this._map.mouseEventToLatLng(e));
       });
     },
 
@@ -706,9 +711,10 @@
       this._closeAdminPanel();
       const backup = clone(entry.def);
       entry.def = entry.def ? { ...entry.def } : null; // null : position et tronçon d'origine, tant que rien n'est déplacé ni choisi
-      this._edit = { kind: 'ist', entry, backup, current: [], hover: [], hoverPoly: null, polyHandlers: [], dragCleanup: null };
+      this._edit = { kind: 'ist', entry, backup, current: [], hover: [], hoverPoly: null, polyHandlers: [], gestureCleanup: null, panMode: false, dragging: false, suppressClick: false };
+      entry.span.classList.add('amgt-ple-selected');
       this._showCurrentAxis();
-      this._enableDrag(entry);
+      this._enableMoveGesture();
       this._enableTunnelPick();
       this._buildEditPanelIst();
       this._refreshEditIst();
@@ -728,41 +734,69 @@
       return [line, centre];
     },
 
-    /** Glisser le texte : le point saisi suit le pointeur (déplacement libre, orientation horizontale). */
-    _enableDrag(entry) {
-      const span = entry.span;
+    /**
+     * Déplacer le texte PARALLÈLEMENT au trajet du pointeur : appui (souris ou doigt) n'importe
+     * où sur la carte, puis glissement — le texte se déplace du même vecteur que le pointeur, sans
+     * qu'il faille le saisir (le doigt ne le cache pas). La carte est figée pendant la modification
+     * (bouton « Déplacer la carte » du panneau pour la faire glisser). Un appui sans glissement
+     * (moins de 5 px) reste un simple clic : il sert à choisir un tronçon.
+     */
+    _enableMoveGesture() {
+      const ed = this._edit;
       const map = this._map;
-      let grab = null;
+      const box = map.getContainer();
+      const wasDraggable = map.dragging.enabled();
+      const prevTouchAction = box.style.touchAction;
+      map.dragging.disable();
+      box.style.touchAction = 'none'; // le navigateur ne doit pas prendre le glissement du doigt pour un défilement
+      let drag = null;
       const move = (e) => {
-        if (!grab) return;
-        this._moveIst(entry, map.containerPointToLatLng(map.mouseEventToContainerPoint(e).add(grab)));
+        if (!drag || e.pointerId !== drag.id) return;
+        const delta = map.mouseEventToContainerPoint(e).subtract(drag.start);
+        if (!drag.moved && Math.hypot(delta.x, delta.y) < 5) return;
+        drag.moved = true;
+        ed.dragging = true;
+        this._moveIst(ed.entry, map.containerPointToLatLng(drag.origin.add(delta)));
       };
-      const up = () => {
-        grab = null;
-        span.style.cursor = 'move';
+      const up = (e) => {
+        if (!drag || e.pointerId !== drag.id) return;
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        document.removeEventListener('pointercancel', up);
+        if (drag.moved) {
+          ed.suppressClick = true; // le clic qui suit le relâchement ne doit pas choisir le tunnel sous le pointeur
+          setTimeout(() => (ed.suppressClick = false), 150);
+        }
+        ed.dragging = false;
+        drag = null;
       };
       const down = (e) => {
-        if (e.button) return; // clic gauche / toucher seulement
-        e.preventDefault();
-        e.stopPropagation();
-        const centre = map.latLngToContainerPoint(AMGT4CEM_ScaledText.getPose(entry.marker).latlng); // le texte est ancré par son centre
-        grab = centre.subtract(map.mouseEventToContainerPoint(e));
-        span.style.cursor = 'grabbing';
-        if (span.setPointerCapture) span.setPointerCapture(e.pointerId);
+        if (ed.panMode || e.button) return; // carte libre, ou autre bouton que le principal
+        if (e.target.closest && e.target.closest('.leaflet-control, .leaflet-popup')) return;
+        drag = {
+          id: e.pointerId,
+          start: map.mouseEventToContainerPoint(e),
+          origin: map.latLngToContainerPoint(AMGT4CEM_ScaledText.getPose(ed.entry.marker).latlng), // le texte est ancré par son centre
+          moved: false,
+        };
+        document.addEventListener('pointermove', move);
+        document.addEventListener('pointerup', up);
+        document.addEventListener('pointercancel', up);
       };
-      span.style.cursor = 'move';
-      span.addEventListener('pointerdown', down);
-      span.addEventListener('pointermove', move);
-      span.addEventListener('pointerup', up);
-      span.addEventListener('pointercancel', up);
-      L.DomEvent.on(span, 'mousedown touchstart dblclick', L.DomEvent.stopPropagation); // la carte ne doit pas glisser avec le texte
-      this._edit.dragCleanup = () => {
-        span.removeEventListener('pointerdown', down);
-        span.removeEventListener('pointermove', move);
-        span.removeEventListener('pointerup', up);
-        span.removeEventListener('pointercancel', up);
-        L.DomEvent.off(span, 'mousedown touchstart dblclick', L.DomEvent.stopPropagation);
-        span.style.cursor = 'pointer';
+      box.addEventListener('pointerdown', down);
+      ed.setPanMode = (on) => {
+        ed.panMode = on;
+        if (on) map.dragging.enable();
+        else map.dragging.disable();
+        box.style.touchAction = on ? prevTouchAction : 'none';
+      };
+      ed.gestureCleanup = () => {
+        box.removeEventListener('pointerdown', down);
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        document.removeEventListener('pointercancel', up);
+        if (wasDraggable) map.dragging.enable();
+        box.style.touchAction = prevTouchAction;
       };
     },
 
@@ -782,6 +816,7 @@
         const out = () => this._hoverTunnel(null);
         const click = (e) => {
           L.DomEvent.stopPropagation(e);
+          if (ed.suppressClick) return; // relâchement d'un glissement du texte, pas un choix
           this._pickTunnel(poly._amgtTunnelId);
         };
         poly.on('mouseover', over);
@@ -793,7 +828,7 @@
 
     _hoverTunnel(poly) {
       const ed = this._edit;
-      if (!ed) return;
+      if (!ed || (ed.dragging && poly)) return; // pas d'axe orange pendant le glissement du texte
       for (const l of ed.hover) this._map.removeLayer(l);
       ed.hover = [];
       if (ed.hoverPoly) ed.hoverPoly.setStyle({ color: AMGT4CEM_METRO_TYPES.MT.color, weight: AMGT4CEM_METRO_TYPES.MT.weight });
@@ -825,6 +860,7 @@
           <button type="button" class="amgt-ple-primary" data-action="apply" title="Garde le positionnement et termine">Appliquer</button>
           <button type="button" data-action="cancel" title="Abandonne : aucun changement">Annuler</button>
           <button type="button" data-action="reset">Réinitialiser l'étiquette</button>
+          <button type="button" data-action="pan" title="Fait glisser la carte au lieu du texte (la molette ou le pincement zooment toujours)">✋ Déplacer la carte</button>
         </div>`;
       document.body.appendChild(panel);
       this._panel = panel;
@@ -833,6 +869,12 @@
         this._openAdminPanel(); // pour enregistrer dans l'application (le panneau indique les modifications non enregistrées)
       });
       panel.querySelector('[data-action="cancel"]').addEventListener('click', () => this._endEdit(true));
+      panel.querySelector('[data-action="pan"]').addEventListener('click', (e) => {
+        const ed = this._edit;
+        ed.setPanMode(!ed.panMode);
+        e.currentTarget.classList.toggle('amgt-ple-primary', ed.panMode);
+        e.currentTarget.textContent = ed.panMode ? '✋ Carte libre — cliquer pour reprendre le texte' : '✋ Déplacer la carte';
+      });
       panel.querySelector('[data-action="reset"]').addEventListener('click', () => {
         const ed = this._edit;
         ed.entry.def = null;
@@ -854,7 +896,7 @@
       const auto = entry.marker._amgtNumber.autoTunnel;
       const chosen = !!entry.def && tunnel !== auto;
       const steps = [
-        { title: '1. Déplacer le texte', hint: "Glissez le texte à l'endroit voulu (n'importe où).", done: !!entry.def, value: entry.def ? 'déplacé' : '' },
+        { title: '1. Déplacer le texte', hint: "Appuyez n'importe où sur la carte (souris ou doigt) et glissez : le texte suit le même trajet. La carte est figée (bouton ✋ pour la déplacer).", done: !!entry.def, value: entry.def ? 'déplacé' : '' },
         {
           title: '2. Tronçon de rattachement',
           hint: "Survolez un tunnel : son axe s'allume. Cliquez pour le choisir (le réseau doit être affiché).",
@@ -880,6 +922,7 @@
       const ed = this._edit;
       if (cancel) ed.entry.def = ed.backup;
       this._syncPose(ed.entry);
+      ed.dragging = false;
       this._hoverTunnel(null);
       for (const h of ed.polyHandlers) {
         h.poly.off('mouseover', h.over);
@@ -887,7 +930,8 @@
         h.poly.off('click', h.click);
       }
       for (const l of ed.current) this._map.removeLayer(l);
-      if (ed.dragCleanup) ed.dragCleanup();
+      if (ed.gestureCleanup) ed.gestureCleanup();
+      ed.entry.span.classList.remove('amgt-ple-selected');
       this._edit = null;
       if (this._panel) this._panel.remove();
       this._panel = null;

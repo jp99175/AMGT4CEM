@@ -108,17 +108,28 @@ largeur/hauteur ne change pas avec le zoom.
 ## Mode tronçons
 
 Pour les **numéros d'interstation** (couche « Numéros interstation » et
-réseau « Tunnels » affichés) : cliquer dans le texte d'un numéro ouvre la
-bulle « Interstation 648 — <tunnel> » avec l'icône **déplacer**, puis deux
-gestes libres, dans n'importe quel ordre :
+réseau « Tunnels » affichés) :
 
-1. **Déplacer le texte** : on le **glisse** où l'on veut (déplacement libre,
-   texte horizontal ; la carte ne bouge pas). La ligne de repère suit.
-2. **Tronçon de rattachement** : le **survol** d'un tunnel allume son **axe**
-   (ligne de construction orange épaisse, avec son milieu) et son contour ;
-   un **clic** le choisit. L'axe du tronçon actuel reste affiché en violet
-   pointillé ; sans choix, le tronçon automatique (contour le plus proche)
-   s'applique. La ligne de repère arrive au milieu de l'axe du tronçon choisi.
+0. **Premier clic = sélection** : un clic dans le texte d'un numéro le
+   sélectionne (contour violet pointillé) et ouvre aussitôt son panneau — pas
+   de bulle intermédiaire. La carte est alors figée.
+
+Puis deux gestes, dans n'importe quel ordre :
+
+1. **Déplacer le texte, parallèlement au trajet du pointeur** : on appuie
+   **n'importe où sur la carte** (souris, ou **doigt** sur écran tactile) et on
+   glisse ; le texte se déplace du même vecteur que le pointeur, sans qu'il
+   faille le saisir (le doigt ne le cache donc pas). Orientation horizontale ;
+   la ligne de repère suit. Le bouton **✋ Déplacer la carte** du panneau
+   fait glisser la carte à la place du texte (la molette ou le pincement
+   zooment dans les deux cas).
+2. **Tronçon de rattachement** : le **survol** d'un tunnel (souris) allume son
+   **axe** (orange épais, avec son milieu) et son contour ; un **clic** ou
+   un **appui sans glissement** (moins de 5 px, y compris au doigt) le
+   choisit. Un glissement qui se termine sur un tunnel ne le choisit pas.
+   L'axe du tronçon actuel reste affiché en violet pointillé ; sans choix,
+   le tronçon automatique (contour le plus proche) s'applique. La ligne de
+   repère arrive au milieu de l'axe du tronçon choisi.
 
 **Appliquer** garde le résultat (puis **Enregistrer dans l'application**),
 **Annuler** l'abandonne, **Réinitialiser l'étiquette** remet la position et
