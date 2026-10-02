@@ -424,28 +424,40 @@ relevés dans INFRAVIEW.pdf, et le texte des références de planches
 détail en section 4bis (méthode, précision, limites).
 
 **Numéros interstation** (`src/interstation.js`) : chaque numéro est
-rattaché au **tronçon** (polygone `MT` de `Metro.shp`) dont le contour est
-le plus proche (association faite au chargement, en Lambert). L'étiquette
+rattaché à un **tronçon** (polygone `MT` de `Metro.shp`) — par défaut le
+tunnel dont le contour est le plus proche (rattachement automatique, en
+Lambert), ou celui choisi par un administrateur (voir plus bas). L'étiquette
 est un texte à **taille réelle constante** (comme les références de
 planche, `scaledText.js`), **souligné**, avec une **ligne de repère** qui
 part du **centre du tronçon** et rejoint l'**extrémité du soulignement la
-plus proche** (recalculée à chaque zoom). Centre du tronçon = milieu, mesuré
-le long de l'**axe du tunnel** (ligne de construction tracée entre les deux
-côtés longs de son polygone, voir l'en-tête de `src/interstation.js`) ;
-cet axe et son milieu s'affichent (violet) pendant le déplacement d'une
-étiquette. Texte et ligne appartiennent au même groupe :
-la case « Numéros interstation » les affiche/masque ensemble, et le
-curseur d'opacité de Plans patrimoine s'applique aux deux. **Pas
-d'infobulle** sur l'étiquette ni sur la ligne ; le numéro (« N°
+plus proche** (recalculée à chaque zoom). Texte et ligne appartiennent au
+même groupe : la case « Numéros interstation » les affiche/masque
+ensemble, et le curseur d'opacité de Plans patrimoine s'applique aux deux.
+**Pas d'infobulle** sur l'étiquette ni sur la ligne ; le numéro (« N°
 interstation ») apparaît dans l'**infobulle de l'emprise du tronçon**
-(couche Tunnels), que la couche soit affichée ou non. Limites : l'association
-« contour le plus proche » est ambiguë pour quelques numéros (3 sur 86 à
-moins de 15 m d'écart entre les deux premiers tunnels, 4 à plus de 140 m de
-tout tunnel : 243, 243-3, 900, 1000), et 7 tunnels n'ont aucun numéro.
-**Déplacer une étiquette** : même outil que les références de planche
-(`plugins/pe-label-editor/`), le cadre d'ancrage étant le contour du
-tronçon ; définitions enregistrées dans `data/pe-label-anchors.json` sous
-la clé `IS-<numéro>#<rang>`.
+(couche Tunnels), que la couche soit affichée ou non.
+
+**Axe et centre du tronçon.** Le centre du tronçon est le milieu, mesuré
+le long de l'**axe du tunnel** : une ligne de construction tracée entre les
+deux côtés longs de son polygone. L'axe passe **toujours par le milieu des
+segments communs** entre l'emprise du tunnel et celles des stations
+(repérés automatiquement : côtés quasi colinéaires, écart < 1 m, qui se
+recouvrent sur plus de 1 m ; 64 tunnels en ont deux, 23 un seul) — voir
+l'en-tête de `src/interstation.js` pour la construction.
+
+**Déplacer une étiquette de tronçon** : mode d'édition **séparé** de celui
+des références de planche (⚙ Paramètres > Fonds de plan, bouton « Mode
+édition des étiquettes de tronçon » ; plugin `plugins/pe-label-editor/`, voir
+son README). 1) on **glisse le texte** où l'on veut ; 2) on **identifie le
+tronçon** auquel il se raccroche : le survol d'un tunnel allume son axe, un
+clic le choisit. Position (Lambert 72) et tronçon (`ogc_fid`) sont enregistrés
+dans `data/interstation-labels.json` (clé `numéro#rang`), via la route
+`/interstation` du relais (à redéployer, voir `relay/README.md`), et
+remplacent le rattachement automatique pour cette étiquette. Limites du
+rattachement automatique : 3 numéros sur 86 à moins de 15 m d'écart entre
+les deux premiers tunnels, 4 à plus de 140 m de tout tunnel (243, 243-3,
+900, 1000), et 7 tunnels sans numéro — c'est ce que le choix manuel permet
+de corriger.
 
 **Numéros interstation** et **Noms de station** sont des **étiquettes de
 texte** (le contenu du champ `text` ou `numero`, affiché tel quel, pas un

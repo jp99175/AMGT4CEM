@@ -17,9 +17,9 @@
  *    l'interface avec le serveur qui modifie les données) et code
  *    administrateur ; bouton Tester. Enregistrer envoie TOUS les paramètres
  *    généraux (onglets Sources et Serveur).
- * 3. Fonds de plan : modifications des données de fond — lancement du mode
- *    édition des étiquettes de planche (plugin plugins/pe-label-editor/, chargé
- *    à la demande) ; chargement d'un nouveau shapefile : à venir.
+ * 3. Fonds de plan : modifications des données de fond — lancement des modes
+ *    d'édition des étiquettes de planche et de tronçon (plugin
+ *    plugins/pe-label-editor/, chargé à la demande) ; chargement d'un nouveau shapefile : à venir.
  *
  * Exclusif avec le menu "☰ Carte" (un seul panneau ouvert à la fois, même
  * position à l'écran) — voir mapMenu.js pour la réciproque.
@@ -190,25 +190,29 @@ const AMGT4CEM_SettingsPanel = {
   _initBasemapsTab(panel) {
     document.getElementById('amgt-settings-edit-labels').addEventListener('click', () => {
       panel.classList.add('amgt-hidden');
-      this._launchLabelEditor();
+      this._launchLabelEditor('pe');
+    });
+    document.getElementById('amgt-settings-edit-troncons').addEventListener('click', () => {
+      panel.classList.add('amgt-hidden');
+      this._launchLabelEditor('ist');
     });
   },
 
   /**
-   * Lance le mode édition des étiquettes (références de planche, numéros
-   * d'interstation) : affiche les couches « Plans d'ensemble » et « Numéros
-   * interstation » (les étiquettes n'existent à l'écran que si elles le
-   * sont), charge le plugin plugins/pe-label-editor/ à la demande (une
-   * seule fois), puis ouvre son panneau.
+   * Lance un mode d'édition des étiquettes — 'pe' : références de planche,
+   * 'ist' : numéros d'interstation (tronçons), deux modes séparés : affiche la
+   * couche concernée (« Plans d'ensemble » / « Numéros interstation » : les
+   * étiquettes n'existent à l'écran que si elle l'est), charge le plugin
+   * plugins/pe-label-editor/ à la demande (une seule fois), puis ouvre le
+   * panneau du mode.
    */
-  _launchLabelEditor() {
-    for (const layerId of ['plans-ensemble-500e', 'numero-interstation']) {
-      if (!AMGT4CEM_PatrimoineSelectionStore.getSelection()[layerId]) AMGT4CEM_PatrimoineSelectionStore.toggle(layerId);
-    }
+  _launchLabelEditor(mode) {
+    const layerId = mode === 'ist' ? 'numero-interstation' : 'plans-ensemble-500e';
+    if (!AMGT4CEM_PatrimoineSelectionStore.getSelection()[layerId]) AMGT4CEM_PatrimoineSelectionStore.toggle(layerId);
 
     const open = () => {
       // Les étiquettes sont ajoutées à la carte de façon asynchrone (patrimoineLayer.refresh) : le plugin les cherche lui-même jusqu'à les trouver.
-      window.AMGT4CEM_PeLabelEditor.open();
+      window.AMGT4CEM_PeLabelEditor.open(mode);
     };
     if (window.AMGT4CEM_PeLabelEditor) return open();
 

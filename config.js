@@ -48,6 +48,10 @@ const AMGT4CEM_CONFIG = {
   // par un relais serveur à déployer une fois (relay/README.md) dont
   // l'adresse se renseigne ici — vide : enregistrement non configuré.
   peLabelAnchorsUrl: './data/pe-label-anchors.json',
+  // Position et tronçon de rattachement des étiquettes de numéro d'interstation
+  // déplacées par un administrateur (Lambert 72, voir src/interstation.js) ;
+  // enregistrées par le même relais (route « interstation »).
+  interstationLabelsUrl: './data/interstation-labels.json',
   // Adresse du relais d'enregistrement. Vide par défaut : elle se renseigne
   // dans ⚙ Paramètres > Serveur, qui l'enregistre sur le serveur avec les
   // autres paramètres généraux (data/app-settings.json) et prime alors sur

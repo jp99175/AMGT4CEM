@@ -135,6 +135,14 @@ const AMGT4CEM_ScaledText = {
     return entry.pose;
   },
 
+  /** Change le point de départ de la ligne de repère d'un marqueur (voir `leaderFrom`) et la redessine. */
+  setLeaderFrom(marker, latlng) {
+    const entry = this._entries.find((e) => e.marker === marker);
+    if (!entry || !entry.leader) return;
+    entry.leader.from = latlng;
+    this._updateOne(entry);
+  },
+
   /** Retire un marqueur du suivi des zooms (groupe reconstruit : l'ancien ne doit plus être mis à jour). */
   dispose(marker) {
     const i = this._entries.findIndex((e) => e.marker === marker);

@@ -3,15 +3,17 @@
  * l'application. Reçoit un PUT de l'application, vérifie le code
  * administrateur, valide le contenu, puis l'enregistre dans le dépôt GitHub
  * (API Contents, appelée de serveur à serveur : pas de mur CORS comme depuis
- * un navigateur — voir README section 6). Deux routes :
- *   PUT /anchors   définitions d'ancrage des références de planche  -> data/pe-label-anchors.json
- *   PUT /settings  paramètres généraux de l'application             -> data/app-settings.json
+ * un navigateur — voir README section 6). Trois routes :
+ *   PUT /anchors       définitions d'ancrage des références de planche   -> data/pe-label-anchors.json
+ *   PUT /interstation  position et tronçon des étiquettes d'interstation -> data/interstation-labels.json
+ *   PUT /settings      paramètres généraux de l'application              -> data/app-settings.json
  *   GET (toute route) contrôle de connexion et du code, n'écrit rien.
  *
  * Variables (wrangler.toml ou tableau de bord Cloudflare) :
  *   GITHUB_REPO      "jp99175/AMGT4CEM"
  *   GITHUB_BRANCH    branche déployée par GitHub Pages
  *   FILE_PATH        (optionnel) fichier des ancrages, défaut "data/pe-label-anchors.json"
+ *   INTERSTATION_PATH (optionnel) fichier des étiquettes d'interstation, défaut "data/interstation-labels.json"
  *   SETTINGS_PATH    (optionnel) fichier des paramètres, défaut "data/app-settings.json"
  *   ALLOWED_ORIGINS  origines autorisées, séparées par des virgules
  *                    (ex. "https://jp99175.github.io,http://localhost:8765")
@@ -39,6 +41,26 @@ export function validate(body) {
     const has2 = d.r2 !== undefined || d.a2 !== undefined;
     if (has2 && (!REFS.includes(d.r2) || !inBelgium(d.a2) || d.r2 === d.r1)) return `Définition invalide pour ${key} (r2/a2)`;
     const extra = Object.keys(d).filter((k) => !['r1', 'a1', 'r2', 'a2'].includes(k));
+    if (extra.length) return `Champ inattendu pour ${key} : ${extra[0]}`;
+  }
+  return null;
+}
+
+/**
+ * Étiquettes de numéro d'interstation : { version: 1, labels: { "numéro#rang": { x, y, tunnel } } } — position du
+ * texte en Lambert 72 (mètres) et tronçon de rattachement (ogc_fid de Metro.shp).
+ */
+export function validateInterstation(body) {
+  if (!body || typeof body !== 'object' || body.version !== 1 || typeof body.labels !== 'object' || body.labels === null || Array.isArray(body.labels)) {
+    return 'Format attendu : { "version": 1, "labels": { ... } }';
+  }
+  // Emprise large du Lambert 72 belge (X et Y : 1 000 à 300 000) : rejette lat/lng collés par erreur.
+  const inLambert = (v) => typeof v === 'number' && Number.isFinite(v) && v > 1000 && v < 300000;
+  for (const [key, d] of Object.entries(body.labels)) {
+    if (!KEY_RE.test(key)) return `Clé invalide : ${key}`;
+    if (!d || !inLambert(d.x) || !inLambert(d.y)) return `Définition invalide pour ${key} (x/y, Lambert 72 en mètres)`;
+    if (typeof d.tunnel !== 'string' || !/^\d{1,9}$/.test(d.tunnel)) return `Définition invalide pour ${key} (tunnel)`;
+    const extra = Object.keys(d).filter((k) => !['x', 'y', 'tunnel'].includes(k));
     if (extra.length) return `Champ inattendu pour ${key} : ${extra[0]}`;
   }
   return null;
@@ -108,10 +130,11 @@ export default {
     const route = new URL(request.url).pathname.replace(/\/+$/, '').split('/').pop();
     const targets = {
       anchors: { path: env.FILE_PATH || 'data/pe-label-anchors.json', validate, key: 'labels', message: "Étiquettes de planche : mise à jour des ancrages (via l'application)" },
+      interstation: { path: env.INTERSTATION_PATH || 'data/interstation-labels.json', validate: validateInterstation, key: 'labels', message: "Étiquettes d'interstation : mise à jour (via l'application)" },
       settings: { path: env.SETTINGS_PATH || 'data/app-settings.json', validate: validateSettings, key: 'settings', message: "Paramètres généraux : mise à jour (via l'application)" },
     };
     const target = targets[route];
-    if (!target) return json(404, { error: 'Route inconnue (attendu : /anchors ou /settings)' }, cors);
+    if (!target) return json(404, { error: 'Route inconnue (attendu : /anchors, /interstation ou /settings)' }, cors);
 
     const raw = await request.text();
     if (raw.length > MAX_BODY_BYTES) return json(413, { error: 'Contenu trop volumineux' }, cors);

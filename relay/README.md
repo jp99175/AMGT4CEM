@@ -6,9 +6,17 @@ par un administrateur :
 - `PUT /anchors` : définitions d'ancrage/orientation des références de planche
   (`data/pe-label-anchors.json`), modifiées avec le plugin
   `plugins/pe-label-editor/` ;
+- `PUT /interstation` : position et tronçon de rattachement des étiquettes
+  de numéro d'interstation (`data/interstation-labels.json`), modifiées avec
+  le même plugin, en mode « tronçons » ;
 - `PUT /settings` : paramètres généraux de l'application — adresses des
   services externes et adresse du relais (`data/app-settings.json`),
   modifiés dans ⚙ Paramètres.
+
+**Après une mise à jour de `worker.js`** (ex. ajout de la route
+`/interstation`), le relais doit être **redéployé** (`wrangler deploy`, ou
+coller le nouveau `worker.js` dans le tableau de bord Cloudflare) : tant que ce
+n'est pas fait, l'enregistrement correspondant répond « Route inconnue ».
 
 Pourquoi un relais : un navigateur ne peut pas écrire directement dans le
 dépôt (l'API GitHub refuse les requêtes préparatoires CORS d'un navigateur,
@@ -43,7 +51,7 @@ Prérequis : un compte Cloudflare (gratuit), Node.js installé.
 4. Dans l'application : ⚙ Paramètres > onglet **Serveur** : coller l'adresse
    du relais et le code administrateur de l'étape 3, puis **Tester**
    (« Relais joignable, code administrateur accepté ») et **Enregistrer**.
-   L'adresse (adresse **sans** `/anchors` ni `/settings` : l'application
+   L'adresse (adresse **sans** `/anchors`, `/interstation` ni `/settings` : l'application
    ajoute la route) est alors écrite par le relais dans
    `data/app-settings.json` : c'est un paramètre général, lu par tous les
    visiteurs après le redéploiement de GitHub Pages. Le code n'est gardé que
@@ -59,10 +67,13 @@ Prérequis : un compte Cloudflare (gratuit), Node.js installé.
 - Valide le format : `{ "version": 1, "labels": { "1000-236#0": { r1, a1,
   r2?, a2? } } }` — points de référence parmi les 8 connus, coordonnées dans
   l'emprise de la Belgique, aucun champ en trop, 200 Ko maximum.
+- `PUT /interstation` : `{ "version": 1, "labels": { "648#0": { x, y, tunnel } } }`
+  — `x`, `y` : position du texte en Lambert 72 (mètres), `tunnel` : `ogc_fid`
+  du tronçon (chiffres) ; aucun champ en trop.
 - `PUT /settings` : `{ "version": 1, "settings": { urbisUrl?, urbisLayers?,
   brucielHistoriqueUrl?, brucielRecentUrl?, geocoderUrl?, relayUrl? } }` —
   clés connues seulement, adresses en `https://` (ou `http://localhost`).
-- N'écrit que `data/pe-label-anchors.json` et `data/app-settings.json` (contenu trié : un enregistrement
+- N'écrit que `data/pe-label-anchors.json`, `data/interstation-labels.json` et `data/app-settings.json` (contenu trié : un enregistrement
   sans changement réel ne crée aucun commit).
 - Le jeton GitHub n'est jamais renvoyé au navigateur.
 

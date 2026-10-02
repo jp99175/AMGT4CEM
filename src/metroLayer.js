@@ -205,6 +205,7 @@ const AMGT4CEM_MetroLayer = {
           }
         });
       }
+      if (type === 'MT') polygon._amgtTunnelId = String(props.ogc_fid); // voir interstation.js / plugin pe-label-editor
       polygon.addTo(layersByType[type]);
       bounds.extend(polygon.getBounds());
 

@@ -1,19 +1,18 @@
 # Plugin : éditeur d'étiquettes (références de planche, numéros d'interstation)
 
-Placer et orienter chaque référence de planche (ex. « 1000-236 ») par
-rapport au cadre de sa planche, et chaque numéro d'interstation (couche
-« Numéros interstation », texte souligné relié au centre de son tronçon) par
-rapport à l'emprise de son tronçon, en choisissant des points précis plutôt
-qu'en glissant au jugé. Même procédure pour les deux : pour un numéro
-d'interstation, le « cadre » est le contour du tronçon (tunnel `MT`) auquel
-il est rattaché, et les intersections proposées sont celles avec les autres
-emprises (stations, tunnels). La ligne de repère suit : elle part toujours du
-centre du tronçon (milieu de son axe) vers l'extrémité du soulignement la
-plus proche. Pendant la modification d'un numéro d'interstation, l'**axe du
-tunnel** (ligne de construction, pointillé violet) et son milieu sont
-affichés.
-Les définitions des numéros d'interstation sont enregistrées dans le même
-fichier, sous la clé `IS-<numéro>#<rang>`.
+Deux modes d'édition **séparés**, chacun avec son panneau, ses compteurs et
+son enregistrement :
+
+- **mode planches** : placer et orienter chaque référence de planche (ex.
+  « 1000-236 ») par rapport au cadre de sa planche, en choisissant des points
+  précis plutôt qu'en glissant au jugé (procédure en 4 choix ci-dessous) ;
+- **mode tronçons** : placer chaque numéro d'interstation (couche « Numéros
+  interstation », texte souligné relié au centre de son tronçon) et choisir le
+  tronçon auquel il se raccroche (voir « Mode tronçons »).
+
+Seules les étiquettes du mode courant sont cliquables. Les modifications non
+enregistrées de l'autre mode sont conservées tant que la page n'est pas
+rechargée.
 
 Le plugin lui-même vit dans ce dossier. L'affichage des définitions
 enregistrées (ancrage, orientation) est fait par l'application
@@ -37,22 +36,24 @@ du plugin (« Planche … » + icône déplacer). Elles reviennent à la sortie
 (**Quitter l'édition**).
 
 **Depuis l'application** : ⚙ Paramètres > onglet **Fonds de plan** > **Mode
-édition des étiquettes (planches, interstations)**. Cela affiche les couches
-« Plans d'ensemble » et « Numéros interstation », charge ce plugin à la demande (une seule fois) et ouvre son
-panneau d'administration ; **Quitter l'édition** (dans ce panneau) recharge la
+édition des étiquettes de planche** ou **Mode édition des étiquettes de
+tronçon**. Cela affiche la couche concernée (« Plans d'ensemble » ou « Numéros
+interstation »), charge ce plugin à la demande (une seule fois) et ouvre le
+panneau d'administration du mode ; **Quitter l'édition** (dans ce panneau) recharge la
 page et revient au mode normal. La couleur des étiquettes repositionnées
 (ci-dessous) n'apparaît que dans ce mode.
 
 Alternative (développement) : ouvrir `plugins/pe-label-editor/index.html` au
 lieu de `index.html` (la page charge l'appli telle quelle et y ajoute ce
-plugin à la fin). Dans les deux cas le site doit être servi en http(s).
+plugin à la fin) ; `?mode=ist` y ouvre le mode tronçons (planches par
+défaut). Dans les deux cas le site doit être servi en http(s).
 
-1. Afficher la couche **Plans d'ensemble (1/500e)** et/ou **Numéros
-   interstation** (menu ☰ Carte → Plans patrimoine) ; le lancement depuis
-   ⚙ Paramètres affiche les deux.
-2. **Cliquer dans le texte** d'une référence de planche (ou d'un numéro
-   d'interstation) : une bulle d'info affiche « Planche 1000-236 » (ou
-   « Interstation 648 ») avec l'icône **déplacer** (quatre flèches).
+## Mode planches
+
+1. Afficher la couche **Plans d'ensemble (1/500e)** (menu ☰ Carte → Plans
+   patrimoine).
+2. **Cliquer dans le texte** d'une référence de planche : une bulle d'info
+   affiche « Planche 1000-236 » avec l'icône **déplacer** (quatre flèches).
 3. Cliquer l'icône : la modification de CETTE étiquette commence, en
    quatre choix (un panneau les liste, on peut revenir sur n'importe
    lequel) :
@@ -103,6 +104,28 @@ Le point de référence reste collé à son ancre à tous les niveaux de zoom (l
 texte pousse à partir de ce point), et l'alignement aussi : la rotation est
 recalculée avec la taille réelle de la boîte, dont le rapport
 largeur/hauteur ne change pas avec le zoom.
+
+## Mode tronçons
+
+Pour les **numéros d'interstation** (couche « Numéros interstation » et
+réseau « Tunnels » affichés) : cliquer dans le texte d'un numéro ouvre la
+bulle « Interstation 648 — <tunnel> » avec l'icône **déplacer**, puis deux
+gestes libres, dans n'importe quel ordre :
+
+1. **Déplacer le texte** : on le **glisse** où l'on veut (déplacement libre,
+   texte horizontal ; la carte ne bouge pas). La ligne de repère suit.
+2. **Tronçon de rattachement** : le **survol** d'un tunnel allume son **axe**
+   (ligne de construction orange épaisse, avec son milieu) et son contour ;
+   un **clic** le choisit. L'axe du tronçon actuel reste affiché en violet
+   pointillé ; sans choix, le tronçon automatique (contour le plus proche)
+   s'applique. La ligne de repère arrive au milieu de l'axe du tronçon choisi.
+
+**Appliquer** garde le résultat (puis **Enregistrer dans l'application**),
+**Annuler** l'abandonne, **Réinitialiser l'étiquette** remet la position et
+le tronçon d'origine. Les étiquettes modifiées s'affichent dans la couleur
+opposée, comme en mode planches. Enregistrement : `data/interstation-labels.json`
+(`{ "version": 1, "labels": { "648#0": { x, y, tunnel } } }` — position en
+Lambert 72, `ogc_fid` du tunnel), route `/interstation` du relais.
 
 ## Enregistrement dans l'application
 
