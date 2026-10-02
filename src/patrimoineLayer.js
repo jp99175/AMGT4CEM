@@ -29,6 +29,7 @@ const AMGT4CEM_PatrimoineLayer = {
   _cache: {}, // id -> features[]
   _subGroups: {}, // id -> L.LayerGroup
   _externalLayers: {}, // id -> L.LayerGroup déjà construit ailleurs (voir registerExternalLayer)
+  _building: {}, // id -> true pendant la construction asynchrone d'une couche (évite un double ajout si refresh() est rappelé entre-temps)
 
   init(map) {
     this._map = map;
@@ -128,13 +129,25 @@ const AMGT4CEM_PatrimoineLayer = {
         continue;
       }
 
+      if (this._building[id]) continue;
+      this._building[id] = true;
       try {
-        const features = await this._loadFeatures(entry);
-        const subGroup = this._buildSubGroup(features, selection[id]);
+        let subGroup;
+        if (entry.interstation) {
+          // Étiquette + ligne de repère jusqu'au centre du tronçon (src/interstation.js) : attend les tronçons de Metro.shp.
+          await AMGT4CEM_Interstation.whenReady();
+          if (!AMGT4CEM_PatrimoineSelectionStore.getSelection()[id]) continue; // désélectionnée pendant l'attente
+          subGroup = AMGT4CEM_Interstation.buildSubGroup(selection[id], this._opacityFactor);
+        } else {
+          const features = await this._loadFeatures(entry);
+          subGroup = this._buildSubGroup(features, selection[id]);
+        }
         this._subGroups[id] = subGroup;
         subGroup.addTo(this._group);
       } catch (err) {
         console.error(`[AMGT4CEM] Chargement de la couche "${entry.label}" impossible :`, err);
+      } finally {
+        delete this._building[id];
       }
     }
   },

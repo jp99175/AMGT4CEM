@@ -1,8 +1,16 @@
-# Plugin : éditeur d'étiquettes de planches (PE_label)
+# Plugin : éditeur d'étiquettes (références de planche, numéros d'interstation)
 
 Placer et orienter chaque référence de planche (ex. « 1000-236 ») par
-rapport au cadre de sa planche, en choisissant des points précis plutôt
-qu'en glissant au jugé.
+rapport au cadre de sa planche, et chaque numéro d'interstation (couche
+« Numéros interstation », texte souligné relié au centre de son tronçon) par
+rapport à l'emprise de son tronçon, en choisissant des points précis plutôt
+qu'en glissant au jugé. Même procédure pour les deux : pour un numéro
+d'interstation, le « cadre » est le contour du tronçon (tunnel `MT`) auquel
+il est rattaché, et les intersections proposées sont celles avec les autres
+emprises (stations, tunnels). La ligne de repère suit : elle part toujours du
+centre du tronçon vers l'extrémité du soulignement la plus proche.
+Les définitions des numéros d'interstation sont enregistrées dans le même
+fichier, sous la clé `IS-<numéro>#<rang>`.
 
 Le plugin lui-même vit dans ce dossier. L'affichage des définitions
 enregistrées (ancrage, orientation) est fait par l'application
@@ -26,8 +34,8 @@ du plugin (« Planche … » + icône déplacer). Elles reviennent à la sortie
 (**Quitter l'édition**).
 
 **Depuis l'application** : ⚙ Paramètres > onglet **Fonds de plan** > **Mode
-édition des étiquettes de planche**. Cela affiche la couche « Plans
-d'ensemble », charge ce plugin à la demande (une seule fois) et ouvre son
+édition des étiquettes (planches, interstations)**. Cela affiche les couches
+« Plans d'ensemble » et « Numéros interstation », charge ce plugin à la demande (une seule fois) et ouvre son
 panneau d'administration ; **Quitter l'édition** (dans ce panneau) recharge la
 page et revient au mode normal. La couleur des étiquettes repositionnées
 (ci-dessous) n'apparaît que dans ce mode.
@@ -36,10 +44,12 @@ Alternative (développement) : ouvrir `plugins/pe-label-editor/index.html` au
 lieu de `index.html` (la page charge l'appli telle quelle et y ajoute ce
 plugin à la fin). Dans les deux cas le site doit être servi en http(s).
 
-1. Afficher la couche **Plans d'ensemble (1/500e)** (menu ☰ Carte → Plans
-   patrimoine).
-2. **Cliquer dans le texte** d'une référence de planche : une bulle d'info
-   affiche « Planche 1000-236 » avec l'icône **déplacer** (quatre flèches).
+1. Afficher la couche **Plans d'ensemble (1/500e)** et/ou **Numéros
+   interstation** (menu ☰ Carte → Plans patrimoine) ; le lancement depuis
+   ⚙ Paramètres affiche les deux.
+2. **Cliquer dans le texte** d'une référence de planche (ou d'un numéro
+   d'interstation) : une bulle d'info affiche « Planche 1000-236 » (ou
+   « Interstation 648 ») avec l'icône **déplacer** (quatre flèches).
 3. Cliquer l'icône : la modification de CETTE étiquette commence, en
    quatre choix (un panneau les liste, on peut revenir sur n'importe
    lequel) :

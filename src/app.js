@@ -59,6 +59,7 @@
   const pointsGroup = AMGT4CEM_PointsLayer.init(map);
   AMGT4CEM_UrbisTopoLayer.init(map);
   AMGT4CEM_UrbisTopoPicker.init();
+  AMGT4CEM_Interstation.init(); // charge les numéros d'interstation (associés aux tunnels dans buildMetro)
   AMGT4CEM_PatrimoineLayer.init(map);
   AMGT4CEM_PatrimoinePicker.init();
 
@@ -132,6 +133,7 @@
     layersByType.PE_info.eachLayer((l) => peAndInfoGroup.addLayer(l));
     layersByType.PE_info_text.eachLayer((l) => peAndInfoGroup.addLayer(l));
     AMGT4CEM_PatrimoineLayer.registerExternalLayer('plans-ensemble-500e', peAndInfoGroup);
+    AMGT4CEM_Interstation.setMetroFeatures(features); // rattache les numéros d'interstation à leur tronçon (MT)
 
     layersByType.MS.addTo(map);
     layersByType.MT.addTo(map);

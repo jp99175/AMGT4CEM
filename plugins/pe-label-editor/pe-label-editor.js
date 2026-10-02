@@ -1,6 +1,9 @@
 /**
  * Plugin "pe-label-editor" — placer et orienter les références de planche
- * (PE_label, ex. "1000-236") par rapport au cadre de leur planche, et
+ * (PE_label, ex. "1000-236") par rapport au cadre de leur planche, et les
+ * numéros d'interstation (couche « Numéros interstation », voir
+ * src/interstation.js) par rapport à l'emprise de leur tronçon (tunnel MT) —
+ * même procédure, le « cadre » étant alors le contour du tronçon —, et
  * ENREGISTRER le résultat dans l'application (partagé par tous les
  * visiteurs), pas dans le navigateur.
  *
@@ -46,12 +49,14 @@
     intersection: 'intersection avec une autre planche',
     middle: 'milieu de segment (sommets / intersections)',
   };
+  /** Libellé d'un type de point remarquable : le « cadre » d'un numéro d'interstation est l'emprise de son tronçon. */
+  const kindLabel = (kind, entry) => (entry.kind === 'ist' && kind === 'intersection' ? 'intersection avec une autre emprise' : KIND_LABEL[kind]);
 
   const SLOTS = [
     { id: 'r1', kind: 'ref', title: '1. Point de référence du texte', hint: "Cliquez l'un des 8 points sur le texte." },
-    { id: 'a1', kind: 'planche', title: "2. Point d'ancrage sur la planche", hint: 'Cliquez un point remarquable du cadre (sommet, milieu de côté, intersection, milieu de segment).' },
+    { id: 'a1', kind: 'planche', title: "2. Point d'ancrage sur le cadre", hint: 'Cliquez un point remarquable du cadre — planche, ou emprise du tronçon pour une interstation (sommet, milieu de côté, intersection, milieu de segment).' },
     { id: 'r2', kind: 'ref', title: '3. Second point de référence du texte', hint: 'Cliquez un autre des 8 points du texte.' },
-    { id: 'a2', kind: 'planche', title: '4. Autre point remarquable de la planche', hint: 'Cliquez un autre point du cadre : il sera aligné avec les deux points précédents.' },
+    { id: 'a2', kind: 'planche', title: '4. Autre point remarquable du cadre', hint: 'Cliquez un autre point du cadre : il sera aligné avec les deux points précédents.' },
   ];
 
   /** Couleur chromatiquement opposée (teinte + 180°, même saturation et luminosité) d'une couleur CSS « rgb(r, g, b) ». */
@@ -85,8 +90,10 @@
 
   const PeLabelEditor = {
     _map: null,
-    _entries: [], // { key, code, marker, span, def, lat, lng, angle, ref }
+    _entries: [], // { key, kind: 'pe'|'ist', code, marker, span, def, lat, lng, angle, ref }
+    _byKey: {}, // key -> entrée
     _planches: [], // [{ code, ring: [[x, y], ...] }] — Lambert, anneau non refermé
+    _emprises: [], // [{ id, ring }] — emprises de stations (MS) et de tunnels (MT), Lambert, anneau non refermé : cadres des numéros d'interstation
     _edit: null, // session de modification en cours
     _toggleBtn: null,
     _panel: null,
@@ -119,14 +126,13 @@
         this._suppressAppBubbles();
         this._loadPlanches();
         this._buildToggleButton();
-        // Les étiquettes n'existent dans le DOM que quand la couche « Plans
-        // d'ensemble » est affichée (couche externe, peut être cochée bien après
-        // le chargement) : on réessaie jusqu'à les trouver.
-        if (!this._ensureIndexed()) {
-          this._autoIndexInterval = setInterval(() => {
-            if (this._ensureIndexed()) clearInterval(this._autoIndexInterval);
-          }, 1500);
-        }
+        // Les étiquettes n'existent dans le DOM que quand leur couche (« Plans
+        // d'ensemble », « Numéros interstation ») est affichée, ce qui peut
+        // arriver bien après le chargement — et une couche reconstruite
+        // (décochée puis recochée) recrée ses marqueurs : on regarde
+        // périodiquement, à peu de frais (marqueur déjà indexé = ignoré).
+        this._ensureIndexed();
+        this._autoIndexInterval = setInterval(() => this._ensureIndexed(), 1500);
       });
     },
 
@@ -167,32 +173,49 @@
 
     // ---- Indexation des étiquettes ----------------------------------------
 
-    /** Indexe les étiquettes affichées UNE fois. Leur définition partagée est déjà appliquée par l'application. */
+    /**
+     * Indexe les étiquettes affichées (références de planche, numéros
+     * d'interstation) : une fois chacune, et à nouveau si leur marqueur a été
+     * reconstruit (couche masquée puis recochée) — l'entrée, avec sa
+     * définition éventuellement non enregistrée, est alors rattachée au nouveau
+     * marqueur. Leur définition partagée est déjà appliquée par l'application.
+     * Retourne true si une entrée a été créée ou rattachée.
+     */
     _ensureIndexed() {
-      if (this._entries.length) return true;
-      const out = [];
-      AMGT4CEM_MapMenu._metroLayers.PE_label.eachLayer((marker) => {
+      const sources = [];
+      AMGT4CEM_MapMenu._metroLayers.PE_label.eachLayer((marker) => sources.push([marker, 'pe']));
+      for (const marker of AMGT4CEM_Interstation.markers()) sources.push([marker, 'ist']);
+      let changed = false;
+      for (const [marker, kind] of sources) {
         const span = marker.getElement() && marker.getElement().querySelector('.amgt-scaled-text');
-        if (!span || !marker._amgtKey) return;
-        out.push({
-          key: marker._amgtKey, // "code#rang", posée par metroLayer.js
-          code: span.textContent.trim(),
-          marker,
-          span,
-          def: clone(AMGT4CEM_PeLabelAnchors.get(marker._amgtKey)),
-          origColor: getComputedStyle(span).color, // couleur d'origine du texte (orange des références de planche)
-          origInline: span.style.color, // …telle que posée par l'application (style en ligne), à restituer
-        });
-      });
-      if (!out.length) return false;
-      this._entries = out;
-      for (const entry of out) {
+        if (!span || !marker._amgtKey) continue;
+        let entry = this._byKey[marker._amgtKey];
+        if (entry && entry.marker === marker) continue; // déjà indexée
+        const origColor = getComputedStyle(span).color; // couleur d'origine du texte (orange des références de planche, couleur de la couche pour les interstations)
+        const origInline = span.style.color; // …telle que posée par l'application (style en ligne), à restituer
+        if (entry) {
+          Object.assign(entry, { marker, span, origColor, origInline }); // marqueur reconstruit : on garde la définition de l'entrée
+        } else {
+          entry = {
+            key: marker._amgtKey, // « code#rang » (planches, metroLayer.js) ou « IS-numéro#rang » (interstations, interstation.js)
+            kind,
+            code: span.textContent.trim(),
+            marker,
+            span,
+            def: clone(AMGT4CEM_PeLabelAnchors.get(marker._amgtKey)),
+            origColor,
+            origInline,
+          };
+          this._byKey[entry.key] = entry;
+          this._entries.push(entry);
+        }
         entry.marker.on('add', () => this._bindLabel(entry)); // Leaflet recrée le DOM quand la couche est masquée puis réaffichée
         this._bindLabel(entry);
         this._syncPose(entry);
+        changed = true;
       }
-      this._refreshAdminPanel();
-      return true;
+      if (changed) this._refreshAdminPanel();
+      return changed;
     },
 
     /** Applique la définition courante de l'entrée via l'application, et relit la pose obtenue. */
@@ -248,7 +271,7 @@
       const box = document.createElement('div');
       box.className = 'amgt-popup amgt-ple-bubble';
       const title = document.createElement('strong');
-      title.textContent = `Planche ${entry.code}`;
+      title.textContent = entry.kind === 'ist' ? `Interstation ${entry.code}` : `Planche ${entry.code}`;
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'amgt-ple-move-btn';
@@ -269,7 +292,7 @@
 
     // ---- Points remarquables d'une planche -----------------------------------
 
-    /** Charge Metro.shp (même fichier que l'appli, lu séparément) : contours des planches, en Lambert. */
+    /** Charge Metro.shp (même fichier que l'appli, lu séparément) : contours des planches et des emprises de station/tunnel, en Lambert. */
     _loadPlanches() {
       AMGT4CEM_ShpLoader.load(
         AMGT4CEM_CONFIG.metroShpBaseUrl,
@@ -277,6 +300,9 @@
           this._planches = geojson.features
             .filter((f) => f.properties && f.properties.type === 'PE' && f.geometry && f.geometry.type === 'Polygon')
             .map((f) => ({ code: f.properties.sheet_ref, ring: f.geometry.coordinates[0].slice(0, -1) }));
+          this._emprises = geojson.features
+            .filter((f) => f.properties && (f.properties.type === 'MS' || f.properties.type === 'MT') && f.geometry && f.geometry.type === 'Polygon')
+            .map((f) => ({ id: `${f.properties.type}:${f.properties.ogc_fid}`, tunnelId: f.properties.type === 'MT' ? String(f.properties.ogc_fid) : null, ring: f.geometry.coordinates[0].slice(0, -1) }));
         },
         (err) => console.warn('[pe-label-editor] Metro.shp illisible, choix des points de planche impossible :', err)
       );
@@ -301,6 +327,23 @@
     },
 
     /**
+     * Cadre d'une étiquette : { frame, others } — le contour sur lequel on choisit
+     * les points d'ancrage, et les autres contours dont les intersections avec lui
+     * sont des points remarquables. Planche (PE) : sa planche et les autres
+     * planches. Interstation : l'emprise de son tronçon (MT) et toutes les autres
+     * emprises (stations, tunnels). null si introuvable (Metro.shp pas chargé).
+     */
+    _frameOf(entry) {
+      if (entry.kind !== 'ist') {
+        const frame = this._planchOf(entry);
+        return frame && { frame, others: this._planches };
+      }
+      const tunnel = entry.marker._amgtTunnel;
+      const frame = tunnel && this._emprises.find((e) => e.tunnelId === String(tunnel.id));
+      return frame && { frame, others: this._emprises };
+    },
+
+    /**
      * Points remarquables du cadre d'une planche, dans cet ordre :
      *   1. les sommets du polygone                                   (kind 'vertex')
      *   2. le centre de chaque côté du polygone                      (kind 'side')
@@ -312,7 +355,7 @@
      * contour étant en Lambert) — la catégorie la plus prioritaire l'emporte.
      * [{ x, y, kind }] en Lambert.
      */
-    _remarkablePoints(planche) {
+    _remarkablePoints(planche, others) {
       const ring = planche.ring;
       const n = ring.length;
       // Abscisse curviligne le long du cadre : cum[i] = longueur du cadre jusqu'au sommet i.
@@ -356,7 +399,7 @@
       // 3. intersections avec les autres planches
       const hits = [];
       for (let i = 0; i < n; i++) {
-        for (const other of this._planches) {
+        for (const other of others) {
           if (other === planche) continue;
           const m = other.ring.length;
           for (let j = 0; j < m; j++) {
@@ -395,15 +438,15 @@
     // ---- Modification d'une étiquette (4 choix) ----------------------------------
 
     _startEdit(entry) {
-      const planche = this._planchOf(entry);
-      if (!planche) {
-        alert('Contour de la planche introuvable (Metro.shp pas encore chargé) : réessayez dans un instant.');
+      const found = this._frameOf(entry);
+      if (!found) {
+        alert(`Contour ${entry.kind === 'ist' ? 'du tronçon' : 'de la planche'} introuvable (Metro.shp pas encore chargé) : réessayez dans un instant.`);
         return;
       }
       this._closeAdminPanel();
       const backup = clone(entry.def);
       entry.def = entry.def ? { ...entry.def } : {};
-      const cands = this._remarkablePoints(planche).map((p) => {
+      const cands = this._remarkablePoints(found.frame, found.others).map((p) => {
         const ll = AMGT4CEM_CRS.lambertToLatLng([p.x, p.y]);
         return { lat: ll.lat, lng: ll.lng, kind: p.kind };
       });
@@ -437,7 +480,7 @@
       for (const c of this._edit.cands) {
         const m = L.marker([c.lat, c.lng], {
           icon: L.divIcon({ className: `amgt-ple-cand amgt-ple-cand--${c.kind}`, iconSize: [16, 16], iconAnchor: [8, 8] }),
-          title: KIND_LABEL[c.kind],
+          title: kindLabel(c.kind, this._edit.entry),
           keyboard: false,
           zIndexOffset: 1000,
         }).addTo(this._map);
@@ -453,7 +496,7 @@
     _pickRef(key) {
       const ed = this._edit;
       const slot = SLOTS[ed.slot];
-      if (slot.kind !== 'ref') return this._flash('Cette étape attend un point du cadre de la planche, pas du texte.');
+      if (slot.kind !== 'ref') return this._flash('Cette étape attend un point du cadre, pas du texte.');
       if (slot.id === 'r2' && key === ed.entry.def.r1) return this._flash('Le second point de référence doit être différent du premier.');
       this._setSlot(slot.id, key);
     },
@@ -462,7 +505,7 @@
       const ed = this._edit;
       const slot = SLOTS[ed.slot];
       if (slot.kind !== 'planche') return this._flash("Cette étape attend un point du texte (les 8 points sur l'étiquette).");
-      if (slot.id === 'a2' && sameLatLng(ed.entry.def.a1, c)) return this._flash("Le second point de la planche doit être différent du point d'ancrage.");
+      if (slot.id === 'a2' && sameLatLng(ed.entry.def.a1, c)) return this._flash("Le second point du cadre doit être différent du point d'ancrage.");
       this._setSlot(slot.id, [c.lat, c.lng]);
     },
 
@@ -553,7 +596,7 @@
       const ed = this._edit;
       const def = ed.entry.def;
       const p = this._panel;
-      p.querySelector('h3').textContent = `Étiquette de la planche ${ed.entry.code}`;
+      p.querySelector('h3').textContent = ed.entry.kind === 'ist' ? `Étiquette de l'interstation ${ed.entry.code}` : `Étiquette de la planche ${ed.entry.code}`;
       const ol = p.querySelector('.amgt-ple-steps');
       ol.textContent = '';
       SLOTS.forEach((s, i) => {
@@ -565,7 +608,7 @@
           if (s.kind === 'ref') value = REFS[def[s.id]].label;
           else {
             const c = ed.cands.find((k) => sameLatLng(def[s.id], k));
-            value = c ? KIND_LABEL[c.kind] : 'point choisi';
+            value = c ? kindLabel(c.kind, ed.entry) : 'point choisi';
           }
         }
         li.innerHTML = '<b></b><span></span><em></em>';
@@ -672,8 +715,8 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'amgt-ple-toggle-btn';
-      btn.textContent = '✥ Étiquettes planches';
-      btn.title = 'Édition des références de planche (administrateurs)';
+      btn.textContent = '✥ Étiquettes';
+      btn.title = 'Édition des références de planche et des numéros d\'interstation (administrateurs)';
       btn.addEventListener('click', () => (this._panel ? this._closeAdminPanel() : this._openAdminPanel()));
       document.body.appendChild(btn);
       this._toggleBtn = btn;
@@ -692,9 +735,9 @@
       const panel = document.createElement('div');
       panel.className = 'amgt-ple-panel';
       panel.innerHTML = `
-        <h3>✥ Étiquettes de planches</h3>
-        <p>Affichez la couche « Plans d'ensemble », puis <b>cliquez dans le texte</b> d'une référence de planche :
-        la bulle d'info propose l'icône « déplacer ».</p>
+        <h3>✥ Étiquettes (planches, interstations)</h3>
+        <p>Affichez la couche « Plans d'ensemble » ou « Numéros interstation », puis <b>cliquez dans le texte</b> d'une
+        référence de planche ou d'un numéro d'interstation : la bulle d'info propose l'icône « déplacer ».</p>
         <p class="amgt-ple-count"></p>
         <p class="amgt-ple-flash" hidden></p>
         <div class="amgt-ple-actions">

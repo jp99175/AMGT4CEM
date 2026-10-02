@@ -30,6 +30,11 @@ const AMGT4CEM_PATRIMOINE_CATALOG = [
     id: 'numero-interstation',
     label: 'Numéros interstation',
     file: './data/patrimoine-numero-interstation.json',
+    // Rendu spécifique (src/interstation.js) : texte souligné à taille réelle
+    // constante + ligne de repère jusqu'au centre du tronçon, au lieu du
+    // simple libellé des autres couches de ce catalogue. Sans infobulle : le
+    // numéro apparaît dans celle de l'emprise du tronçon.
+    interstation: true,
   },
   {
     id: 'nom-station',

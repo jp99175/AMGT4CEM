@@ -400,7 +400,8 @@ défaut.
 
 V1 (deux fichiers, EPSG:31370, voir `data/patrimoine-*.json`) :
 - **Numéros interstation** : repères numérotés le long des tronçons entre
-  stations.
+  stations — étiquette soulignée à taille réelle, reliée au centre de son
+  tronçon par une ligne de repère (voir plus bas).
 - **Noms de station** : toponymes bilingues FR/NL et repères associés.
 
 Les **plans d'ensemble au 1/500e** (36 planches) ont migré dans
@@ -421,6 +422,28 @@ codes de transition entre tronçons de construction (D0, D1, G1a...)
 relevés dans INFRAVIEW.pdf, et le texte des références de planches
 (1000-236...) affiché dans l'emprise des planches elles-mêmes — voir le
 détail en section 4bis (méthode, précision, limites).
+
+**Numéros interstation** (`src/interstation.js`) : chaque numéro est
+rattaché au **tronçon** (polygone `MT` de `Metro.shp`) dont le contour est
+le plus proche (association faite au chargement, en Lambert). L'étiquette
+est un texte à **taille réelle constante** (comme les références de
+planche, `scaledText.js`), **souligné**, avec une **ligne de repère** qui
+part du **centre du tronçon** et rejoint l'**extrémité du soulignement la
+plus proche** (recalculée à chaque zoom). Centre du tronçon = centre de
+gravité du polygone, ramené à l'intérieur du contour quand il tombe
+dehors (tunnels courbes). Texte et ligne appartiennent au même groupe :
+la case « Numéros interstation » les affiche/masque ensemble, et le
+curseur d'opacité de Plans patrimoine s'applique aux deux. **Pas
+d'infobulle** sur l'étiquette ni sur la ligne ; le numéro (« N°
+interstation ») apparaît dans l'**infobulle de l'emprise du tronçon**
+(couche Tunnels), que la couche soit affichée ou non. Limites : l'association
+« contour le plus proche » est ambiguë pour quelques numéros (3 sur 86 à
+moins de 15 m d'écart entre les deux premiers tunnels, 4 à plus de 140 m de
+tout tunnel : 243, 243-3, 900, 1000), et 7 tunnels n'ont aucun numéro.
+**Déplacer une étiquette** : même outil que les références de planche
+(`plugins/pe-label-editor/`), le cadre d'ancrage étant le contour du
+tronçon ; définitions enregistrées dans `data/pe-label-anchors.json` sous
+la clé `IS-<numéro>#<rang>`.
 
 **Numéros interstation** et **Noms de station** sont des **étiquettes de
 texte** (le contenu du champ `text` ou `numero`, affiché tel quel, pas un

@@ -193,7 +193,9 @@ const AMGT4CEM_MetroLayer = {
           polygon.openPopup(e.latlng);
         });
       } else {
-        polygon.bindPopup(this._buildPopupHtml(props));
+        // Contenu calculé à l'ouverture (fonction) : les numéros d'interstation d'un tunnel
+        // ne sont associés qu'une fois leur fichier chargé (interstation.js).
+        polygon.bindPopup(() => this._buildPopupHtml(props));
         polygon.on('click', (e) => {
           if (AMGT4CEM_AddPointTool.isActive()) {
             L.DomEvent.stopPropagation(e);
@@ -226,10 +228,15 @@ const AMGT4CEM_MetroLayer = {
     // Les planches (PE) n'ont pas de name_fr/name_nl/niveau (champs vides
     // pour elles, voir schéma ci-dessus) : on ne les affiche pas plutôt que
     // de montrer des cellules vides dans la popup.
-    const rows = Object.entries(props)
+    let rows = Object.entries(props)
       .filter(([, value]) => value !== '' && value !== null && value !== undefined)
       .map(([key, value]) => `<tr><th>${key}</th><td>${value}</td></tr>`)
       .join('');
+    // Tunnel (tronçon) : son ou ses numéros d'interstation (les étiquettes de la couche n'ont pas d'infobulle).
+    if (props.type === 'MT') {
+      const numbers = AMGT4CEM_Interstation.numbersForTunnel(props.ogc_fid);
+      if (numbers.length) rows += `<tr><th>N° interstation</th><td>${numbers.join(', ')}</td></tr>`;
+    }
     return `<div class="amgt-popup"><table>${rows}</table></div>`;
   },
 

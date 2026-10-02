@@ -69,6 +69,10 @@ const AMGT4CEM_ScaledText = {
    *   planche, pour une référence de planche. Sans lui, le centre du texte.
    *   `def` : définition d'ancrage/orientation (voir en-tête), prioritaire
    *   sur `ref`/`rotationDeg`/`latlng` quand elle est complète.
+   *   `underline` : texte souligné (bord bas de la boîte, suit sa taille).
+   *   `leaderFrom` (L.LatLng) : ligne de repère de ce point à l'extrémité la
+   *   plus proche du soulignement, exposée en `marker._amgtLeader` (voir
+   *   _updateLeader) ; à ajouter à la carte par l'appelant.
    * @returns {L.Marker}
    */
   createMarker(latlng, text, opts) {
@@ -77,6 +81,7 @@ const AMGT4CEM_ScaledText = {
     const orig = { latlng, ref, angle: opts.rotationDeg || 0 };
     const def = opts.def && opts.def.r1 && opts.def.a1 ? opts.def : null;
     const start = self._poseOf({ orig, def }, null);
+    const underline = opts.underline ? ' amgt-scaled-text--underline' : '';
     const marker = L.marker(start.latlng, {
       // Non interactif : ce texte est purement visuel, un clic doit
       // atteindre la forme en dessous (triangle PE_info, planche PE) —
@@ -87,7 +92,7 @@ const AMGT4CEM_ScaledText = {
       keyboard: false,
       icon: L.divIcon({
         className: 'amgt-scaled-text-icon',
-        html: `<span class="amgt-scaled-text" data-ref="${start.ref}" style="color:${opts.color};${self._transform(start)}">${text}</span>`,
+        html: `<span class="amgt-scaled-text${underline}" data-ref="${start.ref}" style="color:${opts.color};${self._transform(start)}">${text}</span>`,
         iconAnchor: [0, 0],
       }),
     });
@@ -99,7 +104,16 @@ const AMGT4CEM_ScaledText = {
       orig,
       def,
       pose: start,
+      leader: null,
     };
+    // Ligne de repère (voir en-tête de _updateLeader) : créée ici, mais ajoutée à la
+    // carte par l'appelant (dans le même groupe que le marqueur, pour qu'elle
+    // s'affiche/se masque avec lui) ; sa position suit le texte à chaque mise à jour.
+    if (opts.leaderFrom) {
+      const line = L.polyline([opts.leaderFrom, opts.leaderFrom], { color: opts.color, weight: 1.5, interactive: false });
+      entry.leader = { from: opts.leaderFrom, line };
+      marker._amgtLeader = line;
+    }
     this._entries.push(entry);
     // Un marqueur peut être (dés)affiché bien après sa création (case à
     // cocher "Plans patrimoine") : se dimensionner soi-même à chaque ajout
@@ -119,6 +133,12 @@ const AMGT4CEM_ScaledText = {
     entry.def = def && def.r1 && def.a1 ? def : null;
     this._updateOne(entry);
     return entry.pose;
+  },
+
+  /** Retire un marqueur du suivi des zooms (groupe reconstruit : l'ancien ne doit plus être mis à jour). */
+  dispose(marker) {
+    const i = this._entries.findIndex((e) => e.marker === marker);
+    if (i >= 0) this._entries.splice(i, 1);
   },
 
   /** Pose actuelle { latlng, ref, angle } d'un marqueur. */
@@ -147,6 +167,38 @@ const AMGT4CEM_ScaledText = {
     entry.marker.setLatLng(entry.pose.latlng);
     span.dataset.ref = entry.pose.ref;
     span.style.transform = this._transform(entry.pose).replace(/^ transform:|;$/g, '');
+    if (entry.leader) this._updateLeader(entry, span);
+  },
+
+  /**
+   * Ligne de repère d'un texte souligné (option `leaderFrom`) : du point
+   * `leaderFrom` (ex. le centre d'un tronçon) jusqu'à l'extrémité du
+   * soulignement la plus proche, c.-à-d. celui des deux coins bas de la boîte
+   * de texte (bl, br) le plus proche à l'écran. Les coins se déduisent de la
+   * pose (point de référence + rotation) et de la taille réelle de la boîte,
+   * recalculée à chaque zoom (comme la pose elle-même).
+   */
+  _updateLeader(entry, span) {
+    const map = entry.marker._map;
+    const { latlng, ref, angle } = entry.pose;
+    const r = this.REFS[ref];
+    const w = span.offsetWidth;
+    const h = span.offsetHeight;
+    const rad = (angle * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const origin = map.latLngToLayerPoint(latlng);
+    // Même transformation que _transform(): translation du point de référence à l'origine, puis rotation horaire.
+    const corner = (cx) => {
+      const dx = (cx - r.x) * w;
+      const dy = (1 - r.y) * h;
+      return L.point(origin.x + dx * cos - dy * sin, origin.y + dx * sin + dy * cos);
+    };
+    const from = map.latLngToLayerPoint(entry.leader.from);
+    const bl = corner(0);
+    const br = corner(1);
+    const end = from.distanceTo(bl) <= from.distanceTo(br) ? bl : br;
+    entry.leader.line.setLatLngs([entry.leader.from, map.layerPointToLatLng(end)]);
   },
 
   /**

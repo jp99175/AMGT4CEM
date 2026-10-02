@@ -195,14 +195,16 @@ const AMGT4CEM_SettingsPanel = {
   },
 
   /**
-   * Lance le mode édition des étiquettes de planche : affiche la couche
-   * « Plans d'ensemble » (les étiquettes n'existent à l'écran que si elle
-   * l'est), charge le plugin plugins/pe-label-editor/ à la demande (une
+   * Lance le mode édition des étiquettes (références de planche, numéros
+   * d'interstation) : affiche les couches « Plans d'ensemble » et « Numéros
+   * interstation » (les étiquettes n'existent à l'écran que si elles le
+   * sont), charge le plugin plugins/pe-label-editor/ à la demande (une
    * seule fois), puis ouvre son panneau.
    */
   _launchLabelEditor() {
-    const layerId = 'plans-ensemble-500e';
-    if (!AMGT4CEM_PatrimoineSelectionStore.getSelection()[layerId]) AMGT4CEM_PatrimoineSelectionStore.toggle(layerId);
+    for (const layerId of ['plans-ensemble-500e', 'numero-interstation']) {
+      if (!AMGT4CEM_PatrimoineSelectionStore.getSelection()[layerId]) AMGT4CEM_PatrimoineSelectionStore.toggle(layerId);
+    }
 
     const open = () => {
       // Les étiquettes sont ajoutées à la carte de façon asynchrone (patrimoineLayer.refresh) : le plugin les cherche lui-même jusqu'à les trouver.
