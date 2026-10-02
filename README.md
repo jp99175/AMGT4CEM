@@ -428,9 +428,11 @@ rattaché à un **tronçon** (polygone `MT` de `Metro.shp`) — par défaut le
 tunnel dont le contour est le plus proche (rattachement automatique, en
 Lambert), ou celui choisi par un administrateur (voir plus bas). L'étiquette
 est un texte à **taille réelle constante** (comme les références de
-planche, `scaledText.js`), **souligné**, avec une **ligne de repère** qui
-part du **centre du tronçon** et rejoint l'**extrémité du soulignement la
-plus proche** (recalculée à chaque zoom). Texte et ligne appartiennent au
+planche, `scaledText.js`), **souligné par le même tracé que la ligne de
+repère** : un seul trait qui part du **centre du tronçon**, rejoint
+l'**extrémité du bord bas du texte la plus proche**, puis longe ce bord
+(recalculé à chaque zoom). Son **épaisseur suit la taille du texte** (4 %
+du corps, de 0,5 à 4 px) : plus fin quand on dézoome. Texte et trait appartiennent au
 même groupe : la case « Numéros interstation » les affiche/masque
 ensemble, et le curseur d'opacité de Plans patrimoine s'applique aux deux.
 **Pas d'infobulle** sur l'étiquette ni sur la ligne ; le numéro (« N°

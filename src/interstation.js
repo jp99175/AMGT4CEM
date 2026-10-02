@@ -5,8 +5,9 @@
  *
  * Deux usages :
  *  - l'étiquette : texte à taille réelle constante (scaledText.js, comme les
- *    références de planche), souligné, avec une ligne de repère qui part du
- *    centre du tronçon et rejoint l'extrémité du soulignement la plus proche.
+ *    références de planche), souligné par le MÊME tracé que la ligne de repère :
+ *    un seul trait qui part du centre du tronçon, rejoint l'extrémité du bord bas
+ *    du texte la plus proche, puis longe ce bord (épaisseur plus fine au dézoom).
  *    Les étiquettes n'ont pas d'infobulle (marqueurs non interactifs) ;
  *  - l'infobulle de l'emprise du tronçon (metroLayer.js) y ajoute son ou ses
  *    numéros (numbersForTunnel), que la couche soit affichée ou non.
@@ -192,7 +193,6 @@ const AMGT4CEM_Interstation = {
       const marker = AMGT4CEM_ScaledText.createMarker(n.latlng, n.numero, {
         color,
         heightMeters: this.STYLE.heightMeters,
-        underline: true,
         leaderFrom: AMGT4CEM_CRS.lambertToLatLng(n.tunnel.center),
         def: at ? { r1: 'center', a1: [at.lat, at.lng] } : undefined, // position enregistrée, sinon celle d'origine
       });

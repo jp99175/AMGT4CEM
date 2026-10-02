@@ -704,13 +704,12 @@ html, body {
   text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 3px #fff;
 }
 
-/* Texte souligné (numéros d'interstation, voir interstation.js) : le
-   soulignement est le bord bas de la boîte de texte, qui suit donc sa
-   taille (em) et sa rotation ; la ligne de repère rejoint l'un de ses deux
-   bouts (scaledText.js#_updateLeader). */
+/* Texte avec ligne de repère (numéros d'interstation, voir interstation.js) :
+   le soulignement n'est PAS une bordure CSS mais une partie du tracé de la
+   ligne de repère (scaledText.js#_updateLeader), qui longe le bord bas de la
+   boîte de texte ; ce padding ménage la marge entre le texte et ce trait. */
 .amgt-scaled-text--underline {
   padding: 0 0.15em 0.12em;
-  border-bottom: max(1.5px, 0.04em) solid currentColor;
 }
 
 @keyframes amgt-pulse {

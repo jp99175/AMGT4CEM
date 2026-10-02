@@ -69,10 +69,11 @@ const AMGT4CEM_ScaledText = {
    *   planche, pour une référence de planche. Sans lui, le centre du texte.
    *   `def` : définition d'ancrage/orientation (voir en-tête), prioritaire
    *   sur `ref`/`rotationDeg`/`latlng` quand elle est complète.
-   *   `underline` : texte souligné (bord bas de la boîte, suit sa taille).
    *   `leaderFrom` (L.LatLng) : ligne de repère de ce point à l'extrémité la
-   *   plus proche du soulignement, exposée en `marker._amgtLeader` (voir
-   *   _updateLeader) ; à ajouter à la carte par l'appelant.
+   *   plus proche du soulignement, PUIS le long du bord bas du texte (un seul
+   *   tracé : la ligne de repère EST le soulignement), exposée en
+   *   `marker._amgtLeader` (voir _updateLeader) ; à ajouter à la carte par
+   *   l'appelant. Son épaisseur suit la taille du texte (plus fine au dézoom).
    * @returns {L.Marker}
    */
   createMarker(latlng, text, opts) {
@@ -81,7 +82,7 @@ const AMGT4CEM_ScaledText = {
     const orig = { latlng, ref, angle: opts.rotationDeg || 0 };
     const def = opts.def && opts.def.r1 && opts.def.a1 ? opts.def : null;
     const start = self._poseOf({ orig, def }, null);
-    const underline = opts.underline ? ' amgt-scaled-text--underline' : '';
+    const underline = opts.leaderFrom ? ' amgt-scaled-text--underline' : ''; // marge sous le texte : le tracé du soulignement passe sur le bord bas de la boîte
     const marker = L.marker(start.latlng, {
       // Non interactif : ce texte est purement visuel, un clic doit
       // atteindre la forme en dessous (triangle PE_info, planche PE) —
@@ -175,18 +176,20 @@ const AMGT4CEM_ScaledText = {
     entry.marker.setLatLng(entry.pose.latlng);
     span.dataset.ref = entry.pose.ref;
     span.style.transform = this._transform(entry.pose).replace(/^ transform:|;$/g, '');
-    if (entry.leader) this._updateLeader(entry, span);
+    if (entry.leader) this._updateLeader(entry, span, px);
   },
 
   /**
-   * Ligne de repère d'un texte souligné (option `leaderFrom`) : du point
-   * `leaderFrom` (ex. le centre d'un tronçon) jusqu'à l'extrémité du
-   * soulignement la plus proche, c.-à-d. celui des deux coins bas de la boîte
-   * de texte (bl, br) le plus proche à l'écran. Les coins se déduisent de la
-   * pose (point de référence + rotation) et de la taille réelle de la boîte,
-   * recalculée à chaque zoom (comme la pose elle-même).
+   * Ligne de repère ET soulignement d'un texte (option `leaderFrom`) : UN SEUL
+   * tracé qui part du point `leaderFrom` (ex. le centre d'un tronçon), rejoint
+   * l'extrémité du bord bas de la boîte de texte la plus proche à l'écran (coin
+   * bl ou br), puis longe ce bord jusqu'à l'autre coin. Les coins se déduisent
+   * de la pose (point de référence + rotation) et de la taille réelle de la
+   * boîte, recalculée à chaque zoom (comme la pose elle-même). Épaisseur
+   * proportionnelle à la taille du texte (`px`, 4 % du corps), entre 0,5 et
+   * 4 px : plus fine quand on dézoome.
    */
-  _updateLeader(entry, span) {
+  _updateLeader(entry, span, px) {
     const map = entry.marker._map;
     const { latlng, ref, angle } = entry.pose;
     const r = this.REFS[ref];
@@ -205,8 +208,9 @@ const AMGT4CEM_ScaledText = {
     const from = map.latLngToLayerPoint(entry.leader.from);
     const bl = corner(0);
     const br = corner(1);
-    const end = from.distanceTo(bl) <= from.distanceTo(br) ? bl : br;
-    entry.leader.line.setLatLngs([entry.leader.from, map.layerPointToLatLng(end)]);
+    const [near, far] = from.distanceTo(bl) <= from.distanceTo(br) ? [bl, br] : [br, bl];
+    entry.leader.line.setLatLngs([entry.leader.from, map.layerPointToLatLng(near), map.layerPointToLatLng(far)]);
+    entry.leader.line.setStyle({ weight: Math.max(0.5, Math.min(4, px * 0.04)) });
   },
 
   /**
