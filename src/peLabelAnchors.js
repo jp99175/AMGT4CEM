@@ -1,14 +1,19 @@
 /**
  * Définitions d'ancrage/orientation des références de planche (PE_label),
- * PARTAGÉES : lues dans un fichier du dépôt (data/pe-label-anchors.json, voir
- * config.js `peLabelAnchorsUrl`) et appliquées pour tous les visiteurs, pas
+ * PARTAGÉES : lues dans un fichier du dépôt (data/fond-de-plan/etiquettes-planches.json,
+ * voir config.js `peLabelAnchorsUrl`) et appliquées pour tous les visiteurs, pas
  * propres à un navigateur.
  *
- * Format : { "version": 1, "labels": { "1000-236#0": { r1, a1: [lat, lng], r2?, a2? }, ... } }
- * — la clé est "numéro de planche#rang" (le rang distingue deux étiquettes de
- * même numéro, ex. "3000-126#1") ; la signification de r1/a1/r2/a2 est
- * décrite dans scaledText.js. Une étiquette absente du fichier garde sa
- * position et son orientation d'origine (MetroLabels.shp).
+ * Format du FICHIER : { "version": 1, "crs": "EPSG:31370", "labels": { "1000-236#0": { r1, a1: [x, y], r2?, a2? } } }
+ * — Lambert 72 en mètres (a1/a2, au mm près) ; la clé est "numéro de
+ * planche#rang" (le rang distingue deux étiquettes de même numéro, ex.
+ * "3000-126#1") ; la signification de r1/a1/r2/a2 est décrite dans scaledText.js.
+ * Une étiquette absente du fichier garde sa position et son orientation
+ * d'origine (MetroLabels.shp).
+ *
+ * Format INTERNE (tout le reste de l'application, scaledText.js, plugin) : a1/a2 en
+ * [lat, lng] (WGS84, l'affichage Leaflet) — la conversion se fait ici, à la lecture
+ * (_fromFile) et à l'enregistrement (_toFile), et nulle part ailleurs.
  *
  * Enregistrement (réservé aux administrateurs, voir le plugin
  * plugins/pe-label-editor/) : un navigateur ne peut pas écrire dans le dépôt
@@ -27,12 +32,40 @@ const AMGT4CEM_PeLabelAnchors = {
       const response = await fetch(AMGT4CEM_CONFIG.peLabelAnchorsUrl, { cache: 'no-cache' });
       if (response.ok) {
         const data = await response.json();
-        this._labels = (data && data.labels) || {};
+        this._labels = this._fromFile((data && data.labels) || {});
       }
     } catch (err) {
       console.warn('[AMGT4CEM] Définitions d\'ancrage des étiquettes de planche illisibles, positions d\'origine utilisées :', err);
     }
     return this._labels;
+  },
+
+  /** Fichier (a1/a2 en Lambert [x, y]) -> interne (a1/a2 en [lat, lng]). Tolère un ancien fichier déjà en [lat, lng]. */
+  _fromFile(labels) {
+    const toLatLng = (p) => {
+      if (!Array.isArray(p) || Math.abs(p[0]) < 1000) return p; // déjà [lat, lng]
+      const ll = AMGT4CEM_CRS.lambertToLatLng(p);
+      return [ll.lat, ll.lng];
+    };
+    const out = {};
+    for (const [key, d] of Object.entries(labels)) {
+      out[key] = { ...d, a1: toLatLng(d.a1), ...(d.a2 ? { a2: toLatLng(d.a2) } : {}) };
+    }
+    return out;
+  },
+
+  /** Interne -> fichier : a1/a2 en Lambert [x, y] au mm, clés triées (un enregistrement sans changement ne crée pas de commit). */
+  _toFile(labels) {
+    const toLambert = (p) => {
+      const { x, y } = AMGT4CEM_CRS.latLngToLambert(L.latLng(p[0], p[1]));
+      return [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000];
+    };
+    const out = {};
+    for (const key of Object.keys(labels).sort()) {
+      const d = labels[key];
+      out[key] = { r1: d.r1, a1: toLambert(d.a1), ...(d.r2 && d.a2 ? { r2: d.r2, a2: toLambert(d.a2) } : {}) };
+    }
+    return out;
   },
 
   get(key) {
@@ -89,12 +122,12 @@ const AMGT4CEM_PeLabelAnchors = {
 
   /**
    * Enregistre l'ensemble des définitions dans le dépôt, via le relais (adresse : paramètres généraux).
-   * @param {Object} labels - { clé: { r1, a1, r2?, a2? } } (étiquettes SANS définition : absentes)
+   * @param {Object} labels - { clé: { r1, a1, r2?, a2? } } au format interne (a1/a2 en [lat, lng]) ; étiquettes SANS définition : absentes
    * @param {string} adminCode - code administrateur attendu par le relais
    * @returns {Promise<void>} rejetée avec un Error au message lisible en cas d'échec
    */
   async save(labels, adminCode) {
-    await this.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, 'anchors', { version: 1, labels }, adminCode);
+    await this.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, 'shared/fond-de-plan/etiquettes-planches', { version: 1, crs: 'EPSG:31370', labels: this._toFile(labels) }, adminCode);
     this._labels = JSON.parse(JSON.stringify(labels));
   },
 

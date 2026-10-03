@@ -15,8 +15,8 @@
  * RATTACHEMENT. Par défaut : le tunnel dont le contour est le plus proche du
  * point du numéro (rattachement automatique). Un administrateur peut déplacer
  * l'étiquette et choisir le tronçon (plugin pe-label-editor, mode « tronçons ») :
- * ce choix — position du texte (Lambert 72) + tronçon (ogc_fid) — est
- * enregistré dans data/interstation-labels.json, clé « numéro#rang », et
+ * ce choix — position du texte (Lambert 72) + tronçon (identifiant stable `id_objet`) — est
+ * enregistré dans data/fond-de-plan/etiquettes-troncons.json, clé « numéro#rang », et
  * remplace le rattachement automatique pour cette étiquette.
  *
  * AXE ET CENTRE DU TRONÇON. Le polygone d'un tunnel est une bande allongée ;
@@ -97,7 +97,7 @@ const AMGT4CEM_Interstation = {
     this._tunnels = rings('MT').map(({ props, ring }) => {
       const commons = this._commonSegments(ring, stations);
       const axis = this._axisOf(ring, commons);
-      return { id: String(props.ogc_fid), name: props.name_fr || props.name_nl || '', ring, axis, center: this._midpointAlong(axis), commons };
+      return { id: this.idOf(props), name: props.name_fr || props.name_nl || '', ring, axis, center: this._midpointAlong(axis), commons };
     });
     this._tryLink();
   },
@@ -129,7 +129,17 @@ const AMGT4CEM_Interstation = {
     return this._tunnels || [];
   },
 
-  /** Numéros d'interstation d'un tronçon (id = ogc_fid de Metro.shp), pour son infobulle. */
+  /**
+   * Identifiant STABLE d'un tunnel : champ `id_objet` de Metro.shp (ex. « TRO-HORTA-ALBERT-01 »), fixé une
+   * fois pour toutes — contrairement à `ogc_fid`, simple numéro de ligne que chaque export peut changer. Un
+   * objet sans `id_objet` (ajouté sous AutoCAD sans l'avoir renseigné) retombe sur « fid:<ogc_fid> » : utilisable,
+   * mais à remplacer par un vrai identifiant.
+   */
+  idOf(props) {
+    return props.id_objet ? String(props.id_objet) : `fid:${props.ogc_fid}`;
+  },
+
+  /** Numéros d'interstation d'un tronçon (id : voir idOf), pour son infobulle. */
   numbersForTunnel(id) {
     return this._numbers.filter((n) => n.tunnel && n.tunnel.id === String(id)).map((n) => n.numero);
   },
@@ -152,12 +162,13 @@ const AMGT4CEM_Interstation = {
   },
 
   /**
-   * Enregistre l'ensemble des définitions dans le dépôt, via le relais (route « interstation »).
-   * @param {Object} labels - { "numéro#rang": { x, y, tunnel } } (étiquettes SANS définition : absentes)
+   * Enregistre l'ensemble des définitions dans le dépôt, via le relais (data/fond-de-plan/etiquettes-troncons.json).
+   * @param {Object} labels - { "numéro#rang": { x, y, tunnel } }, x/y en Lambert 72, tunnel = id_objet (étiquettes SANS définition : absentes)
    * @param {string} adminCode - code administrateur attendu par le relais
    */
   async saveOverrides(labels, adminCode) {
-    await AMGT4CEM_PeLabelAnchors.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, 'interstation', { version: 1, labels }, adminCode);
+    const sorted = Object.fromEntries(Object.keys(labels).sort().map((k) => [k, labels[k]])); // clés triées : pas de commit sans changement réel
+    await AMGT4CEM_PeLabelAnchors.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, 'shared/fond-de-plan/etiquettes-troncons', { version: 1, crs: 'EPSG:31370', labels: sorted }, adminCode);
     this._overrides = JSON.parse(JSON.stringify(labels));
   },
 

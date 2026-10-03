@@ -42,16 +42,16 @@ const AMGT4CEM_CONFIG = {
   metroInfoShpBaseUrl: './Metro_export_SHP/MetroInfo',
   metroLabelsShpBaseUrl: './Metro_export_SHP/MetroLabels',
 
-  // Ancrage/orientation des références de planche, partagés entre visiteurs
-  // (voir src/peLabelAnchors.js). Le fichier est lu par tous ; son
-  // enregistrement (administrateurs, plugin plugins/pe-label-editor/) passe
-  // par un relais serveur à déployer une fois (relay/README.md) dont
-  // l'adresse se renseigne ici — vide : enregistrement non configuré.
-  peLabelAnchorsUrl: './data/pe-label-anchors.json',
-  // Position et tronçon de rattachement des étiquettes de numéro d'interstation
-  // déplacées par un administrateur (Lambert 72, voir src/interstation.js) ;
-  // enregistrées par le même relais (route « interstation »).
-  interstationLabelsUrl: './data/interstation-labels.json',
+  // Données du FOND DE PLAN écrites par l'application (tout ce qui n'est pas la
+  // géométrie des planches/tunnels/stations, seule éditable sous AutoCAD) : dossier
+  // data/fond-de-plan/, un fichier JSON par type d'élément, en Lambert 72, partagés
+  // entre visiteurs. Lus par tous ; enregistrés (administrateurs, plugin
+  // plugins/pe-label-editor/) par un relais serveur à déployer une fois
+  // (relay/README.md), route PUT /shared/fond-de-plan/<fichier>.
+  // Ancrage/orientation des références de planche (src/peLabelAnchors.js) :
+  peLabelAnchorsUrl: './data/fond-de-plan/etiquettes-planches.json',
+  // Position et tronçon de rattachement des numéros d'interstation (src/interstation.js) :
+  interstationLabelsUrl: './data/fond-de-plan/etiquettes-troncons.json',
   // Adresse du relais d'enregistrement. Vide par défaut : elle se renseigne
   // dans ⚙ Paramètres > Serveur, qui l'enregistre sur le serveur avec les
   // autres paramètres généraux (data/app-settings.json) et prime alors sur

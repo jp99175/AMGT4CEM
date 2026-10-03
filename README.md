@@ -458,8 +458,9 @@ survol d'un tunnel allume son axe, un clic (ou un appui) le choisit. L'étape
 en cours s'affiche en haut à gauche, sous le menu carte (Retour, Suivant,
 Annuler, Terminer) ; le suivi et l'enregistrement sont dans le panneau du bouton
 « ✥ Mode édition » (masqué par défaut). Position (Lambert 72) et tronçon
-(`ogc_fid`) sont enregistrés dans `data/interstation-labels.json` (clé
-`numéro#rang`), via la route `/interstation` du relais (à redéployer, voir
+(identifiant stable `id_objet`, voir ci-dessous) sont enregistrés dans
+`data/fond-de-plan/etiquettes-troncons.json` (clé `numéro#rang`), via la route
+`/shared/fond-de-plan/etiquettes-troncons` du relais (à redéployer une fois, voir
 `relay/README.md`), et remplacent le rattachement automatique pour cette étiquette. Limites du
 rattachement automatique : 3 numéros sur 86 à moins de 15 m d'écart entre
 les deux premiers tunnels, 4 à plus de 140 m de tout tunnel (243, 243-3,
@@ -498,7 +499,30 @@ dérivé comme fichier de secours.
     fusionnées ici depuis l'ancien `data/patrimoine-plans-ensemble-500e.json`
     — voir section 4bis.
 - Attributs : `ogc_fid`, `name_fr`, `name_nl`, `niveau`, `type`, `sheet_ref`
-  (numéro de planche, uniquement rempli pour `type = "PE"`).
+  (numéro de planche, uniquement rempli pour `type = "PE"`), et
+  `id_objet` : **identifiant stable** des stations (`STA-ALBERT`) et des tunnels
+  (`TRO-HORTA-ALBERT-01`, suffixe numérique car plusieurs tunnels portent le même
+  nom), vide pour les planches (déjà identifiées par `sheet_ref`).
+  `ogc_fid`, simple numéro de ligne, peut changer à chaque export Civil 3D :
+  **ne jamais s'en servir comme lien**. `id_objet` est écrit une fois pour
+  toutes dans le .dbf ; un objet créé sous AutoCAD doit recevoir le sien
+  (sinon l'application retombe sur `fid:<ogc_fid>`, à remplacer). C'est cet
+  identifiant que les fichiers de `data/fond-de-plan/` (et plus tard les
+  données métier : amiante, chantiers, signalements) utilisent pour désigner
+  un tunnel ou une station.
+
+**Organisation des données (fond de plan).** Deux couches : ce qui s'édite sous
+AutoCAD (géométries et attributs des planches, tunnels, stations : Shapefile) ;
+ce que l'application écrit, en JSON Lambert 72 (`"crs": "EPSG:31370"`), dans
+`data/fond-de-plan/`, un fichier par type d'élément :
+`etiquettes-planches.json` (ancrage/orientation des références de planche,
+points d'ancrage en position absolue), `etiquettes-troncons.json` (position du
+texte et tronçon de rattachement des numéros d'interstation) ;
+`etiquettes-stations.json` viendra. L'axe du tunnel, le soulignement et la
+ligne de repère ne sont **pas** stockés : ils se recalculent à l'affichage
+(l'axe pourra être exporté plus tard dans un Shapefile). Un seul relais
+d'enregistrement pour tout (`PUT /shared/<dossier>/<fichier>`), un seul code
+administrateur : voir `relay/README.md`.
 - Emprise (bbox) : X ∈ [142502.65, 156823.81], Y ∈ [166628.36, 176534.41],
   cohérente avec l'étendue réelle de la Région bruxelloise une fois
   reprojetée en WGS84 (vérifié) — légèrement plus large que l'emprise du
@@ -639,7 +663,7 @@ segments que délimitent les sommets ET les intersections (petite pastille
 ronde claire) ; un point n'est ajouté que si aucun autre n'est à moins de
 5 m. La définition (`{ r1, a1, r2, a2 }`) est calculée à l'affichage par
 `AMGT4CEM_ScaledText` (taille de boîte mesurée dans le navigateur) et
-**enregistrée dans l'application** : `data/pe-label-anchors.json`, lu pour
+**enregistrée dans l'application** : `data/fond-de-plan/etiquettes-planches.json`, lu pour
 tous les visiteurs (voir section 6 et `relay/README.md`).
 
 **Noms de station et numéros d'interstation** (couches "Plans patrimoine") :
@@ -810,7 +834,7 @@ navigateur) est la position/orientation des références de planche
 (`PE_label`), modifiées par un administrateur. Elle utilise la première
 piste ci-dessus (petit relais serveur) :
 
-- le fichier `data/pe-label-anchors.json` (dans le dépôt) est lu par
+- le fichier `data/fond-de-plan/etiquettes-planches.json` (dans le dépôt) est lu par
   l'application pour tous les visiteurs (`src/peLabelAnchors.js`, appliqué
   par `src/metroLayer.js` / `src/scaledText.js`) ; absent ou vide, les
   étiquettes gardent leur position d'origine (`MetroLabels.shp`) ;

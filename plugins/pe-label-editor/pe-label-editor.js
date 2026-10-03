@@ -34,11 +34,12 @@
  *      montré (violet). La ligne de repère rejoint le milieu de l'axe du tronçon.
  *
  * ENREGISTREMENT PARTAGÉ : les définitions des planches vivent dans
- * data/pe-label-anchors.json, celles des tronçons dans
- * data/interstation-labels.json (dépôt), lus par l'application pour tous les
- * visiteurs (peLabelAnchors.js, interstation.js). « Enregistrer » envoie les deux
- * (celui qui a des modifications) au relais serveur (relay/, routes /anchors et
- * /interstation) qui écrit le fichier dans le dépôt ; il faut le code
+ * data/fond-de-plan/etiquettes-planches.json, celles des tronçons dans
+ * data/fond-de-plan/etiquettes-troncons.json (dépôt, Lambert 72), lus par
+ * l'application pour tous les visiteurs (peLabelAnchors.js, interstation.js).
+ * « Enregistrer » envoie les deux (celui qui a des modifications) au relais
+ * serveur (relay/, route /shared/fond-de-plan/<fichier>) qui écrit le fichier
+ * dans le dépôt ; il faut le code
  * administrateur du relais. Tant que le relais n'est pas déployé (config.js,
  * peLabelAnchorsRelayUrl), l'enregistrement est impossible : l'export JSON
  * sert de solution de repli manuelle. Rien n'est gardé dans localStorage.
@@ -95,7 +96,8 @@
     return `rgb(${[r1, g1, b1].map((v) => Math.round((v + mm) * 255)).join(', ')})`;
   }
 
-  const sameLatLng = (v, c) => !!v && Math.abs(v[0] - c.lat) < 1e-9 && Math.abs(v[1] - c.lng) < 1e-9;
+  // Tolérance ~1 cm : un point enregistré en Lambert (au mm) puis relu ne retombe pas exactement sur le point remarquable d'origine.
+  const sameLatLng = (v, c) => !!v && Math.abs(v[0] - c.lat) < 1e-7 && Math.abs(v[1] - c.lng) < 1e-7;
   const clone = (v) => (v ? JSON.parse(JSON.stringify(v)) : v);
 
   const PeLabelEditor = {
@@ -970,7 +972,7 @@
 
     /**
      * Enregistre dans l'application TOUTES les modifications : celles des planches
-     * (data/pe-label-anchors.json) et celles des tronçons (data/interstation-labels.json),
+     * (data/fond-de-plan/etiquettes-planches.json) et celles des tronçons (…/etiquettes-troncons.json),
      * chacune seulement si elle a changé. `report(msg)` affiche un message à l'endroit voulu.
      * Retourne true si tout ce qui devait l'être a été enregistré.
      */

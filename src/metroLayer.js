@@ -58,7 +58,7 @@
  *   et reste collé à son cadre. Chaque référence tombe dans le contour de
  *   sa propre planche, sans correction. Un administrateur peut redéfinir
  *   l'ancrage et l'orientation d'une étiquette (plugin pe-label-editor) : la
- *   définition partagée de data/pe-label-anchors.json (peLabelAnchors.js),
+ *   définition partagée de data/fond-de-plan/etiquettes-planches.json (peLabelAnchors.js),
  *   cherchée sous la clé "numéro#rang" (`marker._amgtKey`), remplace alors la
  *   position d'origine — appliquée par scaledText.js.
  * Les deux sont non interactifs : un clic doit atteindre la forme en
@@ -205,7 +205,7 @@ const AMGT4CEM_MetroLayer = {
           }
         });
       }
-      if (type === 'MT') polygon._amgtTunnelId = String(props.ogc_fid); // voir interstation.js / plugin pe-label-editor
+      if (type === 'MT') polygon._amgtTunnelId = AMGT4CEM_Interstation.idOf(props); // voir interstation.js / plugin pe-label-editor
       polygon.addTo(layersByType[type]);
       bounds.extend(polygon.getBounds());
 
@@ -235,7 +235,7 @@ const AMGT4CEM_MetroLayer = {
       .join('');
     // Tunnel (tronçon) : son ou ses numéros d'interstation (les étiquettes de la couche n'ont pas d'infobulle).
     if (props.type === 'MT') {
-      const numbers = AMGT4CEM_Interstation.numbersForTunnel(props.ogc_fid);
+      const numbers = AMGT4CEM_Interstation.numbersForTunnel(AMGT4CEM_Interstation.idOf(props));
       if (numbers.length) rows += `<tr><th>N° interstation</th><td>${numbers.join(', ')}</td></tr>`;
     }
     return `<div class="amgt-popup"><table>${rows}</table></div>`;

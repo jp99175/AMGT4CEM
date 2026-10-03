@@ -3,29 +3,29 @@
 Permet à l'application d'**enregistrer dans le dépôt** les données modifiées
 par un administrateur :
 
-- `PUT /anchors` : définitions d'ancrage/orientation des références de planche
-  (`data/pe-label-anchors.json`), modifiées avec le plugin
-  `plugins/pe-label-editor/` ;
-- `PUT /interstation` : position et tronçon de rattachement des étiquettes
-  de numéro d'interstation (`data/interstation-labels.json`), modifiées avec
-  le même plugin, en mode « tronçons » ;
+- `PUT /shared/<dossier>/<fichier>` : toute donnée écrite par l'application,
+  dans `data/<dossier>/<fichier>.json` — aujourd'hui le dossier
+  **`fond-de-plan`** (`etiquettes-planches` : ancrage/orientation des
+  références de planche ; `etiquettes-troncons` : position et tronçon de
+  rattachement des numéros d'interstation), modifiés avec le plugin
+  `plugins/pe-label-editor/` ; plus tard `amiante`, `chantiers`...
 - `PUT /settings` : paramètres généraux de l'application — adresses des
   services externes et adresse du relais (`data/app-settings.json`),
   modifiés dans ⚙ Paramètres.
 
-**Une seule autorisation.** Le code administrateur (`ADMIN_TOKEN`) ouvre toutes
-les routes : elles ne sont pas des droits distincts, seulement une liste de
-fichiers connus avec leur contrôle de format. Pour ne plus avoir à redéployer
-le relais à chaque nouveau jeu de données, `PUT /shared/<nom>` écrit
-n'importe quelle donnée de l'application dans `data/shared/<nom>.json`
-(`<nom>` : minuscules, chiffres, tirets ; corps `{ "version": 1, ... }` au
-format libre, 200 Ko maximum) — il ne peut jamais écrire sur un fichier connu
-(`anchors`, `interstation`, `settings`), qui gardent leur contrôle strict.
+**Une seule autorisation.** Le code administrateur (`ADMIN_TOKEN`) ouvre
+toutes les routes : elles ne sont pas des droits distincts, ce sont des
+chemins de fichiers. Un nouveau dossier ou un nouveau fichier ne demande donc
+**ni modification ni redéploiement** du relais (seul `/settings`, au contrôle
+strict, est une route à part). Si, plus tard, des utilisateurs non
+administrateurs doivent écrire dans certains dossiers (signalements...), on
+pourra attribuer un code distinct par dossier sans changer ce principe.
 
-**Après une mise à jour de `worker.js`** (ex. ajout de la route
-`/interstation`), le relais doit être **redéployé** (`wrangler deploy`, ou
-coller le nouveau `worker.js` dans le tableau de bord Cloudflare) : tant que ce
-n'est pas fait, l'enregistrement correspondant répond « Route inconnue ».
+**Après une mise à jour de `worker.js`** (ex. passage aux routes
+`/shared/<dossier>/<fichier>`), le relais doit être **redéployé** (`wrangler
+deploy`, ou coller le nouveau `worker.js` dans le tableau de bord Cloudflare) :
+tant que ce n'est pas fait, l'enregistrement correspondant répond « Route
+inconnue ». C'est la **dernière** fois nécessaire pour de nouveaux jeux de données.
 
 Pourquoi un relais : un navigateur ne peut pas écrire directement dans le
 dépôt (l'API GitHub refuse les requêtes préparatoires CORS d'un navigateur,
@@ -60,7 +60,7 @@ Prérequis : un compte Cloudflare (gratuit), Node.js installé.
 4. Dans l'application : ⚙ Paramètres > onglet **Serveur** : coller l'adresse
    du relais et le code administrateur de l'étape 3, puis **Tester**
    (« Relais joignable, code administrateur accepté ») et **Enregistrer**.
-   L'adresse (adresse **sans** `/anchors`, `/interstation` ni `/settings` : l'application
+   L'adresse (adresse **sans** `/shared/…` ni `/settings` : l'application
    ajoute la route) est alors écrite par le relais dans
    `data/app-settings.json` : c'est un paramètre général, lu par tous les
    visiteurs après le redéploiement de GitHub Pages. Le code n'est gardé que
@@ -73,27 +73,24 @@ Prérequis : un compte Cloudflare (gratuit), Node.js installé.
 - `GET` avec le code administrateur : simple contrôle de connexion (bouton **Tester** de ⚙ Paramètres > Serveur), n'écrit rien.
 - Pour écrire, accepte uniquement `PUT` avec `Authorization: Bearer <code administrateur>`
   (comparaison à temps constant) depuis une origine autorisée.
-- Valide le format : `{ "version": 1, "labels": { "1000-236#0": { r1, a1,
-  r2?, a2? } } }` — points de référence parmi les 8 connus, coordonnées dans
-  l'emprise de la Belgique, aucun champ en trop, 200 Ko maximum.
-- `PUT /interstation` : `{ "version": 1, "labels": { "648#0": { x, y, tunnel } } }`
-  — `x`, `y` : position du texte en Lambert 72 (mètres), `tunnel` : `ogc_fid`
-  du tronçon (chiffres) ; aucun champ en trop.
-- `PUT /shared/<nom>` : `{ "version": 1, ... }` — format libre, écrit sous
-  `data/shared/<nom>.json`.
+- `PUT /shared/<dossier>/<fichier>` : `{ "version": 1, "crs": "EPSG:31370", ... }`
+  — format libre ; contrôles communs : `crs`, s'il est donné, vaut
+  `EPSG:31370` ; dans un jeu `labels`, clés de la forme `numéro#rang` et toute
+  coordonnée (`x`, `y`, `a1`, `a2`) en Lambert 72 belge (mètres). `<dossier>`,
+  `<fichier>` : minuscules, chiffres, tirets.
 - `PUT /settings` : `{ "version": 1, "settings": { urbisUrl?, urbisLayers?,
   brucielHistoriqueUrl?, brucielRecentUrl?, geocoderUrl?, relayUrl? } }` —
   clés connues seulement, adresses en `https://` (ou `http://localhost`).
-- N'écrit que `data/pe-label-anchors.json`, `data/interstation-labels.json`, `data/app-settings.json` et `data/shared/*.json` (contenu trié : un enregistrement
+- N'écrit que `data/<dossier>/<fichier>.json` et `data/app-settings.json` (contenu : un enregistrement
   sans changement réel ne crée aucun commit).
 - Le jeton GitHub n'est jamais renvoyé au navigateur.
 
-Chaque enregistrement est un commit du dépôt (« Étiquettes de planche : mise à
-jour des ancrages (via l'application) ») : l'historique permet de revenir en
+Chaque enregistrement est un commit du dépôt (« Données « fond-de-plan/etiquettes-planches » :
+mise à jour (via l'application) ») : l'historique permet de revenir en
 arrière.
 
 ## Tester sans déployer
 
 `worker.js` n'utilise que `fetch`/`Request`/`Response` standard : il se teste
-sous Node 18+ en important `validate` et le gestionnaire par défaut, avec un
+sous Node 18+ en important `validateShared` et le gestionnaire par défaut, avec un
 faux `fetch` à la place de l'API GitHub.

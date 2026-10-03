@@ -132,17 +132,18 @@ sélectionné »), **second clic** (début de la modification, deux étapes) :
 **✓ Terminer** garde le résultat (à enregistrer), **Annuler** l'abandonne,
 **↺** remet la position et le tronçon d'origine. Les étiquettes modifiées
 s'affichent dans la couleur opposée, comme les références de planche.
-Enregistrement : `data/interstation-labels.json` (`{ "version": 1, "labels":
-{ "648#0": { x, y, tunnel } } }` — position en Lambert 72, `ogc_fid` du
-tunnel), route `/interstation` du relais.
+Enregistrement : `data/fond-de-plan/etiquettes-troncons.json` (`{ "version": 1, "crs": "EPSG:31370", "labels":
+{ "648#0": { x, y, tunnel } } }` — position en Lambert 72, `id_objet` stable
+du tunnel), route `/shared/fond-de-plan/etiquettes-troncons` du relais.
 
 ## Enregistrement dans l'application
 
 Les modifications sont **enregistrées dans l'application**, partagées par
 tous les visiteurs — pas dans le navigateur (rien n'est gardé dans
 `localStorage`). Les références de planche vivent dans
-`data/pe-label-anchors.json`, les numéros d'interstation dans
-`data/interstation-labels.json` (dépôt), lus par l'application elle-même
+`data/fond-de-plan/etiquettes-planches.json` (ancrages en Lambert 72), les
+numéros d'interstation dans `data/fond-de-plan/etiquettes-troncons.json`
+(dépôt), lus par l'application elle-même
 (`src/peLabelAnchors.js`, `src/interstation.js`) : un visiteur sans le plugin
 voit les étiquettes à leur nouvelle place.
 
