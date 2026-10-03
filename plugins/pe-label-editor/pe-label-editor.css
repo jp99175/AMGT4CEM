@@ -283,3 +283,95 @@
   outline: 2px dashed #8e24aa;
   outline-offset: 4px;
 }
+
+/* Texte modifiable : surbrillance au survol (mode édition). */
+.amgt-scaled-text.amgt-ple-editable:hover {
+  background: rgba(255, 214, 0, 0.5);
+  border-radius: 3px;
+}
+
+/* Modifications non enregistrées : le bouton « ✥ Mode édition » le signale. */
+.amgt-ple-toggle-btn.amgt-ple-dirty {
+  border-color: #d32f2f;
+  box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.55);
+}
+
+.amgt-ple-panel .amgt-ple-help {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #444;
+}
+
+/* Étape en cours : en haut à gauche, sous le menu carte (barre d'outils de l'appli : top 10 px). */
+.amgt-ple-bar {
+  position: fixed;
+  top: 56px;
+  left: 10px;
+  z-index: 999;
+  width: 340px;
+  max-width: calc(100vw - 20px);
+  padding: 8px 10px;
+  font: 12px/1.35 sans-serif;
+  background: #fff;
+  border: 1px solid #999;
+  border-radius: 6px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+
+.amgt-ple-bar[hidden] {
+  display: none;
+}
+
+.amgt-ple-bar-title {
+  margin-bottom: 2px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.amgt-ple-bar-hint {
+  margin-bottom: 6px;
+  color: #444;
+}
+
+.amgt-ple-bar-flash {
+  margin-bottom: 6px;
+  padding: 3px 6px;
+  color: #8a1f11;
+  background: #fde8e4;
+  border-radius: 4px;
+}
+
+.amgt-ple-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.amgt-ple-bar-actions button {
+  padding: 5px 8px;
+  font: 12px/1.2 sans-serif;
+  background: #f2f2f2;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.amgt-ple-bar-actions button:hover {
+  background: #e6e6e6;
+}
+
+.amgt-ple-bar-actions button[hidden] {
+  display: none;
+}
+
+.amgt-ple-bar-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.amgt-ple-bar-actions button.amgt-ple-primary {
+  color: #fff;
+  background: #ff7f00;
+  border-color: #cc6600;
+}

@@ -1,18 +1,24 @@
 # Plugin : éditeur d'étiquettes (références de planche, numéros d'interstation)
 
-Deux modes d'édition **séparés**, chacun avec son panneau, ses compteurs et
-son enregistrement :
+**Un seul mode édition** pour deux types d'étiquettes :
 
-- **mode planches** : placer et orienter chaque référence de planche (ex.
-  « 1000-236 ») par rapport au cadre de sa planche, en choisissant des points
-  précis plutôt qu'en glissant au jugé (procédure en 4 choix ci-dessous) ;
-- **mode tronçons** : placer chaque numéro d'interstation (couche « Numéros
-  interstation », texte souligné relié au centre de son tronçon) et choisir le
-  tronçon auquel il se raccroche (voir « Mode tronçons »).
+- les **références de planche** (ex. « 1000-236 ») : placer et orienter chacune
+  par rapport au cadre de sa planche, en choisissant des points précis plutôt
+  qu'en glissant au jugé (procédure en 4 choix ci-dessous) ;
+- les **numéros d'interstation** (couche « Numéros interstation », texte
+  souligné relié au centre de son tronçon) : déplacer le texte et choisir le
+  tronçon auquel il se raccroche (voir « Numéros d'interstation »).
 
-Seules les étiquettes du mode courant sont cliquables. Les modifications non
-enregistrées de l'autre mode sont conservées tant que la page n'est pas
-rechargée.
+**Geste commun** : au **survol**, l'étiquette modifiable est mise en
+**surbrillance** ; un **premier clic** la **sélectionne**, un **second clic**
+lance sa **modification**. L'**étape en cours** s'affiche en haut à gauche de
+la page, sous le menu carte, avec ses boutons **◀ Retour**, **Suivant ▶**,
+**↺** (position d'origine), **Annuler** (la modification en cours) et
+**✓ Terminer**. Le bouton **✥ Mode édition** (en bas à droite) affiche ou
+masque, à chaque clic, le **panneau de suivi** : aide, compteurs de
+modifications non enregistrées, **Enregistrer tout**, **Exporter/Importer
+JSON**, **Tout réinitialiser**, **Quitter l'édition**. Le bouton prend un
+contour rouge tant qu'il reste des modifications non enregistrées.
 
 Le plugin lui-même vit dans ce dossier. L'affichage des définitions
 enregistrées (ancrage, orientation) est fait par l'application
@@ -22,41 +28,37 @@ plugin et le relais.
 
 **Réservé aux administrateurs (à terme).** La modification n'est destinée
 qu'aux administrateurs, en mode « édition » : ce plugin n'est chargé que par
-sa propre page de lancement, et `isAdmin()` (début de `pe-label-editor.js`)
-est le point de branchement prévu pour le contrôle d'accès réel — il masque
-la bulle et l'icône quand il renvoie `false`. Il renvoie `true` pour
-l'instant.
+sa propre page de lancement ou à la demande depuis les paramètres, et
+`isAdmin()` (début de `pe-label-editor.js`) est le point de branchement prévu
+pour le contrôle d'accès réel — il masque les commandes quand il renvoie
+`false`. Il renvoie `true` pour l'instant.
 
 ## Utilisation
 
 **Infobulles désactivées** : tant que le plugin est chargé (mode édition), les
 infobulles de l'application (planches, stations, points, UrbIS Topo) ne
-s'ouvrent plus, pour ne pas gêner le choix des points. Seule reste la bulle
-du plugin (« Planche … » + icône déplacer). Elles reviennent à la sortie
-(**Quitter l'édition**).
+s'ouvrent plus, pour ne pas gêner le choix des points. Elles reviennent à la
+sortie (**Quitter l'édition**).
 
-**Depuis l'application** : ⚙ Paramètres > onglet **Fonds de plan** > **Mode
-édition des étiquettes de planche** ou **Mode édition des étiquettes de
-tronçon**. Cela affiche la couche concernée (« Plans d'ensemble » ou « Numéros
-interstation »), charge ce plugin à la demande (une seule fois) et ouvre le
-panneau d'administration du mode ; **Quitter l'édition** (dans ce panneau) recharge la
+**Depuis l'application** : ⚙ Paramètres > onglet **Fonds de plan** > **✥ Mode
+édition**. Cela affiche les couches « Plans d'ensemble » et « Numéros
+interstation », charge ce plugin à la demande (une seule fois) et ouvre le
+panneau de suivi (l'aide) ; **Quitter l'édition** (dans ce panneau) recharge la
 page et revient au mode normal. La couleur des étiquettes repositionnées
 (ci-dessous) n'apparaît que dans ce mode.
 
 Alternative (développement) : ouvrir `plugins/pe-label-editor/index.html` au
 lieu de `index.html` (la page charge l'appli telle quelle et y ajoute ce
-plugin à la fin) ; `?mode=ist` y ouvre le mode tronçons (planches par
-défaut). Dans les deux cas le site doit être servi en http(s).
+plugin à la fin). Dans les deux cas le site doit être servi en http(s).
 
-## Mode planches
+## Références de planche
 
 1. Afficher la couche **Plans d'ensemble (1/500e)** (menu ☰ Carte → Plans
    patrimoine).
-2. **Cliquer dans le texte** d'une référence de planche : une bulle d'info
-   affiche « Planche 1000-236 » avec l'icône **déplacer** (quatre flèches).
-3. Cliquer l'icône : la modification de CETTE étiquette commence, en
-   quatre choix (un panneau les liste, on peut revenir sur n'importe
-   lequel) :
+2. **Survoler** le texte d'une référence (il s'illumine), **cliquer** pour la
+   sélectionner (« Planche 1000-236 — sélectionné » en haut à gauche), puis
+   **cliquer à nouveau** : la modification de CETTE étiquette commence, en
+   quatre étapes (la barre indique l'étape en cours et sa consigne) :
    1. **Point de référence du texte** : l'un des **8 points** de sa boîte,
       affichés sur le texte — 4 coins et 4 milieux de bord.
    2. **Point d'ancrage sur la planche** : un point remarquable du cadre,
@@ -80,15 +82,15 @@ défaut). Dans les deux cas le site doit être servi en http(s).
    **alignés** par la **rotation la moins grande** de la boîte de texte
    (valeur absolue minimale depuis l'horizontale : le texte reste lisible,
    jamais à l'envers). Un trait pointillé bleu montre la droite d'alignement.
-4. Contrôles du panneau d'une étiquette :
-   - **Retour** : annule le positionnement du dernier point choisi (et
-     revient à son étape) ; inactif tant qu'aucun point n'est choisi ;
-   - **Appliquer** : garde le positionnement et termine (il faut au moins
-     les points 1 et 2) ; le panneau d'administration s'ouvre, avec le
-     nombre de modifications non enregistrées et le bouton **Enregistrer
-     dans l'application** ;
-   - **Annuler** : abandonne, aucun changement ;
-   - **Réinitialiser l'étiquette** : remet la position d'origine (PDF).
+3. Boutons de la barre d'étape :
+   - **◀ Retour** : annule le positionnement du dernier point choisi (et
+     revient à son étape) ; sans point choisi, revient à l'étape précédente ;
+   - **Suivant ▶** : étape suivante (les points 1 et 2 sont indispensables,
+     3 et 4 facultatifs) ;
+   - **↺** : remet la position d'origine (PDF) de cette étiquette ;
+   - **Annuler** : abandonne la modification en cours, aucun changement ;
+   - **✓ Terminer** : garde le positionnement (il faut au moins les points 1
+     et 2) ; la modification reste à **enregistrer** (panneau de suivi).
 
 **Couleur des étiquettes repositionnées.** En mode édition (page du
 plugin), une étiquette repositionnée — au moins les points 1 et 2
@@ -105,62 +107,60 @@ texte pousse à partir de ce point), et l'alignement aussi : la rotation est
 recalculée avec la taille réelle de la boîte, dont le rapport
 largeur/hauteur ne change pas avec le zoom.
 
-## Mode tronçons
+## Numéros d'interstation
 
-Pour les **numéros d'interstation** (couche « Numéros interstation » et
-réseau « Tunnels » affichés) :
-
-0. **Premier clic = sélection** : un clic dans le texte d'un numéro le
-   sélectionne (contour violet pointillé) et ouvre aussitôt son panneau — pas
-   de bulle intermédiaire. La carte est alors figée.
-
-Puis deux gestes, dans n'importe quel ordre :
+Couche « Numéros interstation » et réseau « Tunnels » affichés. **Survol**
+(surbrillance), **premier clic** (sélection : « Interstation 648 —
+sélectionné »), **second clic** (début de la modification, deux étapes) :
 
 1. **Déplacer le texte, parallèlement au trajet du pointeur** : on appuie
    **n'importe où sur la carte** (souris, ou **doigt** sur écran tactile) et on
    glisse ; le texte se déplace du même vecteur que le pointeur, sans qu'il
    faille le saisir (le doigt ne le cache donc pas). Orientation horizontale ;
-   la ligne de repère suit. Le bouton **✋ Déplacer la carte** du panneau
-   fait glisser la carte à la place du texte (la molette ou le pincement
-   zooment dans les deux cas).
-2. **Tronçon de rattachement** : le **survol** d'un tunnel (souris) allume son
-   **axe** (orange épais, avec son milieu) et son contour ; un **clic** ou
-   un **appui sans glissement** (moins de 5 px, y compris au doigt) le
-   choisit. Un glissement qui se termine sur un tunnel ne le choisit pas.
-   L'axe du tronçon actuel reste affiché en violet pointillé ; sans choix,
-   le tronçon automatique (contour le plus proche) s'applique. La ligne de
-   repère arrive au milieu de l'axe du tronçon choisi.
+   la ligne de repère suit. La **carte est figée** pendant cette étape (la
+   molette ou le pincement zooment toujours).
+2. **Choisir le tronçon de rattachement** (**Suivant ▶**, la carte est alors
+   libre) : le **survol** d'un tunnel (souris) allume son **axe** (orange épais,
+   avec son milieu) et son contour ; un **clic** ou un **appui sans
+   glissement** (moins de 5 px, y compris au doigt) le choisit. L'axe du
+   tronçon actuel reste affiché en violet pointillé ; sans choix, le tronçon
+   automatique (contour le plus proche) s'applique. La ligne de repère arrive
+   au milieu de l'axe du tronçon choisi.
 
-**Appliquer** garde le résultat (puis **Enregistrer dans l'application**),
-**Annuler** l'abandonne, **Réinitialiser l'étiquette** remet la position et
-le tronçon d'origine. Les étiquettes modifiées s'affichent dans la couleur
-opposée, comme en mode planches. Enregistrement : `data/interstation-labels.json`
-(`{ "version": 1, "labels": { "648#0": { x, y, tunnel } } }` — position en
-Lambert 72, `ogc_fid` du tunnel), route `/interstation` du relais.
+**✓ Terminer** garde le résultat (à enregistrer), **Annuler** l'abandonne,
+**↺** remet la position et le tronçon d'origine. Les étiquettes modifiées
+s'affichent dans la couleur opposée, comme les références de planche.
+Enregistrement : `data/interstation-labels.json` (`{ "version": 1, "labels":
+{ "648#0": { x, y, tunnel } } }` — position en Lambert 72, `ogc_fid` du
+tunnel), route `/interstation` du relais.
 
 ## Enregistrement dans l'application
 
 Les modifications sont **enregistrées dans l'application**, partagées par
 tous les visiteurs — pas dans le navigateur (rien n'est gardé dans
-`localStorage`). Elles vivent dans `data/pe-label-anchors.json` (dépôt), lu
-par l'application elle-même (`src/peLabelAnchors.js`) : un visiteur sans le
-plugin voit les étiquettes à leur nouvelle place.
+`localStorage`). Les références de planche vivent dans
+`data/pe-label-anchors.json`, les numéros d'interstation dans
+`data/interstation-labels.json` (dépôt), lus par l'application elle-même
+(`src/peLabelAnchors.js`, `src/interstation.js`) : un visiteur sans le plugin
+voit les étiquettes à leur nouvelle place.
 
-- **Enregistrer dans l'application** (panneau d'administration, qui
-  s'ouvre après **Appliquer** ou avec le bouton **✥ Étiquettes planches**)
-  envoie TOUTES les définitions au relais serveur `relay/`, qui commit le
-  fichier dans le dépôt. Il utilise l'**adresse du relais** et le **code
-  administrateur** des paramètres généraux (⚙ Paramètres > Serveur ; le code
-  est masqué, gardé le temps de l'onglet seulement ; s'il manque, le plugin renvoie vers cet onglet). Les autres visiteurs voient le
-  changement après le redéploiement de GitHub Pages (~1 min).
-- Le panneau indique le nombre de modifications **non enregistrées** ;
-  **Appliquer** seul applique la modification à l'écran (perdue au
-  rechargement tant qu'elle n'est pas enregistrée).
+- **Enregistrer tout** (panneau de suivi, bouton **✥ Mode édition**) envoie au
+  relais serveur `relay/` les définitions des planches et/ou des tronçons
+  (seulement celles qui ont changé) ; le relais commit chaque fichier dans le
+  dépôt. Il utilise l'**adresse du relais** et le **code administrateur** des
+  paramètres généraux (⚙ Paramètres > Serveur ; le code est masqué, gardé le
+  temps de l'onglet seulement ; s'il manque, le plugin renvoie vers cet
+  onglet). Les autres visiteurs voient le changement après le redéploiement
+  de GitHub Pages (~1 min).
+- Le panneau indique, pour chaque type, le nombre de modifications **non
+  enregistrées** ; **✓ Terminer** seul applique la modification à l'écran
+  (perdue au rechargement tant qu'elle n'est pas enregistrée).
 - **Le relais est à déployer une fois** (compte Cloudflare gratuit, jeton
   GitHub) : voir `relay/README.md`, puis renseigner son adresse dans
   ⚙ Paramètres > Serveur (bouton **Tester** pour vérifier la connexion et le
-  code ; l'adresse est enregistrée sur le serveur comme paramètre général). Tant que ce n'est pas fait, « Enregistrer » affiche un
-  message explicite et n'écrit rien.
+  code ; l'adresse est enregistrée sur le serveur comme paramètre général).
+  Tant que ce n'est pas fait, « Enregistrer » affiche un message explicite et
+  n'écrit rien.
 - Autres boutons du panneau : **Exporter JSON** (copie manuelle, repli si le
   relais est indisponible), **Importer JSON**, **Tout réinitialiser** (à
   enregistrer ensuite pour que ce soit partagé).
@@ -172,6 +172,6 @@ ne sont plus lus.
 
 - `index.html` — page de lancement (récupère l'`index.html` de l'appli et
   y injecte le CSS/JS ci-dessous avant `</body>`).
-- `pe-label-editor.css` — styles de la bulle, des points et des panneaux.
+- `pe-label-editor.css` — styles de la barre d'étape, des points et des panneaux.
 - `pe-label-editor.js` — logique (voir l'en-tête du fichier : principe,
   calcul des points remarquables, alignement, persistance).

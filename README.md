@@ -93,7 +93,7 @@ Shapefile — sans quitter la page).
     orthophotos, géocodeur — si celui-ci change d'adresse, sans modifier le
     code ; voir section 3bis), **Serveur** (adresse du relais d'enregistrement
     et code administrateur, bouton **Tester**) et **Fonds de plan** (lancer le
-    mode édition des étiquettes de planche ; charger un nouveau shapefile :
+    mode édition des étiquettes (planches, interstations) ; charger un nouveau shapefile :
     à venir — il devra accepter un ou plusieurs fichiers du dossier du
     shapefile : .shp, .dbf, .shx, .prj, .cpg…, pas seulement le .shp). La fenêtre est **réservée aux administrateurs** : son ouverture
     passe par `AMGT4CEM_Admin.requestAccess()` (`src/admin.js`), où se
@@ -447,17 +447,20 @@ segments communs** entre l'emprise du tunnel et celles des stations
 recouvrent sur plus de 1 m ; 64 tunnels en ont deux, 23 un seul) — voir
 l'en-tête de `src/interstation.js` pour la construction.
 
-**Déplacer une étiquette de tronçon** : mode d'édition **séparé** de celui
-des références de planche (⚙ Paramètres > Fonds de plan, bouton « Mode
-édition des étiquettes de tronçon » ; plugin `plugins/pe-label-editor/`, voir
-son README). Un premier clic **sélectionne** l'étiquette ; 1) on la
-**déplace parallèlement au trajet du pointeur** (appui n'importe où sur la
-carte, souris ou doigt, puis glissement) ; 2) on **identifie le tronçon**
-auquel elle se raccroche : le survol d'un tunnel allume son axe, un clic (ou
-un appui) le choisit. Position (Lambert 72) et tronçon (`ogc_fid`) sont enregistrés
-dans `data/interstation-labels.json` (clé `numéro#rang`), via la route
-`/interstation` du relais (à redéployer, voir `relay/README.md`), et
-remplacent le rattachement automatique pour cette étiquette. Limites du
+**Déplacer une étiquette de tronçon** : **mode édition commun** aux références
+de planche et aux numéros d'interstation (⚙ Paramètres > Fonds de plan, bouton
+« ✥ Mode édition » ; plugin `plugins/pe-label-editor/`, voir son README). Au
+survol l'étiquette s'illumine ; un premier clic la **sélectionne**, un second
+lance la modification : 1) on la **déplace parallèlement au trajet du
+pointeur** (appui n'importe où sur la carte, souris ou doigt, puis
+glissement) ; 2) on **identifie le tronçon** auquel elle se raccroche : le
+survol d'un tunnel allume son axe, un clic (ou un appui) le choisit. L'étape
+en cours s'affiche en haut à gauche, sous le menu carte (Retour, Suivant,
+Annuler, Terminer) ; le suivi et l'enregistrement sont dans le panneau du bouton
+« ✥ Mode édition » (masqué par défaut). Position (Lambert 72) et tronçon
+(`ogc_fid`) sont enregistrés dans `data/interstation-labels.json` (clé
+`numéro#rang`), via la route `/interstation` du relais (à redéployer, voir
+`relay/README.md`), et remplacent le rattachement automatique pour cette étiquette. Limites du
 rattachement automatique : 3 numéros sur 86 à moins de 15 m d'écart entre
 les deux premiers tunnels, 4 à plus de 140 m de tout tunnel (243, 243-3,
 900, 1000), et 7 tunnels sans numéro — c'est ce que le choix manuel permet
