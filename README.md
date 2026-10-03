@@ -843,8 +843,7 @@ piste ci-dessus (petit relais serveur) :
   qui commit le fichier dans le dépôt ; GitHub Pages le redéploie ;
 - tant qu'aucune adresse de relais n'est connue (paramètre général `relayUrl`,
   `data/app-settings.json`, ou `peLabelAnchorsRelayUrl` de `config.js`),
-  l'enregistrement est refusé avec un message explicite (l'export JSON reste
-  possible).
+  l'enregistrement est refusé avec un message explicite.
 
 Le même relais enregistre les **paramètres généraux** de l'application
 (route `/settings` → `data/app-settings.json`, fenêtre ⚙ Paramètres) :

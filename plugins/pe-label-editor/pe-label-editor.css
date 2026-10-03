@@ -382,3 +382,70 @@
   background: #ff7f00;
   border-color: #cc6600;
 }
+
+/* Boutons à icône seule du panneau (enregistrer, annuler) : carrés, grisés quand ils ne servent à rien. */
+.amgt-ple-panel button.amgt-ple-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 30px;
+  padding: 0;
+}
+
+/* Boîte de saisie du code administrateur (réinitialisation globale). */
+.amgt-ple-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.amgt-ple-modal-box {
+  width: 320px;
+  max-width: calc(100vw - 24px);
+  padding: 14px 16px;
+  font: 13px/1.4 sans-serif;
+  background: #fff;
+  border: 1px solid #999;
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.amgt-ple-modal-box p {
+  margin: 0 0 10px;
+  color: #333;
+}
+
+.amgt-ple-modal-box input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  font: 14px sans-serif;
+  border: 1px solid #999;
+  border-radius: 4px;
+}
+
+.amgt-ple-modal-box .amgt-ple-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.amgt-ple-modal-box button {
+  padding: 5px 10px;
+  font: 12px/1.2 sans-serif;
+  background: #f2f2f2;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.amgt-ple-modal-box button.amgt-ple-primary {
+  color: #fff;
+  background: #ff7f00;
+  border-color: #cc6600;
+}

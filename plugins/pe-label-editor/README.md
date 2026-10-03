@@ -18,9 +18,14 @@ elle est déjà renseignée, consigne en gris — avec ses boutons **◀ Retour*
 **↺** (position d'origine), **Annuler** (la modification en cours) et
 **✓ Terminer**. Le bouton **✥ Mode édition** (en bas à droite) affiche ou
 masque, à chaque clic, le **panneau de suivi** : aide, compteurs de
-modifications non enregistrées, **Enregistrer tout**, **Exporter/Importer
-JSON**, **Tout réinitialiser**, **Quitter l'édition**. Le bouton prend un
-contour rouge tant qu'il reste des modifications non enregistrées.
+modifications non enregistrées, et quatre boutons : **💾** (enregistrer
+planches et tronçons ; grisé tant qu'il n'y a rien à enregistrer), **↶**
+(annuler la dernière modification de la session, une à la fois ; grisé s'il n'y
+en a pas), **Tout réinitialiser** (après confirmation **et saisie du code
+administrateur**, vérifié auprès du relais ; annulable ensuite avec ↶) et
+**Quitter l'édition**. Pendant une modification, 💾 et ↶ sont grisés. Le bouton
+« ✥ Mode édition » prend un contour rouge tant qu'il reste des modifications
+non enregistrées.
 
 Le plugin lui-même vit dans ce dossier. L'affichage des définitions
 enregistrées (ancrage, orientation) est fait par l'application
@@ -88,13 +93,13 @@ plugin à la fin). Dans les deux cas le site doit être servi en http(s).
    - **◀ Retour** : annule le positionnement du dernier point choisi (et
      revient à son étape) ; sans point choisi, revient à l'étape précédente ;
    - **Suivant ▶** : étape suivante en **gardant la valeur déjà enregistrée**
-     (les points 1 et 2 sont indispensables, 3 et 4 facultatifs) ; **choisir
+     (les **quatre choix sont indispensables**, y compris l'orientation) ; **choisir
      un point** (clic sur le texte ou sur le cadre) fait passer **aussi** à
      l'étape suivante, même si celle-ci a déjà une valeur ;
    - **↺** : remet la position d'origine (PDF) de cette étiquette ;
    - **Annuler** : abandonne la modification en cours, aucun changement ;
-   - **✓ Terminer** : garde le positionnement (il faut au moins les points 1
-     et 2) ; la modification reste à **enregistrer** (panneau de suivi).
+   - **✓ Terminer** : garde le positionnement (il faut les **quatre** choix) ;
+     la modification reste à **enregistrer** (💾 du panneau de suivi).
 
 **Couleur des étiquettes repositionnées.** En mode édition (page du
 plugin), une étiquette repositionnée — au moins les points 1 et 2
@@ -149,7 +154,7 @@ numéros d'interstation dans `data/fond-de-plan/etiquettes-troncons.json`
 (`src/peLabelAnchors.js`, `src/interstation.js`) : un visiteur sans le plugin
 voit les étiquettes à leur nouvelle place.
 
-- **Enregistrer tout** (panneau de suivi, bouton **✥ Mode édition**) envoie au
+- **💾** (panneau de suivi, bouton **✥ Mode édition**) envoie au
   relais serveur `relay/` les définitions des planches et/ou des tronçons
   (seulement celles qui ont changé) ; le relais commit chaque fichier dans le
   dépôt. Il utilise l'**adresse du relais** et le **code administrateur** des
@@ -166,9 +171,12 @@ voit les étiquettes à leur nouvelle place.
   code ; l'adresse est enregistrée sur le serveur comme paramètre général).
   Tant que ce n'est pas fait, « Enregistrer » affiche un message explicite et
   n'écrit rien.
-- Autres boutons du panneau : **Exporter JSON** (copie manuelle, repli si le
-  relais est indisponible), **Importer JSON**, **Tout réinitialiser** (à
-  enregistrer ensuite pour que ce soit partagé).
+- **↶** annule la dernière modification de la session, une à la fois (y
+  compris un « Tout réinitialiser »). **Tout réinitialiser** demande une
+  confirmation et le **code administrateur** (saisi masqué, vérifié auprès du
+  relais : refusé si le relais n'est pas configuré) ; à enregistrer ensuite
+  pour que ce soit partagé. L'export/import JSON manuel a été retiré de
+  l'interface.
 
 Les anciens réglages locaux (`localStorage`, versions précédentes du plugin)
 ne sont plus lus.

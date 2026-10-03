@@ -17,7 +17,8 @@
  *      cadre (voir _remarkablePoints). R1 est posé sur A1 ;
  *   3. second point de référence du texte (R2), un autre des 8 ;
  *   4. un autre point remarquable de la planche (A2).
- * L'orientation en découle : R1 (= A1), R2 et A2 sont alignés, par la
+ * Les quatre choix sont INDISPENSABLES (« Terminer » les exige ; « Suivant » garde la valeur
+ * déjà enregistrée). L'orientation en découle : R1 (= A1), R2 et A2 sont alignés, par la
  * rotation LA MOINS GRANDE de la boîte de texte (texte toujours lisible).
  * Ce calcul d'affichage est fait par l'application elle-même
  * (AMGT4CEM_ScaledText.setDefinition, scaledText.js) : le plugin ne fait que
@@ -105,6 +106,7 @@
     _entries: [], // { key, kind: 'pe'|'ist', code, marker, span, def, lat, lng, angle, ref } — def : { r1, a1, r2?, a2? } (planche) ou { x, y, tunnel } (tronçon, Lambert 72)
     _byKey: {}, // key -> entrée
     _planches: [], // [{ code, ring: [[x, y], ...] }] — Lambert, anneau non refermé
+    _undoStack: [], // modifications terminées pendant la session, la dernière en haut : [{ entry, before }] (annulables une à une)
     _selected: null, // étiquette sélectionnée par un premier clic (le second lance sa modification)
     _edit: null, // session de modification en cours
     _toggleBtn: null, // bouton « ✥ Mode édition »
@@ -454,6 +456,7 @@
       this._showRefDots(entry);
       this._showCandidates();
       this._refreshEdit();
+      this._refreshAdminPanel(); // 💾 et ↶ sont grisés pendant une modification
     },
 
     _showRefDots(entry) {
@@ -537,11 +540,11 @@
       this._refreshEdit();
     },
 
-    /** « Suivant » : étape suivante ; les deux premiers points sont indispensables, les deux derniers (orientation) facultatifs. */
+    /** « Suivant » : étape suivante ; les quatre choix sont indispensables (garder la valeur déjà enregistrée suffit). */
     _nextStep() {
       const ed = this._edit;
       if (!ed || ed.slot >= SLOTS.length - 1) return;
-      if (ed.slot < 2 && !ed.entry.def[SLOTS[ed.slot].id]) return this._flash("Choisissez d'abord ce point : il est indispensable.");
+      if (!ed.entry.def[SLOTS[ed.slot].id]) return this._flash("Choisissez d'abord ce point : les quatre choix sont indispensables.");
       ed.slot++;
       this._refreshEdit();
     },
@@ -575,8 +578,10 @@
       if (!ed) return;
       if (ed.kind === 'pe') {
         const d = ed.entry.def;
-        if (!d.r1 || !d.a1) return this._flash("Rien à garder : choisissez au moins le point de référence (1) et le point d'ancrage (2), ou « Annuler ».");
+        if (!d.r1 || !d.a1 || !d.r2 || !d.a2) return this._flash('Les quatre choix sont indispensables (point de référence, ancrage, second point de référence, second point du cadre) : complétez-les, ou « Annuler ».');
       }
+      // Historique de la session (bouton « annuler » du panneau) : état avant cette modification.
+      if (JSON.stringify(ed.entry.def || null) !== JSON.stringify(ed.backup || null)) this._undoStack.push([{ entry: ed.entry, before: clone(ed.backup) }]);
       this._endEdit(false);
     },
 
@@ -689,7 +694,7 @@
       });
       let result = '';
       if (def.r1 && def.a1 && def.r2 && def.a2) result = `Rotation : ${entry.angle.toFixed(1)}° (points 1, 3 et 4 alignés, rotation minimale)`;
-      else if (def.r1 && def.a1) result = "Position définie. Choisissez les points 3 et 4 pour l'orientation (sinon : orientation d'origine).";
+      else if (def.r1 && def.a1) result = "Position définie. Choisissez les points 3 et 4 : l'orientation est indispensable.";
       this._fillSteps(`Étiquette de la planche ${entry.code}`, steps, ed.slot, result);
       bar.querySelector('[data-action="back"]').disabled = !ed.history.length && ed.slot === 0;
       bar.querySelector('[data-action="next"]').disabled = ed.slot >= SLOTS.length - 1;
@@ -749,6 +754,7 @@
       this._enableMoveGesture();
       this._enableTunnelPick();
       this._setIstStep(0);
+      this._refreshAdminPanel(); // 💾 et ↶ sont grisés pendant une modification
     },
 
     /** Étape 0 : déplacer le texte (carte figée) ; étape 1 : choisir le tronçon (carte libre). */
@@ -1046,18 +1052,21 @@
         élément à modifier (il s'illumine). Un <b>premier clic</b> le sélectionne, un <b>second clic</b> lance sa
         modification : étapes en haut à gauche, sous le menu carte.</p>
         <ul class="amgt-ple-help">
-          <li><b>Référence de planche</b> : choisir le point de référence du texte, son ancrage sur la planche, puis (facultatif) l'orientation.</li>
+          <li><b>Référence de planche</b> : quatre choix, tous indispensables — point de référence du texte, ancrage sur la planche, second point de référence du texte, second point du cadre (orientation).</li>
           <li><b>Numéro d'interstation</b> : déplacer le texte (glisser n'importe où sur la carte, souris ou doigt), puis choisir son tronçon (survol d'un tunnel = son axe s'allume).</li>
-          <li><b>Retour</b> / <b>Suivant</b> changent d'étape, <b>Annuler</b> abandonne cette modification, <b>Terminer</b> la garde.</li>
-          <li>Rien n'est partagé avant <b>Enregistrer</b>.</li>
+          <li>Dans la barre d'étape : <b>Retour</b> / <b>Suivant</b> changent d'étape, <b>Annuler</b> abandonne cette modification, <b>Terminer</b> la garde.</li>
+          <li>Ci-dessous : 💾 enregistre (grisé s'il n'y a rien à enregistrer), ↶ annule la dernière modification de la session (une à la fois). Rien n'est partagé avant l'enregistrement.</li>
         </ul>
         <p class="amgt-ple-count"></p>
         <p class="amgt-ple-flash" hidden></p>
         <div class="amgt-ple-actions">
-          <button type="button" class="amgt-ple-primary" data-action="save" title="Enregistre les planches et les tronçons modifiés">Enregistrer tout</button>
-          <button type="button" data-action="export">Exporter JSON</button>
-          <label class="amgt-ple-import-btn">Importer JSON<input type="file" accept="application/json" data-action="import" /></label>
-          <button type="button" data-action="reset-all">Tout réinitialiser</button>
+          <button type="button" class="amgt-ple-icon-btn amgt-ple-primary" data-action="save" aria-label="Enregistrer" title="Enregistrer les modifications (planches et tronçons) dans l'application">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          </button>
+          <button type="button" class="amgt-ple-icon-btn" data-action="undo" aria-label="Annuler la dernière modification" title="Annuler la dernière modification de la session (une à la fois)">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+          </button>
+          <button type="button" data-action="reset-all" title="Remet toutes les étiquettes à leur position d'origine (confirmation et code administrateur)">Tout réinitialiser</button>
           <button type="button" data-action="quit" title="Recharge la page : l'application revient en mode normal">Quitter l'édition</button>
         </div>`;
       document.body.appendChild(panel);
@@ -1068,8 +1077,7 @@
         await this._saveShared((m) => this._panelFlash(m));
         this._refreshAdminPanel();
       });
-      panel.querySelector('[data-action="export"]').addEventListener('click', () => this._exportJson());
-      panel.querySelector('[data-action="import"]').addEventListener('change', (e) => this._importJson(e));
+      panel.querySelector('[data-action="undo"]').addEventListener('click', () => this._undo());
       panel.querySelector('[data-action="reset-all"]').addEventListener('click', () => this._resetAll());
       panel.querySelector('[data-action="quit"]').addEventListener('click', () => {
         const dirty = this._dirtyKeys('pe').length + this._dirtyKeys('ist').length;
@@ -1086,63 +1094,87 @@
         this._toggleBtn.classList.toggle('amgt-ple-dirty', dirtyPe + dirtyIst > 0);
         this._toggleBtn.title = dirtyPe + dirtyIst ? `${dirtyPe + dirtyIst} modification(s) non enregistrée(s) — cliquez pour le suivi et l'enregistrement` : "Aide, suivi et enregistrement des modifications d'étiquettes (administrateurs)";
       }
-      const el = this._panel && this._panel.querySelector('.amgt-ple-count');
-      if (!el) return;
+      if (!this._panel) return;
+      // 💾 grisé s'il n'y a rien à enregistrer (ou pendant une modification) ; ↶ grisé s'il n'y a rien à annuler (ou pendant une modification).
+      this._panel.querySelector('[data-action="save"]').disabled = dirtyPe + dirtyIst === 0 || !!this._edit;
+      this._panel.querySelector('[data-action="undo"]').disabled = !this._undoStack.length || !!this._edit;
+      const el = this._panel.querySelector('.amgt-ple-count');
       const pending = (n) => (n ? `${n} modification(s) NON enregistrée(s)` : 'tout enregistré');
       el.textContent =
         `Planches : ${this._entriesOf('pe').length} étiquette(s) affichée(s), ${pending(dirtyPe)}. ` +
         `Tronçons : ${this._entriesOf('ist').length} étiquette(s) affichée(s), ${pending(dirtyIst)}.`;
     },
 
-    _resetAll() {
-      if (!confirm("Remettre TOUTES les étiquettes (références de planche et numéros d'interstation) à leur position d'origine ? (À enregistrer ensuite pour que ce soit partagé.)")) return;
-      for (const entry of this._entries) {
-        entry.def = null;
+    /** Annule la dernière modification de la session (terminée, ou « tout réinitialiser »), une à la fois. */
+    _undo() {
+      if (this._edit) return;
+      const last = this._undoStack.pop();
+      if (!last) return;
+      for (const { entry, before } of last) {
+        entry.def = clone(before);
         this._syncPose(entry);
       }
       this._refreshAdminPanel();
     },
 
-    _exportJson() {
-      const out = this._entries.map((e) => ({
-        kind: e.kind,
-        key: e.key,
-        code: e.code,
-        def: e.kind === 'ist' ? e.def : e.def && e.def.r1 && e.def.a1 ? e.def : null,
-        lat: e.lat,
-        lng: e.lng,
-        ref: e.ref,
-        angle: e.angle,
-      }));
-      const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'label-overrides.json';
-      a.click();
-      URL.revokeObjectURL(a.href);
+    /**
+     * Remet TOUTES les étiquettes à leur position d'origine — après confirmation ET code administrateur (vérifié
+     * auprès du relais). Annulable ensuite avec ↶, et à enregistrer pour être partagé.
+     */
+    async _resetAll() {
+      if (this._edit) return;
+      if (!AMGT4CEM_PeLabelAnchors.isSaveConfigured()) {
+        return this._panelFlash("Réinitialisation refusée : le relais n'est pas configuré, le code administrateur ne peut pas être vérifié (⚙ Paramètres > Serveur).");
+      }
+      const code = await this._askAdminCode("Remettre TOUTES les étiquettes (références de planche et numéros d'interstation) à leur position d'origine ? Saisissez le code administrateur pour confirmer. (À enregistrer ensuite pour que ce soit partagé ; annulable avec ↶.)");
+      if (code === null) return;
+      try {
+        await AMGT4CEM_PeLabelAnchors.checkConnection(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, code);
+      } catch (err) {
+        return this._panelFlash(`Réinitialisation refusée : ${err.message}`);
+      }
+      AMGT4CEM_PeLabelAnchors.setAdminCode(code);
+      const changed = [];
+      for (const entry of this._entries) {
+        if (entry.def) changed.push({ entry, before: clone(entry.def) });
+        entry.def = null;
+        this._syncPose(entry);
+      }
+      if (changed.length) this._undoStack.push(changed);
+      this._panelFlash(`${changed.length} étiquette(s) réinitialisée(s) — à enregistrer pour que ce soit partagé (↶ pour annuler).`);
+      this._refreshAdminPanel();
     },
 
-    _importJson(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const byKey = {};
-          for (const row of JSON.parse(reader.result)) byKey[`${row.kind || 'pe'}|${row.key}`] = row;
-          for (const entry of this._entries) {
-            const row = byKey[`${entry.kind}|${entry.key}`];
-            if (!row) continue;
-            entry.def = row.def || null;
-            this._syncPose(entry);
-          }
-          this._refreshAdminPanel();
-        } catch (err) {
-          alert('Fichier JSON invalide : ' + err.message);
-        }
-      };
-      reader.readAsText(file);
-      e.target.value = '';
+    /** Boîte de confirmation avec saisie MASQUÉE du code administrateur : résolue avec le code, ou null si abandon. */
+    _askAdminCode(message) {
+      return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'amgt-ple-modal';
+        overlay.innerHTML = `
+          <form class="amgt-ple-modal-box">
+            <p></p>
+            <input type="password" autocomplete="off" placeholder="Code administrateur" aria-label="Code administrateur" />
+            <div class="amgt-ple-actions">
+              <button type="submit" class="amgt-ple-primary">Confirmer</button>
+              <button type="button" data-action="cancel">Annuler</button>
+            </div>
+          </form>`;
+        overlay.querySelector('p').textContent = message;
+        document.body.appendChild(overlay);
+        const input = overlay.querySelector('input');
+        const done = (value) => {
+          overlay.remove();
+          resolve(value);
+        };
+        overlay.querySelector('form').addEventListener('submit', (e) => {
+          e.preventDefault();
+          done(input.value || null);
+        });
+        overlay.querySelector('[data-action="cancel"]').addEventListener('click', () => done(null));
+        overlay.addEventListener('keydown', (e) => e.key === 'Escape' && done(null));
+        for (const type of ['pointerdown', 'mousedown', 'touchstart', 'click', 'dblclick', 'wheel']) overlay.addEventListener(type, (e) => e.stopPropagation());
+        input.focus();
+      });
     },
   };
 
