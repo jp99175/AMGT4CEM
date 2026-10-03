@@ -11,6 +11,31 @@
       "x": 150818.94,
       "y": 170385.29,
       "tunnel": "TRO-MAELBEEK-SCHUMAN-01"
+    },
+    "257#0": {
+      "x": 147395.91,
+      "y": 169772.82,
+      "tunnel": "TRO-DELACROIX-CLEMENCEAU-02"
+    },
+    "258#0": {
+      "x": 147073.85,
+      "y": 170217.81,
+      "tunnel": "TRO-DELACROIX-CLEMENCEAU-03"
+    },
+    "259#0": {
+      "x": 146776.86,
+      "y": 170834.79,
+      "tunnel": "TRO-GARE-DE-L-OUEST-DELACROIX-01"
+    },
+    "348#0": {
+      "x": 148292.82,
+      "y": 170146.32,
+      "tunnel": "TRO-ANNEESSENS-LEMONNIER-01"
+    },
+    "349#0": {
+      "x": 148573.54,
+      "y": 170593.56,
+      "tunnel": "TRO-BOURSE-ANNEESSENS-01"
     }
   }
 }
