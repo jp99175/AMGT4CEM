@@ -18,12 +18,10 @@ elle est déjà renseignée, consigne en gris — avec ses boutons **◀ Retour*
 **↺** (position d'origine), **Annuler** (la modification en cours) et
 **✓ Terminer**. Le bouton **✥ Mode édition** (en bas à droite) affiche ou
 masque, à chaque clic, le **panneau de suivi** : aide, compteurs de
-modifications non enregistrées, et quatre boutons : **💾** (enregistrer
+modifications non enregistrées, et trois boutons : **💾** (enregistrer
 planches et tronçons ; grisé tant qu'il n'y a rien à enregistrer), **↶**
-(annuler la dernière modification de la session, une à la fois ; grisé s'il n'y
-en a pas), **Tout réinitialiser** (après confirmation **et saisie du code
-administrateur**, vérifié auprès du relais ; annulable ensuite avec ↶) et
-**Quitter l'édition**. Pendant une modification, 💾 et ↶ sont grisés. Le bouton
+(annuler la dernière opération de la session, une à la fois ; grisé s'il n'y
+en a pas) et **Quitter l'édition**. Pendant une modification, 💾 et ↶ sont grisés. Le bouton
 « ✥ Mode édition » prend un contour rouge tant qu'il reste des modifications
 non enregistrées.
 
@@ -168,13 +166,12 @@ qu'à l'amorçage.
 
   **Annuler** pendant une création supprime l'étiquette sans laisser de trace.
 
-## Annuler et réinitialiser
+## Annuler
 
-- **↶** annule la dernière opération de la session — modification, création,
-  suppression ou réinitialisation —, une à la fois.
-- **Tout réinitialiser** (confirmation + code administrateur) abandonne
-  **toutes les modifications non enregistrées** (modifications, créations,
-  suppressions) et revient à l'état **enregistré** ; annulable avec ↶.
+**↶** annule la dernière opération de la session — modification, création ou
+suppression —, une à la fois. Pas de « tout réinitialiser » : ↶ répété, ou
+« Quitter l'édition » (recharge la page : les modifications non enregistrées
+sont abandonnées après confirmation), couvrent ce besoin.
 
 ## Enregistrement dans l'application
 
@@ -204,10 +201,7 @@ voit les étiquettes à leur nouvelle place.
   code ; l'adresse est enregistrée sur le serveur comme paramètre général).
   Tant que ce n'est pas fait, « Enregistrer » affiche un message explicite et
   n'écrit rien.
-- **↶** et **Tout réinitialiser** : voir ci-dessus. Le code administrateur de
-  « Tout réinitialiser » est saisi masqué et vérifié auprès du relais (refusé si
-  le relais n'est pas configuré). L'export/import JSON manuel a été retiré de
-  l'interface.
+- L'export/import JSON manuel a été retiré de l'interface.
 
 Les anciens réglages locaux (`localStorage`, versions précédentes du plugin)
 ne sont plus lus.

@@ -3,7 +3,7 @@
  * (PE_label, ex. "1000-236") ET les numéros d'interstation (couche « Numéros
  * interstation », voir src/interstation.js). Activé depuis ⚙ Paramètres > Fonds de
  * plan ; le bouton « ✥ Mode édition » (en bas à droite) affiche/masque le panneau
- * de suivi (aide, compteurs, enregistrement, export/import, réinitialisation).
+ * de suivi (aide, compteurs, enregistrement 💾, annulation ↶, sortie du mode).
  *
  * GESTE COMMUN : au survol, l'étiquette modifiable est mise en surbrillance ; un
  * PREMIER clic la sélectionne, le SECOND lance sa modification. L'étape en cours
@@ -1279,7 +1279,6 @@
           <button type="button" class="amgt-ple-icon-btn" data-action="undo" aria-label="Annuler la dernière modification" title="Annuler la dernière opération de la session (une à la fois)">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
           </button>
-          <button type="button" data-action="reset-all" title="Abandonne toutes les modifications non enregistrées et revient à l'état enregistré (code administrateur demandé)">Tout réinitialiser</button>
           <button type="button" data-action="quit" title="Recharge la page : l'application revient en mode normal">Quitter l'édition</button>
         </div>`;
       document.body.appendChild(panel);
@@ -1291,7 +1290,6 @@
         this._refreshAdminPanel();
       });
       panel.querySelector('[data-action="undo"]').addEventListener('click', () => this._undo());
-      panel.querySelector('[data-action="reset-all"]').addEventListener('click', () => this._resetAll());
       panel.querySelector('[data-action="quit"]').addEventListener('click', () => {
         const dirty = this._dirtyKeys('pe').length + this._dirtyKeys('ist').length;
         if (dirty && !confirm(`${dirty} modification(s) non enregistrée(s) seront perdues. Quitter l'édition ?`)) return;
@@ -1323,37 +1321,6 @@
       if (this._edit || this._addMode) return;
       const pre = this._undoStack.pop();
       if (pre) this._restore(pre);
-    },
-
-    /**
-     * Abandonne TOUTES les modifications non enregistrées : remet toutes les étiquettes dans leur dernier état
-     * ENREGISTRÉ (suppressions et créations non enregistrées comprises) — après confirmation ET code administrateur
-     * (vérifié auprès du relais). Annulable ensuite avec ↶.
-     */
-    async _resetAll() {
-      if (this._edit || this._addMode) return;
-      const saved = { pe: AMGT4CEM_PeLabelAnchors.all(), ist: AMGT4CEM_Interstation.savedOverrides() };
-      const pre = this._snapshot();
-      if (JSON.stringify(pre) === JSON.stringify(saved)) return this._panelFlash('Rien à réinitialiser : toutes les étiquettes sont dans leur état enregistré.');
-      if (!AMGT4CEM_PeLabelAnchors.isSaveConfigured()) {
-        return this._panelFlash("Réinitialisation refusée : le relais n'est pas configuré, le code administrateur ne peut pas être vérifié (⚙ Paramètres > Serveur).");
-      }
-      const code = await this._askInput(
-        "Abandonner TOUTES les modifications non enregistrées (étiquettes de planche et de tronçon : modifications, créations, suppressions) et revenir à l'état enregistré ? Saisissez le code administrateur pour confirmer. (Annulable avec ↶.)",
-        { type: 'password', placeholder: 'Code administrateur' }
-      );
-      if (code === null) return;
-      try {
-        await AMGT4CEM_PeLabelAnchors.checkConnection(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, code);
-      } catch (err) {
-        return this._panelFlash(`Réinitialisation refusée : ${err.message}`);
-      }
-      AMGT4CEM_PeLabelAnchors.setAdminCode(code);
-      this._select(null);
-      this._restore(saved);
-      this._undoStack.push(pre);
-      this._panelFlash('Modifications non enregistrées abandonnées : retour à l\'état enregistré (↶ pour annuler).');
-      this._refreshAdminPanel();
     },
 
     /**
