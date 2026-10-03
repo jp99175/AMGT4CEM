@@ -602,9 +602,10 @@
       const bar = document.createElement('div');
       bar.className = 'amgt-ple-bar';
       bar.innerHTML = `
-        <div class="amgt-ple-bar-title"></div>
-        <div class="amgt-ple-bar-hint"></div>
-        <div class="amgt-ple-bar-flash" hidden></div>
+        <h3 class="amgt-ple-bar-title"></h3>
+        <ol class="amgt-ple-steps"></ol>
+        <p class="amgt-ple-result"></p>
+        <p class="amgt-ple-flash" hidden></p>
         <div class="amgt-ple-bar-actions">
           <button type="button" data-action="back" title="Annule le dernier choix, ou revient à l'étape précédente">◀ Retour</button>
           <button type="button" data-action="next" title="Passe à l'étape suivante">Suivant ▶</button>
@@ -624,7 +625,40 @@
       for (const type of ['pointerdown', 'mousedown', 'touchstart', 'click', 'dblclick', 'wheel']) bar.addEventListener(type, (e) => e.stopPropagation());
     },
 
-    /** Affiche / met à jour la barre : étiquette sélectionnée (en attente d'un second clic) ou étape en cours. */
+    /**
+     * Étape en cours, présentée comme le « process » du panneau d'étapes : titre de l'étiquette, liste des
+     * étapes dont l'active est surlignée, « ✓ valeur » en vert pour celles qui sont faites, consigne en
+     * gris sous l'étape active ; un clic sur une étape y revient.
+     * steps : [{ title, value, hint }], active : index de l'étape en cours.
+     */
+    _fillSteps(heading, steps, active, result) {
+      const bar = this._bar;
+      bar.querySelector('.amgt-ple-bar-title').textContent = heading;
+      const ol = bar.querySelector('.amgt-ple-steps');
+      ol.textContent = '';
+      steps.forEach((st, i) => {
+        const li = document.createElement('li');
+        if (i === active) li.classList.add('amgt-ple-active');
+        if (st.value) li.classList.add('amgt-ple-done');
+        li.innerHTML = '<b></b><span></span><em></em>';
+        li.querySelector('b').textContent = st.title;
+        li.querySelector('span').textContent = st.value ? `✓ ${st.value}` : '';
+        li.querySelector('em').textContent = i === active ? st.hint : '';
+        li.addEventListener('click', () => this._goToStep(i));
+        ol.appendChild(li);
+      });
+      bar.querySelector('.amgt-ple-result').textContent = result || '';
+    },
+
+    _goToStep(i) {
+      const ed = this._edit;
+      if (!ed) return;
+      if (ed.kind === 'ist') return this._setIstStep(i);
+      ed.slot = i;
+      this._refreshEdit();
+    },
+
+    /** Affiche / met à jour la barre : étiquette sélectionnée (en attente d'un second clic) ou étapes de la modification en cours. */
     _renderBar() {
       const ed = this._edit;
       const entry = ed ? ed.entry : this._selected;
@@ -635,35 +669,41 @@
       if (!this._bar) this._buildBar();
       const bar = this._bar;
       bar.hidden = false;
-      const q = (sel) => bar.querySelector(sel);
       const buttons = (names) => {
         for (const b of bar.querySelectorAll('.amgt-ple-bar-actions button')) b.hidden = !names.includes(b.dataset.action);
       };
       if (!ed) {
-        q('.amgt-ple-bar-title').textContent = `${this._describe(entry)} — sélectionné`;
-        q('.amgt-ple-bar-hint').textContent = 'Cliquez à nouveau sur le texte pour le modifier.';
+        this._fillSteps(`${this._describe(entry)} — sélectionné`, [], -1, 'Cliquez à nouveau sur le texte pour le modifier.');
         buttons(['cancel']);
-        q('[data-action="cancel"]').textContent = 'Désélectionner';
+        bar.querySelector('[data-action="cancel"]').textContent = 'Désélectionner';
         return;
       }
-      q('[data-action="cancel"]').textContent = 'Annuler';
+      bar.querySelector('[data-action="cancel"]').textContent = 'Annuler';
       buttons(['back', 'next', 'reset', 'cancel', 'apply']);
       if (ed.kind === 'ist') return this._renderBarIst(entry);
       const def = entry.def;
-      const slot = SLOTS[ed.slot];
-      q('.amgt-ple-bar-title').textContent = `${this._describe(entry)} — étape ${ed.slot + 1}/${SLOTS.length} : ${slot.title.replace(/^\d+\.\s*/, '')}`;
-      const done = SLOTS.map((s) => (def[s.id] ? '✓' : '○')).join(' ');
+      const steps = SLOTS.map((slot) => {
+        let value = '';
+        if (def[slot.id]) {
+          if (slot.kind === 'ref') value = REFS[def[slot.id]].label;
+          else {
+            const c = ed.cands.find((k) => sameLatLng(def[slot.id], k));
+            value = c ? KIND_LABEL[c.kind] : 'point choisi';
+          }
+        }
+        return { title: slot.title, value, hint: slot.hint };
+      });
       let result = '';
-      if (def.r1 && def.a1 && def.r2 && def.a2) result = ` Rotation : ${entry.angle.toFixed(1)}°.`;
-      else if (def.r1 && def.a1) result = " Position définie ; les points 3 et 4 règlent l'orientation (facultatifs).";
-      q('.amgt-ple-bar-hint').textContent = `${slot.hint} [${done}]${result}`;
-      q('[data-action="back"]').disabled = !ed.history.length && ed.slot === 0;
-      q('[data-action="next"]').disabled = ed.slot >= SLOTS.length - 1;
+      if (def.r1 && def.a1 && def.r2 && def.a2) result = `Rotation : ${entry.angle.toFixed(1)}° (points 1, 3 et 4 alignés, rotation minimale)`;
+      else if (def.r1 && def.a1) result = "Position définie. Choisissez les points 3 et 4 pour l'orientation (sinon : orientation d'origine).";
+      this._fillSteps(`Étiquette de la planche ${entry.code}`, steps, ed.slot, result);
+      bar.querySelector('[data-action="back"]').disabled = !ed.history.length && ed.slot === 0;
+      bar.querySelector('[data-action="next"]').disabled = ed.slot >= SLOTS.length - 1;
     },
 
     /** Message bref dans la barre (ou, sans barre, dans le panneau de suivi). */
     _flash(msg) {
-      const el = this._bar && !this._bar.hidden && this._bar.querySelector('.amgt-ple-bar-flash');
+      const el = this._bar && !this._bar.hidden && this._bar.querySelector('.amgt-ple-flash');
       if (!el) return this._panelFlash(msg);
       el.textContent = msg;
       el.hidden = false;
@@ -856,22 +896,26 @@
       this._renderBar();
     },
 
-    /** Titre et consigne de la barre pour l'étape en cours d'une étiquette de tronçon. */
+    /** Étapes d'une étiquette de tronçon, présentées comme celles d'une planche. */
     _renderBarIst(entry) {
       const ed = this._edit;
       const bar = this._bar;
       const tunnel = entry.marker._amgtTunnel;
       const chosen = !!entry.def && tunnel !== entry.marker._amgtNumber.autoTunnel;
-      const names = ['Déplacer le texte', 'Choisir le tronçon'];
-      bar.querySelector('.amgt-ple-bar-title').textContent = `${this._describe(entry)} — étape ${ed.step + 1}/2 : ${names[ed.step]}`;
-      let hint;
-      if (ed.step === 0) {
-        hint = "Appuyez n'importe où sur la carte (souris ou doigt) et glissez : le texte suit le même trajet. La carte est figée pendant cette étape.";
-      } else {
-        hint = `Survolez un tunnel : son axe s'allume (orange) ; cliquez pour le choisir. Tronçon actuel (violet) : ${tunnel.name}${chosen ? '' : ' (automatique)'}.`;
-        if (ed.hoverPoly) hint += ` Survol : ${AMGT4CEM_Interstation.tunnelById(ed.hoverPoly._amgtTunnelId).name}.`;
-      }
-      bar.querySelector('.amgt-ple-bar-hint').textContent = hint;
+      const steps = [
+        {
+          title: '1. Déplacer le texte',
+          value: entry.def ? 'déplacé' : '',
+          hint: "Appuyez n'importe où sur la carte (souris ou doigt) et glissez : le texte suit le même trajet. La carte est figée pendant cette étape.",
+        },
+        {
+          title: '2. Tronçon de rattachement',
+          value: `${tunnel.name}${chosen ? '' : ' (automatique)'}`,
+          hint: "Survolez un tunnel : son axe s'allume (orange) ; cliquez pour le choisir. L'axe du tronçon actuel est en violet.",
+        },
+      ];
+      const result = ed.step === 1 && ed.hoverPoly ? `Survol : ${AMGT4CEM_Interstation.tunnelById(ed.hoverPoly._amgtTunnelId).name} (axe orange) — cliquez pour le choisir.` : '';
+      this._fillSteps(`Étiquette de l'interstation ${entry.code}`, steps, ed.step, result);
       bar.querySelector('[data-action="back"]').disabled = ed.step === 0;
       bar.querySelector('[data-action="next"]').disabled = ed.step === 1;
     },

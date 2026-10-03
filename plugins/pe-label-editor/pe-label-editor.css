@@ -213,13 +213,15 @@
 }
 
 /* Panneau des 4 étapes. */
-.amgt-ple-panel .amgt-ple-steps {
+.amgt-ple-panel .amgt-ple-steps,
+.amgt-ple-bar .amgt-ple-steps {
   margin: 0 0 8px;
   padding: 0;
   list-style: none;
 }
 
-.amgt-ple-panel .amgt-ple-steps li {
+.amgt-ple-panel .amgt-ple-steps li,
+.amgt-ple-bar .amgt-ple-steps li {
   display: block;
   padding: 4px 6px;
   margin: 2px 0;
@@ -228,34 +230,40 @@
   cursor: pointer;
 }
 
-.amgt-ple-panel .amgt-ple-steps li b {
+.amgt-ple-panel .amgt-ple-steps li b,
+.amgt-ple-bar .amgt-ple-steps li b {
   display: block;
   font-weight: 600;
 }
 
-.amgt-ple-panel .amgt-ple-steps li span {
+.amgt-ple-panel .amgt-ple-steps li span,
+.amgt-ple-bar .amgt-ple-steps li span {
   color: #2a7a2a;
   font-size: 12px;
 }
 
-.amgt-ple-panel .amgt-ple-steps li em {
+.amgt-ple-panel .amgt-ple-steps li em,
+.amgt-ple-bar .amgt-ple-steps li em {
   display: block;
   color: #555;
   font-size: 12px;
   font-style: normal;
 }
 
-.amgt-ple-panel .amgt-ple-steps li.amgt-ple-active {
+.amgt-ple-panel .amgt-ple-steps li.amgt-ple-active,
+.amgt-ple-bar .amgt-ple-steps li.amgt-ple-active {
   background: #fff3e6;
   border-color: #ff7f00;
 }
 
-.amgt-ple-panel .amgt-ple-result {
+.amgt-ple-panel .amgt-ple-result,
+.amgt-ple-bar .amgt-ple-result {
   font-size: 12px;
   color: #333;
 }
 
-.amgt-ple-panel .amgt-ple-flash {
+.amgt-ple-panel .amgt-ple-flash,
+.amgt-ple-bar .amgt-ple-flash {
   padding: 4px 6px;
   font-size: 12px;
   color: #8a1f11;
@@ -324,22 +332,21 @@
 }
 
 .amgt-ple-bar-title {
-  margin-bottom: 2px;
-  font-size: 13px;
-  font-weight: 600;
+  margin: 0 0 6px;
+  font-size: 14px;
 }
 
-.amgt-ple-bar-hint {
-  margin-bottom: 6px;
-  color: #444;
+.amgt-ple-bar .amgt-ple-result,
+.amgt-ple-bar .amgt-ple-flash {
+  margin: 0 0 8px;
 }
 
-.amgt-ple-bar-flash {
-  margin-bottom: 6px;
-  padding: 3px 6px;
-  color: #8a1f11;
-  background: #fde8e4;
-  border-radius: 4px;
+.amgt-ple-bar .amgt-ple-result:empty {
+  display: none;
+}
+
+.amgt-ple-bar .amgt-ple-flash[hidden] {
+  display: none;
 }
 
 .amgt-ple-bar-actions {

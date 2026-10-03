@@ -12,7 +12,10 @@
 **Geste commun** : au **survol**, l'étiquette modifiable est mise en
 **surbrillance** ; un **premier clic** la **sélectionne**, un **second clic**
 lance sa **modification**. L'**étape en cours** s'affiche en haut à gauche de
-la page, sous le menu carte, avec ses boutons **◀ Retour**, **Suivant ▶**,
+la page, sous le menu carte, présentée comme un « process » : titre de
+l'étiquette, liste des étapes dont l'active est surlignée (« ✓ valeur » en
+vert pour celles qui sont faites, consigne en gris sous l'étape active ; un
+clic sur une étape y revient), avec ses boutons **◀ Retour**, **Suivant ▶**,
 **↺** (position d'origine), **Annuler** (la modification en cours) et
 **✓ Terminer**. Le bouton **✥ Mode édition** (en bas à droite) affiche ou
 masque, à chaque clic, le **panneau de suivi** : aide, compteurs de
