@@ -3,10 +3,18 @@
  * l'application. Reçoit un PUT de l'application, vérifie le code
  * administrateur, valide le contenu, puis l'enregistre dans le dépôt GitHub
  * (API Contents, appelée de serveur à serveur : pas de mur CORS comme depuis
- * un navigateur — voir README section 6). Trois routes :
+ * un navigateur — voir README section 6).
+ *
+ * UNE SEULE AUTORISATION pour tout : le code administrateur (ADMIN_TOKEN) ouvre
+ * toutes les routes ; les routes ne sont pas des droits distincts mais une liste
+ * de fichiers connus, chacun avec son contrôle de format. Routes :
  *   PUT /anchors       définitions d'ancrage des références de planche   -> data/pe-label-anchors.json
  *   PUT /interstation  position et tronçon des étiquettes d'interstation -> data/interstation-labels.json
  *   PUT /settings      paramètres généraux de l'application              -> data/app-settings.json
+ *   PUT /shared/<nom>  TOUTE AUTRE donnée écrite par l'application       -> data/shared/<nom>.json
+ *                      (<nom> : minuscules, chiffres, tirets ; corps JSON { "version": 1, ... },
+ *                      format libre) — pour ajouter un jeu de données (chantiers, amiante,
+ *                      signalements...) SANS modifier ni redéployer ce relais.
  *   GET (toute route) contrôle de connexion et du code, n'écrit rien.
  *
  * Variables (wrangler.toml ou tableau de bord Cloudflare) :
@@ -63,6 +71,12 @@ export function validateInterstation(body) {
     const extra = Object.keys(d).filter((k) => !['x', 'y', 'tunnel'].includes(k));
     if (extra.length) return `Champ inattendu pour ${key} : ${extra[0]}`;
   }
+  return null;
+}
+
+/** Données partagées génériques (PUT /shared/<nom>) : { "version": 1, ...tout le reste, au format libre }. */
+export function validateShared(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body) || body.version !== 1) return 'Format attendu : { "version": 1, ... }';
   return null;
 }
 
@@ -127,14 +141,19 @@ export default {
     }
     // GET : contrôle de connexion (« Tester » dans ⚙ Paramètres > Serveur) — vérifie le code, n'écrit rien.
     if (request.method === 'GET') return json(200, { ok: true }, cors);
-    const route = new URL(request.url).pathname.replace(/\/+$/, '').split('/').pop();
+    const parts = new URL(request.url).pathname.replace(/\/+$/, '').split('/').filter(Boolean);
+    const route = parts[parts.length - 1];
     const targets = {
       anchors: { path: env.FILE_PATH || 'data/pe-label-anchors.json', validate, key: 'labels', message: "Étiquettes de planche : mise à jour des ancrages (via l'application)" },
       interstation: { path: env.INTERSTATION_PATH || 'data/interstation-labels.json', validate: validateInterstation, key: 'labels', message: "Étiquettes d'interstation : mise à jour (via l'application)" },
       settings: { path: env.SETTINGS_PATH || 'data/app-settings.json', validate: validateSettings, key: 'settings', message: "Paramètres généraux : mise à jour (via l'application)" },
     };
-    const target = targets[route];
-    if (!target) return json(404, { error: 'Route inconnue (attendu : /anchors, /interstation ou /settings)' }, cors);
+    // /shared/<nom> : jeu de données générique, écrit sous data/shared/ (jamais sur un fichier connu ci-dessus).
+    const shared = parts.length >= 2 && parts[parts.length - 2] === 'shared' && /^[a-z0-9-]{1,40}$/.test(route);
+    const target = shared
+      ? { path: `data/shared/${route}.json`, validate: validateShared, key: null, message: `Données partagées « ${route} » : mise à jour (via l'application)` }
+      : targets[route];
+    if (!target) return json(404, { error: 'Route inconnue (attendu : /anchors, /interstation, /settings ou /shared/<nom>)' }, cors);
 
     const raw = await request.text();
     if (raw.length > MAX_BODY_BYTES) return json(413, { error: 'Contenu trop volumineux' }, cors);
@@ -149,9 +168,14 @@ export default {
 
     const path = target.path;
     // Contenu canonique (clés triées) : un enregistrement sans changement réel ne crée pas de commit parasite.
-    const entries = body[target.key];
-    const sorted = Object.fromEntries(Object.keys(entries).sort().map((k) => [k, entries[k]]));
-    const content = JSON.stringify({ version: 1, [target.key]: sorted }, null, 2) + '\n';
+    let content;
+    if (target.key) {
+      const entries = body[target.key];
+      const sorted = Object.fromEntries(Object.keys(entries).sort().map((k) => [k, entries[k]]));
+      content = JSON.stringify({ version: 1, [target.key]: sorted }, null, 2) + '\n';
+    } else {
+      content = JSON.stringify(body, null, 2) + '\n'; // données partagées : format libre, enregistré tel quel
+    }
     let binary = '';
     for (const byte of new TextEncoder().encode(content)) binary += String.fromCharCode(byte);
     const encoded = btoa(binary);

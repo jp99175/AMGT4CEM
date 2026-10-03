@@ -125,6 +125,9 @@ const AMGT4CEM_PeLabelAnchors = {
       } catch (err) {
         /* corps non JSON : le code HTTP suffit */
       }
+      if (response.status === 404 && /Route inconnue/.test(detail)) {
+        throw new Error(`Le relais déployé ne connaît pas la route « ${route} » : il faut redéployer relay/worker.js (voir relay/README.md). ${detail}`);
+      }
       throw new Error(response.status === 401 ? 'Code administrateur refusé.' : `Enregistrement refusé (HTTP ${response.status}) ${detail}`.trim());
     }
   },

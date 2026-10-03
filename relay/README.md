@@ -13,6 +13,15 @@ par un administrateur :
   services externes et adresse du relais (`data/app-settings.json`),
   modifiés dans ⚙ Paramètres.
 
+**Une seule autorisation.** Le code administrateur (`ADMIN_TOKEN`) ouvre toutes
+les routes : elles ne sont pas des droits distincts, seulement une liste de
+fichiers connus avec leur contrôle de format. Pour ne plus avoir à redéployer
+le relais à chaque nouveau jeu de données, `PUT /shared/<nom>` écrit
+n'importe quelle donnée de l'application dans `data/shared/<nom>.json`
+(`<nom>` : minuscules, chiffres, tirets ; corps `{ "version": 1, ... }` au
+format libre, 200 Ko maximum) — il ne peut jamais écrire sur un fichier connu
+(`anchors`, `interstation`, `settings`), qui gardent leur contrôle strict.
+
 **Après une mise à jour de `worker.js`** (ex. ajout de la route
 `/interstation`), le relais doit être **redéployé** (`wrangler deploy`, ou
 coller le nouveau `worker.js` dans le tableau de bord Cloudflare) : tant que ce
@@ -70,10 +79,12 @@ Prérequis : un compte Cloudflare (gratuit), Node.js installé.
 - `PUT /interstation` : `{ "version": 1, "labels": { "648#0": { x, y, tunnel } } }`
   — `x`, `y` : position du texte en Lambert 72 (mètres), `tunnel` : `ogc_fid`
   du tronçon (chiffres) ; aucun champ en trop.
+- `PUT /shared/<nom>` : `{ "version": 1, ... }` — format libre, écrit sous
+  `data/shared/<nom>.json`.
 - `PUT /settings` : `{ "version": 1, "settings": { urbisUrl?, urbisLayers?,
   brucielHistoriqueUrl?, brucielRecentUrl?, geocoderUrl?, relayUrl? } }` —
   clés connues seulement, adresses en `https://` (ou `http://localhost`).
-- N'écrit que `data/pe-label-anchors.json`, `data/interstation-labels.json` et `data/app-settings.json` (contenu trié : un enregistrement
+- N'écrit que `data/pe-label-anchors.json`, `data/interstation-labels.json`, `data/app-settings.json` et `data/shared/*.json` (contenu trié : un enregistrement
   sans changement réel ne crée aucun commit).
 - Le jeton GitHub n'est jamais renvoyé au navigateur.
 
