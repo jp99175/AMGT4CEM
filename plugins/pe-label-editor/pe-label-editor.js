@@ -626,36 +626,28 @@
     },
 
     /**
-     * Étape en cours, présentée comme le « process » du panneau d'étapes : titre de l'étiquette, liste des
-     * étapes dont l'active est surlignée, « ✓ valeur » en vert pour celles qui sont faites, consigne en
-     * gris sous l'étape active ; un clic sur une étape y revient.
-     * steps : [{ title, value, hint }], active : index de l'étape en cours.
+     * Étape EN COURS seulement (pas tout le process), présentée comme une étape du panneau d'étapes :
+     * titre de l'étiquette, puis l'étape surlignée — titre en gras, « ✓ valeur » en vert si elle est
+     * déjà renseignée, consigne en gris. Les boutons Retour / Suivant changent d'étape.
+     * steps : [{ title, value, hint }], active : index de l'étape en cours (-1 : aucune).
      */
     _fillSteps(heading, steps, active, result) {
       const bar = this._bar;
       bar.querySelector('.amgt-ple-bar-title').textContent = heading;
       const ol = bar.querySelector('.amgt-ple-steps');
       ol.textContent = '';
-      steps.forEach((st, i) => {
+      const st = steps[active];
+      if (st) {
         const li = document.createElement('li');
-        if (i === active) li.classList.add('amgt-ple-active');
+        li.classList.add('amgt-ple-active');
         if (st.value) li.classList.add('amgt-ple-done');
         li.innerHTML = '<b></b><span></span><em></em>';
         li.querySelector('b').textContent = st.title;
         li.querySelector('span').textContent = st.value ? `✓ ${st.value}` : '';
-        li.querySelector('em').textContent = i === active ? st.hint : '';
-        li.addEventListener('click', () => this._goToStep(i));
+        li.querySelector('em').textContent = st.hint;
         ol.appendChild(li);
-      });
+      }
       bar.querySelector('.amgt-ple-result').textContent = result || '';
-    },
-
-    _goToStep(i) {
-      const ed = this._edit;
-      if (!ed) return;
-      if (ed.kind === 'ist') return this._setIstStep(i);
-      ed.slot = i;
-      this._refreshEdit();
     },
 
     /** Affiche / met à jour la barre : étiquette sélectionnée (en attente d'un second clic) ou étapes de la modification en cours. */
