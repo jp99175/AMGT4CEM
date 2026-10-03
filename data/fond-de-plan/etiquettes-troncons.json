@@ -1,5 +1,11 @@
 {
   "version": 1,
   "crs": "EPSG:31370",
-  "labels": {}
+  "labels": {
+    "139#0": {
+      "x": 150818.94,
+      "y": 170385.29,
+      "tunnel": "TRO-MAELBEEK-SCHUMAN-01"
+    }
+  }
 }
