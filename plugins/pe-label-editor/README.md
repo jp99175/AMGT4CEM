@@ -87,8 +87,10 @@ plugin à la fin). Dans les deux cas le site doit être servi en http(s).
 3. Boutons de la barre d'étape :
    - **◀ Retour** : annule le positionnement du dernier point choisi (et
      revient à son étape) ; sans point choisi, revient à l'étape précédente ;
-   - **Suivant ▶** : étape suivante (les points 1 et 2 sont indispensables,
-     3 et 4 facultatifs) ;
+   - **Suivant ▶** : étape suivante en **gardant la valeur déjà enregistrée**
+     (les points 1 et 2 sont indispensables, 3 et 4 facultatifs) ; **choisir
+     un point** (clic sur le texte ou sur le cadre) fait passer **aussi** à
+     l'étape suivante, même si celle-ci a déjà une valeur ;
    - **↺** : remet la position d'origine (PDF) de cette étiquette ;
    - **Annuler** : abandonne la modification en cours, aucun changement ;
    - **✓ Terminer** : garde le positionnement (il faut au moins les points 1

@@ -516,9 +516,9 @@
       if (def.r2 && def.r2 === def.r1) delete def.r2;
       if (def.a2 && def.a1 && def.a2[0] === def.a1[0] && def.a2[1] === def.a1[1]) delete def.a2;
       this._syncPose(ed.entry);
-      const after = SLOTS.findIndex((s, i) => i > ed.slot && !def[s.id]);
-      const any = SLOTS.findIndex((s) => !def[s.id]);
-      ed.slot = after >= 0 ? after : any >= 0 ? any : ed.slot;
+      // Le choix d'un point fait passer à l'étape SUIVANTE, que celle-ci ait déjà une valeur enregistrée ou non
+      // (sinon : « Suivant » pour garder la valeur enregistrée). À la dernière étape, on y reste (« Terminer »).
+      ed.slot = Math.min(ed.slot + 1, SLOTS.length - 1);
       this._refreshEdit();
     },
 
