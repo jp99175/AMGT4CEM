@@ -1,7 +1,12 @@
 /**
- * Numéros d'interstation (data/patrimoine-numero-interstation.json, couche
- * « Numéros interstation » des Plans patrimoine) : chaque numéro est rattaché
- * à un TRONÇON (polygone MT de Metro.shp, emprise de tunnel).
+ * Numéros d'interstation (couche « Numéros interstation » des Plans patrimoine) : chaque
+ * numéro est rattaché à un TRONÇON (polygone MT de Metro.shp, emprise de tunnel).
+ *
+ * SOURCE UNIQUE : data/fond-de-plan/etiquettes-troncons.json, liste COMPLÈTE des étiquettes
+ * { "numéro#rang": { x, y, tunnel } } — position du texte (Lambert 72, mètres) et identifiant
+ * stable `id_objet` du tunnel. Créer ou supprimer une étiquette = ajouter ou retirer une entrée
+ * (plugin pe-label-editor). Le fichier d'origine data/patrimoine-numero-interstation.json n'est
+ * plus lu : il ne sert que d'archive (amorçage initial du JSON).
  *
  * Deux usages :
  *  - l'étiquette : texte à taille réelle constante (scaledText.js, comme les
@@ -12,12 +17,9 @@
  *  - l'infobulle de l'emprise du tronçon (metroLayer.js) y ajoute son ou ses
  *    numéros (numbersForTunnel), que la couche soit affichée ou non.
  *
- * RATTACHEMENT. Par défaut : le tunnel dont le contour est le plus proche du
- * point du numéro (rattachement automatique). Un administrateur peut déplacer
- * l'étiquette et choisir le tronçon (plugin pe-label-editor, mode « tronçons ») :
- * ce choix — position du texte (Lambert 72) + tronçon (identifiant stable `id_objet`) — est
- * enregistré dans data/fond-de-plan/etiquettes-troncons.json, clé « numéro#rang », et
- * remplace le rattachement automatique pour cette étiquette.
+ * RATTACHEMENT. Celui du JSON. Pour une étiquette nouvellement créée (ou dont le tronçon
+ * a disparu de Metro.shp), le tunnel dont le contour est le plus proche du texte
+ * (autoTunnelAt) sert de proposition par défaut.
  *
  * AXE ET CENTRE DU TRONÇON. Le polygone d'un tunnel est une bande allongée ;
  * son axe est une ligne de construction tracée entre ses deux côtés longs, et
@@ -35,25 +37,23 @@
  *    éloignés repèrent les extrémités, et l'extrémité voisine du segment
  *    commun est ramenée sur son milieu.
  *
- * Les tronçons (Metro.shp) arrivent de façon asynchrone : l'association se
- * fait dès que numéros, définitions enregistrées ET tronçons sont chargés
- * (whenReady).
+ * Les tronçons (Metro.shp) arrivent de façon asynchrone : les étiquettes sont liées à leur
+ * tronçon dès que le JSON ET Metro.shp sont chargés (whenReady).
  */
 const AMGT4CEM_Interstation = {
   STYLE: { heightMeters: 42 }, // même hauteur réelle que les références de planche (voir AMGT4CEM_LABEL_STYLES)
-  _features: null, // numéros (GeoJSON, Lambert), null tant que non chargés
-  _overrides: {}, // définitions enregistrées { "numéro#rang": { x, y, tunnel } } (Lambert 72, id du tunnel)
+  _overrides: null, // état ENREGISTRÉ { "numéro#rang": { x, y, tunnel } } (Lambert 72, id du tunnel) ; null tant que non chargé
   _tunnels: null, // [{ id, name, ring, axis: [[x, y], ...], center: [x, y], commons: [...] }], null tant que Metro.shp non reçu
-  _numbers: [], // [{ numero, key, xy, latlng, autoTunnel, tunnel }] une fois associés (tunnel = rattachement effectif)
+  _numbers: [], // état COURANT (modifs non enregistrées comprises) : [{ numero, key, def: { x, y, tunnel }, tunnel }] (tunnel : objet résolu)
   _markers: [], // marqueurs du groupe actuellement construit
+  _group: null, // dernier groupe Leaflet construit (buildSubGroup)
   _ready: null,
   _resolveReady: null,
 
   init() {
     this._ready = new Promise((resolve) => (this._resolveReady = resolve));
-    Promise.all([this._fetchNumbers(), this._fetchOverrides()]).then(([features, overrides]) => {
-      this._features = features;
-      this._overrides = overrides;
+    this._fetchOverrides().then((labels) => {
+      this._overrides = labels;
       this._tryLink();
     });
   },
@@ -63,26 +63,14 @@ const AMGT4CEM_Interstation = {
     return this._ready;
   },
 
-  async _fetchNumbers() {
-    const entry = AMGT4CEM_PATRIMOINE_CATALOG.find((e) => e.interstation);
-    try {
-      const response = await fetch(entry.file);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return (await response.json()).features || [];
-    } catch (err) {
-      console.error('[AMGT4CEM] Chargement des numéros d\'interstation impossible :', err);
-      return [];
-    }
-  },
-
-  /** N'échoue jamais : absent/illisible = aucune définition (rattachement et position d'origine). */
+  /** N'échoue jamais : absent/illisible = aucune étiquette. */
   async _fetchOverrides() {
     try {
       // no-cache : revalide auprès du serveur (GitHub Pages met les fichiers en cache ~10 min), comme peLabelAnchors.js.
       const response = await fetch(AMGT4CEM_CONFIG.interstationLabelsUrl, { cache: 'no-cache' });
       if (response.ok) return ((await response.json()) || {}).labels || {};
     } catch (err) {
-      console.warn("[AMGT4CEM] Définitions des étiquettes d'interstation illisibles, positions d'origine utilisées :", err);
+      console.warn("[AMGT4CEM] Étiquettes d'interstation illisibles, aucune étiquette affichée :", err);
     }
     return {};
   },
@@ -103,21 +91,20 @@ const AMGT4CEM_Interstation = {
   },
 
   _tryLink() {
-    if (!this._features || !this._tunnels) return;
-    const rank = {};
-    this._numbers = [];
-    for (const f of this._features) {
-      const numero = f.properties && (f.properties.numero || f.properties.text);
-      if (!numero || !f.geometry || f.geometry.type !== 'Point') continue;
-      const xy = f.geometry.coordinates;
-      rank[numero] = (rank[numero] || 0) + 1;
-      const autoTunnel = this._nearestTunnel(xy);
-      const n = { numero: String(numero), key: `${numero}#${rank[numero] - 1}`, xy, latlng: AMGT4CEM_CRS.lambertToLatLng(xy), autoTunnel, tunnel: autoTunnel };
-      const saved = this._overrides[n.key];
-      if (saved) n.tunnel = this.tunnelById(saved.tunnel) || autoTunnel; // tronçon disparu de Metro.shp : retour au rattachement automatique
-      this._numbers.push(n);
-    }
+    if (!this._overrides || !this._tunnels) return;
+    this._numbers = Object.entries(this._overrides).map(([key, def]) => this._makeNumber(key, def));
     this._resolveReady();
+  },
+
+  /** Entrée de l'état courant pour une étiquette : tunnel du JSON, sinon (disparu) le plus proche du texte. */
+  _makeNumber(key, def) {
+    const d = { x: def.x, y: def.y, tunnel: def.tunnel };
+    return { numero: key.split('#')[0], key, def: d, tunnel: this.tunnelById(d.tunnel) || this._nearestTunnel([d.x, d.y]) };
+  },
+
+  /** Tunnel dont le contour est le plus proche d'un point Lambert : proposition par défaut pour une étiquette créée. */
+  autoTunnelAt(x, y) {
+    return this._nearestTunnel([x, y]);
   },
 
   tunnelById(id) {
@@ -151,14 +138,22 @@ const AMGT4CEM_Interstation = {
 
   // ---- Définitions enregistrées (partagées) -------------------------------------
 
-  /** Définition enregistrée d'une étiquette (copie), ou null. */
-  getOverride(key) {
-    return this._overrides[key] ? { ...this._overrides[key] } : null;
+  /** Définition COURANTE d'une étiquette (copie), ou null. */
+  getDef(key) {
+    const n = this._numbers.find((x) => x.key === key);
+    return n ? { ...n.def } : null;
   },
 
-  /** Copie des définitions actuellement enregistrées (état de référence pour détecter les modifications). */
+  /** Copie de l'état ENREGISTRÉ (référence pour détecter les modifications). */
   savedOverrides() {
-    return JSON.parse(JSON.stringify(this._overrides));
+    return JSON.parse(JSON.stringify(this._overrides || {}));
+  },
+
+  /** État COURANT complet { "numéro#rang": { x, y, tunnel } } (modifs, créations, suppressions non enregistrées comprises). */
+  currentLabels() {
+    const out = {};
+    for (const n of this._numbers) out[n.key] = { x: n.def.x, y: n.def.y, tunnel: n.def.tunnel };
+    return out;
   },
 
   /**
@@ -173,22 +168,48 @@ const AMGT4CEM_Interstation = {
   },
 
   /**
-   * Applique une définition { x, y, tunnel } (ou null : position et rattachement
-   * d'origine) à un marqueur déjà construit : texte déplacé, ligne de repère
-   * ramenée au centre du tronçon choisi.
+   * Applique une définition { x, y, tunnel } à un marqueur déjà construit : texte déplacé, ligne de repère
+   * ramenée au centre du tronçon choisi (le plus proche du texte si ce tronçon n'existe plus).
    */
-  apply(marker, override) {
+  apply(marker, def) {
     const n = marker._amgtNumber;
-    const tunnel = (override && this.tunnelById(override.tunnel)) || n.autoTunnel;
-    n.tunnel = tunnel;
-    marker._amgtTunnel = tunnel;
-    const at = override ? AMGT4CEM_CRS.lambertToLatLng([override.x, override.y]) : null;
-    AMGT4CEM_ScaledText.setDefinition(marker, at ? { r1: 'center', a1: [at.lat, at.lng] } : null);
-    AMGT4CEM_ScaledText.setLeaderFrom(marker, AMGT4CEM_CRS.lambertToLatLng(tunnel.center));
+    n.def = { x: def.x, y: def.y, tunnel: def.tunnel };
+    n.tunnel = this.tunnelById(def.tunnel) || this._nearestTunnel([def.x, def.y]);
+    marker._amgtTunnel = n.tunnel;
+    const at = AMGT4CEM_CRS.lambertToLatLng([def.x, def.y]);
+    AMGT4CEM_ScaledText.setDefinition(marker, { r1: 'center', a1: [at.lat, at.lng] });
+    AMGT4CEM_ScaledText.setLeaderFrom(marker, AMGT4CEM_CRS.lambertToLatLng(n.tunnel.center));
+  },
+
+  /** Le tronçon d'une étiquette est-il celui que le rattachement automatique proposerait pour sa position actuelle ? */
+  isAutoTunnel(marker) {
+    const n = marker._amgtNumber;
+    return this._nearestTunnel([n.def.x, n.def.y]) === n.tunnel;
+  },
+
+  /** Marqueur (texte) et ligne de repère d'une étiquette, ajoutés au groupe courant. */
+  _makeMarker(n) {
+    const at = AMGT4CEM_CRS.lambertToLatLng([n.def.x, n.def.y]);
+    const opacity = AMGT4CEM_PatrimoineLayer._opacityFactor;
+    const marker = AMGT4CEM_ScaledText.createMarker(at, n.numero, {
+      color: this._color,
+      heightMeters: this.STYLE.heightMeters,
+      leaderFrom: AMGT4CEM_CRS.lambertToLatLng(n.tunnel.center),
+      def: { r1: 'center', a1: [at.lat, at.lng] },
+    });
+    marker._amgtKey = n.key;
+    marker._amgtNumber = n;
+    marker._amgtTunnel = n.tunnel;
+    marker.setOpacity(opacity);
+    marker.addTo(this._group);
+    marker._amgtLeader.setStyle({ opacity });
+    marker._amgtLeader.addTo(this._group);
+    this._markers.push(marker);
+    return marker;
   },
 
   /**
-   * Construit le groupe Leaflet de la couche : pour chaque numéro, le texte
+   * Construit le groupe Leaflet de la couche : pour chaque étiquette, le texte
    * souligné et sa ligne de repère (même groupe : ils s'affichent et se
    * masquent ensemble, avec la case « Numéros interstation »).
    * @param {string} color - couleur choisie pour la couche
@@ -197,26 +218,48 @@ const AMGT4CEM_Interstation = {
   buildSubGroup(color, opacity) {
     for (const m of this._markers) AMGT4CEM_ScaledText.dispose(m);
     this._markers = [];
-    const group = L.layerGroup();
-    for (const n of this._numbers) {
-      const saved = this._overrides[n.key];
-      const at = saved ? AMGT4CEM_CRS.lambertToLatLng([saved.x, saved.y]) : null;
-      const marker = AMGT4CEM_ScaledText.createMarker(n.latlng, n.numero, {
-        color,
-        heightMeters: this.STYLE.heightMeters,
-        leaderFrom: AMGT4CEM_CRS.lambertToLatLng(n.tunnel.center),
-        def: at ? { r1: 'center', a1: [at.lat, at.lng] } : undefined, // position enregistrée, sinon celle d'origine
-      });
-      marker._amgtKey = n.key;
-      marker._amgtNumber = n;
-      marker._amgtTunnel = n.tunnel;
-      marker.setOpacity(opacity);
-      marker.addTo(group);
-      marker._amgtLeader.setStyle({ opacity });
-      marker._amgtLeader.addTo(group);
-      this._markers.push(marker);
+    this._color = color;
+    this._group = L.layerGroup();
+    for (const n of this._numbers) this._makeMarker(n);
+    return this._group;
+  },
+
+  /** Premier rang libre pour un numéro : « 243-3#0 », « 243-3#1 »... */
+  nextKey(numero) {
+    let rank = 0;
+    while (this._numbers.some((n) => n.key === `${numero}#${rank}`) || (this._overrides && this._overrides[`${numero}#${rank}`])) rank++;
+    return `${numero}#${rank}`;
+  },
+
+  /** Crée une étiquette (clé « numéro#rang », définition { x, y, tunnel }) ; retourne son marqueur, ou null si la couche n'est pas encore construite. */
+  createLabel(key, def) {
+    const n = this._makeNumber(key, def);
+    this._numbers.push(n);
+    return this._group ? this._makeMarker(n) : null;
+  },
+
+  /** Supprime une étiquette de l'état courant (et de la carte). */
+  removeLabel(marker) {
+    const n = marker._amgtNumber;
+    this._numbers = this._numbers.filter((x) => x !== n);
+    this._markers = this._markers.filter((m) => m !== marker);
+    if (this._group) {
+      this._group.removeLayer(marker);
+      this._group.removeLayer(marker._amgtLeader);
     }
-    return group;
+    AMGT4CEM_ScaledText.dispose(marker);
+  },
+
+  /** Fait correspondre l'état courant à `labels` { clé: { x, y, tunnel } } : retire, ajoute et met à jour (annulation, réinitialisation). */
+  syncTo(labels) {
+    for (const m of [...this._markers]) if (!labels[m._amgtKey]) this.removeLabel(m);
+    this._numbers = this._numbers.filter((n) => labels[n.key]); // étiquettes sans marqueur (couche jamais construite)
+    for (const [key, def] of Object.entries(labels)) {
+      const marker = this._markers.find((m) => m._amgtKey === key);
+      if (marker) this.apply(marker, def);
+      else if (this._numbers.some((n) => n.key === key)) Object.assign(this._numbers.find((n) => n.key === key), this._makeNumber(key, def));
+      else this.createLabel(key, def);
+    }
   },
 
   // ---- Axe d'un tunnel (Lambert, mètres) ---------------------------------------

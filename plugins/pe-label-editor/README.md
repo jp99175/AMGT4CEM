@@ -96,7 +96,7 @@ plugin à la fin). Dans les deux cas le site doit être servi en http(s).
      (les **quatre choix sont indispensables**, y compris l'orientation) ; **choisir
      un point** (clic sur le texte ou sur le cadre) fait passer **aussi** à
      l'étape suivante, même si celle-ci a déjà une valeur ;
-   - **↺** : remet la position d'origine (PDF) de cette étiquette ;
+   - **↺** : remet l'étiquette dans l'état du début de cette modification ;
    - **Annuler** : abandonne la modification en cours, aucun changement ;
    - **✓ Terminer** : garde le positionnement (il faut les **quatre** choix) ;
      la modification reste à **enregistrer** (💾 du panneau de suivi).
@@ -143,6 +143,39 @@ Enregistrement : `data/fond-de-plan/etiquettes-troncons.json` (`{ "version": 1, 
 { "648#0": { x, y, tunnel } } }` — position en Lambert 72, `id_objet` stable
 du tunnel), route `/shared/fond-de-plan/etiquettes-troncons` du relais.
 
+## Supprimer et créer des étiquettes
+
+**Source unique** : les JSON de `data/fond-de-plan/` sont la liste COMPLÈTE des
+étiquettes (planches : 37 ; tronçons : 86 au départ). Créer ou supprimer une
+étiquette revient à ajouter ou retirer une entrée ; les fichiers d'origine
+(`MetroLabels.shp`, `patrimoine-numero-interstation.json`) ne servent plus
+qu'à l'amorçage.
+
+- **Supprimer** (uniquement en mode édition) : sélectionner l'étiquette
+  (premier clic), puis **🗑** dans la barre, après **confirmation** (pas de code
+  administrateur). Annulable avec ↶ tant que la page n'est pas rechargée ; la
+  suppression n'est partagée qu'après 💾. Une fois enregistrée, l'étiquette reste
+  récupérable dans l'historique Git du dépôt (chaque enregistrement est un commit).
+- **Créer** : en mode édition, le bouton « ✚ Ajouter un point » de la barre
+  d'outils devient **« ✚ Ajouter un élément »** (l'outil de mesure est masqué) et
+  propose :
+  - **Étiquette de planche** : survoler la planche concernée (elle s'illumine) et
+    cliquer ; puis les quatre choix habituels. Une planche peut avoir plusieurs
+    étiquettes (clé `<référence>#<rang>`, premier rang libre) ;
+  - **Étiquette de tronçon** : saisir le numéro (ex. `243-3`) ; l'étiquette
+    apparaît au centre de l'écran, rattachée au tunnel le plus proche ; puis les
+    deux étapes habituelles (déplacer le texte, choisir le tronçon).
+
+  **Annuler** pendant une création supprime l'étiquette sans laisser de trace.
+
+## Annuler et réinitialiser
+
+- **↶** annule la dernière opération de la session — modification, création,
+  suppression ou réinitialisation —, une à la fois.
+- **Tout réinitialiser** (confirmation + code administrateur) abandonne
+  **toutes les modifications non enregistrées** (modifications, créations,
+  suppressions) et revient à l'état **enregistré** ; annulable avec ↶.
+
 ## Enregistrement dans l'application
 
 Les modifications sont **enregistrées dans l'application**, partagées par
@@ -171,11 +204,9 @@ voit les étiquettes à leur nouvelle place.
   code ; l'adresse est enregistrée sur le serveur comme paramètre général).
   Tant que ce n'est pas fait, « Enregistrer » affiche un message explicite et
   n'écrit rien.
-- **↶** annule la dernière modification de la session, une à la fois (y
-  compris un « Tout réinitialiser »). **Tout réinitialiser** demande une
-  confirmation et le **code administrateur** (saisi masqué, vérifié auprès du
-  relais : refusé si le relais n'est pas configuré) ; à enregistrer ensuite
-  pour que ce soit partagé. L'export/import JSON manuel a été retiré de
+- **↶** et **Tout réinitialiser** : voir ci-dessus. Le code administrateur de
+  « Tout réinitialiser » est saisi masqué et vérifié auprès du relais (refusé si
+  le relais n'est pas configuré). L'export/import JSON manuel a été retiré de
   l'interface.
 
 Les anciens réglages locaux (`localStorage`, versions précédentes du plugin)

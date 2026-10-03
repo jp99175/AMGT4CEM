@@ -2,6 +2,46 @@
   "version": 1,
   "crs": "EPSG:31370",
   "labels": {
+    "1000#0": {
+      "x": 142664.36,
+      "y": 167606.73,
+      "tunnel": "TRO-ROUTE-DE-LENNIK-ERASME-01"
+    },
+    "131#0": {
+      "x": 147184.88,
+      "y": 171851.12,
+      "tunnel": "TRO-BEEKKANT-ETANGS-NOIRS-01"
+    },
+    "132#0": {
+      "x": 147762.33,
+      "y": 171831.47,
+      "tunnel": "TRO-ETANGS-NOIRS-COMTE-DE-FLANDRE-01"
+    },
+    "133#0": {
+      "x": 148331.55,
+      "y": 171536.09,
+      "tunnel": "TRO-COMTE-DE-FLANDRE-SAINTE-CATHERINE-01"
+    },
+    "134#0": {
+      "x": 148686.52,
+      "y": 171223.59,
+      "tunnel": "TRO-SAINTE-CATHERINE-DE-BROUCKERE-01"
+    },
+    "135#0": {
+      "x": 149096,
+      "y": 170951.66,
+      "tunnel": "TRO-DE-BROUCKERE-GARE-CENTRALE-01"
+    },
+    "136#0": {
+      "x": 149412.3,
+      "y": 170615.71,
+      "tunnel": "TRO-GARE-CENTRALE-PARC-01"
+    },
+    "137#0": {
+      "x": 149700.07,
+      "y": 170660.08,
+      "tunnel": "TRO-PARC-ARTS-LOI-01"
+    },
     "138#0": {
       "x": 150182.7,
       "y": 170434.2,
@@ -11,6 +51,171 @@
       "x": 150818.94,
       "y": 170385.29,
       "tunnel": "TRO-MAELBEEK-SCHUMAN-01"
+    },
+    "140#0": {
+      "x": 151523.08,
+      "y": 170112.41,
+      "tunnel": "TRO-SCHUMAN-MERODE-01"
+    },
+    "141#0": {
+      "x": 152315.42,
+      "y": 169866.47,
+      "tunnel": "TRO-MERODE-MONTGOMERY-01"
+    },
+    "142#0": {
+      "x": 152974.01,
+      "y": 169884.22,
+      "tunnel": "TRO-MONTGOMERY-JOSEPHINE-CHARLOTTE-01"
+    },
+    "143#0": {
+      "x": 153271.3,
+      "y": 170192.28,
+      "tunnel": "TRO-JOSEPHINE-CHARLOTTE-GRIBAUMONT-01"
+    },
+    "144#0": {
+      "x": 153792.97,
+      "y": 170306.38,
+      "tunnel": "TRO-GRIBAUMONT-TOMBERG-01"
+    },
+    "145#0": {
+      "x": 154260.77,
+      "y": 170737.41,
+      "tunnel": "TRO-TOMBERG-ROODEBEEK-01"
+    },
+    "146#0": {
+      "x": 155200.8,
+      "y": 170763.4,
+      "tunnel": "TRO-ROODEBEEK-VANDERVELDE-01"
+    },
+    "147#0": {
+      "x": 155767.48,
+      "y": 170949.76,
+      "tunnel": "TRO-VANDERVELDE-ALMA-01"
+    },
+    "148#0": {
+      "x": 156152.24,
+      "y": 171165.27,
+      "tunnel": "TRO-ALMA-CRAINHEM-01"
+    },
+    "149#0": {
+      "x": 156511.64,
+      "y": 170679.09,
+      "tunnel": "TRO-CRAINHEM-STOCKEL-01"
+    },
+    "181#0": {
+      "x": 152302.74,
+      "y": 169587.57,
+      "tunnel": "TRO-MERODE-THIEFFRY-01"
+    },
+    "182#0": {
+      "x": 152440.93,
+      "y": 168976.52,
+      "tunnel": "TRO-THIEFFRY-PETILLON-01"
+    },
+    "183#0": {
+      "x": 152598.76,
+      "y": 168335.04,
+      "tunnel": "TRO-PETILLON-HANKAR-01"
+    },
+    "184#0": {
+      "x": 152609.54,
+      "y": 167715.75,
+      "tunnel": "TRO-HANKAR-DELTA-01"
+    },
+    "185#0": {
+      "x": 152515.09,
+      "y": 167354.45,
+      "tunnel": "TRO-DELTA-BEAULIEU-02"
+    },
+    "186#0": {
+      "x": 153212.98,
+      "y": 167213.73,
+      "tunnel": "TRO-BEAULIEU-DEMEY-01"
+    },
+    "187#0": {
+      "x": 153988.2,
+      "y": 166962.08,
+      "tunnel": "TRO-DEMEY-HERMANN-DEBROUX-01"
+    },
+    "188#0": {
+      "x": 154453.46,
+      "y": 166892.36,
+      "tunnel": "TRO-HERMANN-DEBROUX-AVENUE-JOSEPH-CHAUDRON-01"
+    },
+    "243#0": {
+      "x": 147104.38,
+      "y": 172750.58,
+      "tunnel": "TRO-BELGICA-SIMONIS-01"
+    },
+    "243-3#0": {
+      "x": 147086.24,
+      "y": 172578.17,
+      "tunnel": "TRO-SIMONIS-OSSEGHEM-01"
+    },
+    "244#0": {
+      "x": 147621.61,
+      "y": 172457.73,
+      "tunnel": "TRO-RIBAUCOURT-SIMONIS-01"
+    },
+    "245#0": {
+      "x": 148190.2,
+      "y": 172200.38,
+      "tunnel": "TRO-YSER-RIBAUCOURT-01"
+    },
+    "246#0": {
+      "x": 148594.6,
+      "y": 171988.04,
+      "tunnel": "TRO-YSER-RIBAUCOURT-01"
+    },
+    "247#0": {
+      "x": 149019.93,
+      "y": 171819.43,
+      "tunnel": "TRO-ROGIER-YSER-01"
+    },
+    "248#0": {
+      "x": 149513.08,
+      "y": 171631.8,
+      "tunnel": "TRO-BOTANIQUE-ROGIER-01"
+    },
+    "249#0": {
+      "x": 150046.8,
+      "y": 171391.56,
+      "tunnel": "TRO-MADOU-BOTANIQUE-01"
+    },
+    "250#0": {
+      "x": 150134.91,
+      "y": 170801.43,
+      "tunnel": "TRO-ARTS-LOI-MADOU-01"
+    },
+    "251#0": {
+      "x": 149852.84,
+      "y": 170319.06,
+      "tunnel": "TRO-TRONE-ARTS-LOI-01"
+    },
+    "252#0": {
+      "x": 149667.75,
+      "y": 169944.44,
+      "tunnel": "TRO-PORTE-DE-NAMUR-TRONE-01"
+    },
+    "253#0": {
+      "x": 149253.83,
+      "y": 169659.2,
+      "tunnel": "TRO-LOUISE-PORTE-DE-NAMUR-01"
+    },
+    "254#0": {
+      "x": 148900.76,
+      "y": 169424.66,
+      "tunnel": "TRO-HOTEL-DES-MONNAIES-LOUISE-01"
+    },
+    "255#0": {
+      "x": 148371.48,
+      "y": 169141.33,
+      "tunnel": "TRO-PORTE-DE-HAL-HOTEL-DES-MONNAIES-01"
+    },
+    "256#0": {
+      "x": 148044.4,
+      "y": 169511.51,
+      "tunnel": "TRO-GARE-DU-MIDI-PORTE-DE-HAL-01"
     },
     "257#0": {
       "x": 147395.91,
@@ -27,6 +232,41 @@
       "y": 170834.79,
       "tunnel": "TRO-GARE-DE-L-OUEST-DELACROIX-01"
     },
+    "315#0": {
+      "x": 148396.84,
+      "y": 167785.48,
+      "tunnel": "TRO-HORTA-ALBERT-01"
+    },
+    "342#0": {
+      "x": 147959.47,
+      "y": 167724.63,
+      "tunnel": "TRO-ALBERT-AVENUE-JUPITER-01"
+    },
+    "343#0": {
+      "x": 148373.38,
+      "y": 168113.19,
+      "tunnel": "TRO-HORTA-ALBERT-02"
+    },
+    "344#0": {
+      "x": 148614.89,
+      "y": 168646.91,
+      "tunnel": "TRO-PARVIS-DE-SAINT-GILLES-HORTA-01"
+    },
+    "345#0": {
+      "x": 148291.61,
+      "y": 168998.07,
+      "tunnel": "TRO-PORTE-DE-HAL-PARVIS-DE-SAINT-GILLES-01"
+    },
+    "346#0": {
+      "x": 147955.66,
+      "y": 169374.59,
+      "tunnel": "TRO-GARE-DU-MIDI-PORTE-DE-HAL-01"
+    },
+    "347#0": {
+      "x": 147836.5,
+      "y": 169801.82,
+      "tunnel": "TRO-LEMONNIER-GARE-DU-MIDI-01"
+    },
     "348#0": {
       "x": 148292.82,
       "y": 170146.32,
@@ -36,6 +276,161 @@
       "x": 148573.54,
       "y": 170593.56,
       "tunnel": "TRO-BOURSE-ANNEESSENS-01"
+    },
+    "350#0": {
+      "x": 148787.93,
+      "y": 170983.35,
+      "tunnel": "TRO-DE-BROUCKERE-BOURSE-01"
+    },
+    "351#0": {
+      "x": 149028.81,
+      "y": 171454.32,
+      "tunnel": "TRO-ROGIER-DE-BROUCKERE-01"
+    },
+    "352#0": {
+      "x": 149286.79,
+      "y": 171920.85,
+      "tunnel": "TRO-GARE-DU-NORD-ROGIER-01"
+    },
+    "353#0": {
+      "x": 149419.27,
+      "y": 172441.89,
+      "tunnel": "TRO-RUE-DU-PROGRES-GARE-DU-NORD-01"
+    },
+    "548#0": {
+      "x": 152208.3,
+      "y": 171250.84,
+      "tunnel": "TRO-BOULEVARD-AUGUSTE-REYERS-DIAMANT-01"
+    },
+    "549#0": {
+      "x": 152406.7,
+      "y": 170579.58,
+      "tunnel": "TRO-DIAMANT-GEORGES-HENRI-01"
+    },
+    "550#0": {
+      "x": 152618.41,
+      "y": 170059.17,
+      "tunnel": "TRO-GEORGES-HENRI-MONTGOMERY-01"
+    },
+    "551#0": {
+      "x": 152695.74,
+      "y": 169420.23,
+      "tunnel": "TRO-MONTGOMERY-BOILEAU-01"
+    },
+    "552#0": {
+      "x": 152607.64,
+      "y": 169008.21,
+      "tunnel": "TRO-BOILEAU-BOULEVARD-LOUIS-SCHMIDT-01"
+    },
+    "639#0": {
+      "x": 142630.52,
+      "y": 167243.52,
+      "tunnel": "TRO-ROUTE-DE-LENNIK-ERASME-01"
+    },
+    "640#0": {
+      "x": 143322.71,
+      "y": 167339.23,
+      "tunnel": "TRO-ERASME-EDDY-MERCKX-01"
+    },
+    "641#0": {
+      "x": 144064.97,
+      "y": 167365.86,
+      "tunnel": "TRO-EDDY-MERCKX-CERIA-01"
+    },
+    "642#0": {
+      "x": 144561.92,
+      "y": 167606.09,
+      "tunnel": "TRO-CERIA-LA-ROUE-01"
+    },
+    "643#0": {
+      "x": 144784.41,
+      "y": 168139.18,
+      "tunnel": "TRO-LA-ROUE-BIZET-01"
+    },
+    "644#0": {
+      "x": 144991.69,
+      "y": 168549.29,
+      "tunnel": "TRO-BIZET-VEEWEYDE-01"
+    },
+    "645#0": {
+      "x": 145242.7,
+      "y": 169171.12,
+      "tunnel": "TRO-VEEWEYDE-SAINT-GUIDON-01"
+    },
+    "646#0": {
+      "x": 145751.7,
+      "y": 169742.23,
+      "tunnel": "TRO-SAINT-GUIDON-AUMALE-01"
+    },
+    "647#0": {
+      "x": 146182.73,
+      "y": 170136.5,
+      "tunnel": "TRO-AUMALE-JACQUES-BREL-01"
+    },
+    "648#0": {
+      "x": 146480.01,
+      "y": 170719.66,
+      "tunnel": "TRO-JACQUES-BREL-GARE-DE-L-OUEST-01"
+    },
+    "649#0": {
+      "x": 146608.69,
+      "y": 171192.53,
+      "tunnel": "TRO-BEEKKANT-GARE-DE-L-OUEST-04"
+    },
+    "650#0": {
+      "x": 146799.48,
+      "y": 171707.23,
+      "tunnel": "TRO-BEEKKANT-GARE-DE-L-OUEST-01"
+    },
+    "651#0": {
+      "x": 146992.18,
+      "y": 172213.69,
+      "tunnel": "TRO-OSSEGHEM-BEEKKANT-01"
+    },
+    "652#0": {
+      "x": 147426.38,
+      "y": 172843.76,
+      "tunnel": "TRO-BELGICA-SIMONIS-01"
+    },
+    "653#0": {
+      "x": 147886.57,
+      "y": 173427.55,
+      "tunnel": "TRO-PANNENHUIS-BELGICA-01"
+    },
+    "654#0": {
+      "x": 148275.13,
+      "y": 173915,
+      "tunnel": "TRO-BOCKSTAEL-PANNENHUIS-01"
+    },
+    "655#0": {
+      "x": 148327.11,
+      "y": 174711.77,
+      "tunnel": "TRO-STUYVENBERGH-BOCKSTAEL-01"
+    },
+    "656#0": {
+      "x": 147938.55,
+      "y": 175209.36,
+      "tunnel": "TRO-HOUBA-BRUGMANN-STUYVENBERGH-01"
+    },
+    "657#0": {
+      "x": 147853.61,
+      "y": 175949.09,
+      "tunnel": "TRO-HEYSEL-HOUBA-BRUGMANN-01"
+    },
+    "658#0": {
+      "x": 147540.48,
+      "y": 176396.6,
+      "tunnel": "TRO-ROI-BAUDOUIN-HEYSEL-01"
+    },
+    "810#0": {
+      "x": 146642.92,
+      "y": 170629.65,
+      "tunnel": "TRO-GARE-DE-L-OUEST-DELACROIX-01"
+    },
+    "900#0": {
+      "x": 152339.51,
+      "y": 167216.9,
+      "tunnel": "TRO-DELTA-BEAULIEU-02"
     }
   }
 }

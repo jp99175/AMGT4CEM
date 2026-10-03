@@ -50,7 +50,10 @@
  *   deux triangles, un tracé à deux voies ayant deux triangles pour un
  *   seul code) : centre du texte dans le PDF.
  * - `type = "PE_label"` (37 : un par planche, `3000-126` en ayant deux
- *   comme dans le PDF) : texte de `sheet_ref` (voir Metro.shp/PE),
+ *   comme dans le PDF) : AMORÇAGE D'ORIGINE seulement — la liste des références de planche est
+ *   désormais celle de data/fond-de-plan/etiquettes-planches.json (source unique, voir
+ *   peLabelAnchors.js ; ces points ne servent plus que si ce JSON est vide/illisible).
+ *   Texte de `sheet_ref` (voir Metro.shp/PE),
  *   rotation (`angle`, degrés CSS) reprise du texte du PDF, et ancré par le
  *   MILIEU DU BORD de sa boîte de texte le plus proche du cadre de la
  *   planche (`side` : top/bottom/left/right) — pas par son centre : quand
@@ -131,8 +134,8 @@ const AMGT4CEM_MetroLayer = {
     // : accumulée au fil de la boucle, complète au moment où un clic peut
     // réellement survenir (après le rendu initial), voir _sheetRefsAt.
     const peFeatures = [];
-    // Rang de chaque étiquette de planche parmi celles de même numéro (clé "1000-236#0", "3000-126#1"...) : la clé de ses définitions d'ancrage.
-    const peLabelRank = {};
+    // Points PE_label du Shapefile : amorçage d'origine, utilisés seulement si le JSON des étiquettes de planche est vide/illisible.
+    const peLabelPoints = [];
 
     for (const feature of geojson.features || []) {
       const props = feature.properties || {};
@@ -148,11 +151,7 @@ const AMGT4CEM_MetroLayer = {
         continue;
       }
       if (type === 'PE_label') {
-        if (!feature.geometry || feature.geometry.type !== 'Point') continue;
-        const code = props.code || '';
-        peLabelRank[code] = (peLabelRank[code] || 0) + 1;
-        const key = `${code}#${peLabelRank[code] - 1}`;
-        this._buildScaledLabel(feature, layersByType.PE_label, bounds, AMGT4CEM_LABEL_STYLES.PE_label, key);
+        if (feature.geometry && feature.geometry.type === 'Point') peLabelPoints.push(feature);
         continue;
       }
 
@@ -206,6 +205,7 @@ const AMGT4CEM_MetroLayer = {
         });
       }
       if (type === 'MT') polygon._amgtTunnelId = AMGT4CEM_Interstation.idOf(props); // voir interstation.js / plugin pe-label-editor
+      if (type === 'PE') polygon._amgtSheetRef = props.sheet_ref || ''; // plugin pe-label-editor : planche choisie pour une nouvelle étiquette
       polygon.addTo(layersByType[type]);
       bounds.extend(polygon.getBounds());
 
@@ -222,7 +222,91 @@ const AMGT4CEM_MetroLayer = {
       });
     }
 
+    // Références de planche : le JSON (data/fond-de-plan/etiquettes-planches.json) est la liste COMPLÈTE.
+    this._peLabelGroup = layersByType.PE_label;
+    this._peLabelDisplayGroup = null;
+    const anchors = AMGT4CEM_PeLabelAnchors.all();
+    if (Object.keys(anchors).length) {
+      for (const [key, def] of Object.entries(anchors)) {
+        const marker = this.createPeLabel(key, def);
+        marker.addTo(layersByType.PE_label);
+        bounds.extend(marker.getLatLng());
+      }
+    } else {
+      const rank = {};
+      for (const feature of peLabelPoints) {
+        const code = feature.properties.code || '';
+        rank[code] = (rank[code] || 0) + 1;
+        this._buildScaledLabel(feature, layersByType.PE_label, bounds, AMGT4CEM_LABEL_STYLES.PE_label, `${code}#${rank[code] - 1}`);
+      }
+    }
+
     return { layersByType, bounds, searchIndex };
+  },
+
+  // ---- Références de planche : création / suppression à l'exécution (plugin pe-label-editor) ------
+
+  /**
+   * Texte « référence de planche » (clé « 1000-236#0 » : référence, rang). Sans définition (étiquette en cours
+   * de création), le texte est posé en `at` (L.LatLng), le temps de choisir ses points.
+   */
+  createPeLabel(key, def, at) {
+    const style = AMGT4CEM_LABEL_STYLES.PE_label;
+    const marker = AMGT4CEM_ScaledText.createMarker(at || L.latLng(def.a1), key.split('#')[0], {
+      color: style.color,
+      heightMeters: style.heightMeters,
+      def: def && def.r1 && def.a1 ? def : undefined,
+    });
+    marker._amgtKey = key;
+    return marker;
+  },
+
+  /** Groupe d'affichage commun de la couche « Plans d'ensemble » (app.js), où doivent aussi être ajoutés les marqueurs créés. */
+  setPeLabelDisplayGroup(group) {
+    this._peLabelDisplayGroup = group;
+  },
+
+  addPeLabel(marker) {
+    this._peLabelGroup.addLayer(marker);
+    if (this._peLabelDisplayGroup) this._peLabelDisplayGroup.addLayer(marker);
+  },
+
+  removePeLabel(marker) {
+    this._peLabelGroup.removeLayer(marker);
+    if (this._peLabelDisplayGroup) this._peLabelDisplayGroup.removeLayer(marker);
+    AMGT4CEM_ScaledText.dispose(marker);
+  },
+
+  /** Premier rang libre pour une référence : « 3000-126#0 », « 3000-126#1 »... */
+  nextPeKey(code) {
+    const keys = new Set();
+    this._peLabelGroup.eachLayer((m) => keys.add(m._amgtKey));
+    const saved = AMGT4CEM_PeLabelAnchors.all();
+    let rank = 0;
+    while (keys.has(`${code}#${rank}`) || saved[`${code}#${rank}`]) rank++;
+    return `${code}#${rank}`;
+  },
+
+  /** État COURANT des références de planche { clé: { r1, a1, r2?, a2? } } (a1/a2 en [lat, lng]), modifs non enregistrées comprises. */
+  currentPeLabels() {
+    const out = {};
+    this._peLabelGroup.eachLayer((marker) => {
+      const d = AMGT4CEM_ScaledText.getDefinition(marker);
+      if (!d || !d.r1 || !d.a1) return; // étiquette sans définition complète (en cours de création)
+      out[marker._amgtKey] = { r1: d.r1, a1: d.a1, ...(d.r2 && d.a2 ? { r2: d.r2, a2: d.a2 } : {}) };
+    });
+    return out;
+  },
+
+  /** Fait correspondre les références de planche à `labels` : retire, ajoute et met à jour (annulation, réinitialisation). */
+  syncPeLabels(labels) {
+    const present = {};
+    this._peLabelGroup.eachLayer((m) => (present[m._amgtKey] = m));
+    for (const [key, m] of Object.entries(present)) if (!labels[key]) this.removePeLabel(m);
+    for (const [key, def] of Object.entries(labels)) {
+      if (present[key]) AMGT4CEM_ScaledText.setDefinition(present[key], def);
+      else this.addPeLabel(this.createPeLabel(key, def));
+    }
   },
 
   _buildPopupHtml(props) {

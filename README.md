@@ -518,7 +518,11 @@ ce que l'application écrit, en JSON Lambert 72 (`"crs": "EPSG:31370"`), dans
 `etiquettes-planches.json` (ancrage/orientation des références de planche,
 points d'ancrage en position absolue), `etiquettes-troncons.json` (position du
 texte et tronçon de rattachement des numéros d'interstation) ;
-`etiquettes-stations.json` viendra. L'axe du tunnel, le soulignement et la
+`etiquettes-stations.json` viendra. Ces JSON sont la **liste complète** des
+étiquettes (source unique) : créer ou supprimer une étiquette = ajouter ou retirer
+une entrée, depuis le mode édition (« ✚ Ajouter un élément », 🗑) ; les points
+`PE_label` de `MetroLabels.shp` et `patrimoine-numero-interstation.json` ne
+sont plus que des archives d'amorçage. L'axe du tunnel, le soulignement et la
 ligne de repère ne sont **pas** stockés : ils se recalculent à l'affichage
 (l'axe pourra être exporté plus tard dans un Shapefile). Un seul relais
 d'enregistrement pour tout (`PUT /shared/<dossier>/<fichier>`), un seul code

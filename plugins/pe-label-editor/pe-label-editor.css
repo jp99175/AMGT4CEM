@@ -449,3 +449,40 @@
   background: #ff7f00;
   border-color: #cc6600;
 }
+
+/* Menu « ✚ Ajouter un élément » : sous le bouton de la barre d'outils. */
+.amgt-ple-addmenu {
+  position: fixed;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #999;
+  border-radius: 6px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+
+.amgt-ple-addmenu button {
+  padding: 7px 10px;
+  font: 13px/1.2 sans-serif;
+  text-align: left;
+  background: #f2f2f2;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.amgt-ple-addmenu button:hover {
+  background: #ffe2c2;
+}
+
+.amgt-ple-modal-box .amgt-ple-modal-error {
+  margin: 6px 0 0;
+  color: #8a1f11;
+}
+
+.amgt-ple-modal-error[hidden] {
+  display: none;
+}

@@ -132,6 +132,7 @@
     layersByType.PE_label.eachLayer((l) => peAndInfoGroup.addLayer(l));
     layersByType.PE_info.eachLayer((l) => peAndInfoGroup.addLayer(l));
     layersByType.PE_info_text.eachLayer((l) => peAndInfoGroup.addLayer(l));
+    AMGT4CEM_MetroLayer.setPeLabelDisplayGroup(peAndInfoGroup); // les références créées à l'exécution s'ajoutent aussi à ce groupe
     AMGT4CEM_PatrimoineLayer.registerExternalLayer('plans-ensemble-500e', peAndInfoGroup);
     AMGT4CEM_Interstation.setMetroFeatures(features); // rattache les numéros d'interstation à leur tronçon (MT)
 

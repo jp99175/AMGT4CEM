@@ -106,7 +106,8 @@
     _entries: [], // { key, kind: 'pe'|'ist', code, marker, span, def, lat, lng, angle, ref } — def : { r1, a1, r2?, a2? } (planche) ou { x, y, tunnel } (tronçon, Lambert 72)
     _byKey: {}, // key -> entrée
     _planches: [], // [{ code, ring: [[x, y], ...] }] — Lambert, anneau non refermé
-    _undoStack: [], // modifications terminées pendant la session, la dernière en haut : [{ entry, before }] (annulables une à une)
+    _undoStack: [], // instantanés de l'état des étiquettes { pe, ist } pris AVANT chaque opération terminée de la session (modification, création, suppression, réinitialisation), le dernier en haut : annulables un à un
+    _addMode: null, // création d'une étiquette de planche en cours : choix de la planche (survol + clic)
     _selected: null, // étiquette sélectionnée par un premier clic (le second lance sa modification)
     _edit: null, // session de modification en cours
     _toggleBtn: null, // bouton « ✥ Mode édition »
@@ -144,6 +145,7 @@
         });
         this._loadPlanches();
         this._buildToggleButton();
+        this._adaptToolbar();
         // Les étiquettes n'existent dans le DOM que quand leur couche (« Plans
         // d'ensemble », « Numéros interstation ») est affichée, ce qui peut
         // arriver bien après le chargement — et une couche reconstruite
@@ -202,6 +204,13 @@
       AMGT4CEM_MapMenu._metroLayers.PE_label.eachLayer((marker) => sources.push([marker, 'pe']));
       for (const marker of AMGT4CEM_Interstation.markers()) sources.push([marker, 'ist']);
       let changed = false;
+      // Étiquettes supprimées (ou retirées par une annulation) : leur entrée disparaît avec leur marqueur.
+      const live = new Set(sources.map(([marker]) => marker._amgtKey));
+      for (const entry of [...this._entries]) {
+        if (live.has(entry.key)) continue;
+        this._dropEntry(entry);
+        changed = true;
+      }
       for (const [marker, kind] of sources) {
         const span = marker.getElement() && marker.getElement().querySelector('.amgt-scaled-text');
         if (!span || !marker._amgtKey) continue;
@@ -218,7 +227,7 @@
             code: span.textContent.trim(),
             marker,
             span,
-            def: kind === 'ist' ? AMGT4CEM_Interstation.getOverride(marker._amgtKey) : clone(AMGT4CEM_PeLabelAnchors.get(marker._amgtKey)),
+            def: kind === 'ist' ? AMGT4CEM_Interstation.getDef(marker._amgtKey) : AMGT4CEM_ScaledText.getDefinition(marker),
             origColor,
             origInline,
           };
@@ -232,6 +241,12 @@
       }
       if (changed) this._refreshAdminPanel();
       return changed;
+    },
+
+    _dropEntry(entry) {
+      this._entries = this._entries.filter((e) => e !== entry);
+      delete this._byKey[entry.key];
+      if (this._selected === entry) this._selected = null;
     },
 
     /** Applique la définition courante de l'entrée via l'application, et relit la pose obtenue. */
@@ -294,7 +309,7 @@
 
     /** Premier clic : sélection ; second clic sur la même étiquette : début de sa modification. */
     _onLabelClick(entry) {
-      if (this._edit) return; // une étiquette est déjà en cours de modification
+      if (this._edit || this._addMode) return; // une modification ou une création est déjà en cours
       if (this._selected === entry) this._startEdit(entry);
       else this._select(entry);
     },
@@ -438,8 +453,9 @@
 
     // ---- Modification d'une étiquette (4 choix) ----------------------------------
 
-    _startEdit(entry) {
-      if (entry.kind === 'ist') return this._startEditIst(entry);
+    /** opts : { created, pre } — étiquette tout juste créée (annuler la supprime) et instantané d'avant sa création. */
+    _startEdit(entry, opts = {}) {
+      if (entry.kind === 'ist') return this._startEditIst(entry, opts);
       const planche = this._planchOf(entry);
       if (!planche) {
         alert('Contour de la planche introuvable (Metro.shp pas encore chargé) : réessayez dans un instant.');
@@ -451,7 +467,7 @@
         const ll = AMGT4CEM_CRS.lambertToLatLng([p.x, p.y]);
         return { lat: ll.lat, lng: ll.lng, kind: p.kind };
       });
-      this._edit = { kind: 'pe', entry, backup, cands, slot: 0, refDots: [], candMarkers: [], line: null, history: [] };
+      this._edit = { kind: 'pe', entry, backup, pre: opts.pre || this._snapshot(), created: !!opts.created, cands, slot: 0, refDots: [], candMarkers: [], line: null, history: [] };
       this._edit.slot = Math.max(0, SLOTS.findIndex((s) => !entry.def[s.id]));
       this._showRefDots(entry);
       this._showCandidates();
@@ -580,22 +596,22 @@
         const d = ed.entry.def;
         if (!d.r1 || !d.a1 || !d.r2 || !d.a2) return this._flash('Les quatre choix sont indispensables (point de référence, ancrage, second point de référence, second point du cadre) : complétez-les, ou « Annuler ».');
       }
-      // Historique de la session (bouton « annuler » du panneau) : état avant cette modification.
-      if (JSON.stringify(ed.entry.def || null) !== JSON.stringify(ed.backup || null)) this._undoStack.push([{ entry: ed.entry, before: clone(ed.backup) }]);
+      // Historique de la session (↶ du panneau) : état d'avant cette opération, si elle a changé quelque chose.
+      if (JSON.stringify(this._snapshot()) !== JSON.stringify(ed.pre)) this._undoStack.push(ed.pre);
       this._endEdit(false);
     },
 
-    /** Remet l'étiquette en cours à sa position d'origine (sans quitter la modification). */
+    /** Remet l'étiquette en cours dans l'état qu'elle avait au début de cette modification (sans quitter la modification). */
     _resetCurrent() {
       const ed = this._edit;
       if (!ed) return;
       if (ed.kind === 'ist') {
-        ed.entry.def = null;
+        ed.entry.def = clone(ed.backup);
         this._syncPose(ed.entry);
         this._showCurrentAxis();
         this._renderBar();
       } else {
-        ed.entry.def = {};
+        ed.entry.def = clone(ed.backup) || {};
         ed.history = [];
         this._syncPose(ed.entry);
         ed.slot = 0;
@@ -614,9 +630,10 @@
         <p class="amgt-ple-result"></p>
         <p class="amgt-ple-flash" hidden></p>
         <div class="amgt-ple-bar-actions">
+          <button type="button" data-action="delete" aria-label="Supprimer l'étiquette" title="Supprimer cette étiquette (confirmation demandée ; annulable avec ↶ tant que la page n'est pas rechargée)">🗑</button>
           <button type="button" data-action="back" title="Annule le dernier choix, ou revient à l'étape précédente">◀ Retour</button>
           <button type="button" data-action="next" title="Passe à l'étape suivante">Suivant ▶</button>
-          <button type="button" data-action="reset" title="Remet l'étiquette à sa position d'origine">↺</button>
+          <button type="button" data-action="reset" title="Remet l'étiquette dans l'état du début de cette modification">↺</button>
           <button type="button" data-action="cancel" title="Abandonne la modification en cours : aucun changement">Annuler</button>
           <button type="button" class="amgt-ple-primary" data-action="apply" title="Garde le résultat et termine">✓ Terminer</button>
         </div>`;
@@ -626,7 +643,8 @@
       on('back', () => (this._edit.kind === 'ist' ? this._setIstStep(this._edit.step - 1) : this._back()));
       on('next', () => (this._edit.kind === 'ist' ? this._setIstStep(this._edit.step + 1) : this._nextStep()));
       on('reset', () => this._resetCurrent());
-      on('cancel', () => (this._edit ? this._endEdit(true) : this._select(null)));
+      on('delete', () => this._deleteSelected());
+      on('cancel', () => (this._addMode ? this._cancelAdd() : this._edit ? this._endEdit(true) : this._select(null)));
       on('apply', () => this._finishEdit());
       // Un appui sur la barre ne doit rien faire à la carte en dessous.
       for (const type of ['pointerdown', 'mousedown', 'touchstart', 'click', 'dblclick', 'wheel']) bar.addEventListener(type, (e) => e.stopPropagation());
@@ -661,7 +679,7 @@
     _renderBar() {
       const ed = this._edit;
       const entry = ed ? ed.entry : this._selected;
-      if (!this.isAdmin() || !entry) {
+      if (!this.isAdmin() || (!entry && !this._addMode)) {
         if (this._bar) this._bar.hidden = true;
         return;
       }
@@ -671,9 +689,15 @@
       const buttons = (names) => {
         for (const b of bar.querySelectorAll('.amgt-ple-bar-actions button')) b.hidden = !names.includes(b.dataset.action);
       };
-      if (!ed) {
-        this._fillSteps(`${this._describe(entry)} — sélectionné`, [], -1, 'Cliquez à nouveau sur le texte pour le modifier.');
+      if (this._addMode) {
+        this._fillSteps("Nouvelle étiquette de planche", [], -1, "Survolez la planche concernée (elle s'illumine), puis cliquez dessus.");
         buttons(['cancel']);
+        bar.querySelector('[data-action="cancel"]').textContent = 'Annuler';
+        return;
+      }
+      if (!ed) {
+        this._fillSteps(`${this._describe(entry)} — sélectionné`, [], -1, 'Cliquez à nouveau sur le texte pour le modifier, ou supprimez-la.');
+        buttons(['delete', 'cancel']);
         bar.querySelector('[data-action="cancel"]').textContent = 'Désélectionner';
         return;
       }
@@ -723,13 +747,16 @@
       const ed = this._edit;
       if (!ed) return;
       if (ed.kind === 'ist') return this._endEditIst(cancel);
-      // Annuler, ou définition sans position (R1+A1 manquants) : retour à l'état d'avant la session.
-      if (cancel || !ed.entry.def.r1 || !ed.entry.def.a1) ed.entry.def = ed.backup;
-      this._syncPose(ed.entry);
       for (const dot of ed.refDots) dot.remove();
       for (const m of ed.candMarkers) this._map.removeLayer(m);
       if (ed.line) this._map.removeLayer(ed.line);
       this._edit = null;
+      if (cancel && ed.created) this._removeLabel(ed.entry); // annuler une création : l'étiquette disparaît sans laisser de trace
+      else {
+        // Annuler, ou définition sans position (R1+A1 manquants) : retour à l'état d'avant la session.
+        if (cancel || !ed.entry.def.r1 || !ed.entry.def.a1) ed.entry.def = ed.backup;
+        this._syncPose(ed.entry);
+      }
       this._select(null); // la modification est terminée : plus de sélection
       this._refreshAdminPanel();
     },
@@ -742,14 +769,14 @@
      * libre). La définition { x, y, tunnel } (Lambert 72) est appliquée à l'écran au fil de l'eau
      * (AMGT4CEM_Interstation.apply), jamais enregistrée avant « Enregistrer ».
      */
-    _startEditIst(entry) {
+    _startEditIst(entry, opts = {}) {
       if (!AMGT4CEM_MapMenu._metroLayers.MT || !AMGT4CEM_MapMenu._metroLayers.MT._map) {
         alert('Le réseau (couche Tunnels) doit être affiché pour choisir un tronçon : cochez « Métro » dans le menu ☰ Carte.');
         return;
       }
       const backup = clone(entry.def);
-      entry.def = entry.def ? { ...entry.def } : null; // null : position et tronçon d'origine, tant que rien n'est déplacé ni choisi
-      this._edit = { kind: 'ist', entry, backup, step: 0, current: [], hover: [], hoverPoly: null, polyHandlers: [], gestureCleanup: null, panMode: false, dragging: false, suppressClick: false };
+      entry.def = { ...entry.def };
+      this._edit = { kind: 'ist', entry, backup, pre: opts.pre || this._snapshot(), created: !!opts.created, step: 0, current: [], hover: [], hoverPoly: null, polyHandlers: [], gestureCleanup: null, panMode: false, dragging: false, suppressClick: false };
       this._showCurrentAxis();
       this._enableMoveGesture();
       this._enableTunnelPick();
@@ -849,7 +876,7 @@
 
     _moveIst(entry, latlng) {
       const l = AMGT4CEM_CRS.latLngToLambert(latlng);
-      entry.def = { x: Math.round(l.x * 100) / 100, y: Math.round(l.y * 100) / 100, tunnel: entry.def ? entry.def.tunnel : entry.marker._amgtTunnel.id };
+      entry.def = { x: Math.round(l.x * 100) / 100, y: Math.round(l.y * 100) / 100, tunnel: entry.def.tunnel };
       this._syncPose(entry);
       this._renderBar();
     },
@@ -889,8 +916,7 @@
 
     _pickTunnel(id) {
       const entry = this._edit.entry;
-      const at = AMGT4CEM_CRS.latLngToLambert(AMGT4CEM_ScaledText.getPose(entry.marker).latlng); // le texte reste où il est
-      entry.def = { x: entry.def ? entry.def.x : Math.round(at.x * 100) / 100, y: entry.def ? entry.def.y : Math.round(at.y * 100) / 100, tunnel: String(id) };
+      entry.def = { ...entry.def, tunnel: String(id) }; // le texte reste où il est
       this._syncPose(entry);
       this._showCurrentAxis();
       this._renderBar();
@@ -901,11 +927,11 @@
       const ed = this._edit;
       const bar = this._bar;
       const tunnel = entry.marker._amgtTunnel;
-      const chosen = !!entry.def && tunnel !== entry.marker._amgtNumber.autoTunnel;
+      const chosen = !AMGT4CEM_Interstation.isAutoTunnel(entry.marker);
       const steps = [
         {
           title: '1. Déplacer le texte',
-          value: entry.def ? 'déplacé' : '',
+          value: JSON.stringify(entry.def) !== JSON.stringify(ed.backup) ? 'déplacé' : '',
           hint: "Appuyez n'importe où sur la carte (souris ou doigt) et glissez : le texte suit le même trajet. La carte est figée pendant cette étape.",
         },
         {
@@ -922,8 +948,10 @@
 
     _endEditIst(cancel) {
       const ed = this._edit;
-      if (cancel) ed.entry.def = ed.backup;
-      this._syncPose(ed.entry);
+      if (!(cancel && ed.created)) {
+        if (cancel) ed.entry.def = ed.backup;
+        this._syncPose(ed.entry);
+      }
       ed.dragging = false;
       this._hoverTunnel(null);
       for (const h of ed.polyHandlers) {
@@ -934,39 +962,223 @@
       for (const l of ed.current) this._map.removeLayer(l);
       if (ed.gestureCleanup) ed.gestureCleanup();
       this._edit = null;
+      if (cancel && ed.created) this._removeLabel(ed.entry); // annuler une création : l'étiquette disparaît sans laisser de trace
       this._select(null); // la modification est terminée : plus de sélection
       this._refreshAdminPanel();
     },
 
+    // ---- Instantanés, annulation, suppression --------------------------------------------
+
+    /** État COURANT de toutes les étiquettes (modifs non enregistrées comprises) : { pe, ist }. */
+    _snapshot() {
+      return { pe: AMGT4CEM_MetroLayer.currentPeLabels(), ist: AMGT4CEM_Interstation.currentLabels() };
+    },
+
+    /** Remet toutes les étiquettes dans l'état d'un instantané : retire, ajoute et met à jour. */
+    _restore(snap) {
+      AMGT4CEM_MetroLayer.syncPeLabels(snap.pe);
+      AMGT4CEM_Interstation.syncTo(snap.ist);
+      this._ensureIndexed(); // entrées des étiquettes retirées / rétablies
+      for (const entry of this._entries) {
+        entry.def = entry.kind === 'ist' ? AMGT4CEM_Interstation.getDef(entry.key) : AMGT4CEM_ScaledText.getDefinition(entry.marker);
+        this._syncPose(entry);
+      }
+      this._renderBar();
+      this._refreshAdminPanel();
+    },
+
+    /** Retire une étiquette (carte, état courant et entrée). */
+    _removeLabel(entry) {
+      if (entry.kind === 'ist') AMGT4CEM_Interstation.removeLabel(entry.marker);
+      else AMGT4CEM_MetroLayer.removePeLabel(entry.marker);
+      this._dropEntry(entry);
+    },
+
+    /** Supprime l'étiquette sélectionnée, après confirmation (sans code administrateur). */
+    _deleteSelected() {
+      const entry = this._selected;
+      if (!entry || this._edit || this._addMode) return;
+      if (!confirm(`Supprimer l'étiquette « ${entry.code} » (${entry.kind === 'ist' ? 'tronçon' : 'planche'}) ?\n\nElle disparaît de la carte ; la suppression n'est partagée qu'après l'enregistrement (💾), et ↶ peut la rétablir tant que la page n'est pas rechargée.`)) return;
+      const pre = this._snapshot();
+      this._removeLabel(entry);
+      this._undoStack.push(pre);
+      this._select(null);
+      this._refreshAdminPanel();
+    },
+
+    // ---- Création d'une étiquette (bouton « ✚ Ajouter un élément » de la barre d'outils) -----
+
+    /** Mode édition : plus d'outil de mesure ; « ✚ Ajouter un point » devient « ✚ Ajouter un élément » (choix : étiquette de planche ou de tronçon). */
+    _adaptToolbar() {
+      if (!this.isAdmin()) return;
+      const measure = document.getElementById('amgt-measure-btn');
+      if (measure) {
+        if (typeof AMGT4CEM_MeasureTool !== 'undefined') AMGT4CEM_MeasureTool.deactivate();
+        measure.classList.add('amgt-hidden');
+      }
+      const add = document.getElementById('amgt-add-point-btn');
+      if (!add) return;
+      if (typeof AMGT4CEM_AddPointTool !== 'undefined') AMGT4CEM_AddPointTool.deactivate();
+      add.textContent = '✚ Ajouter un élément';
+      add.title = 'Ajouter une étiquette de planche ou de tronçon';
+      // Phase de capture : passe avant l'écouteur de l'application (ajout de point), qu'on court-circuite.
+      add.addEventListener(
+        'click',
+        (e) => {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+          this._toggleAddMenu(add);
+        },
+        true
+      );
+    },
+
+    _toggleAddMenu(btn) {
+      if (this._addMenu) return this._closeAddMenu();
+      if (this._edit || this._addMode) return this._flash("Terminez ou annulez d'abord l'opération en cours.");
+      const menu = document.createElement('div');
+      menu.className = 'amgt-ple-addmenu';
+      menu.innerHTML = `
+        <button type="button" data-kind="pe">Étiquette de planche</button>
+        <button type="button" data-kind="ist">Étiquette de tronçon</button>`;
+      const r = btn.getBoundingClientRect();
+      menu.style.left = `${r.left}px`;
+      menu.style.top = `${r.bottom + 4}px`;
+      document.body.appendChild(menu);
+      this._addMenu = menu;
+      for (const type of ['pointerdown', 'mousedown', 'touchstart', 'click', 'dblclick', 'wheel']) menu.addEventListener(type, (e) => e.stopPropagation());
+      menu.addEventListener('click', (e) => {
+        const kind = e.target.dataset && e.target.dataset.kind;
+        if (!kind) return;
+        this._closeAddMenu();
+        if (kind === 'pe') this._startAddPlanche();
+        else this._startAddTroncon();
+      });
+      this._addMenuOutside = (e) => {
+        if (!menu.contains(e.target) && e.target !== btn) this._closeAddMenu();
+      };
+      document.addEventListener('pointerdown', this._addMenuOutside, true);
+    },
+
+    _closeAddMenu() {
+      if (!this._addMenu) return;
+      this._addMenu.remove();
+      this._addMenu = null;
+      document.removeEventListener('pointerdown', this._addMenuOutside, true);
+    },
+
+    /** Affiche la couche d'une famille si besoin et attend qu'elle soit prête (true), ou abandonne après quelques secondes (false). */
+    async _ensureLayer(id, isReady) {
+      const store = AMGT4CEM_PatrimoineSelectionStore;
+      if (!store.getSelection()[id]) store.toggle(id);
+      for (let i = 0; i < 40; i++) {
+        if (isReady()) return true;
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+      return false;
+    },
+
+    /** Nouvelle étiquette de TRONÇON : on saisit son numéro, elle apparaît au centre de l'écran (tronçon le plus proche), puis les deux étapes habituelles. */
+    async _startAddTroncon() {
+      if (this._edit || this._addMode) return;
+      if (!AMGT4CEM_MapMenu._metroLayers.MT || !AMGT4CEM_MapMenu._metroLayers.MT._map) {
+        return alert('Le réseau (couche Tunnels) doit être affiché pour rattacher une étiquette à un tronçon : cochez « Métro » dans le menu ☰ Carte.');
+      }
+      const numero = await this._askInput('Numéro de la nouvelle étiquette de tronçon (chiffres, lettres, tiret ou point — ex. 243-3) :', {
+        placeholder: 'Numéro',
+        validate: (v) => (/^[0-9A-Za-z.-]{1,20}$/.test(v) ? '' : 'Numéro invalide : 1 à 20 caractères parmi chiffres, lettres, tiret et point.'),
+      });
+      if (!numero) return;
+      const shown = await this._ensureLayer('numero-interstation', () => !!(AMGT4CEM_Interstation._group && AMGT4CEM_Interstation._group._map));
+      if (!shown) return alert('La couche « Numéros interstation » ne s\'affiche pas : réessayez après l\'avoir cochée.');
+      const pre = this._snapshot();
+      const at = AMGT4CEM_CRS.latLngToLambert(this._map.getCenter());
+      const x = Math.round(at.x * 100) / 100;
+      const y = Math.round(at.y * 100) / 100;
+      const key = AMGT4CEM_Interstation.nextKey(numero);
+      AMGT4CEM_Interstation.createLabel(key, { x, y, tunnel: AMGT4CEM_Interstation.autoTunnelAt(x, y).id });
+      this._ensureIndexed();
+      const entry = this._byKey[key];
+      if (!entry) return;
+      this._select(entry);
+      this._startEdit(entry, { created: true, pre });
+    },
+
+    /** Nouvelle étiquette de PLANCHE : on survole puis clique la planche concernée, puis les quatre choix habituels. */
+    async _startAddPlanche() {
+      if (this._edit || this._addMode) return;
+      const polys = () => {
+        const out = [];
+        AMGT4CEM_MapMenu._metroLayers.PE.eachLayer((poly) => out.push(poly));
+        return out;
+      };
+      const shown = await this._ensureLayer('plans-ensemble-500e', () => polys().some((p) => p._map));
+      if (!shown) return alert('La couche « Plans d\'ensemble » ne s\'affiche pas : réessayez après l\'avoir cochée.');
+      const handlers = [];
+      for (const poly of polys()) {
+        const base = { color: poly.options.color, weight: poly.options.weight, fillOpacity: poly.options.fillOpacity };
+        const over = () => poly.setStyle({ color: '#ff9800', weight: 3, fillOpacity: 0.3 });
+        const out = () => poly.setStyle(base);
+        const click = (e) => {
+          L.DomEvent.stopPropagation(e);
+          this._finishAddPlanche(poly);
+        };
+        poly.on('mouseover', over);
+        poly.on('mouseout', out);
+        poly.on('click', click);
+        handlers.push({ poly, over, out, click, base });
+      }
+      this._addMode = {
+        cleanup: () => {
+          for (const h of handlers) {
+            h.poly.off('mouseover', h.over);
+            h.poly.off('mouseout', h.out);
+            h.poly.off('click', h.click);
+            h.poly.setStyle(h.base);
+          }
+        },
+      };
+      this._select(null);
+      this._renderBar();
+    },
+
+    _cancelAdd() {
+      if (!this._addMode) return;
+      this._addMode.cleanup();
+      this._addMode = null;
+      this._renderBar();
+    },
+
+    _finishAddPlanche(poly) {
+      const code = poly._amgtSheetRef;
+      if (!code) return this._flash("Cette planche n'a pas de référence : choisissez-en une autre.");
+      this._addMode.cleanup();
+      this._addMode = null;
+      const pre = this._snapshot();
+      const key = AMGT4CEM_MetroLayer.nextPeKey(code);
+      AMGT4CEM_MetroLayer.addPeLabel(AMGT4CEM_MetroLayer.createPeLabel(key, null, poly.getBounds().getCenter()));
+      this._ensureIndexed();
+      const entry = this._byKey[key];
+      if (!entry) return this._renderBar();
+      this._select(entry);
+      this._startEdit(entry, { created: true, pre });
+    },
+
     // ---- Enregistrement partagé (dans l'application, via le relais) ---------------
 
-    /** Étiquettes d'un type : 'pe' (références de planche) ou 'ist' (numéros d'interstation). */
+    /** Étiquettes affichées d'un type : 'pe' (références de planche) ou 'ist' (numéros d'interstation). */
     _entriesOf(kind) {
       return this._entries.filter((e) => e.kind === kind);
     },
 
-    /** État enregistré d'un type : { clé: définition }. */
+    /** État ENREGISTRÉ d'un type : { clé: définition }. */
     _savedLabels(kind) {
       return kind === 'ist' ? AMGT4CEM_Interstation.savedOverrides() : AMGT4CEM_PeLabelAnchors.all();
     },
 
-    /** Définitions complètes d'un type : l'état enregistré, corrigé par les entrées indexées. */
+    /** État COURANT d'un type (modifs, créations et suppressions non enregistrées comprises) : { clé: définition }. */
     _currentLabels(kind) {
-      const labels = this._savedLabels(kind); // garde aussi d'éventuelles clés d'étiquettes non indexées
-      for (const e of this._entriesOf(kind)) {
-        const d = e.def;
-        if (kind === 'ist') {
-          if (d) labels[e.key] = { x: d.x, y: d.y, tunnel: d.tunnel };
-          else delete labels[e.key];
-        } else if (d && d.r1 && d.a1) {
-          const out = { r1: d.r1, a1: d.a1 };
-          if (d.r2 && d.a2) Object.assign(out, { r2: d.r2, a2: d.a2 });
-          labels[e.key] = out;
-        } else {
-          delete labels[e.key];
-        }
-      }
-      return labels;
+      return kind === 'ist' ? AMGT4CEM_Interstation.currentLabels() : AMGT4CEM_MetroLayer.currentPeLabels();
     },
 
     /** Clés d'un type dont la définition diffère de ce qui est enregistré. */
@@ -1055,7 +1267,8 @@
           <li><b>Référence de planche</b> : quatre choix, tous indispensables — point de référence du texte, ancrage sur la planche, second point de référence du texte, second point du cadre (orientation).</li>
           <li><b>Numéro d'interstation</b> : déplacer le texte (glisser n'importe où sur la carte, souris ou doigt), puis choisir son tronçon (survol d'un tunnel = son axe s'allume).</li>
           <li>Dans la barre d'étape : <b>Retour</b> / <b>Suivant</b> changent d'étape, <b>Annuler</b> abandonne cette modification, <b>Terminer</b> la garde.</li>
-          <li>Ci-dessous : 💾 enregistre (grisé s'il n'y a rien à enregistrer), ↶ annule la dernière modification de la session (une à la fois). Rien n'est partagé avant l'enregistrement.</li>
+          <li><b>Supprimer</b> : sélectionner l'étiquette (premier clic), puis 🗑 dans la barre, après confirmation. <b>Créer</b> : « ✚ Ajouter un élément » (barre d'outils), au choix une étiquette de planche (cliquer la planche, puis les quatre choix) ou de tronçon (saisir le numéro, déplacer le texte, choisir le tronçon).</li>
+          <li>Ci-dessous : 💾 enregistre (grisé s'il n'y a rien à enregistrer), ↶ annule la dernière opération de la session — modification, création ou suppression (une à la fois). Rien n'est partagé avant l'enregistrement.</li>
         </ul>
         <p class="amgt-ple-count"></p>
         <p class="amgt-ple-flash" hidden></p>
@@ -1063,10 +1276,10 @@
           <button type="button" class="amgt-ple-icon-btn amgt-ple-primary" data-action="save" aria-label="Enregistrer" title="Enregistrer les modifications (planches et tronçons) dans l'application">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           </button>
-          <button type="button" class="amgt-ple-icon-btn" data-action="undo" aria-label="Annuler la dernière modification" title="Annuler la dernière modification de la session (une à la fois)">
+          <button type="button" class="amgt-ple-icon-btn" data-action="undo" aria-label="Annuler la dernière modification" title="Annuler la dernière opération de la session (une à la fois)">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
           </button>
-          <button type="button" data-action="reset-all" title="Remet toutes les étiquettes à leur position d'origine (confirmation et code administrateur)">Tout réinitialiser</button>
+          <button type="button" data-action="reset-all" title="Abandonne toutes les modifications non enregistrées et revient à l'état enregistré (code administrateur demandé)">Tout réinitialiser</button>
           <button type="button" data-action="quit" title="Recharge la page : l'application revient en mode normal">Quitter l'édition</button>
         </div>`;
       document.body.appendChild(panel);
@@ -1105,28 +1318,30 @@
         `Tronçons : ${this._entriesOf('ist').length} étiquette(s) affichée(s), ${pending(dirtyIst)}.`;
     },
 
-    /** Annule la dernière modification de la session (terminée, ou « tout réinitialiser »), une à la fois. */
+    /** Annule la dernière opération de la session (modification, création, suppression, réinitialisation), une à la fois. */
     _undo() {
-      if (this._edit) return;
-      const last = this._undoStack.pop();
-      if (!last) return;
-      for (const { entry, before } of last) {
-        entry.def = clone(before);
-        this._syncPose(entry);
-      }
-      this._refreshAdminPanel();
+      if (this._edit || this._addMode) return;
+      const pre = this._undoStack.pop();
+      if (pre) this._restore(pre);
     },
 
     /**
-     * Remet TOUTES les étiquettes à leur position d'origine — après confirmation ET code administrateur (vérifié
-     * auprès du relais). Annulable ensuite avec ↶, et à enregistrer pour être partagé.
+     * Abandonne TOUTES les modifications non enregistrées : remet toutes les étiquettes dans leur dernier état
+     * ENREGISTRÉ (suppressions et créations non enregistrées comprises) — après confirmation ET code administrateur
+     * (vérifié auprès du relais). Annulable ensuite avec ↶.
      */
     async _resetAll() {
-      if (this._edit) return;
+      if (this._edit || this._addMode) return;
+      const saved = { pe: AMGT4CEM_PeLabelAnchors.all(), ist: AMGT4CEM_Interstation.savedOverrides() };
+      const pre = this._snapshot();
+      if (JSON.stringify(pre) === JSON.stringify(saved)) return this._panelFlash('Rien à réinitialiser : toutes les étiquettes sont dans leur état enregistré.');
       if (!AMGT4CEM_PeLabelAnchors.isSaveConfigured()) {
         return this._panelFlash("Réinitialisation refusée : le relais n'est pas configuré, le code administrateur ne peut pas être vérifié (⚙ Paramètres > Serveur).");
       }
-      const code = await this._askAdminCode("Remettre TOUTES les étiquettes (références de planche et numéros d'interstation) à leur position d'origine ? Saisissez le code administrateur pour confirmer. (À enregistrer ensuite pour que ce soit partagé ; annulable avec ↶.)");
+      const code = await this._askInput(
+        "Abandonner TOUTES les modifications non enregistrées (étiquettes de planche et de tronçon : modifications, créations, suppressions) et revenir à l'état enregistré ? Saisissez le code administrateur pour confirmer. (Annulable avec ↶.)",
+        { type: 'password', placeholder: 'Code administrateur' }
+      );
       if (code === null) return;
       try {
         await AMGT4CEM_PeLabelAnchors.checkConnection(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, code);
@@ -1134,26 +1349,26 @@
         return this._panelFlash(`Réinitialisation refusée : ${err.message}`);
       }
       AMGT4CEM_PeLabelAnchors.setAdminCode(code);
-      const changed = [];
-      for (const entry of this._entries) {
-        if (entry.def) changed.push({ entry, before: clone(entry.def) });
-        entry.def = null;
-        this._syncPose(entry);
-      }
-      if (changed.length) this._undoStack.push(changed);
-      this._panelFlash(`${changed.length} étiquette(s) réinitialisée(s) — à enregistrer pour que ce soit partagé (↶ pour annuler).`);
+      this._select(null);
+      this._restore(saved);
+      this._undoStack.push(pre);
+      this._panelFlash('Modifications non enregistrées abandonnées : retour à l\'état enregistré (↶ pour annuler).');
       this._refreshAdminPanel();
     },
 
-    /** Boîte de confirmation avec saisie MASQUÉE du code administrateur : résolue avec le code, ou null si abandon. */
-    _askAdminCode(message) {
+    /**
+     * Boîte de saisie : résolue avec le texte saisi, ou null si abandon. `type: 'password'` masque la saisie (code
+     * administrateur) ; `validate(valeur)` retourne un message d'erreur (la boîte reste ouverte) ou ''.
+     */
+    _askInput(message, { type = 'text', placeholder = '', validate = null } = {}) {
       return new Promise((resolve) => {
         const overlay = document.createElement('div');
         overlay.className = 'amgt-ple-modal';
         overlay.innerHTML = `
           <form class="amgt-ple-modal-box">
             <p></p>
-            <input type="password" autocomplete="off" placeholder="Code administrateur" aria-label="Code administrateur" />
+            <input autocomplete="off" />
+            <p class="amgt-ple-modal-error" hidden></p>
             <div class="amgt-ple-actions">
               <button type="submit" class="amgt-ple-primary">Confirmer</button>
               <button type="button" data-action="cancel">Annuler</button>
@@ -1162,17 +1377,29 @@
         overlay.querySelector('p').textContent = message;
         document.body.appendChild(overlay);
         const input = overlay.querySelector('input');
+        input.type = type;
+        input.placeholder = placeholder;
+        input.setAttribute('aria-label', placeholder || message);
+        const error = overlay.querySelector('.amgt-ple-modal-error');
         const done = (value) => {
           overlay.remove();
           resolve(value);
         };
         overlay.querySelector('form').addEventListener('submit', (e) => {
           e.preventDefault();
-          done(input.value || null);
+          const value = input.value.trim();
+          if (!value) return;
+          const problem = validate ? validate(value) : '';
+          if (problem) {
+            error.textContent = problem;
+            error.hidden = false;
+            return;
+          }
+          done(type === 'password' ? input.value : value);
         });
         overlay.querySelector('[data-action="cancel"]').addEventListener('click', () => done(null));
         overlay.addEventListener('keydown', (e) => e.key === 'Escape' && done(null));
-        for (const type of ['pointerdown', 'mousedown', 'touchstart', 'click', 'dblclick', 'wheel']) overlay.addEventListener(type, (e) => e.stopPropagation());
+        for (const t of ['pointerdown', 'mousedown', 'touchstart', 'click', 'dblclick', 'wheel']) overlay.addEventListener(t, (e) => e.stopPropagation());
         input.focus();
       });
     },

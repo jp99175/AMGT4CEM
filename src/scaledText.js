@@ -150,6 +150,12 @@ const AMGT4CEM_ScaledText = {
     if (i >= 0) this._entries.splice(i, 1);
   },
 
+  /** Définition d'ancrage/orientation actuelle d'un marqueur (copie), ou null. */
+  getDefinition(marker) {
+    const entry = this._entries.find((e) => e.marker === marker);
+    return entry && entry.def ? JSON.parse(JSON.stringify(entry.def)) : null;
+  },
+
   /** Pose actuelle { latlng, ref, angle } d'un marqueur. */
   getPose(marker) {
     const entry = this._entries.find((e) => e.marker === marker);

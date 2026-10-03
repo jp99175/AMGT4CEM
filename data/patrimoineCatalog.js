@@ -33,7 +33,9 @@ const AMGT4CEM_PATRIMOINE_CATALOG = [
     // Rendu spécifique (src/interstation.js) : texte souligné à taille réelle
     // constante + ligne de repère jusqu'au centre du tronçon, au lieu du
     // simple libellé des autres couches de ce catalogue. Sans infobulle : le
-    // numéro apparaît dans celle de l'emprise du tronçon.
+    // numéro apparaît dans celle de l'emprise du tronçon. Les étiquettes
+    // viennent de data/fond-de-plan/etiquettes-troncons.json (source unique) ;
+    // `file` n'est plus lu : archive d'origine, qui a servi à amorcer ce JSON.
     interstation: true,
   },
   {
