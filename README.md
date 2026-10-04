@@ -398,11 +398,18 @@ lorsqu'on clique sur l'icône **curseurs** de la case Plans patrimoine — les
 deux partagent le même volet repliable, pour ne pas encombrer le menu par
 défaut.
 
-V1 (deux fichiers, EPSG:31370, voir `data/patrimoine-*.json`) :
+Familles actuelles :
 - **Numéros interstation** : repères numérotés le long des tronçons entre
   stations — étiquette soulignée à taille réelle, reliée au centre de son
   tronçon par une ligne de repère (voir plus bas).
-- **Noms de station** : toponymes bilingues FR/NL et repères associés.
+- **Plans d'ensemble (1/500e)** : voir ci-dessous.
+
+La couche **« Noms de station »** importée d'INFRAVIEW (206 textes, sans lien
+fiable avec les emprises de station) a été **retirée** : fichier
+`data/patrimoine-nom-station.json` supprimé. Les noms et références de station
+viendront d'un **tableau de référence** fourni par l'utilisateur et seront
+affichés **dans l'infobulle de l'emprise de station**, avec ses autres
+informations (liés par l'identifiant stable `id_objet`, voir section 4).
 
 Les **plans d'ensemble au 1/500e** (36 planches) ont migré dans
 `Metro_export_SHP/Metro.shp` (type `"PE"`, géométrie et popups gérés par
@@ -467,7 +474,7 @@ les deux premiers tunnels, 4 à plus de 140 m de tout tunnel (243, 243-3,
 900, 1000), et 7 tunnels sans numéro — c'est ce que le choix manuel permet
 de corriger.
 
-**Numéros interstation** et **Noms de station** sont des **étiquettes de
+**Numéros interstation** est une famille d'**étiquettes de
 texte** (le contenu du champ `text` ou `numero`, affiché tel quel, pas un
 simple point coloré) — voir `src/patrimoineLayer.js`. La géométrie "point"
 du catalogue UrbIS Topo, par comparaison, n'affiche qu'une pastille
@@ -590,8 +597,8 @@ coordonnées pris isolément :
 - emprises des planches (type `PE` de `Metro.shp`) ;
 - triangles de transition de tronçon (`MetroInfo.shp`) et leurs codes ;
 - références de planche (`MetroLabels.shp`, `PE_label`) ;
-- noms et numéros de station, numéros d'interstation
-  (`data/patrimoine-nom-station.json`, `data/patrimoine-numero-interstation.json`).
+- numéros d'interstation (`data/patrimoine-numero-interstation.json`, archive) ;
+  (les noms de station, `data/patrimoine-nom-station.json`, ont été retirés).
 
 **Méthode.** Le réseau du PDF (stations en rouge, tunnels en bleu — 4 934
 formes rouges, 92 anneaux bleus) est recalé sur les polygones `MS`/`MT` de
@@ -670,7 +677,7 @@ ronde claire) ; un point n'est ajouté que si aucun autre n'est à moins de
 **enregistrée dans l'application** : `data/fond-de-plan/etiquettes-planches.json`, lu pour
 tous les visiteurs (voir section 6 et `relay/README.md`).
 
-**Noms de station et numéros d'interstation** (couches "Plans patrimoine") :
+**Numéros d'interstation** (couche "Plans patrimoine") :
 leurs points sont les **centres** des textes du PDF ; le texte est donc
 maintenant centré sur son point (`iconSize: [0, 0]` + `translate(-50%, -50%)`),
 alors qu'il partait auparavant du coin haut-gauche, décalé de ~6 px.

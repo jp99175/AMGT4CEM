@@ -39,11 +39,6 @@ const AMGT4CEM_PATRIMOINE_CATALOG = [
     interstation: true,
   },
   {
-    id: 'nom-station',
-    label: 'Noms de station',
-    file: './data/patrimoine-nom-station.json',
-  },
-  {
     id: 'plans-ensemble-500e',
     label: "Plans d'ensemble (1/500e)",
     external: true,

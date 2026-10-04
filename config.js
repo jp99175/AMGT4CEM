@@ -231,7 +231,7 @@ const AMGT4CEM_CONFIG = {
   // --- Plans patrimoine (à la demande) ---
   // Données de référence LOCALES fournies directement par l'utilisateur
   // (fichiers GeoJSON EPSG:31370, voir data/patrimoineCatalog.js) : plans
-  // d'ensemble au 1/500e, numéros interstation, noms de station. Jamais
+  // d'ensemble au 1/500e, numéros interstation. Jamais
   // rechargées depuis un service externe (contrairement à UrbIS Topo), donc
   // pas de garde-fou de zoom/emprise nécessaire (volumes très modestes).
   patrimoine: {
