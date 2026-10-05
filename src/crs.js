@@ -4,7 +4,7 @@
  *
  * IMPORTANT : ces transformations sont UNIQUEMENT des conversions techniques
  * d'affichage. Le référentiel métier de l'application reste Lambert (X/Y),
- * conformément à Metro.json. On ne "convertit" jamais définitivement une
+ * conformément aux shapefiles (.prj). On ne "convertit" jamais définitivement une
  * donnée métier en lat/lng : on la projette à la volée pour l'affichage.
  */
 proj4.defs(AMGT4CEM_CONFIG.businessCRS.epsg, AMGT4CEM_CONFIG.businessCRS.proj4def);

@@ -1,1 +1,3 @@
 node_modules/
+# Données de suivi (fiches, constats...) : jamais dans ce dépôt public
+data/suivi/

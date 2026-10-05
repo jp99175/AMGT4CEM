@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "date": "2026-10-05",
+  "regle_id": "Chaîne opaque « G » + 6 chiffres, attribuée une fois, jamais réutilisée, unique sur polygones.shp ET lignes.shp. Aucune signification métier.",
+  "genres": {
+    "station": {
+      "libelle": "Station",
+      "geometrie": "polygone"
+    },
+    "tunnel": {
+      "libelle": "Tunnel (tronçon)",
+      "geometrie": "polygone"
+    },
+    "planche": {
+      "libelle": "Planche 1/500",
+      "geometrie": "polygone"
+    }
+  },
+  "niveaux": {
+    "valeurs": [
+      "-",
+      "0"
+    ],
+    "note": "Valeurs relevées telles quelles dans Metro.dbf ; aucune interprétation."
+  }
+}

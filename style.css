@@ -482,11 +482,10 @@ html, body {
   box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
 
-.amgt-file-label {
-  display: inline-block;
-  margin-left: 8px;
-  cursor: pointer;
-  text-decoration: underline;
+#amgt-load-error {
+  max-width: min(90%, 520px);
+  background: #fdecea;
+  border-color: #c0392b;
 }
 
 /* --- Navigation temporelle orthophotos --- */
@@ -685,7 +684,7 @@ html, body {
    iconAnchor Leaflet fixé à la création). Taille (font-size) posée en
    ligne par scaledText.js à chaque zoom, pas ici — seul le style fixe
    (graisse, police, interligne) est réglé en CSS. Pas de fond encadré :
-   rendu proche d'INFRAVIEW.pdf (texte brut sur le fond de carte), un léger
+   rendu proche d'INFRAVIEW.pdf (texte brut sur le fond de plan), un léger
    liseré blanc (text-shadow) suffit à rester lisible sur tout fond. */
 .amgt-scaled-text {
   position: absolute;

@@ -45,7 +45,7 @@ const AMGT4CEM_AddPointTool = {
   /**
    * Traite un clic candidat à la pose d'un point (position géographique dans
    * `e.latlng`). Appelé aussi bien pour les clics directs sur la carte que
-   * pour les clics sur les polygones Metro (stations/tunnels), qui
+   * pour les clics sur les polygones du référentiel (stations/tunnels), qui
    * intercepteraient sinon le clic pour ouvrir leur propre popup — voir
    * metroLayer.js — afin qu'un point puisse être posé n'importe où, y
    * compris pile sur le réseau.

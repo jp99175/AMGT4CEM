@@ -381,7 +381,7 @@ const AMGT4CEM_MeasureTool = {
    * contexte déjà mis à l'échelle pixels CSS — voir screenshotTool.js,
    * capture/_buildCompositeBlob : ceci compose la capture sans jamais
    * dépendre du réseau (pas de nouveau rendu DOM/tuiles), donc ne peut
-   * jamais perdre ces éléments même si le fond de carte, lui, a du mal à se
+   * jamais perdre ces éléments même si le fond de plan, lui, a du mal à se
    * recharger. */
   drawOverlayOnContext(ctx) {
     if (!this._center || !this._circle || !this._line) return;
@@ -487,7 +487,7 @@ const AMGT4CEM_MeasureTool = {
   },
 
   /** Point de départ : un anneau + un réticule (2 lignes), pas un point
-   * plein — plus lisible sur un fond de carte chargé, et laisse un pixel
+   * plein — plus lisible sur un fond de plan chargé, et laisse un pixel
    * vide (transparent) à l'intersection des deux lignes qui composent le
    * réticule (le petit espace entre chaque paire de segments ci-dessous).
    * Même géométrie (rayon 5, réticule jusqu'à 6px du centre, espace 1px de

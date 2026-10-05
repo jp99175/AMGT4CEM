@@ -1,6 +1,6 @@
 /**
  * Sélection utilisateur des types d'objets UrbIS Topo à afficher sur la
- * carte (code -> couleur), voir data/urbisTopoCatalog.js pour la liste des
+ * carte (code -> couleur), voir catalogues/urbis-topo.js pour la liste des
  * codes possibles. Persistée à part (comme les points métier et les
  * paramètres), propre à cet appareil — jamais partagée, jamais envoyée à un
  * serveur. Voir urbisTopoPicker.js (interface de sélection, "modifier la

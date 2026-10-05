@@ -1,6 +1,6 @@
 /**
  * Sélection utilisateur des couches "Plans patrimoine" à afficher sur la
- * carte (id de data/patrimoineCatalog.js -> couleur). Persistée à part
+ * carte (id de catalogues/plans-patrimoine.js -> couleur). Persistée à part
  * (comme les autres préférences de l'application), propre à cet appareil.
  * Même principe que urbisTopoSelectionStore.js, y compris la sélection par
  * défaut enregistrable (bouton 💾 du sélecteur) : rien n'est présélectionné

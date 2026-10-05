@@ -1,12 +1,12 @@
 /**
  * Numéros d'interstation (couche « Numéros interstation » des Plans patrimoine) : chaque
- * numéro est rattaché à un TRONÇON (polygone MT de Metro.shp, emprise de tunnel).
+ * numéro est rattaché à un TRONÇON (polygone de genre « tunnel » de data/geometries/polygones.shp, emprise de tunnel).
  *
  * SOURCE UNIQUE : data/fond-de-plan/etiquettes-troncons.json, liste COMPLÈTE des étiquettes
  * { "numéro#rang": { x, y, tunnel } } — position du texte (Lambert 72, mètres) et identifiant
- * stable `id_objet` du tunnel. Créer ou supprimer une étiquette = ajouter ou retirer une entrée
- * (plugin pe-label-editor). Le fichier d'origine data/patrimoine-numero-interstation.json n'est
- * plus lu : il ne sert que d'archive (amorçage initial du JSON).
+ * stable `id` du tunnel (référentiel, ex. « G000002 »). Créer ou supprimer une étiquette = ajouter ou retirer une entrée
+ * (plugin pe-label-editor). Le fichier d'origine data/legacy/numeros-interstation.legacy.json n'est
+ * plus lu : archive (amorçage initial du JSON), à retirer quand lignes.shp existera.
  *
  * Deux usages :
  *  - l'étiquette : texte à taille réelle constante (scaledText.js, comme les
@@ -18,7 +18,7 @@
  *    numéros (numbersForTunnel), que la couche soit affichée ou non.
  *
  * RATTACHEMENT. Celui du JSON. Pour une étiquette nouvellement créée (ou dont le tronçon
- * a disparu de Metro.shp), le tunnel dont le contour est le plus proche du texte
+ * a disparu de polygones.shp), le tunnel dont le contour est le plus proche du texte
  * (autoTunnelAt) sert de proposition par défaut.
  *
  * AXE ET CENTRE DU TRONÇON. Le polygone d'un tunnel est une bande allongée ;
@@ -37,13 +37,13 @@
  *    éloignés repèrent les extrémités, et l'extrémité voisine du segment
  *    commun est ramenée sur son milieu.
  *
- * Les tronçons (Metro.shp) arrivent de façon asynchrone : les étiquettes sont liées à leur
- * tronçon dès que le JSON ET Metro.shp sont chargés (whenReady).
+ * Les tronçons (polygones.shp) arrivent de façon asynchrone : les étiquettes sont liées à leur
+ * tronçon dès que le JSON ET polygones.shp sont chargés (whenReady).
  */
 const AMGT4CEM_Interstation = {
   STYLE: { heightMeters: 42 }, // même hauteur réelle que les références de planche (voir AMGT4CEM_LABEL_STYLES)
   _overrides: null, // état ENREGISTRÉ { "numéro#rang": { x, y, tunnel } } (Lambert 72, id du tunnel) ; null tant que non chargé
-  _tunnels: null, // [{ id, name, ring, axis: [[x, y], ...], center: [x, y], commons: [...] }], null tant que Metro.shp non reçu
+  _tunnels: null, // [{ id, name, ring, axis: [[x, y], ...], center: [x, y], commons: [...] }], null tant que polygones.shp non reçu
   _numbers: [], // état COURANT (modifs non enregistrées comprises) : [{ numero, key, def: { x, y, tunnel }, tunnel }] (tunnel : objet résolu)
   _markers: [], // marqueurs du groupe actuellement construit
   _group: null, // dernier groupe Leaflet construit (buildSubGroup)
@@ -75,17 +75,17 @@ const AMGT4CEM_Interstation = {
     return {};
   },
 
-  /** Appelé par app.js avec les entités de Metro.shp (seuls les MT et MS servent). */
+  /** Appelé par app.js avec les entités jointes (seuls les genres « tunnel » et « station » servent). */
   setMetroFeatures(features) {
-    const rings = (type) =>
+    const rings = (genre) =>
       features
-        .filter((f) => f.properties && f.properties.type === type && f.geometry && f.geometry.type === 'Polygon')
+        .filter((f) => f.properties && f.properties.genre === genre && f.geometry && f.geometry.type === 'Polygon')
         .map((f) => ({ props: f.properties, ring: f.geometry.coordinates[0] }));
-    const stations = rings('MS').map((s) => ({ ring: this._openRing(s.ring), bbox: this._bbox(s.ring) }));
-    this._tunnels = rings('MT').map(({ props, ring }) => {
+    const stations = rings('station').map((s) => ({ ring: this._openRing(s.ring), bbox: this._bbox(s.ring) }));
+    this._tunnels = rings('tunnel').map(({ props, ring }) => {
       const commons = this._commonSegments(ring, stations);
       const axis = this._axisOf(ring, commons);
-      return { id: this.idOf(props), name: props.name_fr || props.name_nl || '', ring, axis, center: this._midpointAlong(axis), commons };
+      return { id: props.id, name: props.name_fr || props.name_nl || '', ring, axis, center: this._midpointAlong(axis), commons };
     });
     this._tryLink();
   },
@@ -116,17 +116,7 @@ const AMGT4CEM_Interstation = {
     return this._tunnels || [];
   },
 
-  /**
-   * Identifiant STABLE d'un tunnel : champ `id_objet` de Metro.shp (ex. « TRO-HORTA-ALBERT-01 »), fixé une
-   * fois pour toutes — contrairement à `ogc_fid`, simple numéro de ligne que chaque export peut changer. Un
-   * objet sans `id_objet` (ajouté sous AutoCAD sans l'avoir renseigné) retombe sur « fid:<ogc_fid> » : utilisable,
-   * mais à remplacer par un vrai identifiant.
-   */
-  idOf(props) {
-    return props.id_objet ? String(props.id_objet) : `fid:${props.ogc_fid}`;
-  },
-
-  /** Numéros d'interstation d'un tronçon (id : voir idOf), pour son infobulle. */
+  /** Numéros d'interstation d'un tronçon (id : identifiant du référentiel), pour son infobulle. */
   numbersForTunnel(id) {
     return this._numbers.filter((n) => n.tunnel && n.tunnel.id === String(id)).map((n) => n.numero);
   },
@@ -158,7 +148,7 @@ const AMGT4CEM_Interstation = {
 
   /**
    * Enregistre l'ensemble des définitions dans le dépôt, via le relais (data/fond-de-plan/etiquettes-troncons.json).
-   * @param {Object} labels - { "numéro#rang": { x, y, tunnel } }, x/y en Lambert 72, tunnel = id_objet (étiquettes SANS définition : absentes)
+   * @param {Object} labels - { "numéro#rang": { x, y, tunnel } }, x/y en Lambert 72, tunnel = id du référentiel (étiquettes SANS définition : absentes)
    * @param {string} adminCode - code administrateur attendu par le relais
    */
   async saveOverrides(labels, adminCode) {

@@ -138,7 +138,7 @@ sélectionné »), **second clic** (début de la modification, deux étapes) :
 **↺** remet la position et le tronçon d'origine. Les étiquettes modifiées
 s'affichent dans la couleur opposée, comme les références de planche.
 Enregistrement : `data/fond-de-plan/etiquettes-troncons.json` (`{ "version": 1, "crs": "EPSG:31370", "labels":
-{ "648#0": { x, y, tunnel } } }` — position en Lambert 72, `id_objet` stable
+{ "648#0": { x, y, tunnel } } }` — position en Lambert 72, `id` du tronçon (référentiel)
 du tunnel), route `/shared/fond-de-plan/etiquettes-troncons` du relais.
 
 ## Supprimer et créer des étiquettes
@@ -146,7 +146,7 @@ du tunnel), route `/shared/fond-de-plan/etiquettes-troncons` du relais.
 **Source unique** : les JSON de `data/fond-de-plan/` sont la liste COMPLÈTE des
 étiquettes (planches : 37 ; tronçons : 86 au départ). Créer ou supprimer une
 étiquette revient à ajouter ou retirer une entrée ; les fichiers d'origine
-(`MetroLabels.shp`, `patrimoine-numero-interstation.json`) ne servent plus
+(`MetroLabels.shp`, `patrimoine-numero-interstation.json` : supprimés ou déplacés dans `data/legacy/`) ne servent plus
 qu'à l'amorçage.
 
 - **Supprimer** (uniquement en mode édition) : sélectionner l'étiquette

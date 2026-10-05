@@ -108,7 +108,7 @@ const AMGT4CEM_Basemap = {
     if (this._currentLayer) this._map.removeLayer(this._currentLayer);
     this._currentLayer = layer;
     layer.addTo(this._map);
-    // Le fond de carte peut changer (UrbIS <-> orthophoto, navigation
+    // Le fond de plan peut changer (UrbIS <-> orthophoto, navigation
     // Bruciel...) pendant que l'outil "Mesurer" reste actif : seuls le
     // glisser et le pincer-zoomer sont désactivés pendant ce temps, pas le
     // menu ☰ Carte. Le fond mis en cache pour la capture (screenshotTool.js)

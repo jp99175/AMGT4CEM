@@ -6,44 +6,37 @@
 const AMGT4CEM_CONFIG = {
 
   // --- Référentiel géographique métier ---
-  // CRS déclaré explicitement dans Metro.json : urn:ogc:def:crs:EPSG::31370
-  // => Belgian Lambert 72 (EPSG:31370). Confirmé par le fichier lui-même,
-  // pas supposé arbitrairement.
+  // Belgian Lambert 72 (EPSG:31370) : CRS des shapefiles (.prj) et des JSON
+  // (`"crs": "EPSG:31370"`), utilisé tel quel comme référentiel métier.
   businessCRS: {
     epsg: 'EPSG:31370',
     // Paramètres officiels EPSG:31370 (Belgian Lambert 72), constante publique
-    // (source : IGN/NGI, epsg.io/31370), indépendante du contenu de Metro.json.
+    // (source : IGN/NGI, epsg.io/31370), indépendante du contenu des fichiers de données.
     proj4def: '+proj=lcc +lat_1=51.16666723333333 +lat_2=49.8333339 +lat_0=90 ' +
       '+lon_0=4.367486666666666 +x_0=150000.013 +y_0=5400088.438 +ellps=intl ' +
       '+towgs84=-106.8686,52.2978,-103.7239,0.3366,-0.457,1.8422,-1.2747 +units=m +no_defs',
   },
 
   // --- Données cartographiques de référence ---
-  // Format de base : Shapefile (Metro_export_SHP/Metro.shp + .dbf + .prj),
-  // pas GeoJSON ni GeoPackage — c'est le format qu'AutoCAD Civil 3D édite
-  // nativement (Map 3D intégré, sans plugin), contrairement aux deux
-  // autres. Les mises à jour de plan se font dans Civil 3D ; l'export
-  // remplace ces fichiers dans le dépôt ; l'app les lit directement côté
-  // navigateur (src/shpLoader.js), sans conversion externe (pas de QGIS/
-  // GDAL à installer). metroDataUrl (Metro.json) reste en secours pour le
-  // seul chargement manuel (bouton de secours si le fetch échoue, voir
-  // metroData.js) — le chargement automatique normal passe par le
-  // Shapefile.
-  metroShpBaseUrl: './Metro_export_SHP/Metro',
-  metroDataUrl: './Metro.json',
-  // Fichiers annexes (même répertoire, même CRS) : repères "PE_info"
-  // (transitions entre tronçons de construction D0/D1/G1a/... relevées dans
-  // INFRAVIEW.pdf — STIB) et références de planches "PE_label", voir
-  // metroLayer.js et le README section 4bis. Séparés de Metro.shp (et l'un
-  // de l'autre) par type de forme : MetroInfo.shp ne contient que les
-  // triangles (Polygon, une entité par triangle réel du plan) ;
-  // MetroLabels.shp ne contient que les points d'ancrage des textes
-  // PE_info/PE_label, rendus en HTML par scaledText.js (Point).
-  metroInfoShpBaseUrl: './Metro_export_SHP/MetroInfo',
-  metroLabelsShpBaseUrl: './Metro_export_SHP/MetroLabels',
+  // Trois familles (voir README, section 4) :
+  //  1. géométries pérennes : DEUX shapefiles Lambert 72 (éditables dans AutoCAD), un seul champ `id` ;
+  //  2. référentiel : JSON rattaché aux géométries par `id` (noms, genre, niveau, références...) ;
+  //  3. données métier (suivi) : hors de ce dépôt (phase B).
+  // Lecture côté navigateur (src/shpLoader.js, src/referentiel.js), sans conversion externe.
+  // lignes.shp / lignes.json peuvent être absents tant qu'aucun tronçon n'est dessiné.
+  donnees: {
+    polygonesShp: './data/geometries/polygones',
+    lignesShp: './data/geometries/lignes',
+    polygonesJson: './data/referentiel/polygones.json',
+    lignesJson: './data/referentiel/lignes.json',
+    vocabulairesJson: './data/referentiel/vocabulaires.json',
+  },
+  // LEGACY : repères de transition entre tronçons (triangles + codes D0, D1, G1a...), sans identifiant ;
+  // à rattacher à lignes.shp quand il existera (voir metroLayer.js et le README).
+  reperesTronconsLegacyUrl: './data/legacy/reperes-troncons.legacy.json',
 
-  // Données du FOND DE PLAN écrites par l'application (tout ce qui n'est pas la
-  // géométrie des planches/tunnels/stations, seule éditable sous AutoCAD) : dossier
+  // Données du FOND DE PLAN écrites par l'application (tout ce qui n'est pas une
+  // géométrie de data/geometries/, seule éditable sous AutoCAD) : dossier
   // data/fond-de-plan/, un fichier JSON par type d'élément, en Lambert 72, partagés
   // entre visiteurs. Lus par tous ; enregistrés (administrateurs, plugin
   // plugins/pe-label-editor/) par un relais serveur à déployer une fois
@@ -181,11 +174,11 @@ const AMGT4CEM_CONFIG = {
   // Objets ponctuels/linéaires détaillés du produit UrbIS Topo (CIRB/CIBG -
   // Paradigm), choisis individuellement par l'utilisateur (voir le
   // sélecteur "modifier la sélection", src/urbisTopoPicker.js, et le
-  // catalogue complet data/urbisTopoCatalog.js) et affichés en plus du fond
+  // catalogue complet catalogues/urbis-topo.js) et affichés en plus du fond
   // de plan. Service et attribut de type ("TYPE") confirmés via :
   //  - la fiche technique officielle "UrbIS - Topo" (spécifications de
   //    produit ISO 19131, PDF fourni par l'utilisateur) pour la liste des
-  //    codes/libellés d'objets (voir data/urbisTopoCatalog.js) ;
+  //    codes/libellés d'objets (voir catalogues/urbis-topo.js) ;
   //  - un GetFeature réel (application/json, 5 entités, fourni par
   //    l'utilisateur) confirmant le nom de l'attribut de type ("TYPE"), les
   //    libellés français/néerlandais ("DESCRFRE"/"DESCRDUT") et le CRS de
@@ -230,7 +223,7 @@ const AMGT4CEM_CONFIG = {
 
   // --- Plans patrimoine (à la demande) ---
   // Données de référence LOCALES fournies directement par l'utilisateur
-  // (fichiers GeoJSON EPSG:31370, voir data/patrimoineCatalog.js) : plans
+  // (fichiers GeoJSON EPSG:31370, voir catalogues/plans-patrimoine.js) : plans
   // d'ensemble au 1/500e, numéros interstation. Jamais
   // rechargées depuis un service externe (contrairement à UrbIS Topo), donc
   // pas de garde-fou de zoom/emprise nécessaire (volumes très modestes).

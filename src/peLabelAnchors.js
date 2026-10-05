@@ -8,8 +8,8 @@
  * — Lambert 72 en mètres (a1/a2, au mm près) ; la clé est "numéro de
  * planche#rang" (le rang distingue deux étiquettes de même numéro, ex.
  * "3000-126#1") ; la signification de r1/a1/r2/a2 est décrite dans scaledText.js.
- * Une étiquette absente du fichier garde sa position et son orientation
- * d'origine (MetroLabels.shp).
+ * Ce JSON est la liste COMPLÈTE des
+ * références de planche (source unique) : une étiquette absente du fichier n'existe pas.
  *
  * Format INTERNE (tout le reste de l'application, scaledText.js, plugin) : a1/a2 en
  * [lat, lng] (WGS84, l'affichage Leaflet) — la conversion se fait ici, à la lecture

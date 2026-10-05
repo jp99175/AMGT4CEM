@@ -32,7 +32,7 @@
  * n'a pas pu changer : invalidé (invalidateBackground) par measureTool.js à
  * chaque activate()/deactivate() de l'outil "Mesurer" (glisser/pincer-zoomer
  * de la carte désactivés entre les deux, mais PAS le menu ☰ Carte, resté
- * utilisable), ET par tout changement de fond de carte ou de couche pendant
+ * utilisable), ET par tout changement de fond de plan ou de couche pendant
  * ce temps (basemap.js, _setActiveLayer ; mapMenu.js, cases à cocher et
  * curseurs d'opacité) — sans quoi une bascule UrbIS -> orthophoto en cours
  * de mesure resterait invisible dans les captures suivantes de la même
@@ -102,7 +102,7 @@ const AMGT4CEM_ScreenshotTool = {
   },
 
   /** Capture (une seule fois par activation, voir invalidateBackground) le
-   * fond de carte SANS la mesure : la pane dédiée (amgtMeasurePane) est
+   * fond de plan SANS la mesure : la pane dédiée (amgtMeasurePane) est
    * masquée le temps de la capture, pour ne jamais graver une mesure
    * précédente dans le fond réutilisé par les suivantes. */
   async _ensureBackground() {

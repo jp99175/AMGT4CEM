@@ -1,5 +1,5 @@
 /**
- * Menu unique (haut gauche) regroupant le choix du fond de carte, la
+ * Menu unique (haut gauche) regroupant le choix du fond de plan, la
  * visibilité des couches Metro/points, et le retour à l'emprise du réseau.
  *
  * Remplace le contrôle de couches Leaflet par défaut : avec plusieurs
@@ -54,7 +54,7 @@ const AMGT4CEM_MapMenu = {
   },
 
   /**
-   * Appelé une fois Metro.json chargé et ses couches Stations/Tunnels construites.
+   * Appelé une fois les données chargées et ses couches Stations/Tunnels construites.
    * @param {{ MS: L.LayerGroup, MT: L.LayerGroup }} layersByType
    */
   setMetroLayers(layersByType) {
@@ -149,7 +149,7 @@ const AMGT4CEM_MapMenu = {
     // recherche, elle, continue de les différencier). Les Planches (PE) et
     // leurs repères (PE_info, PE_label) en sont exclus : leur affichage/
     // masquage est piloté ensemble depuis le sélecteur "Plans patrimoine"
-    // (voir patrimoineCatalog.js, entrée `external: true`, et
+    // (voir plans-patrimoine.js, entrée `external: true`, et
     // patrimoineLayer.js#registerExternalLayer) — seule leur opacité reste
     // réglée ici (_applyMetroOpacity), avec le reste du réseau. Sans cette
     // exclusion, `group.addTo(map)` ajouterait directement le groupe à la

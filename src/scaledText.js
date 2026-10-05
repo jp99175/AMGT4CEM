@@ -50,7 +50,7 @@ const AMGT4CEM_ScaledText = {
     center: { x: 0.5, y: 0.5, label: 'centre' },
   },
 
-  /** Ancien champ `side` de MetroLabels.shp -> point de référence équivalent. */
+  /** Champ `side` des repères legacy (reperes-troncons.legacy.json) -> point de référence équivalent. */
   SIDE_TO_REF: { top: 'tc', bottom: 'bc', left: 'ml', right: 'mr' },
 
   /** À appeler une fois, après création de la carte. */

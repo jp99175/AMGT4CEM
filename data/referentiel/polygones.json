@@ -1,0 +1,1817 @@
+{
+  "version": 1,
+  "date": "2026-10-05",
+  "crs": "EPSG:31370",
+  "prochain_id": 193,
+  "entites": {
+    "G000001": {
+      "genre": "station",
+      "name_fr": "Station Montgomery",
+      "name_nl": "Station Montgomery",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 1,
+        "id_objet": "STA-MONTGOMERY"
+      },
+      "noms": []
+    },
+    "G000002": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Horta - Albert",
+      "name_nl": "Tunnel MIVB Horta - Albert",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 2,
+        "id_objet": "TRO-HORTA-ALBERT-01"
+      }
+    },
+    "G000003": {
+      "genre": "station",
+      "name_fr": "Station Thieffry",
+      "name_nl": "Station Thieffry",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 3,
+        "id_objet": "STA-THIEFFRY"
+      },
+      "noms": []
+    },
+    "G000004": {
+      "genre": "station",
+      "name_fr": "Station Stockel",
+      "name_nl": "Station Stokkel",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 4,
+        "id_objet": "STA-STOCKEL"
+      },
+      "noms": []
+    },
+    "G000005": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Delacroix - Clemenceau",
+      "name_nl": "Tunnel MIVB Delacroix - Clemenceau",
+      "niveau": "0",
+      "ids_externes": {
+        "ogc_fid": 5,
+        "id_objet": "TRO-DELACROIX-CLEMENCEAU-01"
+      }
+    },
+    "G000006": {
+      "genre": "station",
+      "name_fr": "Station Albert",
+      "name_nl": "Station Albert",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 6,
+        "id_objet": "STA-ALBERT"
+      },
+      "noms": []
+    },
+    "G000007": {
+      "genre": "station",
+      "name_fr": "Station Stuyvenbergh",
+      "name_nl": "Station Stuyvenbergh",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 7,
+        "id_objet": "STA-STUYVENBERGH"
+      },
+      "noms": []
+    },
+    "G000008": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Hôtel des Monnaies - Louise",
+      "name_nl": "Tunnel MIVB Munthof - Louiza",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 8,
+        "id_objet": "TRO-HOTEL-DES-MONNAIES-LOUISE-01"
+      }
+    },
+    "G000009": {
+      "genre": "station",
+      "name_fr": "Station Demey",
+      "name_nl": "Station Demey",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 9,
+        "id_objet": "STA-DEMEY"
+      },
+      "noms": []
+    },
+    "G000010": {
+      "genre": "station",
+      "name_fr": "Station Anneessens",
+      "name_nl": "Station Anneessens",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 10,
+        "id_objet": "STA-ANNEESSENS"
+      },
+      "noms": []
+    },
+    "G000011": {
+      "genre": "station",
+      "name_fr": "Station Eddy Merckx",
+      "name_nl": "Station Eddy Merckx",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 11,
+        "id_objet": "STA-EDDY-MERCKX"
+      },
+      "noms": []
+    },
+    "G000012": {
+      "genre": "station",
+      "name_fr": "Station Etangs noirs",
+      "name_nl": "Station Zwarte vijvers",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 12,
+        "id_objet": "STA-ETANGS-NOIRS"
+      },
+      "noms": []
+    },
+    "G000013": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Beekkant - Etangs noirs",
+      "name_nl": "Tunnel MIVB Beekkant - Zwarte vijvers",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 13,
+        "id_objet": "TRO-BEEKKANT-ETANGS-NOIRS-01"
+      }
+    },
+    "G000014": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Demey - Hermann-Debroux",
+      "name_nl": "Tunnel MIVB Demey - Hermann-Debroux",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 14,
+        "id_objet": "TRO-DEMEY-HERMANN-DEBROUX-01"
+      }
+    },
+    "G000015": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Houba-Brugmann - Stuyvenbergh",
+      "name_nl": "Tunnel MIVB Houba-Brugmann - Stuyvenbergh",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 15,
+        "id_objet": "TRO-HOUBA-BRUGMANN-STUYVENBERGH-01"
+      }
+    },
+    "G000016": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Rogier - De Brouckère",
+      "name_nl": "Tunnel MIVB Rogier - De Brouckère",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 16,
+        "id_objet": "TRO-ROGIER-DE-BROUCKERE-01"
+      }
+    },
+    "G000017": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Eddy Merckx - CERIA",
+      "name_nl": "Tunnel MIVB Eddy Merckx - COOVI",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 17,
+        "id_objet": "TRO-EDDY-MERCKX-CERIA-01"
+      }
+    },
+    "G000018": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Arts-Loi - Madou",
+      "name_nl": "Tunnel MIVB Kunst-Wet - Madou",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 18,
+        "id_objet": "TRO-ARTS-LOI-MADOU-01"
+      }
+    },
+    "G000019": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Porte de Namur - Trône",
+      "name_nl": "Tunnel MIVB Naamsepoort - Troon",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 19,
+        "id_objet": "TRO-PORTE-DE-NAMUR-TRONE-01"
+      }
+    },
+    "G000020": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Maelbeek - Schuman",
+      "name_nl": "Tunnel MIVB Maalbeek - Schuman",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 127,
+        "id_objet": "TRO-MAELBEEK-SCHUMAN-01"
+      }
+    },
+    "G000021": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Hankar - Delta",
+      "name_nl": "Tunnel MIVB Hankar - Delta",
+      "niveau": "0",
+      "ids_externes": {
+        "ogc_fid": 20,
+        "id_objet": "TRO-HANKAR-DELTA-01"
+      }
+    },
+    "G000022": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Jacques Brel - Gare de l'Ouest",
+      "name_nl": "Tunnel MIVB Jacques Brel - Weststation",
+      "niveau": "0",
+      "ids_externes": {
+        "ogc_fid": 21,
+        "id_objet": "TRO-JACQUES-BREL-GARE-DE-L-OUEST-01"
+      }
+    },
+    "G000023": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Beaulieu - Demey",
+      "name_nl": "Tunnel MIVB Beaulieu - Demey",
+      "niveau": "0",
+      "ids_externes": {
+        "ogc_fid": 22,
+        "id_objet": "TRO-BEAULIEU-DEMEY-01"
+      }
+    },
+    "G000024": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Pannenhuis - Belgica",
+      "name_nl": "Tunnel MIVB Pannenhuis - Belgica",
+      "niveau": "0",
+      "ids_externes": {
+        "ogc_fid": 23,
+        "id_objet": "TRO-PANNENHUIS-BELGICA-01"
+      }
+    },
+    "G000025": {
+      "genre": "station",
+      "name_fr": "Station Beekkant",
+      "name_nl": "Station Beekkant",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 24,
+        "id_objet": "STA-BEEKKANT"
+      },
+      "noms": []
+    },
+    "G000026": {
+      "genre": "station",
+      "name_fr": "Station Clemenceau",
+      "name_nl": "Station Clemenceau",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 25,
+        "id_objet": "STA-CLEMENCEAU"
+      },
+      "noms": []
+    },
+    "G000027": {
+      "genre": "station",
+      "name_fr": "Station Gare de l'Ouest",
+      "name_nl": "Station Weststation",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 26,
+        "id_objet": "STA-GARE-DE-L-OUEST"
+      },
+      "noms": []
+    },
+    "G000028": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Porte de Hal - Hôtel des Monnaies",
+      "name_nl": "Tunnel MIVB Hallepoort - Munthof",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 27,
+        "id_objet": "TRO-PORTE-DE-HAL-HOTEL-DES-MONNAIES-01"
+      }
+    },
+    "G000029": {
+      "genre": "station",
+      "name_fr": "Station Erasme",
+      "name_nl": "Station Erasmus",
+      "niveau": "0",
+      "ids_externes": {
+        "ogc_fid": 28,
+        "id_objet": "STA-ERASME"
+      },
+      "noms": []
+    },
+    "G000030": {
+      "genre": "station",
+      "name_fr": "Station Saint-Guidon",
+      "name_nl": "Station Sint-Guido",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 29,
+        "id_objet": "STA-SAINT-GUIDON"
+      },
+      "noms": []
+    },
+    "G000031": {
+      "genre": "station",
+      "name_fr": "Station Ribaucourt",
+      "name_nl": "Station Ribaucourt",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 30,
+        "id_objet": "STA-RIBAUCOURT"
+      },
+      "noms": []
+    },
+    "G000032": {
+      "genre": "station",
+      "name_fr": "Station Maelbeek",
+      "name_nl": "Station Maalbeek",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 31,
+        "id_objet": "STA-MAELBEEK"
+      },
+      "noms": []
+    },
+    "G000033": {
+      "genre": "station",
+      "name_fr": "Station Schuman",
+      "name_nl": "Station Schuman",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 32,
+        "id_objet": "STA-SCHUMAN"
+      },
+      "noms": []
+    },
+    "G000034": {
+      "genre": "station",
+      "name_fr": "Station Hôtel des Monnaies",
+      "name_nl": "Station Munthof",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 33,
+        "id_objet": "STA-HOTEL-DES-MONNAIES"
+      },
+      "noms": []
+    },
+    "G000035": {
+      "genre": "station",
+      "name_fr": "Station Crainhem",
+      "name_nl": "Station Kraainem",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 34,
+        "id_objet": "STA-CRAINHEM"
+      },
+      "noms": []
+    },
+    "G000036": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Louise - Porte de Namur",
+      "name_nl": "Tunnel MIVB Louiza - Naamsepoort",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 35,
+        "id_objet": "TRO-LOUISE-PORTE-DE-NAMUR-01"
+      }
+    },
+    "G000037": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Gare Centrale - Parc",
+      "name_nl": "Tunnel MIVB Centraalstation - Park",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 36,
+        "id_objet": "TRO-GARE-CENTRALE-PARC-01"
+      }
+    },
+    "G000038": {
+      "genre": "station",
+      "name_fr": "Station Diamant",
+      "name_nl": "Station Diamant",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 37,
+        "id_objet": "STA-DIAMANT"
+      },
+      "noms": []
+    },
+    "G000039": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Gribaumont - Tomberg",
+      "name_nl": "Tunnel MIVB Gribaumont - Tomberg",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 38,
+        "id_objet": "TRO-GRIBAUMONT-TOMBERG-01"
+      }
+    },
+    "G000040": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB La Roue - Bizet",
+      "name_nl": "Tunnel MIVB Het Rad - Bizet",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 39,
+        "id_objet": "TRO-LA-ROUE-BIZET-01"
+      }
+    },
+    "G000041": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Diamant - Georges Henri",
+      "name_nl": "Tunnel MIVB Diamant - Georges Henri",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 40,
+        "id_objet": "TRO-DIAMANT-GEORGES-HENRI-01"
+      }
+    },
+    "G000042": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Gare du Nord - Rogier",
+      "name_nl": "Tunnel MIVB Noordstation - Rogier",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 41,
+        "id_objet": "TRO-GARE-DU-NORD-ROGIER-01"
+      }
+    },
+    "G000043": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Simonis - Osseghem",
+      "name_nl": "Tunnel MIVB Simonis - Ossegem",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 42,
+        "id_objet": "TRO-SIMONIS-OSSEGHEM-01"
+      }
+    },
+    "G000044": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB CERIA - La Roue",
+      "name_nl": "Tunnel MIVB COOVI - Het Rad",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 43,
+        "id_objet": "TRO-CERIA-LA-ROUE-01"
+      }
+    },
+    "G000045": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Lemonnier - Gare du Midi",
+      "name_nl": "Tunnel MIVB Lemonnier - Zuidstation",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 44,
+        "id_objet": "TRO-LEMONNIER-GARE-DU-MIDI-01"
+      }
+    },
+    "G000046": {
+      "genre": "station",
+      "name_fr": "Station Josephine-Charlotte",
+      "name_nl": "Station Josephine-Charlotte",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 45,
+        "id_objet": "STA-JOSEPHINE-CHARLOTTE"
+      },
+      "noms": []
+    },
+    "G000047": {
+      "genre": "station",
+      "name_fr": "Station Roi Baudouin",
+      "name_nl": "Station Koning Boudewijn",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 46,
+        "id_objet": "STA-ROI-BAUDOUIN"
+      },
+      "noms": []
+    },
+    "G000048": {
+      "genre": "station",
+      "name_fr": "Station Arts-Loi",
+      "name_nl": "Station Kunst-Wet",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 47,
+        "id_objet": "STA-ARTS-LOI"
+      },
+      "noms": []
+    },
+    "G000049": {
+      "genre": "station",
+      "name_fr": "Station Bockstael",
+      "name_nl": "Station Bockstael",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 48,
+        "id_objet": "STA-BOCKSTAEL"
+      },
+      "noms": []
+    },
+    "G000050": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Anneessens - Lemonnier",
+      "name_nl": "Tunnel MIVB Anneessens - Lemonnier",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 49,
+        "id_objet": "TRO-ANNEESSENS-LEMONNIER-01"
+      }
+    },
+    "G000051": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Rue du Progrès  Gare du Nord",
+      "name_nl": "Tunnel MIVB Vooruitgangstraat  Noordstation",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 76,
+        "id_objet": "TRO-RUE-DU-PROGRES-GARE-DU-NORD-01"
+      }
+    },
+    "G000052": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Saint-Guidon - Aumale",
+      "name_nl": "Tunnel MIVB Sint-Guido - Aumale",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 50,
+        "id_objet": "TRO-SAINT-GUIDON-AUMALE-01"
+      }
+    },
+    "G000053": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Vandervelde - Alma",
+      "name_nl": "Tunnel MIVB Vandervelde - Alma",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 51,
+        "id_objet": "TRO-VANDERVELDE-ALMA-01"
+      }
+    },
+    "G000054": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Bizet - Veeweyde",
+      "name_nl": "Tunnel MIVB Bizet - Veeweide",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 52,
+        "id_objet": "TRO-BIZET-VEEWEYDE-01"
+      }
+    },
+    "G000055": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Rogier - Yser",
+      "name_nl": "Tunnel MIVB Rogier - Ijzer",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 53,
+        "id_objet": "TRO-ROGIER-YSER-01"
+      }
+    },
+    "G000056": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Erasme - Eddy Merckx",
+      "name_nl": "Tunnel MIVB Erasmus - Eddy Merckx",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 54,
+        "id_objet": "TRO-ERASME-EDDY-MERCKX-01"
+      }
+    },
+    "G000057": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Demey - Hermann-Debroux",
+      "name_nl": "Tunnel MIVB Demey - Hermann-Debroux",
+      "niveau": "0",
+      "ids_externes": {
+        "ogc_fid": 55,
+        "id_objet": "TRO-DEMEY-HERMANN-DEBROUX-02"
+      }
+    },
+    "G000058": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Delta - Beaulieu",
+      "name_nl": "Tunnel MIVB Delta - Beaulieu",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 56,
+        "id_objet": "TRO-DELTA-BEAULIEU-01"
+      }
+    },
+    "G000059": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Beekkant - Gare de l'Ouest",
+      "name_nl": "Tunnel MIVB Beekkant - Weststation",
+      "niveau": "0",
+      "ids_externes": {
+        "ogc_fid": 57,
+        "id_objet": "TRO-BEEKKANT-GARE-DE-L-OUEST-01"
+      }
+    },
+    "G000060": {
+      "genre": "station",
+      "name_fr": "Station Horta",
+      "name_nl": "Station Horta",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 58,
+        "id_objet": "STA-HORTA"
+      },
+      "noms": []
+    },
+    "G000061": {
+      "genre": "station",
+      "name_fr": "Station Simonis",
+      "name_nl": "Station Simonis",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 59,
+        "id_objet": "STA-SIMONIS"
+      },
+      "noms": []
+    },
+    "G000062": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Heysel - Houba-Brugmann",
+      "name_nl": "Tunnel MIVB Heizel - Houba-Brugmann",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 60,
+        "id_objet": "TRO-HEYSEL-HOUBA-BRUGMANN-01"
+      }
+    },
+    "G000063": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Merode - Montgomery",
+      "name_nl": "Tunnel MIVB Merode - Montgomery",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 61,
+        "id_objet": "TRO-MERODE-MONTGOMERY-01"
+      }
+    },
+    "G000064": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Delta - Beaulieu",
+      "name_nl": "Tunnel MIVB Delta - Beaulieu",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 62,
+        "id_objet": "TRO-DELTA-BEAULIEU-02"
+      }
+    },
+    "G000065": {
+      "genre": "station",
+      "name_fr": "Station Ceria",
+      "name_nl": "Station Coovi",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 63,
+        "id_objet": "STA-CERIA"
+      },
+      "noms": []
+    },
+    "G000066": {
+      "genre": "station",
+      "name_fr": "Station Botanique",
+      "name_nl": "Station Kruidtuin",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 64,
+        "id_objet": "STA-BOTANIQUE"
+      },
+      "noms": []
+    },
+    "G000067": {
+      "genre": "station",
+      "name_fr": "Station Beaulieu",
+      "name_nl": "Station Beaulieu",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 65,
+        "id_objet": "STA-BEAULIEU"
+      },
+      "noms": []
+    },
+    "G000068": {
+      "genre": "station",
+      "name_fr": "Station Delacroix",
+      "name_nl": "Station Delacroix",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 66,
+        "id_objet": "STA-DELACROIX"
+      },
+      "noms": []
+    },
+    "G000069": {
+      "genre": "station",
+      "name_fr": "Station Gribaumont",
+      "name_nl": "Station Gribaumont",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 67,
+        "id_objet": "STA-GRIBAUMONT"
+      },
+      "noms": []
+    },
+    "G000070": {
+      "genre": "station",
+      "name_fr": "Station Hermann-Debroux",
+      "name_nl": "Station Hermann-Debroux",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 68,
+        "id_objet": "STA-HERMANN-DEBROUX"
+      },
+      "noms": []
+    },
+    "G000071": {
+      "genre": "station",
+      "name_fr": "Station Heysel",
+      "name_nl": "Station Heysel",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 69,
+        "id_objet": "STA-HEYSEL"
+      },
+      "noms": []
+    },
+    "G000072": {
+      "genre": "station",
+      "name_fr": "Station Tomberg",
+      "name_nl": "Station Tomberg",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 70,
+        "id_objet": "STA-TOMBERG"
+      },
+      "noms": []
+    },
+    "G000073": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Etangs noirs - Comte de Flandre",
+      "name_nl": "Tunnel MIVB Zwarte vijvers - Graaf van Vlaanderen",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 71,
+        "id_objet": "TRO-ETANGS-NOIRS-COMTE-DE-FLANDRE-01"
+      }
+    },
+    "G000074": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Roodebeek - Vandervelde",
+      "name_nl": "Tunnel MIVB Roodebeek - Vandervelde",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 72,
+        "id_objet": "TRO-ROODEBEEK-VANDERVELDE-01"
+      }
+    },
+    "G000075": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Roi Baudouin - Heysel",
+      "name_nl": "Tunnel MIVB Koning Boudewijn - Heizel",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 73,
+        "id_objet": "TRO-ROI-BAUDOUIN-HEYSEL-01"
+      }
+    },
+    "G000076": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Veeweyde - Saint-Guidon",
+      "name_nl": "Tunnel MIVB Veeweide - Sint-Guido",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 74,
+        "id_objet": "TRO-VEEWEYDE-SAINT-GUIDON-01"
+      }
+    },
+    "G000077": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Comte de Flandre - Sainte-Catherine",
+      "name_nl": "Tunnel MIVB Graaf van Vlaanderen - Sint-Katelijne",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 75,
+        "id_objet": "TRO-COMTE-DE-FLANDRE-SAINTE-CATHERINE-01"
+      }
+    },
+    "G000078": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Stuyvenbergh - Bockstael",
+      "name_nl": "Tunnel MIVB Stuyvenbergh - Bockstael",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 77,
+        "id_objet": "TRO-STUYVENBERGH-BOCKSTAEL-01"
+      }
+    },
+    "G000079": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Arts-Loi - Maelbeek",
+      "name_nl": "Tunnel MIVB Kunst-Wet - Maalbeek",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 78,
+        "id_objet": "TRO-ARTS-LOI-MAELBEEK-01"
+      }
+    },
+    "G000080": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Beekkant - Gare de l'Ouest",
+      "name_nl": "Tunnel MIVB Beekkant - Weststation",
+      "niveau": "0",
+      "ids_externes": {
+        "ogc_fid": 79,
+        "id_objet": "TRO-BEEKKANT-GARE-DE-L-OUEST-02"
+      }
+    },
+    "G000081": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Trône - Arts-Loi",
+      "name_nl": "Tunnel MIVB Troon - Kunst-Wet",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 80,
+        "id_objet": "TRO-TRONE-ARTS-LOI-01"
+      }
+    },
+    "G000082": {
+      "genre": "station",
+      "name_fr": "Station Hankar",
+      "name_nl": "Station Hankar",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 81,
+        "id_objet": "STA-HANKAR"
+      },
+      "noms": []
+    },
+    "G000083": {
+      "genre": "station",
+      "name_fr": "Station Trône",
+      "name_nl": "Station Troon",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 82,
+        "id_objet": "STA-TRONE"
+      },
+      "noms": []
+    },
+    "G000084": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Delacroix - Clemenceau",
+      "name_nl": "Tunnel MIVB Delacroix - Clemenceau",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 83,
+        "id_objet": "TRO-DELACROIX-CLEMENCEAU-02"
+      }
+    },
+    "G000085": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Albert - Avenue Jupiter",
+      "name_nl": "Tunnel MIVB Albert  Jupiterlaan",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 84,
+        "id_objet": "TRO-ALBERT-AVENUE-JUPITER-01"
+      }
+    },
+    "G000086": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Belgica - Simonis",
+      "name_nl": "Tunnel MIVB Belgica - Simonis",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 85,
+        "id_objet": "TRO-BELGICA-SIMONIS-01"
+      }
+    },
+    "G000087": {
+      "genre": "station",
+      "name_fr": "Station Gare Centrale",
+      "name_nl": "Station Centraalstation",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 95,
+        "id_objet": "STA-GARE-CENTRALE"
+      },
+      "noms": []
+    },
+    "G000088": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Sainte-Catherine - De Brouckère",
+      "name_nl": "Tunnel MIVB Sint-Katelijne - De Brouckère",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 86,
+        "id_objet": "TRO-SAINTE-CATHERINE-DE-BROUCKERE-01"
+      }
+    },
+    "G000089": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Yser - Ribaucourt",
+      "name_nl": "Tunnel MIVB Ijzer - Ribaucourt",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 87,
+        "id_objet": "TRO-YSER-RIBAUCOURT-01"
+      }
+    },
+    "G000090": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Madou - Botanique",
+      "name_nl": "Tunnel MIVB Madou - Kruidtuin",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 88,
+        "id_objet": "TRO-MADOU-BOTANIQUE-01"
+      }
+    },
+    "G000091": {
+      "genre": "station",
+      "name_fr": "Station Georges Henri",
+      "name_nl": "Station Georges Henri",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 89,
+        "id_objet": "STA-GEORGES-HENRI"
+      },
+      "noms": []
+    },
+    "G000092": {
+      "genre": "station",
+      "name_fr": "Station Rogier",
+      "name_nl": "Station Rogier",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 90,
+        "id_objet": "STA-ROGIER"
+      },
+      "noms": []
+    },
+    "G000093": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Pétillon - Hankar",
+      "name_nl": "Tunnel MIVB Pétillon - Hankar",
+      "niveau": "0",
+      "ids_externes": {
+        "ogc_fid": 91,
+        "id_objet": "TRO-PETILLON-HANKAR-01"
+      }
+    },
+    "G000094": {
+      "genre": "station",
+      "name_fr": "Station Belgica",
+      "name_nl": "Station Belgica",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 92,
+        "id_objet": "STA-BELGICA"
+      },
+      "noms": []
+    },
+    "G000095": {
+      "genre": "station",
+      "name_fr": "Station Aumale",
+      "name_nl": "Station Aumale",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 93,
+        "id_objet": "STA-AUMALE"
+      },
+      "noms": []
+    },
+    "G000096": {
+      "genre": "station",
+      "name_fr": "Station Veeweyde",
+      "name_nl": "Station Veeweide",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 94,
+        "id_objet": "STA-VEEWEYDE"
+      },
+      "noms": []
+    },
+    "G000097": {
+      "genre": "station",
+      "name_fr": "Station Merode",
+      "name_nl": "Station Merode",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 96,
+        "id_objet": "STA-MERODE"
+      },
+      "noms": []
+    },
+    "G000098": {
+      "genre": "station",
+      "name_fr": "Station La Roue",
+      "name_nl": "Station Het Rad",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 97,
+        "id_objet": "STA-LA-ROUE"
+      },
+      "noms": []
+    },
+    "G000099": {
+      "genre": "station",
+      "name_fr": "Station Bourse",
+      "name_nl": "Station Beurs",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 98,
+        "id_objet": "STA-BOURSE"
+      },
+      "noms": []
+    },
+    "G000100": {
+      "genre": "station",
+      "name_fr": "Station Houba-Brugmann",
+      "name_nl": "Station Houba-Brugmann",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 99,
+        "id_objet": "STA-HOUBA-BRUGMANN"
+      },
+      "noms": []
+    },
+    "G000101": {
+      "genre": "station",
+      "name_fr": "Station Porte de Namur",
+      "name_nl": "Station Naamsepoort",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 100,
+        "id_objet": "STA-PORTE-DE-NAMUR"
+      },
+      "noms": []
+    },
+    "G000102": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Georges Henri - Montgomery",
+      "name_nl": "Tunnel MIVB Georges Henri - Montgomery",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 101,
+        "id_objet": "TRO-GEORGES-HENRI-MONTGOMERY-01"
+      }
+    },
+    "G000103": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Josephine-Charlotte - Gribaumont",
+      "name_nl": "Tunnel MIVB Josephine-Charlotte - Gribaumont",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 102,
+        "id_objet": "TRO-JOSEPHINE-CHARLOTTE-GRIBAUMONT-01"
+      }
+    },
+    "G000104": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Boileau  Boulevard Louis Schmidt",
+      "name_nl": "Tunnel MIVB Boileau  Louis Schmidtlaan",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 103,
+        "id_objet": "TRO-BOILEAU-BOULEVARD-LOUIS-SCHMIDT-01"
+      }
+    },
+    "G000105": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Aumale - Jacques Brel",
+      "name_nl": "Tunnel MIVB Aumale - Jacques Brel",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 104,
+        "id_objet": "TRO-AUMALE-JACQUES-BREL-01"
+      }
+    },
+    "G000106": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Merode - Thieffry",
+      "name_nl": "Tunnel MIVB Merode - Thieffry",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 105,
+        "id_objet": "TRO-MERODE-THIEFFRY-01"
+      }
+    },
+    "G000107": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB De Brouckère - Bourse",
+      "name_nl": "Tunnel MIVB De Brouckère - Beurs",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 106,
+        "id_objet": "TRO-DE-BROUCKERE-BOURSE-01"
+      }
+    },
+    "G000108": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Montgomery - Boileau",
+      "name_nl": "Tunnel MIVB Montgomery - Boileau",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 107,
+        "id_objet": "TRO-MONTGOMERY-BOILEAU-01"
+      }
+    },
+    "G000109": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Crainhem - Stockel",
+      "name_nl": "Tunnel MIVB Kraainem - Stokkel",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 108,
+        "id_objet": "TRO-CRAINHEM-STOCKEL-01"
+      }
+    },
+    "G000110": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Parc - Arts-Loi",
+      "name_nl": "Tunnel MIVB Park - Kunst-Wet",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 109,
+        "id_objet": "TRO-PARC-ARTS-LOI-01"
+      }
+    },
+    "G000111": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Route de Lennik  Erasme",
+      "name_nl": "Tunnel MIVB Lennikse Baan  Erasmus",
+      "niveau": "0",
+      "ids_externes": {
+        "ogc_fid": 110,
+        "id_objet": "TRO-ROUTE-DE-LENNIK-ERASME-01"
+      }
+    },
+    "G000112": {
+      "genre": "station",
+      "name_fr": "Station Pannenhuis",
+      "name_nl": "Station Pannenhuis",
+      "niveau": "0",
+      "ids_externes": {
+        "ogc_fid": 111,
+        "id_objet": "STA-PANNENHUIS"
+      },
+      "noms": []
+    },
+    "G000113": {
+      "genre": "station",
+      "name_fr": "Station Gare du Midi",
+      "name_nl": "Station Zuidstation",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 112,
+        "id_objet": "STA-GARE-DU-MIDI"
+      },
+      "noms": []
+    },
+    "G000114": {
+      "genre": "station",
+      "name_fr": "Station Vandervelde",
+      "name_nl": "Station Vandervelde",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 113,
+        "id_objet": "STA-VANDERVELDE"
+      },
+      "noms": []
+    },
+    "G000115": {
+      "genre": "station",
+      "name_fr": "Station Yser",
+      "name_nl": "Station Ijser",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 114,
+        "id_objet": "STA-YSER"
+      },
+      "noms": []
+    },
+    "G000116": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Parvis de Saint-Gilles - Horta",
+      "name_nl": "Tunnel MIVB Sint-Gillis voorplein - Horta",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 115,
+        "id_objet": "TRO-PARVIS-DE-SAINT-GILLES-HORTA-01"
+      }
+    },
+    "G000117": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Beekkant - Gare de l'Ouest",
+      "name_nl": "Tunnel MIVB Beekkant - Weststation",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 128,
+        "id_objet": "TRO-BEEKKANT-GARE-DE-L-OUEST-03"
+      }
+    },
+    "G000118": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Delacroix - Clemenceau",
+      "name_nl": "Tunnel MIVB Delacroix - Clemenceau",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 116,
+        "id_objet": "TRO-DELACROIX-CLEMENCEAU-03"
+      }
+    },
+    "G000119": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Boulevard Auguste Reyers  Diamant",
+      "name_nl": "Tunnel MIVB Auguste Reyerslaan  Diamant",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 117,
+        "id_objet": "TRO-BOULEVARD-AUGUSTE-REYERS-DIAMANT-01"
+      }
+    },
+    "G000120": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB De Brouckère - Gare Centrale",
+      "name_nl": "Tunnel MIVB De Brouckère - Centraalstation",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 118,
+        "id_objet": "TRO-DE-BROUCKERE-GARE-CENTRALE-01"
+      }
+    },
+    "G000121": {
+      "genre": "station",
+      "name_fr": "Station Porte de Hal",
+      "name_nl": "Station Hallepoort",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 119,
+        "id_objet": "STA-PORTE-DE-HAL"
+      },
+      "noms": []
+    },
+    "G000122": {
+      "genre": "station",
+      "name_fr": "Station Alma",
+      "name_nl": "Station Alma",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 120,
+        "id_objet": "STA-ALMA"
+      },
+      "noms": []
+    },
+    "G000123": {
+      "genre": "station",
+      "name_fr": "Station Osseghem",
+      "name_nl": "Station Ossegem",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 121,
+        "id_objet": "STA-OSSEGHEM"
+      },
+      "noms": []
+    },
+    "G000124": {
+      "genre": "station",
+      "name_fr": "Station Comte de Flandre",
+      "name_nl": "Station Graaf van Vlaanderen",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 122,
+        "id_objet": "STA-COMTE-DE-FLANDRE"
+      },
+      "noms": []
+    },
+    "G000125": {
+      "genre": "station",
+      "name_fr": "Station De Brouckère",
+      "name_nl": "Station De Brouckère",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 123,
+        "id_objet": "STA-DE-BROUCKERE"
+      },
+      "noms": []
+    },
+    "G000126": {
+      "genre": "station",
+      "name_fr": "Station Pétillon",
+      "name_nl": "Station Pétillon",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 124,
+        "id_objet": "STA-PETILLON"
+      },
+      "noms": []
+    },
+    "G000127": {
+      "genre": "station",
+      "name_fr": "Station Bizet",
+      "name_nl": "Station Bizet",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 125,
+        "id_objet": "STA-BIZET"
+      },
+      "noms": []
+    },
+    "G000128": {
+      "genre": "station",
+      "name_fr": "Station Madou",
+      "name_nl": "Station Madou",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 126,
+        "id_objet": "STA-MADOU"
+      },
+      "noms": []
+    },
+    "G000129": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Ribaucourt - Simonis",
+      "name_nl": "Tunnel MIVB Ribaucourt - Simonis",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 129,
+        "id_objet": "TRO-RIBAUCOURT-SIMONIS-01"
+      }
+    },
+    "G000130": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Montgomery - Josephine-Charlotte",
+      "name_nl": "Tunnel MIVB Montgomery - Josephine-Charlotte",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 130,
+        "id_objet": "TRO-MONTGOMERY-JOSEPHINE-CHARLOTTE-01"
+      }
+    },
+    "G000131": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Tomberg - Roodebeek",
+      "name_nl": "Tunnel MIVB Tomberg - Roodebeek",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 131,
+        "id_objet": "TRO-TOMBERG-ROODEBEEK-01"
+      }
+    },
+    "G000132": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Cité Modèle - Roi Baudouin",
+      "name_nl": "Tunnel MIVB Modelwijk  Koning Boudewijn",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 132,
+        "id_objet": "TRO-CITE-MODELE-ROI-BAUDOUIN-01"
+      }
+    },
+    "G000133": {
+      "genre": "station",
+      "name_fr": "Station Jacques Brel",
+      "name_nl": "Station Jacques Brel",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 133,
+        "id_objet": "STA-JACQUES-BREL"
+      },
+      "noms": []
+    },
+    "G000134": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Schuman - Merode",
+      "name_nl": "Tunnel MIVB Schuman - Merode",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 134,
+        "id_objet": "TRO-SCHUMAN-MERODE-01"
+      }
+    },
+    "G000135": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Thieffry - Pétillon",
+      "name_nl": "Tunnel MIVB Thieffry - Pétillon",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 135,
+        "id_objet": "TRO-THIEFFRY-PETILLON-01"
+      }
+    },
+    "G000136": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Horta - Albert",
+      "name_nl": "Tunnel MIVB Horta - Albert",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 143,
+        "id_objet": "TRO-HORTA-ALBERT-02"
+      }
+    },
+    "G000137": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Gare du Midi - Porte de Hal",
+      "name_nl": "Tunnel MIVB Zuidstation - Hallepoort",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 144,
+        "id_objet": "TRO-GARE-DU-MIDI-PORTE-DE-HAL-01"
+      }
+    },
+    "G000138": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Osseghem - Beekkant",
+      "name_nl": "Tunnel MIVB Ossegem - Beekkant",
+      "niveau": "0",
+      "ids_externes": {
+        "ogc_fid": 136,
+        "id_objet": "TRO-OSSEGHEM-BEEKKANT-01"
+      }
+    },
+    "G000139": {
+      "genre": "station",
+      "name_fr": "Station Lemonnier",
+      "name_nl": "Station Lemonnier",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 137,
+        "id_objet": "STA-LEMONNIER"
+      },
+      "noms": []
+    },
+    "G000140": {
+      "genre": "station",
+      "name_fr": "Station Roodebeek",
+      "name_nl": "Station Roodebeek",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 138,
+        "id_objet": "STA-ROODEBEEK"
+      },
+      "noms": []
+    },
+    "G000141": {
+      "genre": "station",
+      "name_fr": "Station Louise",
+      "name_nl": "Station Louiza",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 139,
+        "id_objet": "STA-LOUISE"
+      },
+      "noms": []
+    },
+    "G000142": {
+      "genre": "station",
+      "name_fr": "Station Parvis de Saint-Gilles",
+      "name_nl": "Station Sint-Gillis voorplein",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 140,
+        "id_objet": "STA-PARVIS-DE-SAINT-GILLES"
+      },
+      "noms": []
+    },
+    "G000143": {
+      "genre": "station",
+      "name_fr": "Station Gare du Nord",
+      "name_nl": "Station Noordstation",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 141,
+        "id_objet": "STA-GARE-DU-NORD"
+      },
+      "noms": []
+    },
+    "G000144": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Alma - Crainhem",
+      "name_nl": "Tunnel MIVB Alma - Kraainem",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 142,
+        "id_objet": "TRO-ALMA-CRAINHEM-01"
+      }
+    },
+    "G000145": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Gare de l'Ouest - Delacroix",
+      "name_nl": "Tunnel MIVB Weststation - Delacroix",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 145,
+        "id_objet": "TRO-GARE-DE-L-OUEST-DELACROIX-01"
+      }
+    },
+    "G000146": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Beekkant - Gare de l'Ouest",
+      "name_nl": "Tunnel MIVB Beekkant - Weststation",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 146,
+        "id_objet": "TRO-BEEKKANT-GARE-DE-L-OUEST-04"
+      }
+    },
+    "G000147": {
+      "genre": "station",
+      "name_fr": "Station Boileau",
+      "name_nl": "Station Boileau",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 147,
+        "id_objet": "STA-BOILEAU"
+      },
+      "noms": []
+    },
+    "G000148": {
+      "genre": "station",
+      "name_fr": "Station Sainte-Catherine",
+      "name_nl": "Station Sint-Katelijne",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 148,
+        "id_objet": "STA-SAINTE-CATHERINE"
+      },
+      "noms": []
+    },
+    "G000149": {
+      "genre": "station",
+      "name_fr": "Station Parc",
+      "name_nl": "Station Park",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 149,
+        "id_objet": "STA-PARC"
+      },
+      "noms": []
+    },
+    "G000150": {
+      "genre": "station",
+      "name_fr": "Station Delta",
+      "name_nl": "Station Delta",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 150,
+        "id_objet": "STA-DELTA"
+      },
+      "noms": []
+    },
+    "G000151": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Bockstael - Pannenhuis",
+      "name_nl": "Tunnel MIVB Bockstael - Pannenhuis",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 151,
+        "id_objet": "TRO-BOCKSTAEL-PANNENHUIS-01"
+      }
+    },
+    "G000152": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Porte de Hal - Parvis de Saint-Gilles",
+      "name_nl": "Tunnel MIVB Hallepoort - Sint-Gillis voorplein",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 152,
+        "id_objet": "TRO-PORTE-DE-HAL-PARVIS-DE-SAINT-GILLES-01"
+      }
+    },
+    "G000153": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Bourse - Anneessens",
+      "name_nl": "Tunnel MIVB Beurs - Anneessens",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 153,
+        "id_objet": "TRO-BOURSE-ANNEESSENS-01"
+      }
+    },
+    "G000154": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Hermann-Debroux  Avenue Joseph Chaudron",
+      "name_nl": "Tunnel MIVB Hermann-Debroux  Joseph Chaudronlaan",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 154,
+        "id_objet": "TRO-HERMANN-DEBROUX-AVENUE-JOSEPH-CHAUDRON-01"
+      }
+    },
+    "G000155": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Botanique - Rogier",
+      "name_nl": "Tunnel MIVB Kruidtuin - Rogier",
+      "niveau": "-",
+      "ids_externes": {
+        "ogc_fid": 155,
+        "id_objet": "TRO-BOTANIQUE-ROGIER-01"
+      }
+    },
+    "G000156": {
+      "genre": "tunnel",
+      "name_fr": "Tunnel STIB Erasme - Eddy Merckx",
+      "name_nl": "Tunnel MIVB Erasmus - Eddy Merckx",
+      "niveau": "0",
+      "ids_externes": {
+        "ogc_fid": 156,
+        "id_objet": "TRO-ERASME-EDDY-MERCKX-02"
+      }
+    },
+    "G000157": {
+      "genre": "planche",
+      "sheet_ref": "1000-236",
+      "couleur": "#b8860b"
+    },
+    "G000158": {
+      "genre": "planche",
+      "sheet_ref": "1000-174",
+      "couleur": "#b8860b"
+    },
+    "G000159": {
+      "genre": "planche",
+      "sheet_ref": "1000-131",
+      "couleur": "#b8860b"
+    },
+    "G000160": {
+      "genre": "planche",
+      "sheet_ref": "1000-109",
+      "couleur": "#b8860b"
+    },
+    "G000161": {
+      "genre": "planche",
+      "sheet_ref": "5000-124",
+      "couleur": "#b8860b"
+    },
+    "G000162": {
+      "genre": "planche",
+      "sheet_ref": "1000-55",
+      "couleur": "#b8860b"
+    },
+    "G000163": {
+      "genre": "planche",
+      "sheet_ref": "1000-41",
+      "couleur": "#b8860b"
+    },
+    "G000164": {
+      "genre": "planche",
+      "sheet_ref": "1000-40",
+      "couleur": "#b8860b"
+    },
+    "G000165": {
+      "genre": "planche",
+      "sheet_ref": "1000-39",
+      "couleur": "#b8860b"
+    },
+    "G000166": {
+      "genre": "planche",
+      "sheet_ref": "1000-96",
+      "couleur": "#b8860b"
+    },
+    "G000167": {
+      "genre": "planche",
+      "sheet_ref": "1000-119",
+      "couleur": "#b8860b"
+    },
+    "G000168": {
+      "genre": "planche",
+      "sheet_ref": "1000-250",
+      "couleur": "#b8860b"
+    },
+    "G000169": {
+      "genre": "planche",
+      "sheet_ref": "1000-251",
+      "couleur": "#b8860b"
+    },
+    "G000170": {
+      "genre": "planche",
+      "sheet_ref": "5000-222",
+      "couleur": "#b8860b"
+    },
+    "G000171": {
+      "genre": "planche",
+      "sheet_ref": "5000-72",
+      "couleur": "#b8860b"
+    },
+    "G000172": {
+      "genre": "planche",
+      "sheet_ref": "5000-241",
+      "couleur": "#b8860b"
+    },
+    "G000173": {
+      "genre": "planche",
+      "sheet_ref": "5000-284",
+      "couleur": "#b8860b"
+    },
+    "G000174": {
+      "genre": "planche",
+      "sheet_ref": "3000-222",
+      "couleur": "#b8860b"
+    },
+    "G000175": {
+      "genre": "planche",
+      "sheet_ref": "3000-126",
+      "couleur": "#b8860b"
+    },
+    "G000176": {
+      "genre": "planche",
+      "sheet_ref": "5000-295",
+      "couleur": "#b8860b"
+    },
+    "G000177": {
+      "genre": "planche",
+      "sheet_ref": "5000-313",
+      "couleur": "#b8860b"
+    },
+    "G000178": {
+      "genre": "planche",
+      "sheet_ref": "3000-182",
+      "couleur": "#b8860b"
+    },
+    "G000179": {
+      "genre": "planche",
+      "sheet_ref": "3000-185",
+      "couleur": "#b8860b"
+    },
+    "G000180": {
+      "genre": "planche",
+      "sheet_ref": "4000-222",
+      "couleur": "#b8860b"
+    },
+    "G000181": {
+      "genre": "planche",
+      "sheet_ref": "4000-202",
+      "couleur": "#b8860b"
+    },
+    "G000182": {
+      "genre": "planche",
+      "sheet_ref": "4000-138",
+      "couleur": "#b8860b"
+    },
+    "G000183": {
+      "genre": "planche",
+      "sheet_ref": "4000-139",
+      "couleur": "#b8860b"
+    },
+    "G000184": {
+      "genre": "planche",
+      "sheet_ref": "6000-49",
+      "couleur": "#b8860b"
+    },
+    "G000185": {
+      "genre": "planche",
+      "sheet_ref": "4000-141",
+      "couleur": "#b8860b"
+    },
+    "G000186": {
+      "genre": "planche",
+      "sheet_ref": "4000-292",
+      "couleur": "#b8860b"
+    },
+    "G000187": {
+      "genre": "planche",
+      "sheet_ref": "4000-212",
+      "couleur": "#b8860b"
+    },
+    "G000188": {
+      "genre": "planche",
+      "sheet_ref": "2000-38",
+      "couleur": "#b8860b"
+    },
+    "G000189": {
+      "genre": "planche",
+      "sheet_ref": "2000-39",
+      "couleur": "#b8860b"
+    },
+    "G000190": {
+      "genre": "planche",
+      "sheet_ref": "2000-46",
+      "couleur": "#b8860b"
+    },
+    "G000191": {
+      "genre": "planche",
+      "sheet_ref": "2000-57",
+      "couleur": "#b8860b"
+    },
+    "G000192": {
+      "genre": "planche",
+      "sheet_ref": "3000-158",
+      "couleur": "#b8860b"
+    }
+  }
+}

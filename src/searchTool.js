@@ -1,6 +1,6 @@
 /**
  * Recherche (haut droite, à la place du contrôle de zoom Leaflet) : trouve
- * une station, un tunnel (Metro.json) ou un point métier par nom/libellé, et
+ * une station, un tunnel (référentiel) ou un point métier par nom/libellé, et
  * recentre la carte dessus. Le zoom reste possible à la molette, au
  * pincement et au double-clic — seuls les boutons +/- dédiés disparaissent.
  */
@@ -73,7 +73,7 @@ const AMGT4CEM_SearchTool = {
   },
 
   /**
-   * Appelé une fois Metro.json chargé et ses couches construites.
+   * Appelé une fois le référentiel chargé et ses couches construites.
    * @param {object[]} searchIndex - voir AMGT4CEM_MetroLayer.build()
    */
   setMetroIndex(searchIndex) {

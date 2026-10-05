@@ -1,89 +1,32 @@
 /**
- * Construction des couches Leaflet à partir des données de référence
- * (Metro_export_SHP/Metro.shp + MetroInfo.shp + MetroLabels.shp, voir
- * shpLoader.js — les trois FeatureCollections sont fusionnées par app.js
- * avant l'appel à build()).
+ * Construction des couches Leaflet à partir des entités jointes par referentiel.js
+ * (data/geometries/polygones.shp + data/referentiel/polygones.json, jointure par `id`).
  *
- * Metro.shp : 192 polygones (aucune ligne/point), avec un seul attribut de
- * classification utile : `type` = "MS" (emprise de station, 69 entités),
- * "MT" (emprise de tunnel, 87 entités) ou "PE" (plan d'ensemble au 1/500e,
- * 36 entités — attribut propre : `sheet_ref`, le numéro de planche ; pas de
- * nom FR/NL, une planche n'en a pas). Chaque polygone est un seul anneau
- * extérieur, sans trou. CRS : EPSG:31370 (Belgian Lambert 72). Les
- * emprises PE sont les contours de planche tracés dans INFRAVIEW.pdf,
- * placés par rapport au réseau comme sur ce plan (voir ci-dessous).
+ * Chaque polygone porte son `genre` (issu du référentiel, pas du shapefile) :
+ *  - "station" : emprise de station (couche Stations) ;
+ *  - "tunnel" : emprise de tunnel / tronçon (couche Tunnels) ;
+ *  - "planche" : plan d'ensemble au 1/500e, étiquette = `sheet_ref` du référentiel
+ *    (affichage piloté par le sélecteur « Plans patrimoine », voir patrimoineLayer.js).
+ * Tout le reste (noms FR/NL, liste des noms d'une station, niveau...) vient du référentiel.
+ * Un polygone sans entrée de référentiel n'a pas de genre : il n'est pas affiché.
+ * Chaque polygone est un seul anneau extérieur, sans trou. CRS : EPSG:31370 (Belgian Lambert 72).
  *
- * CALAGE PDF → Lambert (commun à TOUT ce qui vient d'INFRAVIEW.pdf :
- * emprises PE, triangles et codes de tronçon, références de planche, noms
- * de station et numéros d'interstation) : le réseau dessiné dans le PDF
- * (stations en rouge, tunnels en bleu) est recalé sur les polygones MS/MT
- * de Metro.shp — c'est la position de chaque élément PAR RAPPORT AU
- * RÉSEAU, telle qu'elle est sur le plan, qui est conservée. Similitude
- * pure (échelle uniforme 5,28225 m par point PDF, pas de rotation, +
- * translation) : un ajustement libre (affine, puis polynômes jusqu'au
- * degré 5) ne trouve ni rotation ni cisaillement, et l'écart médian
- * résiduel du réseau est ~0,5 m. L'ancien calage sur 43 centroïdes de
- * stations avait une échelle anisotrope de 0,2 % (cumulée : jusqu'à
- * ~150 m aux extrémités du réseau), et les anciens fichiers de planches/
- * noms de station étaient dans un repère déformé de ~2 %. AUCUN recalage
- * individuel élément par élément (essayé pour les triangles puis
- * abandonné : une translation propre à chaque repère casse les distances
- * relatives du plan source). Voir README section 4bis.
+ * LEGACY (data/legacy/reperes-troncons.legacy.json, type "PE_info", sans identifiant) : les
+ * TRIANGLES de transition entre tronçons de construction relevés dans INFRAVIEW.pdf (Polygon)
+ * et leurs CODES (Point, ex. "D1", "G1a"), rendus en texte HTML dont la taille suit le zoom
+ * (scaledText.js). Ils seront rattachés à lignes.shp quand il existera ; en attendant ils
+ * s'affichent avec les planches. Non interactifs pour les textes : un clic doit atteindre la
+ * forme en dessous.
  *
- * MetroInfo.shp (106 entités `type = "PE_info"`, Polygon) : les TRIANGLES
- * de transition entre tronçons de construction relevés dans INFRAVIEW.pdf
- * (STIB, plan "Station & Interstation Infrastructure", attribut `code` —
- * ex. "D1", "G1a") — chaque petit triangle gris du plan y marque la
- * frontière entre deux tronçons identifiés par un code. Coordonnées
- * vectorielles extraites directement du PDF (ce sont de vraies formes
- * vectorielles dans le fichier, pas des pixels), orientation fidèle à
- * chacune (11 triangles sur 117 exclus, association triangle → code trop
- * incertaine au-delà d'un certain seuil de distance).
+ * Les références de planche (texte orange) ne viennent pas des shapefiles : leur liste est
+ * celle de data/fond-de-plan/etiquettes-planches.json (source unique, voir peLabelAnchors.js).
  *
- * MetroLabels.shp (117 entités, Point) : les points d'ancrage des CODES et
- * des RÉFÉRENCES DE PLANCHE, rendus en texte HTML (pas en polygone — un
- * premier essai avait tracé ce texte en contours de caractères extraits,
- * jugé après coup moins lisible qu'un texte HTML classique) dont la taille
- * suit le zoom pour simuler une hauteur réelle constante (voir
- * scaledText.js) :
- * - `type = "PE_info"` (80, un par code UNIQUE — partagé par ses éventuels
- *   deux triangles, un tracé à deux voies ayant deux triangles pour un
- *   seul code) : centre du texte dans le PDF.
- * - `type = "PE_label"` (37 : un par planche, `3000-126` en ayant deux
- *   comme dans le PDF) : AMORÇAGE D'ORIGINE seulement — la liste des références de planche est
- *   désormais celle de data/fond-de-plan/etiquettes-planches.json (source unique, voir
- *   peLabelAnchors.js ; ces points ne servent plus que si ce JSON est vide/illisible).
- *   Texte de `sheet_ref` (voir Metro.shp/PE),
- *   rotation (`angle`, degrés CSS) reprise du texte du PDF, et ancré par le
- *   MILIEU DU BORD de sa boîte de texte le plus proche du cadre de la
- *   planche (`side` : top/bottom/left/right) — pas par son centre : quand
- *   la taille du texte change avec le zoom, il pousse à partir de ce bord
- *   et reste collé à son cadre. Chaque référence tombe dans le contour de
- *   sa propre planche, sans correction. Un administrateur peut redéfinir
- *   l'ancrage et l'orientation d'une étiquette (plugin pe-label-editor) : la
- *   définition partagée de data/fond-de-plan/etiquettes-planches.json (peLabelAnchors.js),
- *   cherchée sous la clé "numéro#rang" (`marker._amgtKey`), remplace alors la
- *   position d'origine — appliquée par scaledText.js.
- * Les deux sont non interactifs : un clic doit atteindre la forme en
- * dessous (triangle pour PE_info, planche pour PE_label), pas s'arrêter
- * sur le texte.
+ * CALAGE PDF → Lambert (commun à tout ce qui vient d'INFRAVIEW.pdf) : voir README, section 4bis.
  *
- * Les triangles PE_info (seuls encore en Polygon) combinent parfois
- * plusieurs formes par entité — non, en fait une seule (un triangle par
- * entité) : `_groupRingsIntoShapes()` reste néanmoins générique (utile si
- * un futur type Polygon multi-formes en a besoin), reconstruit les formes
- * à partir de la liste plate d'anneaux du Shapefile selon la convention
- * ESRI standard (anneau horaire = nouvelle forme, antihoraire = trou).
- *
- * Les planches (PE) sont de larges zones qui recouvrent des stations/
- * tunnels : voir app.js (ordre d'ajout des couches, PE en dessous) pour que
- * cliquer sur une station ouvre bien sa popup, pas celle de la planche
- * sous-jacente — les triangles PE_info, étant eux aussi rendus en
- * L.polygon (canvas) mais délibérément plaqués SUR un tunnel, suivent la
- * règle inverse (voir patrimoineLayer.js#registerExternalLayer,
- * bringToBack()/bringToFront()). Les textes (L.marker, markerPane) n'ont
- * pas ce problème : non interactifs, ils ne peuvent jamais intercepter de
- * clic quel que soit leur rang d'empilement.
+ * Les planches sont de larges zones qui recouvrent des stations/tunnels : voir app.js (ordre
+ * d'ajout des couches, planches en dessous) pour que cliquer sur une station ouvre bien sa
+ * popup. Les triangles PE_info, plaqués SUR un tunnel, suivent la règle inverse (voir
+ * patrimoineLayer.js#registerExternalLayer, bringToBack()/bringToFront()).
  */
 // Uniquement les types encore rendus en L.polygon (Path : fillOpacity/
 // weight s'appliquent, voir mapMenu.js _applyMetroOpacity qui parcourt
@@ -110,12 +53,12 @@ const AMGT4CEM_LABEL_STYLES = {
   PE_label: { color: '#ff7f00', heightMeters: 42 },
 };
 
-/** kind (recherche) et libellé associés à chaque type de polygone. */
-const AMGT4CEM_METRO_KIND_BY_TYPE = { MS: 'station', MT: 'tunnel', PE: 'planche' };
+/** Clé de style / de groupe Leaflet (MS, MT, PE) associée à chaque genre du référentiel ; le genre sert aussi de `kind` à la recherche. */
+const AMGT4CEM_METRO_TYPE_BY_GENRE = { station: 'MS', tunnel: 'MT', planche: 'PE' };
 
 const AMGT4CEM_MetroLayer = {
   /**
-   * @param {object} geojson - FeatureCollection Metro.json (non modifiée)
+   * @param {object} geojson - FeatureCollection des entités jointes (referentiel.js) + repères legacy (non modifiée)
    * @returns {{ layersByType: Object.<string, L.LayerGroup>, bounds: L.LatLngBounds, searchIndex: object[] }}
    */
   build(geojson) {
@@ -130,18 +73,14 @@ const AMGT4CEM_MetroLayer = {
     const bounds = L.latLngBounds([]);
     const searchIndex = [];
     // Certaines planches (PE) se chevauchent (constaté sur ce jeu de
-    // données, hérité de l'ancien data/patrimoine-plans-ensemble-500e.json)
-    // : accumulée au fil de la boucle, complète au moment où un clic peut
+    // données) : accumulée au fil de la boucle, complète au moment où un clic peut
     // réellement survenir (après le rendu initial), voir _sheetRefsAt.
     const peFeatures = [];
-    // Points PE_label du Shapefile : amorçage d'origine, utilisés seulement si le JSON des étiquettes de planche est vide/illisible.
-    const peLabelPoints = [];
 
     for (const feature of geojson.features || []) {
       const props = feature.properties || {};
-      const type = props.type;
 
-      if (type === 'PE_info') {
+      if (props.type === 'PE_info') { // legacy
         if (!feature.geometry) continue;
         if (feature.geometry.type === 'Polygon') {
           this._buildInfoShapes(feature, layersByType.PE_info, bounds); // triangle
@@ -150,11 +89,8 @@ const AMGT4CEM_MetroLayer = {
         }
         continue;
       }
-      if (type === 'PE_label') {
-        if (feature.geometry && feature.geometry.type === 'Point') peLabelPoints.push(feature);
-        continue;
-      }
 
+      const type = AMGT4CEM_METRO_TYPE_BY_GENRE[props.genre];
       const style = AMGT4CEM_METRO_TYPES[type];
       if (!style || !feature.geometry || feature.geometry.type !== 'Polygon') continue;
       if (type === 'PE') peFeatures.push(feature);
@@ -164,7 +100,7 @@ const AMGT4CEM_MetroLayer = {
       const latlngs = ring.map(AMGT4CEM_CRS.lambertToLatLng);
 
       const polygon = L.polygon(latlngs, {
-        color: style.color,
+        color: props.couleur || style.color,
         weight: style.weight,
         fillOpacity: style.fillOpacity,
       });
@@ -204,20 +140,22 @@ const AMGT4CEM_MetroLayer = {
           }
         });
       }
-      if (type === 'MT') polygon._amgtTunnelId = AMGT4CEM_Interstation.idOf(props); // voir interstation.js / plugin pe-label-editor
+      if (type === 'MT') polygon._amgtTunnelId = props.id; // voir interstation.js / plugin pe-label-editor
       if (type === 'PE') polygon._amgtSheetRef = props.sheet_ref || ''; // plugin pe-label-editor : planche choisie pour une nouvelle étiquette
       polygon.addTo(layersByType[type]);
       bounds.extend(polygon.getBounds());
 
       // Une planche (PE) n'a pas de nom FR/NL, seulement sa référence
-      // (sheet_ref) : c'est elle qui sert de libellé de recherche.
+      // (sheet_ref) : c'est elle qui sert de libellé de recherche. Une station
+      // peut porter plusieurs noms (props.noms) : tous sont cherchables.
       const label = type === 'PE'
         ? (props.sheet_ref || '(sans référence)')
         : (props.name_fr || props.name_nl || '(sans nom)');
+      const noms = (props.noms || []).flatMap((n) => [n.fr, n.nl, n.reference]);
       searchIndex.push({
-        kind: AMGT4CEM_METRO_KIND_BY_TYPE[type] || type,
+        kind: props.genre,
         label,
-        searchText: [props.name_fr, props.name_nl, props.sheet_ref].filter(Boolean).join(' '),
+        searchText: [props.name_fr, props.name_nl, props.sheet_ref, ...noms].filter(Boolean).join(' '),
         bounds: polygon.getBounds(),
       });
     }
@@ -225,20 +163,10 @@ const AMGT4CEM_MetroLayer = {
     // Références de planche : le JSON (data/fond-de-plan/etiquettes-planches.json) est la liste COMPLÈTE.
     this._peLabelGroup = layersByType.PE_label;
     this._peLabelDisplayGroup = null;
-    const anchors = AMGT4CEM_PeLabelAnchors.all();
-    if (Object.keys(anchors).length) {
-      for (const [key, def] of Object.entries(anchors)) {
-        const marker = this.createPeLabel(key, def);
-        marker.addTo(layersByType.PE_label);
-        bounds.extend(marker.getLatLng());
-      }
-    } else {
-      const rank = {};
-      for (const feature of peLabelPoints) {
-        const code = feature.properties.code || '';
-        rank[code] = (rank[code] || 0) + 1;
-        this._buildScaledLabel(feature, layersByType.PE_label, bounds, AMGT4CEM_LABEL_STYLES.PE_label, `${code}#${rank[code] - 1}`);
-      }
+    for (const [key, def] of Object.entries(AMGT4CEM_PeLabelAnchors.all())) {
+      const marker = this.createPeLabel(key, def);
+      marker.addTo(layersByType.PE_label);
+      bounds.extend(marker.getLatLng());
     }
 
     return { layersByType, bounds, searchIndex };
@@ -310,27 +238,32 @@ const AMGT4CEM_MetroLayer = {
   },
 
   _buildPopupHtml(props) {
-    // Les planches (PE) n'ont pas de name_fr/name_nl/niveau (champs vides
-    // pour elles, voir schéma ci-dessus) : on ne les affiche pas plutôt que
-    // de montrer des cellules vides dans la popup.
-    let rows = Object.entries(props)
-      .filter(([, value]) => value !== '' && value !== null && value !== undefined)
-      .map(([key, value]) => `<tr><th>${key}</th><td>${value}</td></tr>`)
-      .join('');
-    // Tunnel (tronçon) : son ou ses numéros d'interstation (les étiquettes de la couche n'ont pas d'infobulle).
-    if (props.type === 'MT') {
-      const numbers = AMGT4CEM_Interstation.numbersForTunnel(AMGT4CEM_Interstation.idOf(props));
-      if (numbers.length) rows += `<tr><th>N° interstation</th><td>${numbers.join(', ')}</td></tr>`;
+    // Données du référentiel (jointes par `id`) : seules les valeurs renseignées sont affichées.
+    const row = (label, value) => (value === '' || value === null || value === undefined ? '' : `<tr><th>${label}</th><td>${this._esc(value)}</td></tr>`);
+    let rows = row('Nom (FR)', props.name_fr) + row('Nom (NL)', props.name_nl);
+    // Une station peut porter plusieurs noms et références (liste du référentiel).
+    for (const n of props.noms || []) {
+      rows += row('Nom', [n.fr, n.nl].filter(Boolean).join(' / ')) + row('Référence', n.reference);
     }
+    rows += row('Niveau', props.niveau);
+    // Tunnel (tronçon) : son ou ses numéros d'interstation (les étiquettes de la couche n'ont pas d'infobulle).
+    if (props.genre === 'tunnel') {
+      const numbers = AMGT4CEM_Interstation.numbersForTunnel(props.id);
+      if (numbers.length) rows += row('N° interstation', numbers.join(', '));
+    }
+    rows += row('Identifiant', props.id);
     return `<div class="amgt-popup"><table>${rows}</table></div>`;
+  },
+
+  _esc(value) {
+    return String(value).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   },
 
   /**
    * Numéros de planche (sheet_ref) de toutes les planches (PE) dont
    * l'emprise contient ce point — normalement une seule, sauf dans les
    * zones où plusieurs planches se chevauchent (voir _pointInRing).
-   * Repris tel quel de l'ancien src/patrimoineLayer.js (même jeu de
-   * données, même besoin), avant la fusion des planches dans Metro.shp.
+   * Logique reprise de l'ancien src/patrimoineLayer.js.
    */
   _sheetRefsAt(latlng, peFeatures) {
     const { x, y } = AMGT4CEM_CRS.latLngToLambert(latlng);

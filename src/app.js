@@ -33,7 +33,7 @@
     // l'attribution pour qu'il reste sous elle (voir plus bas).
     attributionControl: false,
     maxZoom: AMGT4CEM_CONFIG.maxZoom,
-    // Vue par défaut le temps que Metro.json soit chargé (recentrée ensuite
+    // Vue par défaut le temps que les données soient chargées (recentrée ensuite
     // sur l'emprise réelle du réseau).
     center: [50.85, 4.35],
     zoom: 12,
@@ -80,35 +80,20 @@
   AMGT4CEM_MeasureTool.init(map);
   AMGT4CEM_ScreenshotTool.init(map);
 
-  function onMetroLoaded(geojson) {
-    // MetroInfo.shp (triangles PE_info, Polygon) et MetroLabels.shp (points
-    // d'ancrage des textes PE_info/PE_label, Point) sont des fichiers à part
-    // (Metro.shp est Polygon — un .shp ne mélange pas deux types de forme) :
-    // chargés séparément, fusionnés avec les entités de Metro.shp avant
-    // l'unique appel à build(). Leur absence/échec (ex : fichier pas encore
-    // déployé) ne doit pas empêcher le reste de l'app de fonctionner —
-    // dégradation silencieuse (juste un avertissement en console), comme le
-    // reste des couches optionnelles de cette app.
-    AMGT4CEM_ShpLoader.load(AMGT4CEM_CONFIG.metroInfoShpBaseUrl, (infoGeojson) => {
-      AMGT4CEM_ShpLoader.load(AMGT4CEM_CONFIG.metroLabelsShpBaseUrl, (labelsGeojson) => {
-        finishMetroLoad(geojson.features.concat(infoGeojson.features, labelsGeojson.features));
-      }, (err) => {
-        console.warn('[AMGT4CEM] Chargement de MetroLabels.shp (textes PE_info/PE_label) impossible, couche ignorée :', err);
-        finishMetroLoad(geojson.features.concat(infoGeojson.features));
-      });
-    }, (err) => {
-      console.warn('[AMGT4CEM] Chargement de MetroInfo.shp (triangles PE_info) impossible, couche ignorée :', err);
-      finishMetroLoad(geojson.features);
-    });
-  }
-
   // Définitions d'ancrage des références de planche (fichier partagé, voir
-  // peLabelAnchors.js) : lues en parallèle du Shapefile, attendues avant la
-  // construction des étiquettes. Ne rejette jamais (absentes = positions d'origine).
+  // peLabelAnchors.js) : lues en parallèle des géométries, attendues avant la
+  // construction des étiquettes. Ne rejette jamais (absentes = aucune étiquette).
   const anchorsReady = AMGT4CEM_PeLabelAnchors.load();
 
-  function finishMetroLoad(features) {
-    anchorsReady.then(() => buildMetro(features));
+  /** Repères legacy (triangles + codes de tronçon, sans identifiant) : facultatifs, jamais bloquants. */
+  async function loadLegacyMarkers() {
+    try {
+      const response = await fetch(AMGT4CEM_CONFIG.reperesTronconsLegacyUrl);
+      if (response.ok) return (await response.json()).features || [];
+    } catch (err) {
+      console.warn('[AMGT4CEM] Repères de tronçon (legacy) illisibles, ignorés :', err);
+    }
+    return [];
   }
 
   function buildMetro(features) {
@@ -119,7 +104,7 @@
     // PE (planches), PE_label (référence de planche tracée dans l'emprise)
     // et PE_info (repères de transition entre tronçons) ne sont pas
     // ajoutées directement ici : leur visibilité est pilotée ensemble
-    // depuis le sélecteur "Plans patrimoine" (voir patrimoineCatalog.js,
+    // depuis le sélecteur "Plans patrimoine" (voir plans-patrimoine.js,
     // entrée `external: true`, et patrimoineLayer.js#registerExternalLayer),
     // sous une seule case à cocher — d'où leur fusion dans un groupe
     // commun. Les polygones PE restent néanmoins ajoutés à ce groupe AVANT
@@ -134,7 +119,7 @@
     layersByType.PE_info_text.eachLayer((l) => peAndInfoGroup.addLayer(l));
     AMGT4CEM_MetroLayer.setPeLabelDisplayGroup(peAndInfoGroup); // les références créées à l'exécution s'ajoutent aussi à ce groupe
     AMGT4CEM_PatrimoineLayer.registerExternalLayer('plans-ensemble-500e', peAndInfoGroup);
-    AMGT4CEM_Interstation.setMetroFeatures(features); // rattache les numéros d'interstation à leur tronçon (MT)
+    AMGT4CEM_Interstation.setMetroFeatures(features); // rattache les numéros d'interstation à leur tronçon (genre « tunnel »)
 
     layersByType.MS.addTo(map);
     layersByType.MT.addTo(map);
@@ -142,28 +127,31 @@
     AMGT4CEM_SearchTool.setMetroIndex(searchIndex);
 
     metroBounds = bounds;
-    map.fitBounds(bounds, { padding: [20, 20] });
-
-    document.getElementById('amgt-manual-load').classList.add('amgt-hidden');
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
   }
 
-  // Chargement automatique normal : Shapefile (voir shpLoader.js et le
-  // commentaire sur metroShpBaseUrl, config.js). Le bouton de secours
-  // (chargement manuel d'un .json) ne sert qu'en dernier recours, si ce
-  // fetch échoue (ex : ouverture en file:// sans serveur local).
-  AMGT4CEM_ShpLoader.load(AMGT4CEM_CONFIG.metroShpBaseUrl, onMetroLoaded, (err) => {
-    console.warn('[AMGT4CEM] Chargement automatique de Metro.shp impossible ' +
-      '(probablement une ouverture en file:// sans serveur local) :', err);
-    document.getElementById('amgt-manual-load').classList.remove('amgt-hidden');
-  });
+  /** Message bloquant (bandeau) : les données ne se lisent que servies par HTTP. */
+  function showLoadError(message) {
+    const banner = document.getElementById('amgt-load-error');
+    banner.textContent = message;
+    banner.classList.remove('amgt-hidden');
+  }
 
-  document.getElementById('amgt-manual-load-input').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    AMGT4CEM_MetroData.loadFromFile(file, onMetroLoaded, (err) => {
-      alert('Impossible de lire ce fichier comme Metro.json : ' + err.message);
-    });
-  });
+  // Les shapefiles et JSON se lisent par fetch(), impossible en file:// (restriction des
+  // navigateurs) : message clair, sans solution de repli.
+  if (location.protocol === 'file:') {
+    showLoadError('Cette application ne peut pas être ouverte directement depuis un fichier (file://). ' +
+      'Servez le dossier par un petit serveur HTTP : « python3 -m http.server 8000 » dans le dossier, ' +
+      'puis ouvrez http://localhost:8000/.');
+  } else {
+    Promise.all([AMGT4CEM_Referentiel.load(), loadLegacyMarkers(), anchorsReady]).then(
+      ([features, legacy]) => buildMetro(features.concat(legacy)),
+      (err) => {
+        console.error('[AMGT4CEM] Chargement des données impossible :', err);
+        showLoadError(`Chargement des données impossible : ${err.message}`);
+      }
+    );
+  }
 
   document.getElementById('amgt-add-point-btn').addEventListener('click', () => {
     AMGT4CEM_MeasureTool.deactivate();

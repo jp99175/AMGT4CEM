@@ -1,7 +1,7 @@
 /**
  * Affichage carte des couches "Plans patrimoine" choisies par l'utilisateur
  * (voir patrimoineSelectionStore.js / patrimoinePicker.js). Contrairement à
- * UrbIS Topo, ce sont des fichiers LOCAUX (data/patrimoineCatalog.js) —
+ * UrbIS Topo, ce sont des fichiers LOCAUX (catalogues/plans-patrimoine.js) —
  * chacun est chargé une seule fois (mis en cache), sans filtre d'emprise ni
  * de zoom (volumes très modestes : quelques centaines d'entités au plus).
  *
@@ -10,16 +10,11 @@
  * numéro d'interstation...) affichée comme telle, pas comme un simple
  * point coloré, pour rester lisible.
  *
- * Ce module gérait aussi des emprises Polygon (plans d'ensemble au 1/500e,
- * avec gestion des chevauchements au clic) : cette géométrie a été fusionnée
- * dans Metro_export_SHP/Metro.shp (type "PE", voir metroLayer.js et son
- * README section 4bis), avec le code de gestion des polygones (dont le
- * detail des planches superposées) qui a migré avec elle dans
- * metroLayer.js. La couche "Plans d'ensemble (1/500e)" reste cependant
- * une entrée du catalogue ici (data/patrimoineCatalog.js, `external:
- * true`) : elle n'a pas de fichier propre à charger, mais sa visibilité
- * (afficher/masquer) reste pilotée depuis ce sélecteur, comme les autres
- * couches patrimoine — voir registerExternalLayer() ci-dessous.
+ * Les planches (plans d'ensemble au 1/500e) ne passent plus par un fichier propre : ce sont des
+ * polygones de genre « planche » de polygones.shp, construits par metroLayer.js (étiquette =
+ * `sheet_ref` du référentiel, clic en zone de recouvrement : toutes les planches listées).
+ * Leur entrée du catalogue (`external: true`) ne fait qu'afficher/masquer cette couche,
+ * voir registerExternalLayer() ci-dessous.
  */
 const AMGT4CEM_PatrimoineLayer = {
   _map: null,
@@ -103,7 +98,7 @@ const AMGT4CEM_PatrimoineLayer = {
 
       if (entry.external) {
         const layer = this._externalLayers[id];
-        if (!layer) continue; // pas encore construite (Metro.shp en cours de chargement) : registerExternalLayer() rappellera refresh()
+        if (!layer) continue; // pas encore construite (polygones.shp en cours de chargement) : registerExternalLayer() rappellera refresh()
         this._subGroups[id] = layer;
         layer.addTo(this._group);
         // Cette couche externe peut combiner des enfants aux besoins de
@@ -134,7 +129,7 @@ const AMGT4CEM_PatrimoineLayer = {
       try {
         let subGroup;
         if (entry.interstation) {
-          // Étiquette + ligne de repère jusqu'au centre du tronçon (src/interstation.js) : attend les tronçons de Metro.shp.
+          // Étiquette + ligne de repère jusqu'au centre du tronçon (src/interstation.js) : attend les tronçons de polygones.shp.
           await AMGT4CEM_Interstation.whenReady();
           if (!AMGT4CEM_PatrimoineSelectionStore.getSelection()[id]) continue; // désélectionnée pendant l'attente
           subGroup = AMGT4CEM_Interstation.buildSubGroup(selection[id], this._opacityFactor);

@@ -328,16 +328,15 @@
 
     // ---- Points remarquables d'une planche -----------------------------------
 
-    /** Charge Metro.shp (même fichier que l'appli, lu séparément) : contours des planches, en Lambert. */
+    /** Contours des planches (genre « planche » de polygones.shp, chargement partagé avec l'appli), en Lambert. */
     _loadPlanches() {
-      AMGT4CEM_ShpLoader.load(
-        AMGT4CEM_CONFIG.metroShpBaseUrl,
-        (geojson) => {
-          this._planches = geojson.features
-            .filter((f) => f.properties && f.properties.type === 'PE' && f.geometry && f.geometry.type === 'Polygon')
+      AMGT4CEM_Referentiel.load().then(
+        (features) => {
+          this._planches = features
+            .filter((f) => f.properties.genre === 'planche' && f.geometry && f.geometry.type === 'Polygon')
             .map((f) => ({ code: f.properties.sheet_ref, ring: f.geometry.coordinates[0].slice(0, -1) }));
         },
-        (err) => console.warn('[pe-label-editor] Metro.shp illisible, choix des points de planche impossible :', err)
+        (err) => console.warn('[pe-label-editor] polygones.shp illisible, choix des points de planche impossible :', err)
       );
     },
 
@@ -458,7 +457,7 @@
       if (entry.kind === 'ist') return this._startEditIst(entry, opts);
       const planche = this._planchOf(entry);
       if (!planche) {
-        alert('Contour de la planche introuvable (Metro.shp pas encore chargé) : réessayez dans un instant.');
+        alert('Contour de la planche introuvable (polygones.shp pas encore chargé) : réessayez dans un instant.');
         return;
       }
       const backup = clone(entry.def);

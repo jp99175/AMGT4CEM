@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AMGT4CEM &ndash; Carte du réseau métro</title>
+<link rel="icon" href="data:," />
+  <title>AMGT4CEM &ndash; Carte du réseau métro</title>
 
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css" />
 <link rel="stylesheet" href="./style.css" />
@@ -14,7 +15,7 @@
 
 <!-- Barre d'outils principale -->
 <div id="amgt-toolbar">
-  <button id="amgt-menu-btn" class="amgt-btn" title="Fond de carte, couches, vue">
+  <button id="amgt-menu-btn" class="amgt-btn" title="Fond de plan, couches, vue">
     ☰ Carte
   </button>
   <button id="amgt-add-point-btn" class="amgt-btn" title="Ajouter un point">
@@ -32,9 +33,9 @@
   💾
 </button>
 
-<!-- Menu : fond de carte, couches visibles, réinitialisation de la vue -->
+<!-- Menu : fond de plan, couches visibles, réinitialisation de la vue -->
 <div id="amgt-map-menu" class="amgt-panel amgt-hidden">
-  <h3>Fond de carte</h3>
+  <h3>Fond de plan</h3>
   <button id="amgt-settings-btn" class="amgt-map-menu__settings-btn" title="Paramètres des sources de données">
     ⚙
   </button>
@@ -234,7 +235,7 @@
 
     <div class="amgt-settings-action">
       <button id="amgt-settings-load-shapefile" class="amgt-btn" disabled>Charger un nouveau shapefile…</button>
-      <p class="amgt-settings-hint">À venir : remplacer les données Metro_export_SHP depuis l'application (nécessite l'enregistrement sur le serveur). Le chargement prendra <strong>un ou plusieurs fichiers du dossier</strong> du shapefile (.shp, .dbf, .shx, .prj, .cpg…), pas seulement le .shp.</p>
+      <p class="amgt-settings-hint">À venir : remplacer les shapefiles de data/geometries/ depuis l’application (nécessite l’enregistrement sur le serveur). Le chargement prendra <strong>un ou plusieurs fichiers du dossier</strong> du shapefile (.shp, .dbf, .shx, .prj, .cpg…), pas seulement le .shp.</p>
     </div>
   </section>
 </div>
@@ -252,14 +253,8 @@
   </div>
 </div>
 
-<!-- Chargement manuel de Metro.json si fetch() a échoué (ouverture en file://) -->
-<div id="amgt-manual-load" class="amgt-banner amgt-hidden">
-  Chargement automatique de Metro.json impossible depuis ce mode d'ouverture.
-  <label class="amgt-file-label">
-    Sélectionner le fichier Metro.json
-    <input type="file" id="amgt-manual-load-input" accept=".json" />
-  </label>
-</div>
+<!-- Échec de chargement des données (ex. ouverture en file:// sans serveur HTTP) : message rempli par app.js -->
+<div id="amgt-load-error" class="amgt-banner amgt-hidden"></div>
 
 <!-- Navigation temporelle orthophotos (visible uniquement quand ce fond est actif) -->
 <div id="amgt-year-slider-bar" class="amgt-hidden">
@@ -335,14 +330,14 @@
 
 <script src="./config.js"></script>
 <script src="./src/buildInfo.js"></script>
-<script src="./data/urbisTopoCatalog.js"></script>
-<script src="./data/patrimoineCatalog.js"></script>
+<script src="./catalogues/urbis-topo.js"></script>
+<script src="./catalogues/plans-patrimoine.js"></script>
 <script src="./src/admin.js"></script>
 <script src="./src/settingsStore.js"></script>
 <script src="./src/layerOpacityStore.js"></script>
 <script src="./src/crs.js"></script>
 <script src="./src/shpLoader.js"></script>
-<script src="./src/metroData.js"></script>
+<script src="./src/referentiel.js"></script>
 <script src="./src/scaledText.js"></script>
 <script src="./src/peLabelAnchors.js"></script>
 <script src="./src/interstation.js"></script>

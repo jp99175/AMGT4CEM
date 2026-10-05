@@ -6,11 +6,11 @@ sans backend).
 
 ## 1. Lancer l'application
 
-L'application est une page statique. Le réseau métro de référence est chargé
-via `fetch()` depuis `Metro_export_SHP/Metro.shp`/`.dbf` (Shapefile — voir
-section 4bis), ce qui **ne fonctionne pas** si vous ouvrez `index.html`
-directement en double-clic (`file://`) — c'est une restriction des
-navigateurs, pas un bug. Servez le dossier avec un petit serveur HTTP local :
+L'application est une page statique. Les géométries (shapefiles
+`data/geometries/`) et le référentiel (JSON `data/referentiel/`) sont chargés via
+`fetch()`, ce qui **ne fonctionne pas** si vous ouvrez `index.html` directement
+en double-clic (`file://`) — c'est une restriction des navigateurs, pas un bug.
+Servez le dossier avec un petit serveur HTTP local :
 
 ```bash
 cd AMGT4CEM
@@ -22,23 +22,23 @@ Puis ouvrez : http://localhost:8000/
 *(Si vous n'avez pas Python, `npx serve` ou l'extension VS Code "Live Server"
 fonctionnent tout aussi bien.)*
 
-Si malgré tout vous ouvrez la page en `file://`, l'application le détecte
-automatiquement et affiche un bouton pour sélectionner manuellement un
-fichier `.json` de secours (`Metro.json`, tenu à jour en parallèle du
-Shapefile — sans quitter la page).
+Si vous ouvrez malgré tout la page en `file://`, l'application le détecte et
+affiche un message demandant de la servir par un petit serveur HTTP (aucun
+bouton de secours : les données ne sont pas chargées).
 
 ## 2. Tester le scénario principal
 
 1. La carte s'ouvre déjà recentrée sur l'emprise du réseau métro.
 2. Les couches **Stations** et **Tunnels** sont visibles.
-3. Cliquez sur une station ou un tunnel : ses attributs (`name_fr`,
-   `name_nl`, `type`, `niveau`...) s'affichent dans une popup.
+3. Cliquez sur une station ou un tunnel : ses informations du
+   référentiel (noms FR/NL — tous les noms d'une station —, niveau, identifiant...)
+   s'affichent dans une popup.
 4. Déplacez la carte (glisser) et zoomez (molette, pincement, ou
    double-clic — pas de boutons +/- dédiés, voir point 7 ci-dessous) : le
    fond et les données métro restent parfaitement superposés, sans limite
    de zoom.
 5. Bouton **☰ Carte** (haut gauche) : ouvre le menu, organisé en trois
-   catégories. **Fond de carte** : choisissez **UrbIS** ou **Orthophotos**
+   catégories. **Fond de plan** : choisissez **UrbIS** ou **Orthophotos**
    (fait apparaître, en bas de l'écran, une navigation **‹ année › ⏭** pour
    parcourir les millésimes de 1935 à 2022 — seules les années dont le
    service répond sont proposées, réglée sur la plus récente accessible par
@@ -54,7 +54,7 @@ Shapefile — sans quitter la page).
    panneau ⚙ Paramètres. Le bouton **⤢ Réinitialiser la vue** revient à
    l'emprise générale du réseau et remet le fond UrbIS grisé.
 6. Bouton **🔍** (haut droite) : ouvre un champ de recherche sur les
-   stations, tunnels (couche Metro, chargée depuis le Shapefile), points
+   stations (tous leurs noms, FR et NL), tunnels (référentiel, voir section 4), planches (référence), points
    métier et adresses (noms de rues). Tapez un nom (les accents sont
    ignorés dans la recherche, ex.
    "de brouckere" trouve "De Brouckère") : les résultats stations/tunnels/
@@ -159,7 +159,7 @@ Shapefile — sans quitter la page).
     nouvelle requête réseau indépendante de la tuile déjà chargée). Le fond
     de carte n'est donc **recapturé que quand la vue a pu changer** (mis en
     cache sinon) : à l'activation de l'outil, et à chaque changement de
-    fond de carte ou de couche (☰ Carte reste utilisable pendant une
+    fond de plan ou de couche (☰ Carte reste utilisable pendant une
     mesure, seuls le glisser et le pincer-zoomer sont désactivés) ; seuls le
     cercle, le segment, le point central et la cote — dont la géométrie
     exacte est déjà connue — sont redessinés à **chaque** capture directement en
@@ -283,7 +283,7 @@ l'application démarre sans aucune sélection enregistrée (première visite,
 ou après effacement des données du navigateur), à la place de la
 présélection intégrée au code (grilles de ventilation seules).
 
-Voir `data/urbisTopoCatalog.js` pour le catalogue complet,
+Voir `catalogues/urbis-topo.js` pour le catalogue complet,
 `src/urbisTopoSelectionStore.js` pour la sélection (persistée dans
 `localStorage`, propre à cet appareil : clé `amgt4cem.urbistopo-selection.v1`
 pour la sélection courante, `amgt4cem.urbistopo-default.v1` pour la
@@ -312,7 +312,7 @@ sont proposés dans le sélecteur. Le catalogue contient aussi des types en
 géométrie "texte" (étiquettes, ex. noms de rue, numéros de maison) et un
 type en "polygone" (zones de mise à jour par levé) : leur affichage carte
 n'est pas encore pris en charge, ils restent listés dans
-`data/urbisTopoCatalog.js` mais ne sont pas sélectionnables.
+`catalogues/urbis-topo.js` mais ne sont pas sélectionnables.
 
 Chargement strictement **à la demande**, pour deux raisons :
 - rien n'est requêté tant qu'aucun type n'est sélectionné ;
@@ -340,15 +340,14 @@ mise à jour mensuelle du produit (section 9).
 
 ## 3bis. Toutes les sources de données sont-elles externes ? Que faire si l'une change ?
 
-Oui, à quelques exceptions près : `Metro_export_SHP/` (export Shapefile
-depuis Civil 3D, voir section 4bis ; `Metro.json` en garde une copie de
-secours) et les fichiers "Plans patrimoine" (section 3ter) sont fournis
-par l'utilisateur et servis localement, et la micro-base de points métier
-vit uniquement dans le `localStorage` du navigateur (section 6). Tout le
-reste — fond UrbIS, orthophotos Bruciel, géocodeur d'adresses, UrbIS Topo —
-est interrogé en direct auprès de services externes (CIRB/CIBG,
-urban.brussels), à chaque affichage, sans rien mettre en cache de façon
-permanente côté application.
+Oui, à quelques exceptions près : les géométries (`data/geometries/`, export
+AutoCAD) et le référentiel (`data/referentiel/`) — voir section 4 — sont
+fournis par l'utilisateur et servis localement, comme les fichiers « Plans
+patrimoine » (section 3ter) ; la micro-base de points métier vit uniquement dans
+le `localStorage` du navigateur (section 6). Tout le reste — fond UrbIS,
+orthophotos Bruciel, géocodeur d'adresses, UrbIS Topo — est interrogé en direct
+auprès de services externes (CIRB/CIBG, urban.brussels), à chaque affichage,
+sans rien mettre en cache de façon permanente côté application.
 
 Ces URLs sont en dur dans `config.js`. Si l'un de ces services change
 d'adresse (migration de serveur, changement de nom de domaine...), il n'est
@@ -388,7 +387,7 @@ l'utilisateur (export de son propre SIG patrimoine, jamais rechargées
 depuis un service externe — contrairement à UrbIS Topo). Même principe que
 UrbIS Topo : le choix des plans à afficher se fait via le lien
 **"(modifier la sélection)"**, qui ouvre un sélecteur plein écran listant
-le catalogue disponible (voir `data/patrimoineCatalog.js`) ; rien n'est
+le catalogue disponible (voir `catalogues/plans-patrimoine.js`) ; rien n'est
 présélectionné par défaut tant que l'utilisateur n'a pas enregistré sa
 propre sélection avec le bouton **💾** en haut du sélecteur (même principe
 que pour UrbIS Topo : sélection par défaut propre à cet appareil, clé
@@ -405,33 +404,29 @@ Familles actuelles :
 - **Plans d'ensemble (1/500e)** : voir ci-dessous.
 
 La couche **« Noms de station »** importée d'INFRAVIEW (206 textes, sans lien
-fiable avec les emprises de station) a été **retirée** : fichier
-`data/patrimoine-nom-station.json` supprimé. Les noms et références de station
-viendront d'un **tableau de référence** fourni par l'utilisateur et seront
-affichés **dans l'infobulle de l'emprise de station**, avec ses autres
-informations (liés par l'identifiant stable `id_objet`, voir section 4).
+fiable avec les emprises) a été **retirée**. Les noms et références de station
+seront saisis dans le **référentiel** (`data/referentiel/polygones.json`, liste
+`noms` de chaque station : entrées `{fr, nl, reference}`) et affichés dans
+l'infobulle de l'emprise de station (section 4).
 
-Les **plans d'ensemble au 1/500e** (36 planches) ont migré dans
-`Metro_export_SHP/Metro.shp` (type `"PE"`, géométrie et popups gérés par
-`src/metroLayer.js`, voir section 4bis) — mais restent une entrée de ce
-sélecteur (`data/patrimoineCatalog.js`, `external: true`) : la case à
-cocher affiche/masque simplement la couche déjà construite par
+Les **plans d'ensemble au 1/500e** (36 planches) sont des polygones de genre
+`planche` de `data/geometries/polygones.shp` ; leur étiquette est le `sheet_ref`
+du référentiel (géométrie et popups gérés par `src/metroLayer.js`, voir section
+4bis). Ils restent une entrée de ce sélecteur (`catalogues/plans-patrimoine.js`,
+`external: true`) : la case à cocher affiche/masque la couche déjà construite par
 `metroLayer.js` (voir `src/patrimoineLayer.js#registerExternalLayer`), sans
-recharger de fichier séparé ni proposer de couleur (la couleur/opacité des
-planches reste réglée avec le reste du réseau métro, curseur "Métro"). Le
-clic dans une zone où plusieurs planches se chevauchent (constaté sur ce
-jeu de données) liste toujours **toutes** celles concernées à cet endroit
-précis, pas seulement celle au-dessus visuellement — logique reprise telle
-quelle dans `src/metroLayer.js` (`_sheetRefsAt`) au moment de la migration.
-La même case affiche aussi **PE_info** et **PE_label**
-(`Metro_export_SHP/MetroInfo.shp` + `MetroLabels.shp`) : les triangles et
-codes de transition entre tronçons de construction (D0, D1, G1a...)
-relevés dans INFRAVIEW.pdf, et le texte des références de planches
-(1000-236...) affiché dans l'emprise des planches elles-mêmes — voir le
-détail en section 4bis (méthode, précision, limites).
+proposer de couleur (couleur/opacité réglées avec le réseau métro, curseur
+« Métro »). Le clic dans une zone où plusieurs planches se chevauchent (42 paires
+dans ce jeu de données) liste toujours **toutes** celles concernées à cet endroit
+précis, pas seulement celle au-dessus visuellement (`_sheetRefsAt`). La même case
+affiche aussi les **repères de tronçon** (triangles et codes D0, D1, G1a... relevés
+dans INFRAVIEW.pdf) et les références de planche — voir section 4bis.
+Les repères de tronçon sont **legacy** : `data/legacy/reperes-troncons.legacy.json`
+(106 triangles, 80 codes), sans identifiant, à rattacher à `lignes.shp` quand il
+existera.
 
 **Numéros interstation** (`src/interstation.js`) : chaque numéro est
-rattaché à un **tronçon** (polygone `MT` de `Metro.shp`) — par défaut le
+rattaché à un **tronçon** (polygone de genre `tunnel` de `polygones.shp`) — par défaut le
 tunnel dont le contour est le plus proche (rattachement automatique, en
 Lambert), ou celui choisi par un administrateur (voir plus bas). L'étiquette
 est un texte à **taille réelle constante** (comme les références de
@@ -465,7 +460,7 @@ survol d'un tunnel allume son axe, un clic (ou un appui) le choisit. L'étape
 en cours s'affiche en haut à gauche, sous le menu carte (Retour, Suivant,
 Annuler, Terminer) ; le suivi et l'enregistrement sont dans le panneau du bouton
 « ✥ Mode édition » (masqué par défaut). Position (Lambert 72) et tronçon
-(identifiant stable `id_objet`, voir ci-dessous) sont enregistrés dans
+(identifiant `id` du référentiel, voir section 4) sont enregistrés dans
 `data/fond-de-plan/etiquettes-troncons.json` (clé `numéro#rang`), via la route
 `/shared/fond-de-plan/etiquettes-troncons` du relais (à redéployer une fois, voir
 `relay/README.md`), et remplacent le rattachement automatique pour cette étiquette. Limites du
@@ -488,117 +483,115 @@ Liste volontairement ouverte : d'autres plans (constats, relevés...)
 pourront s'y ajouter au fur et à mesure, un fichier et une entrée de
 catalogue à la fois.
 
-## 4. Analyse de Metro.json (format historique — remplacé comme référence par le Shapefile, voir 4bis)
+## 4. Architecture des données
 
-Ce format n'est plus la donnée de référence (voir section 4bis) ; il reste
-documenté ici pour mémoire, et parce que `Metro.json` en est toujours
-dérivé comme fichier de secours.
+Les données greffées sur les fonds de plan sont de **trois familles** :
 
-- Format : `FeatureCollection` GeoJSON (à l'origine, sortie de service WFS
-  GeoServer).
-- CRS déclaré explicitement dans le fichier : `urn:ogc:def:crs:EPSG::31370`
-  → Belgian Lambert 72, utilisé tel quel comme référentiel métier de
-  l'application (pas de conversion définitive en lat/lon).
-- 192 entités, toutes en géométrie `Polygon` (aucune ligne/point) :
-  - `type = "MS"` (69 entités) : emprises de stations.
-  - `type = "MT"` (87 entités) : emprises de tunnels.
-  - `type = "PE"` (36 entités) : plans d'ensemble au 1/500e (planches),
-    fusionnées ici depuis l'ancien `data/patrimoine-plans-ensemble-500e.json`
-    — voir section 4bis.
-- Attributs : `ogc_fid`, `name_fr`, `name_nl`, `niveau`, `type`, `sheet_ref`
-  (numéro de planche, uniquement rempli pour `type = "PE"`), et
-  `id_objet` : **identifiant stable** des stations (`STA-ALBERT`) et des tunnels
-  (`TRO-HORTA-ALBERT-01`, suffixe numérique car plusieurs tunnels portent le même
-  nom), vide pour les planches (déjà identifiées par `sheet_ref`).
-  `ogc_fid`, simple numéro de ligne, peut changer à chaque export Civil 3D :
-  **ne jamais s'en servir comme lien**. `id_objet` est écrit une fois pour
-  toutes dans le .dbf ; un objet créé sous AutoCAD doit recevoir le sien
-  (sinon l'application retombe sur `fid:<ogc_fid>`, à remplacer). C'est cet
-  identifiant que les fichiers de `data/fond-de-plan/` (et plus tard les
-  données métier : amiante, chantiers, signalements) utilisent pour désigner
-  un tunnel ou une station.
+1. **Géométries pérennes** — shapefiles Lambert 72 (EPSG:31370), éditables dans
+   AutoCAD, **strictement limités à deux fichiers** : `data/geometries/polygones.*`
+   et `data/geometries/lignes.*` (`.shp`, `.shx`, `.dbf`, `.prj`, `.cpg`). Chaque
+   entité ne porte qu'**un champ : `id`**. Aucun nom, type, niveau ni autre attribut.
+   `lignes.*` peut rester absent tant qu'aucun tronçon n'est dessiné (l'application
+   le tolère).
+2. **Cadastre / référentiel** — JSON rattaché aux géométries par `id`, dans
+   `data/referentiel/` : `polygones.json`, `lignes.json`, `vocabulaires.json`. Il
+   porte tout ce qui complète une géométrie : genre (`station`, `tunnel`,
+   `planche`), noms FR/NL, liste de noms et références d'une station (`noms`),
+   niveau, `sheet_ref` et couleur d'une planche, identifiants externes
+   (`ids_externes` : ancien `ogc_fid`, ancien `id_objet`), plus tard année de
+   construction, liens vers des plans... En-tête de chaque JSON : `version`,
+   `date`, `crs: "EPSG:31370"`, `prochain_id`.
+3. **Données métier (suivi : fiches, constats...)** — **hors de ce dépôt**
+   (dossier `data/suivi/`, listé dans `.gitignore` : le dépôt est public, ces données
+   n'y entrent jamais). Phase B, pas encore réalisée : la couche « Points métier »
+   (`localStorage`, section 6) fonctionne comme avant.
 
-**Organisation des données (fond de plan).** Deux couches : ce qui s'édite sous
-AutoCAD (géométries et attributs des planches, tunnels, stations : Shapefile) ;
-ce que l'application écrit, en JSON Lambert 72 (`"crs": "EPSG:31370"`), dans
-`data/fond-de-plan/`, un fichier par type d'élément :
-`etiquettes-planches.json` (ancrage/orientation des références de planche,
-points d'ancrage en position absolue), `etiquettes-troncons.json` (position du
-texte et tronçon de rattachement des numéros d'interstation) ;
-`etiquettes-stations.json` viendra. Ces JSON sont la **liste complète** des
-étiquettes (source unique) : créer ou supprimer une étiquette = ajouter ou retirer
-une entrée, depuis le mode édition (« ✚ Ajouter un élément », 🗑) ; les points
-`PE_label` de `MetroLabels.shp` et `patrimoine-numero-interstation.json` ne
-sont plus que des archives d'amorçage. L'axe du tunnel, le soulignement et la
-ligne de repère ne sont **pas** stockés : ils se recalculent à l'affichage
-(l'axe pourra être exporté plus tard dans un Shapefile). Un seul relais
-d'enregistrement pour tout (`PUT /shared/<dossier>/<fichier>`), un seul code
-administrateur : voir `relay/README.md`.
-- Emprise (bbox) : X ∈ [142502.65, 156823.81], Y ∈ [166628.36, 176534.41],
-  cohérente avec l'étendue réelle de la Région bruxelloise une fois
-  reprojetée en WGS84 (vérifié) — légèrement plus large que l'emprise du
-  seul réseau métro, les planches débordant de quelques dizaines à ~190 m
-  sur trois côtés.
+**Règle de l'identifiant.** Chaîne opaque sans signification métier : « G » + 6
+chiffres (ex. `G000123`), attribuée une fois, **jamais réutilisée**, **unique sur
+les deux fichiers à la fois**. Le prochain à attribuer est `prochain_id` (en-tête
+des JSON du référentiel, identique dans `polygones.json` et `lignes.json`). Un code
+de station ou un numéro de tronçon est un **attribut du référentiel**, jamais un
+identifiant. Les anciens identifiants (`ogc_fid`, `id_objet` comme
+`TRO-HORTA-ALBERT-01`) sont conservés dans `ids_externes`.
 
-## 4bis. Donnée de référence : Shapefile, pas GeoJSON
+**Autres fichiers** (hors des trois familles) :
+- `data/fond-de-plan/` : `etiquettes-planches.json` (ancrage des références de planche,
+  clé « sheet_ref#rang ») et `etiquettes-troncons.json` (position du texte et tronçon
+  de rattachement des numéros d'interstation, clé « numéro#rang », tronçon désigné par
+  son `id`), écrits par l'application via le relais (section 6), en Lambert 72. Ce sont
+  les listes **complètes** des étiquettes (source unique) : créer ou supprimer une
+  étiquette = ajouter ou retirer une entrée (mode édition : « ✚ Ajouter un élément »,
+  🗑). L'axe du tunnel, le soulignement et la ligne de repère ne sont pas stockés : ils
+  se recalculent à l'affichage ;
+- `data/legacy/` : fichiers conservés en attendant `lignes.shp`, **sans identifiant**
+  — `numeros-interstation.legacy.json` (86 points texte, archive d'amorçage, plus lu
+  par l'application) et `reperes-troncons.legacy.json` (triangles et codes de
+  transition entre tronçons, encore affichés avec les planches). **Aucune géométrie de
+  tronçon n'existe encore** : à rattacher à `lignes.shp` plus tard ;
+- `catalogues/` : `urbis-topo.js`, `plans-patrimoine.js` (catalogues de couches) ;
+- `tools/` : `migrer-donnees.py` (migration unique, déjà exécutée),
+  `verifier-donnees.py` (contrôle, voir plus bas), `rapport-migration.md`.
 
-Le réseau métro (stations, tunnels, et depuis leur fusion les plans
-d'ensemble au 1/500e — types `MS`/`MT`/`PE`, voir section 4) est maintenant
-tenu en **Shapefile** dans `Metro_export_SHP/` (`Metro.shp`, `.dbf`, `.prj`,
-`.cst`, `.idx`, `.shx`) — format délibérément choisi pour être exploitable
-à la fois par **AutoCAD Civil 3D** (édite et exporte le Shapefile
-nativement, Map 3D intégré, sans plugin ni droits admin) et par cette
-application, contrairement à GeoJSON ou GeoPackage qui ne satisfont que
-l'un des deux côtés (voir discussion dans l'historique du projet).
+**Contenu actuel de `polygones.shp`** (192 entités, `G000001` à `G000192`) :
+69 stations, 87 tunnels, 36 planches au 1/500. Voir `tools/rapport-migration.md`
+pour les anomalies et ce qui n'a pas pu être migré (notamment : aucun nom de
+station rattaché, la source ayant été retirée).
 
-Origine de la donnée de référence : export WFS du service public MobiGIS
-(`data.mobility.brussels`, couche `bm_public_transport:Metro`, requête
-conservée dans `Metro_export_SHP/wfsrequest.txt`), qui produit justement un
-Shapefile (`outputFormat=shape-zip`) en EPSG:31370. Ce même fichier peut
-ensuite être ouvert et adapté dans Civil 3D.
+**Contrôles.** `python3 tools/verifier-donnees.py` (bibliothèque standard seule,
+code de sortie non nul en cas d'erreur) vérifie : identifiants uniques sur les deux
+fichiers, aucune géométrie sans entrée de référentiel, aucune entrée sans géométrie,
+présence de `.prj` et `.shx`, format des `id`, cohérence de `prochain_id`. Les mêmes
+règles sont appliquées **sans bloquer** au démarrage de l'application
+(avertissements en console, `src/referentiel.js`).
 
-Workflow de mise à jour d'un plan :
-1. Adapter le plan dans Civil 3D (à partir du Shapefile existant, ou d'un
-   nouvel export WFS MobiGIS si une resynchronisation complète est voulue).
-2. Exporter en Shapefile, en réutilisant les mêmes noms de champs
-   (`ogc_fid`, `name_fr`, `name_nl`, `niveau`, `type`) et le même CRS
-   (EPSG:31370).
-3. Remplacer les fichiers dans `Metro_export_SHP/` du dépôt.
-4. Publier (commit + push) : l'application recharge automatiquement la
-   nouvelle version au prochain chargement de page, aucune étape de
-   conversion externe (QGIS, GDAL...) n'est nécessaire.
+## 4bis. Shapefiles : workflow AutoCAD
 
-Lecture entièrement côté navigateur (`src/shpLoader.js`, ~150 lignes, aucune
-bibliothèque tierce) : parseur binaire minimal pour `.shp` (type Polygon
-uniquement, c'est le seul utilisé ici) et `.dbf` (texte décodé en
-ISO-8859-1, voir `Metro.cst`). Aucune reprojection n'est faite à la lecture
-— les coordonnées Lambert72 brutes sont conservées telles quelles, exactement
-comme le faisait l'ancien `Metro.json` ; c'est `AMGT4CEM_CRS.lambertToLatLng`
-(`crs.js`, appelé par `metroLayer.js`) qui convertit à l'affichage.
+Format délibérément choisi pour être exploitable à la fois par **AutoCAD Civil 3D**
+(édite et exporte le shapefile nativement, Map 3D intégré, sans plugin ni droits
+admin) et par cette application. Lecture entièrement côté navigateur
+(`src/shpLoader.js`, aucune bibliothèque tierce) : polygones (type 5) et polylignes
+(type 3, multi-parties) ; seul le champ `id` du `.dbf` est lu. Aucune reprojection
+à la lecture : les coordonnées Lambert 72 sont conservées, `AMGT4CEM_CRS.lambertToLatLng`
+(`crs.js`) convertit à l'affichage.
 
-Point de vigilance rencontré en pratique : le premier export testé ne
-contenait pas de fichier `.shx` (index des formes, normalement l'un des 3
-fichiers minimaux d'un Shapefile avec `.shp`/`.dbf`) — à surveiller sur les
-prochains exports, qu'ils viennent de Civil 3D ou d'un nouvel export WFS ;
-`shpLoader.js` ne le lit pas (il n'en a pas besoin, il lit `.shp`
-séquentiellement), mais un autre logiciel GIS pourrait le réclamer.
+Workflow de mise à jour :
+1. **Modifier le dessin** dans AutoCAD (à partir du shapefile existant).
+2. **Exporter le shapefile** avec le **seul champ `id`**, même CRS (EPSG:31370),
+   en gardant `.shp`, `.shx`, `.dbf`, `.prj`. Une entité **nouvelle** reçoit un
+   `id` neuf pris à `prochain_id` (puis `prochain_id` est incrémenté dans les JSON) ;
+   copier ou scinder une entité duplique son `id` : à corriger avant d'exporter.
+3. **Compléter le référentiel** : une entrée par `id` (genre, noms...) dans
+   `data/referentiel/polygones.json` ou `lignes.json`.
+4. **Lancer `python3 tools/verifier-donnees.py`** : corriger jusqu'à « OK ».
+5. **Committer** (`data/geometries/`, `data/referentiel/`). Le suivi (famille 3)
+   n'est jamais committé.
 
-`Metro.json` reste dans le dépôt et à jour (régénéré à partir du Shapefile)
-uniquement comme donnée de secours pour le chargement manuel (voir section
-1) — le chargement automatique normal ne le lit plus.
+Origine historique : les polygones viennent de l'export WFS MobiGIS
+(`bm_public_transport:Metro`, `Metro.shp`) retravaillé dans Civil 3D, plus les
+planches INFRAVIEW ; ils ont été migrés une fois pour toutes dans la nouvelle
+structure (`tools/migrer-donnees.py`). `Metro_export_SHP/` et `Metro.json` ont été
+supprimés du dépôt ; ils restent récupérables via le tag de sauvegarde (section
+« Retour arrière »).
 
 ### Éléments d'INFRAVIEW.pdf : calage sur le réseau
+
+*Les noms de fichiers cités dans cette section (`Metro.shp`, `MetroInfo.shp`,
+`MetroLabels.shp`, `Metro.json`) sont ceux d'**avant la refonte des données** :
+ils décrivent l'historique du calage et sont récupérables via le tag de sauvegarde.
+Équivalents actuels : planches = genre `planche` de `polygones.shp` ; triangles et
+codes = `data/legacy/reperes-troncons.legacy.json` ; références de planche =
+`data/fond-de-plan/etiquettes-planches.json`.*
 
 Tout ce qui vient d'INFRAVIEW.pdf (STIB, plan "Station & Interstation
 Infrastructure", `DITP`, juillet 2025) est placé **par rapport au réseau
 métro tel qu'il est dessiné dans ce PDF**, pas d'après un calage de
 coordonnées pris isolément :
 
-- emprises des planches (type `PE` de `Metro.shp`) ;
-- triangles de transition de tronçon (`MetroInfo.shp`) et leurs codes ;
-- références de planche (`MetroLabels.shp`, `PE_label`) ;
-- numéros d'interstation (`data/patrimoine-numero-interstation.json`, archive) ;
-  (les noms de station, `data/patrimoine-nom-station.json`, ont été retirés).
+- emprises des planches (genre `planche` de `polygones.shp`) ;
+- triangles de transition de tronçon et leurs codes (`data/legacy/reperes-troncons.legacy.json`) ;
+- références de planche (`data/fond-de-plan/etiquettes-planches.json`) ;
+- numéros d'interstation (`data/legacy/numeros-interstation.legacy.json`, archive) ;
+  (les noms de station ont été retirés).
 
 **Méthode.** Le réseau du PDF (stations en rouge, tunnels en bleu — 4 934
 formes rouges, 92 anneaux bleus) est recalé sur les polygones `MS`/`MT` de
@@ -762,18 +755,22 @@ src/settingsStore.js         paramètres généraux partagés (data/app-settings
 src/settingsPanel.js         fenêtre "⚙ Paramètres" à onglets (Sources / Serveur / Fonds de plan)
 src/layerOpacityStore.js     opacité individuelle des couches (icône curseurs, persistée)
 src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
-src/shpLoader.js             lecture Shapefile (Metro_export_SHP/) côté navigateur, sans bibliothèque tierce
-src/metroData.js             chargement manuel de secours (.json, FileReader) si le Shapefile échoue
-src/scaledText.js            texte HTML à taille réelle constante (zoom), pour PE_info/PE_label
-src/metroLayer.js            construction des couches Leaflet Stations/Tunnels/Planches/PE_info/PE_label
-Metro_export_SHP/            donnée de référence : Metro.shp (MS/MT/PE) + MetroInfo.shp (triangles PE_info) + MetroLabels.shp (textes PE_info/PE_label) — voir section 4bis
+src/shpLoader.js             lecture Shapefile (polygones type 5, polylignes type 3, champ `id` seul), côté navigateur, sans bibliothèque tierce
+src/referentiel.js           chargement des géométries + référentiel JSON, jointure par `id`, contrôles non bloquants
+src/scaledText.js            texte HTML à taille réelle constante (zoom), pour les codes de tronçon et les références de planche
+src/metroLayer.js            construction des couches Leaflet Stations/Tunnels/Planches (+ repères legacy)
+data/geometries/             famille 1 : polygones.* et lignes.* (shapefiles Lambert 72, champ `id` seul) — voir section 4
+data/referentiel/            famille 2 : polygones.json, lignes.json, vocabulaires.json (jointure par `id`)
+data/fond-de-plan/           positions d'étiquettes écrites par l'application (via le relais)
+data/legacy/                 fichiers sans identifiant conservés jusqu'à lignes.shp
+data/suivi/                  famille 3 (suivi) : HORS DÉPÔT (.gitignore), phase B
+tools/                       migrer-donnees.py (unique), verifier-donnees.py (après chaque export AutoCAD), rapport-migration.md
 src/basemap.js                fonds de plan (UrbIS, Orthophoto, Bruciel)
-data/urbisTopoCatalog.js     catalogue complet des types d'objets UrbIS Topo (référence)
+catalogues/urbis-topo.js       catalogue complet des types d'objets UrbIS Topo (référence)
 src/urbisTopoSelectionStore.js sélection utilisateur des types UrbIS Topo affichés
 src/urbisTopoPicker.js        sélecteur plein écran (catalogue classé par thème)
 src/urbisTopoLayer.js        affichage carte des types UrbIS Topo sélectionnés
-data/patrimoineCatalog.js    catalogue des couches "Plans patrimoine" (référence)
-data/patrimoine-*.json       fichiers de référence locaux "Plans patrimoine" (jamais réécrits)
+catalogues/plans-patrimoine.js catalogue des couches "Plans patrimoine" (référence)
 src/patrimoineSelectionStore.js sélection utilisateur des couches Plans patrimoine affichées
 src/patrimoinePicker.js      sélecteur plein écran "Plans patrimoine"
 src/patrimoineLayer.js       affichage carte des couches Plans patrimoine sélectionnées
@@ -793,11 +790,11 @@ vendor/proj4leaflet,
 vendor/html2canvas           bibliothèques embarquées localement
 ```
 
-`Metro_export_SHP/` (donnée de référence) et la micro-base de points métier
-(`pointsStore.js`) sont deux sources totalement indépendantes : la première
-n'est modifiée que par un nouvel export Civil 3D (jamais par l'application
-elle-même) ; la seconde peut être remplacée plus tard par un vrai backend
-sans toucher à la cartographie.
+Les géométries et le référentiel (`data/geometries/`, `data/referentiel/`) et la
+micro-base de points métier (`pointsStore.js`) sont deux sources totalement
+indépendantes : les premiers ne sont modifiés que par un export AutoCAD (jamais par
+l'application elle-même) ; la seconde peut être remplacée plus tard par un vrai
+backend sans toucher à la cartographie.
 
 ## 6. Micro-base de données
 
@@ -848,7 +845,7 @@ piste ci-dessus (petit relais serveur) :
 - le fichier `data/fond-de-plan/etiquettes-planches.json` (dans le dépôt) est lu par
   l'application pour tous les visiteurs (`src/peLabelAnchors.js`, appliqué
   par `src/metroLayer.js` / `src/scaledText.js`) ; absent ou vide, les
-  étiquettes gardent leur position d'origine (`MetroLabels.shp`) ;
+  aucune référence de planche n'est affichée ;
 - le plugin `plugins/pe-label-editor/` (administrateurs) l'enregistre via le
   relais `relay/` (Cloudflare Worker, à déployer une fois : `relay/README.md`),
   qui commit le fichier dans le dépôt ; GitHub Pages le redéploie ;
@@ -865,3 +862,36 @@ les visiteurs la lisent ensuite.
 
 Les points métier (`pointsStore.js`) restent en `localStorage` : le relais
 pourra être étendu à ces données si la piste est retenue.
+
+### Exporter les points métier à la main (avant tout déploiement)
+
+Ils sont dans le `localStorage` de chaque navigateur, donc **hors dépôt** et hors
+de toute sauvegarde Git. L'application n'a **pas** de fonction d'export. Dans la
+console du navigateur (F12) de l'appareil concerné, sur la page de l'application :
+
+```js
+copy(localStorage.getItem('amgt4cem.points.v1'))   // copie le JSON dans le presse-papier : le coller dans un fichier .json
+```
+
+Pour restaurer : `localStorage.setItem('amgt4cem.points.v1', '<le JSON>')`, puis recharger.
+La refonte des données n'y touche pas.
+
+## 7. Retour arrière
+
+Avant la refonte, l'état du dépôt a été figé sur la branche
+**`sauvegarde/avant-refonte`** (commit `f42ccea`, build `20261004-1029`), qui ne doit
+plus jamais être modifiée. Elle contient l'ancienne structure (`Metro_export_SHP/`,
+`Metro.json`, `data/*Catalog.js`...).
+
+- **Consulter / récupérer un fichier** : `git show sauvegarde/avant-refonte:Metro.json`
+  ou `git checkout sauvegarde/avant-refonte -- Metro_export_SHP`.
+- **Revenir complètement à l'ancienne version** : déployer cette branche telle quelle
+  (si GitHub Pages sert la branche `X`, remettre `X` sur ce commit :
+  `git checkout X && git reset --hard sauvegarde/avant-refonte && git push --force-with-lease`
+  — à ne faire qu'en connaissance de cause, car cela écarte les commits postérieurs),
+  ou, plus sûr, `git revert` de la fusion de `refonte-donnees`.
+- Un tag annoté `sauvegarde-avant-refonte-20261005` était prévu au même commit ; il n'a
+  pas pu être poussé depuis l'environnement de développement (push de tag refusé) :
+  à créer à la main si souhaité (`git tag -a sauvegarde-avant-refonte-20261005 f42ccea`).
+- Les points métier ne sont pas concernés (`localStorage`, voir ci-dessus).
+
