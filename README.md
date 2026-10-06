@@ -256,6 +256,12 @@ dans cette unique série, de façon transparente pour l'utilisateur :
   (2016) », « © Digitaal Vlaanderen – orthophoto 2016 »), et « © CIRB/CIBG –
   UrbIS Topo » s'ajoute quand la couche UrbIS Topo est active.
 
+  **Bas de carte.** Crédits en bas à droite, échelle en bas à gauche, repère
+  BUILD juste au-dessus des crédits. Si crédits et échelle ne tiennent plus
+  côte à côte (`src/creditsLayout.js`, remesuré à chaque changement de
+  contenu et au redimensionnement), la barre de crédits passe sur toute la
+  largeur, en fond translucide, et l'échelle se place au-dessus.
+
 Aucun nom de couche ci-dessus n'est deviné. Pour ajouter un millésime plus
 récent quand il sera identifié, ajoutez une entrée dans
 `AMGT4CEM_CONFIG.basemaps.bruciel.entries` (voir `config.js`).
@@ -842,6 +848,7 @@ src/measureTool.js           outil "📏 Mesurer" (segment + cote + cercle, 4s p
 src/screenshotTool.js        capture PNG auto au 2e relâchement (mémoire uniquement) + enregistrement ("💾")
 src/scaleControl.js          réglette graduée (bas gauche), alterne au clic avec les coordonnées Lambert
 src/buildInfo.js             horodatage de la dernière mise à jour (à mettre à jour à chaque commit)
+src/creditsLayout.js         bas de carte : crédits pleine largeur + échelle au-dessus en cas de chevauchement
 src/buildInfoControl.js      affiche "BUILD ..." en bas à droite, au-dessus de l'attribution
 src/app.js                   assemblage de l'application
 vendor/leaflet, vendor/proj4,

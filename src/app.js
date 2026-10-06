@@ -55,6 +55,7 @@
   AMGT4CEM_Basemap.showUrbis();
 
   AMGT4CEM_ScaleControl.init(map);
+  AMGT4CEM_CreditsLayout.init(map); // après l'échelle et les crédits : mesure leur largeur
   AMGT4CEM_ScaledText.initMap(map);
   const pointsGroup = AMGT4CEM_PointsLayer.init(map);
   AMGT4CEM_UrbisTopoLayer.init(map);

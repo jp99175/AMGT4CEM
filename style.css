@@ -839,3 +839,23 @@ html, body {
   /* 6 px de marge de la date + 4 px de gap + 4 px = environ 1 em (espace long) entre la date et le logo. */
   margin-left: 4px;
 }
+
+/* --- Bas de carte : crédits (droite), échelle (gauche), BUILD au-dessus des crédits --- */
+/* Quand crédits et échelle se chevauchent (creditsLayout.js) : crédits sur toute
+   la largeur, fond translucide, échelle posée au-dessus, BUILD à droite au-dessus. */
+.amgt-credits-wide .leaflet-bottom.leaflet-right {
+  left: 0;
+}
+
+.amgt-credits-wide .leaflet-control-attribution {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  text-align: right;
+  background: rgba(255,255,255,0.6);
+}
+
+.amgt-credits-wide .leaflet-bottom.leaflet-left {
+  margin-bottom: var(--amgt-credits-h, 0px);
+}
