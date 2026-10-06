@@ -4,7 +4,7 @@
  * étape de compilation) : cette constante est mise à jour à la main à
  * chaque commit poussé sur la branche de déploiement, pour pouvoir
  * vérifier en un coup d'œil quelle version est effectivement en ligne
- * (affichée en bas à droite de la carte, sous l'attribution
+ * (affichée en bas à droite de la carte, au-dessus de l'attribution
  * "(c) CIRB - UrbIS" — voir buildInfoControl.js).
  */
-const AMGT4CEM_BUILD_TIMESTAMP = '20261006-0412';
+const AMGT4CEM_BUILD_TIMESTAMP = '20261006-0419';

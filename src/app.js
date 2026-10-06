@@ -29,8 +29,8 @@
     // Attribution ajoutée "à la main" juste après (et non automatiquement
     // ici) : pour un coin bas, Leaflet insère chaque nouveau contrôle
     // au-dessus des précédents (voir Control.addTo), donc l'ordre d'ajout
-    // détermine l'empilement visuel. On ajoute le repère "BUILD..." AVANT
-    // l'attribution pour qu'il reste sous elle (voir plus bas).
+    // détermine l'empilement visuel. On ajoute le repère "BUILD..." APRÈS
+    // l'attribution pour qu'il apparaisse au-dessus (voir plus bas).
     attributionControl: false,
     maxZoom: AMGT4CEM_CONFIG.maxZoom,
     // Vue par défaut le temps que les données soient chargées (recentrée ensuite
@@ -40,9 +40,6 @@
   });
   AMGT4CEM_SearchTool.init(map);
 
-  // Ajouté avant l'attribution (voir commentaire sur attributionControl
-  // ci-dessus) pour apparaître sous "(c) CIRB - UrbIS", pas au-dessus.
-  AMGT4CEM_BuildInfoControl.init(map);
   // Retire le lien "Leaflet" du contrôle d'attribution (sans obligation légale :
   // la licence BSD-2-Clause de Leaflet n'exige pas d'affichage à l'écran, voir
   // README). Les attributions des sources de données (UrbIS, Bruciel...)
@@ -50,6 +47,9 @@
   // que leurs attributions (passées en option des couches) soient bien
   // captées par ce contrôle.
   map.attributionControl = L.control.attribution({ prefix: false }).addTo(map);
+  // Ajouté APRÈS l'attribution (voir commentaire sur attributionControl ci-dessus : pour un coin bas,
+  // le dernier contrôle ajouté s'empile au-dessus) : le repère BUILD apparaît au-dessus de "(c) CIRB - UrbIS".
+  AMGT4CEM_BuildInfoControl.init(map);
 
   AMGT4CEM_Basemap.init(map);
   AMGT4CEM_Basemap.showUrbis();

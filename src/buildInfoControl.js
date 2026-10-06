@@ -1,5 +1,5 @@
 /**
- * Petite mention "BUILD AAAAMMJJ-HHMM" en bas à droite de la carte, sous
+ * Petite mention "BUILD AAAAMMJJ-HHMM" en bas à droite de la carte, au-dessus de
  * l'attribution "(c) CIRB - UrbIS" (voir buildInfo.js pour la valeur).
  * Purement diagnostique : permet de vérifier quelle version du code est
  * effectivement servie, sans consulter l'historique git.

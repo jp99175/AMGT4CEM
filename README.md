@@ -70,7 +70,7 @@ bouton de secours : les données ne sont pas chargées).
    coordonnées Lambert (X, Y) du dernier point survolé/cliqué sur la
    carte ; au bout de 5 secondes (ou en recliquant), on revient
    automatiquement à la réglette. Voir `src/scaleControl.js`.
-   En bas à droite, sous l'attribution "(c) CIRB/CIBG – UrbIS", un petit
+   En bas à droite, au-dessus de l'attribution "(c) CIRB/CIBG – UrbIS", un petit
    repère rouge **BUILD AAAAMMJJ-HHMM** (heure locale de Bruxelles, pas
    UTC) indique l'horodatage de la dernière mise à jour du code déployé
    (voir `src/buildInfo.js` — site statique, pas de véritable étape de
@@ -805,7 +805,7 @@ src/measureTool.js           outil "📏 Mesurer" (segment + cote + cercle, 4s p
 src/screenshotTool.js        capture PNG auto au 2e relâchement (mémoire uniquement) + enregistrement ("💾")
 src/scaleControl.js          réglette graduée (bas gauche), alterne au clic avec les coordonnées Lambert
 src/buildInfo.js             horodatage de la dernière mise à jour (à mettre à jour à chaque commit)
-src/buildInfoControl.js      affiche "BUILD ..." en bas à droite, sous l'attribution
+src/buildInfoControl.js      affiche "BUILD ..." en bas à droite, au-dessus de l'attribution
 src/app.js                   assemblage de l'application
 vendor/leaflet, vendor/proj4,
 vendor/proj4leaflet,
