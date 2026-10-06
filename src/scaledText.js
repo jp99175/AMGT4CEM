@@ -188,12 +188,13 @@ const AMGT4CEM_ScaledText = {
   /**
    * Ligne de repère ET soulignement d'un texte (option `leaderFrom`) : UN SEUL
    * tracé qui part du point `leaderFrom` (ex. le centre d'un tronçon), rejoint
-   * l'extrémité du bord bas de la boîte de texte la plus proche à l'écran (coin
-   * bl ou br), puis longe ce bord jusqu'à l'autre coin. Les coins se déduisent
+   * le bord bas de la boîte de texte (extrémité bl ou br la plus proche, ou un point intermédiaire
+   * si la contrainte d'angle l'exige), puis longe ce bord jusqu'au bout. Les coins se déduisent
    * de la pose (point de référence + rotation) et de la taille réelle de la
    * boîte, recalculée à chaque zoom (comme la pose elle-même). Épaisseur
    * proportionnelle à la taille du texte (`px`, 4 % du corps), entre 0,5 et
-   * 4 px : plus fine quand on dézoome.
+   * 4 px : plus fine quand on dézoome. Le segment qui part de `leaderFrom` fait au plus 45° avec la
+   * verticale : voir _leaderPath.
    */
   _updateLeader(entry, span, px) {
     const map = entry.marker._map;
@@ -214,9 +215,51 @@ const AMGT4CEM_ScaledText = {
     const from = map.latLngToLayerPoint(entry.leader.from);
     const bl = corner(0);
     const br = corner(1);
-    const [near, far] = from.distanceTo(bl) <= from.distanceTo(br) ? [bl, br] : [br, bl];
-    entry.leader.line.setLatLngs([entry.leader.from, map.layerPointToLatLng(near), map.layerPointToLatLng(far)]);
+    const path = this._leaderPath(from, bl, br);
+    entry.leader.line.setLatLngs(path.map((pt) => map.layerPointToLatLng(pt)));
     entry.leader.line.setStyle({ weight: Math.max(0.5, Math.min(4, px * 0.04)) });
+  },
+
+  /**
+   * Tracé de la ligne de repère, en points d'écran : la partie qui relie `from` (centre du tronçon)
+   * au soulignement [bl, br] fait au plus LEADER_MAX_DEG (45°) avec la VERTICALE (dans un sens
+   * comme dans l'autre : |dx| <= |dy|).
+   *  - le soulignement croise le cône : la ligne rejoint son point admissible le plus proche de
+   *    `from`, puis longe le soulignement d'un bout à l'autre (le retour sur lui-même ne se voit pas) ;
+   *  - sinon (texte plutôt à côté qu'au-dessus ou en dessous) : segment à exactement 45° jusqu'à la
+   *    droite du soulignement, qu'on longe ensuite jusqu'au bout.
+   */
+  LEADER_MAX_DEG: 45,
+
+  _leaderPath(from, bl, br) {
+    const k = Math.tan((this.LEADER_MAX_DEG * Math.PI) / 180); // |dx| <= k |dy|
+    const ok = (pt) => Math.abs(pt.x - from.x) <= k * Math.abs(pt.y - from.y) + 1e-6;
+    const at = (t) => L.point(bl.x + (br.x - bl.x) * t, bl.y + (br.y - bl.y) * t);
+    let best = null;
+    const N = 200;
+    for (let i = 0; i <= N; i++) {
+      const pt = at(i / N);
+      if (ok(pt) && (!best || from.distanceTo(pt) < from.distanceTo(best.pt))) best = { pt, t: i / N };
+    }
+    if (best) {
+      const [e1, e2] = best.t <= 0.5 ? [bl, br] : [br, bl];
+      return [from, best.pt, e1, e2];
+    }
+    // Aucun point admissible : diagonale à 45° vers le bord le plus proche, puis le soulignement.
+    const [near, far] = from.distanceTo(bl) <= from.distanceTo(br) ? [bl, br] : [br, bl];
+    const sx = Math.sign(near.x - from.x) || 1;
+    const sy = Math.sign(near.y - from.y) || 1;
+    // Intersection du rayon from + u (sx, sy / ... ) avec la droite near-far : from + u d = near + v e
+    const d = L.point(sx, sy * (1 / k));
+    const e = L.point(far.x - near.x, far.y - near.y);
+    const det = d.x * e.y - d.y * e.x;
+    if (Math.abs(det) > 1e-9) {
+      const u = ((near.x - from.x) * e.y - (near.y - from.y) * e.x) / det;
+      if (u > 0) return [from, L.point(from.x + d.x * u, from.y + d.y * u), near, far];
+    }
+    // Cas dégénéré : le soulignement est exactement à la hauteur de `from` (ou parallèle au rayon) : aucun
+    // segment à 45° ne le rejoint, tracé direct.
+    return [from, near, far];
   },
 
   /**

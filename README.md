@@ -432,8 +432,13 @@ Lambert), ou celui choisi par un administrateur (voir plus bas). L'étiquette
 est un texte à **taille réelle constante** (comme les références de
 planche, `scaledText.js`), **souligné par le même tracé que la ligne de
 repère** : un seul trait qui part du **centre du tronçon**, rejoint
-l'**extrémité du bord bas du texte la plus proche**, puis longe ce bord
-(recalculé à chaque zoom). Son **épaisseur suit la taille du texte** (4 %
+le **bord bas du texte**, puis longe ce bord (recalculé à chaque zoom). **Contrainte
+d'angle** : le segment issu du centre du tronçon fait **au plus 45° avec la verticale**
+(vers le haut ou vers le bas). Il rejoint le point du soulignement le plus proche
+qui respecte cet angle ; si le texte est trop à côté pour que le soulignement croise
+ce cône, le segment part à exactement 45° jusqu'à la droite du soulignement, qu'il
+longe ensuite (`_leaderPath`, `src/scaledText.js`). Seul cas où la contrainte ne tient
+pas : texte exactement à la hauteur du centre du tronçon (tracé direct). Son **épaisseur suit la taille du texte** (4 %
 du corps, de 0,5 à 4 px) : plus fin quand on dézoome. Texte et trait appartiennent au
 même groupe : la case « Numéros interstation » les affiche/masque
 ensemble, et le curseur d'opacité de Plans patrimoine s'applique aux deux.
