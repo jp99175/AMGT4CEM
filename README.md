@@ -540,7 +540,18 @@ station rattaché, la source ayant été retirée).
 **Contrôles.** `python3 tools/verifier-donnees.py` (bibliothèque standard seule,
 code de sortie non nul en cas d'erreur) vérifie : identifiants uniques sur les deux
 fichiers, aucune géométrie sans entrée de référentiel, aucune entrée sans géométrie,
-présence de `.prj` et `.shx`, format des `id`, cohérence de `prochain_id`. Les mêmes
+présence de `.prj` et `.shx`, format des `id`, cohérence de `prochain_id`,
+nom des stations/tunnels, `sheet_ref` présent et unique pour les planches,
+caractères de contrôle (encodage mal lu), enregistrements marqués supprimés dans le
+`.dbf`, et références des étiquettes de `data/fond-de-plan/` (tronçon = `id` de genre
+`tunnel`, planche existante).
+
+**Transition (tant que la refonte n'est pas déployée).** L'ancienne version en ligne
+continue d'écrire, via le relais, les anciens identifiants de tunnel (`id_objet`, ex.
+`TRO-HORTA-ALBERT-01`) dans `etiquettes-troncons.json` sur la branche déployée. Après la
+fusion, `python3 tools/verifier-donnees.py --corriger` les remplace par le nouvel `id`
+grâce à `ids_externes.id_objet` du référentiel. Une fois le fichier stabilisé, `id_objet`
+n'a plus d'usage et pourra être retiré de `ids_externes`. Les mêmes
 règles sont appliquées **sans bloquer** au démarrage de l'application
 (avertissements en console, `src/referentiel.js`).
 

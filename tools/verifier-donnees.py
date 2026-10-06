@@ -15,7 +15,16 @@ Vérifie :
     (copier ou scinder une entité dans AutoCAD duplique son id) ;
   - aucune géométrie sans entrée de référentiel, aucune entrée de référentiel sans géométrie ;
   - `prochain_id` du référentiel supérieur à tout id utilisé, et identique dans polygones.json / lignes.json ;
-  - `genre` de chaque entrée déclaré dans vocabulaires.json.
+  - `genre` de chaque entrée déclaré dans vocabulaires.json ;
+  - champs propres à chaque genre : nom (FR ou NL) des stations et tunnels, `sheet_ref` présent et
+    unique pour les planches ; aucun caractère de contrôle dans les textes (encodage mal lu) ;
+  - enregistrements marqués « supprimé » dans le .dbf (ils restent comptés dans le .shp) ;
+  - références des étiquettes (data/fond-de-plan/) : chaque tronçon désigné par etiquettes-troncons.json
+    est un `id` de genre « tunnel », chaque planche d'etiquettes-planches.json existe.
+
+Option --corriger : remplace dans etiquettes-troncons.json les anciens identifiants de tunnel
+(`id_objet`, ex. « TRO-HORTA-ALBERT-01 », encore écrits par l'ancienne version de l'application tant
+que la refonte n'est pas déployée) par le nouvel `id`, grâce à `ids_externes.id_objet` du référentiel.
 """
 import json
 import os
@@ -28,6 +37,8 @@ RACINE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)
 GEO = os.path.join(RACINE, "data", "geometries")
 REF = os.path.join(RACINE, "data", "referentiel")
 FORMAT_ID = re.compile(r"^G\d{6}$")
+CONTROLE = re.compile("[\x00-\x1f\x7f-\x9f]")
+FOND = os.path.join(RACINE, "data", "fond-de-plan")
 
 erreurs = []
 avertissements = []
@@ -75,6 +86,9 @@ def lire_dbf_ids(chemin):
         offsets[nom] = (o, long)
         o += long
     ids = []
+    supprimes = sum(1 for r in range(nb) if data[entete_len + r * rec_len] == 0x2A)
+    if supprimes:
+        err(f"{os.path.basename(chemin)} : {supprimes} enregistrement(s) marqué(s) supprimé(s) — réexporter sans eux")
     if "id" in offsets:
         debut, long = offsets["id"]
         for r in range(nb):
@@ -138,6 +152,60 @@ def charger_ref(nom, obligatoire):
         return None
 
 
+def textes(valeur, cle=""):
+    """(chemin, texte) de toutes les chaînes d'une entrée de référentiel, listes et objets compris."""
+    if isinstance(valeur, str):
+        yield cle, valeur
+    elif isinstance(valeur, dict):
+        for k, v in valeur.items():
+            yield from textes(v, f"{cle}.{k}" if cle else k)
+    elif isinstance(valeur, list):
+        for i, v in enumerate(valeur):
+            yield from textes(v, f"{cle}[{i}]")
+
+
+def verifier_etiquettes(ref_pol, ref_lig):
+    """Références des étiquettes de data/fond-de-plan/ vers le référentiel (option --corriger)."""
+    entites = {}
+    for ref in (ref_pol, ref_lig):
+        entites.update((ref or {}).get("entites") or {})
+    tunnels = {v for v, e in entites.items() if e.get("genre") == "tunnel"}
+    par_ancien = {
+        e["ids_externes"]["id_objet"]: v
+        for v, e in entites.items()
+        if e.get("genre") == "tunnel" and (e.get("ids_externes") or {}).get("id_objet")
+    }
+    chemin = os.path.join(FOND, "etiquettes-troncons.json")
+    if os.path.exists(chemin):
+        with open(chemin, encoding="utf-8") as f:
+            et = json.load(f)
+        corriges = 0
+        for cle, d in (et.get("labels") or {}).items():
+            t = d.get("tunnel")
+            if t in tunnels:
+                continue
+            if t in par_ancien and "--corriger" in sys.argv:
+                d["tunnel"] = par_ancien[t]
+                corriges += 1
+            elif t in par_ancien:
+                err(f"etiquettes-troncons.json : « {cle} » désigne l'ancien identifiant « {t} » (= {par_ancien[t]}) — relancer avec --corriger")
+            else:
+                err(f"etiquettes-troncons.json : « {cle} » désigne le tronçon « {t} », qui n'est pas un tunnel du référentiel")
+        if corriges:
+            with open(chemin, "w", encoding="utf-8", newline="\n") as f:
+                json.dump(et, f, ensure_ascii=False, indent=2)
+                f.write("\n")
+            print(f"etiquettes-troncons.json : {corriges} ancien(s) identifiant(s) remplacé(s) par l'id du référentiel.")
+    chemin = os.path.join(FOND, "etiquettes-planches.json")
+    if os.path.exists(chemin):
+        with open(chemin, encoding="utf-8") as f:
+            ep = json.load(f)
+        refs = {e.get("sheet_ref") for e in entites.values() if e.get("genre") == "planche"}
+        for cle in sorted(ep.get("labels") or {}):
+            if cle.split("#")[0] not in refs:
+                err(f"etiquettes-planches.json : « {cle} » ne correspond à aucune planche du référentiel")
+
+
 def main():
     ids_pol = verifier_shapefile("polygones", 5, True)
     ids_lig = verifier_shapefile("lignes", 3, False)
@@ -172,6 +240,27 @@ def main():
         for v, e in entrees.items():
             if voc is not None and e.get("genre") not in genres:
                 err(f"{fichier} : entrée « {v} » : genre « {e.get('genre')} » absent de vocabulaires.json")
+
+    # Champs propres à chaque genre, textes
+    for fichier, ref in (("polygones", ref_pol), ("lignes", ref_lig)):
+        sheet_refs = defaultdict(list)
+        for v, e in ((ref or {}).get("entites") or {}).items():
+            g = e.get("genre")
+            if g in ("station", "tunnel") and not (e.get("name_fr") or e.get("name_nl")):
+                err(f"{fichier} : {g} « {v} » sans nom (name_fr ou name_nl)")
+            if g == "planche":
+                if e.get("sheet_ref"):
+                    sheet_refs[e["sheet_ref"]].append(v)
+                else:
+                    err(f"{fichier} : planche « {v} » sans sheet_ref")
+            for cle, texte in textes(e):
+                if CONTROLE.search(texte):
+                    err(f"{fichier} : « {v} ».{cle} contient un caractère de contrôle ({texte!r}) — encodage mal lu ?")
+        for sr, ids in sheet_refs.items():
+            if len(ids) > 1:
+                err(f"{fichier} : sheet_ref « {sr} » porté par plusieurs planches : {', '.join(ids)}")
+
+    verifier_etiquettes(ref_pol, ref_lig)
 
     # prochain_id
     suivants = [r.get("prochain_id") for r in (ref_pol, ref_lig) if r is not None]

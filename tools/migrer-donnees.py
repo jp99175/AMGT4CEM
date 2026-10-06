@@ -41,6 +41,8 @@ except ImportError:
 RACINE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 DATE = "2026-10-05"
 CRS = "EPSG:31370"
+# Encodage réel des .dbf d'origine : Windows-1252 (et non ISO-8859-1 comme l'annonçait Metro.cst) —
+# l'octet 0x96 y est un tiret « – », pas un caractère de contrôle (13 noms de tunnel concernés).
 COULEUR_PLANCHE = "#b8860b"  # couleur de la couche « Plans d'ensemble » dans l'ancienne appli (AMGT4CEM_METRO_TYPES.PE)
 
 
@@ -93,7 +95,7 @@ def main():
         rapport.append((rubrique, ligne))
 
     # ---------- 1. Lecture de Metro.shp : stations et tunnels --------------------------------
-    metro = shapefile.Reader(chemin("Metro_export_SHP", "Metro"), encoding="iso-8859-1")
+    metro = shapefile.Reader(chemin("Metro_export_SHP", "Metro"), encoding="cp1252")
     entites = []  # [{genre, anneaux, ref}] dans l'ordre d'attribution des id
     pe_metro = []
     for shape, rec in zip(metro.shapes(), metro.records()):
@@ -235,7 +237,7 @@ def main():
 
     # ---------- 7. Repères de tronçon PE_info (legacy) -----------------------------------------------
     feats = []
-    info = shapefile.Reader(chemin("Metro_export_SHP", "MetroInfo"), encoding="iso-8859-1")
+    info = shapefile.Reader(chemin("Metro_export_SHP", "MetroInfo"), encoding="cp1252")
     for shape, rec in zip(info.shapes(), info.records()):
         r = rec.as_dict()
         feats.append({
@@ -244,7 +246,7 @@ def main():
             "properties": {"type": "PE_info", "code": r["code"]},
         })
     nb_tri = len(feats)
-    labels = shapefile.Reader(chemin("Metro_export_SHP", "MetroLabels"), encoding="iso-8859-1")
+    labels = shapefile.Reader(chemin("Metro_export_SHP", "MetroLabels"), encoding="cp1252")
     nb_codes = nb_pelabel = 0
     for shape, rec in zip(labels.shapes(), labels.records()):
         r = rec.as_dict()

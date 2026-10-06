@@ -530,8 +530,8 @@
     },
     "G000051": {
       "genre": "tunnel",
-      "name_fr": "Tunnel STIB Rue du Progrès  Gare du Nord",
-      "name_nl": "Tunnel MIVB Vooruitgangstraat  Noordstation",
+      "name_fr": "Tunnel STIB Rue du Progrès – Gare du Nord",
+      "name_nl": "Tunnel MIVB Vooruitgangstraat – Noordstation",
       "niveau": "-",
       "ids_externes": {
         "ogc_fid": 76,
@@ -883,7 +883,7 @@
     "G000085": {
       "genre": "tunnel",
       "name_fr": "Tunnel STIB Albert - Avenue Jupiter",
-      "name_nl": "Tunnel MIVB Albert  Jupiterlaan",
+      "name_nl": "Tunnel MIVB Albert – Jupiterlaan",
       "niveau": "-",
       "ids_externes": {
         "ogc_fid": 84,
@@ -1083,8 +1083,8 @@
     },
     "G000104": {
       "genre": "tunnel",
-      "name_fr": "Tunnel STIB Boileau  Boulevard Louis Schmidt",
-      "name_nl": "Tunnel MIVB Boileau  Louis Schmidtlaan",
+      "name_fr": "Tunnel STIB Boileau – Boulevard Louis Schmidt",
+      "name_nl": "Tunnel MIVB Boileau – Louis Schmidtlaan",
       "niveau": "-",
       "ids_externes": {
         "ogc_fid": 103,
@@ -1153,8 +1153,8 @@
     },
     "G000111": {
       "genre": "tunnel",
-      "name_fr": "Tunnel STIB Route de Lennik  Erasme",
-      "name_nl": "Tunnel MIVB Lennikse Baan  Erasmus",
+      "name_fr": "Tunnel STIB Route de Lennik – Erasme",
+      "name_nl": "Tunnel MIVB Lennikse Baan – Erasmus",
       "niveau": "0",
       "ids_externes": {
         "ogc_fid": 110,
@@ -1237,8 +1237,8 @@
     },
     "G000119": {
       "genre": "tunnel",
-      "name_fr": "Tunnel STIB Boulevard Auguste Reyers  Diamant",
-      "name_nl": "Tunnel MIVB Auguste Reyerslaan  Diamant",
+      "name_fr": "Tunnel STIB Boulevard Auguste Reyers – Diamant",
+      "name_nl": "Tunnel MIVB Auguste Reyerslaan – Diamant",
       "niveau": "-",
       "ids_externes": {
         "ogc_fid": 117,
@@ -1376,7 +1376,7 @@
     "G000132": {
       "genre": "tunnel",
       "name_fr": "Tunnel STIB Cité Modèle - Roi Baudouin",
-      "name_nl": "Tunnel MIVB Modelwijk  Koning Boudewijn",
+      "name_nl": "Tunnel MIVB Modelwijk – Koning Boudewijn",
       "niveau": "-",
       "ids_externes": {
         "ogc_fid": 132,
@@ -1605,8 +1605,8 @@
     },
     "G000154": {
       "genre": "tunnel",
-      "name_fr": "Tunnel STIB Hermann-Debroux  Avenue Joseph Chaudron",
-      "name_nl": "Tunnel MIVB Hermann-Debroux  Joseph Chaudronlaan",
+      "name_fr": "Tunnel STIB Hermann-Debroux – Avenue Joseph Chaudron",
+      "name_nl": "Tunnel MIVB Hermann-Debroux – Joseph Chaudronlaan",
       "niveau": "-",
       "ids_externes": {
         "ogc_fid": 154,
