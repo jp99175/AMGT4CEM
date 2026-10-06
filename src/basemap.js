@@ -30,8 +30,8 @@ const AMGT4CEM_Basemap = {
   // Sources d'orthophotos, dans l'ordre d'affichage du bouton de bascule.
   // `defaultOrder` : préférence quand aucun choix n'a été mémorisé pour l'année.
   SOURCES: {
-    bruxelles: { label: 'Bruxelles' },
-    vlaanderen: { label: 'Flandre' },
+    bruxelles: { label: 'Bruxelles', logo: './assets/logo-bruxelles.png', logoAlt: 'Région de Bruxelles-Capitale' },
+    vlaanderen: { label: 'Flandre', logo: './assets/logo-vlaanderen.png', logoAlt: 'Vlaanderen' },
   },
   DEFAULT_SOURCE: 'bruxelles',
   _SOURCE_STORAGE_PREFIX: 'amgt-ortho-source-',

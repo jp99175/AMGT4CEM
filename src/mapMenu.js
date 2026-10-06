@@ -88,6 +88,7 @@ const AMGT4CEM_MapMenu = {
     const nextBtn = document.getElementById('amgt-year-next');
     const latestBtn = document.getElementById('amgt-year-latest');
     const yearLabel = document.getElementById('amgt-bruciel-year-label');
+    const sourceLogo = document.getElementById('amgt-source-logo');
 
     // Ligne du temps : un élément par millésime accessible (voir
     // AMGT4CEM_Basemap.getAccessibleTimeline), chacun avec ses sources
@@ -113,6 +114,15 @@ const AMGT4CEM_MapMenu = {
       const hasChoice = !!item && item.sources.length > 1;
       yearLabel.classList.toggle('amgt-has-choice', hasChoice);
       yearLabel.disabled = !hasChoice;
+      // Logo de l'entité dont l'orthophoto est affichée (source courante).
+      const shown = item ? AMGT4CEM_Basemap.SOURCES[currentSource || item.sources[0].source] : null;
+      sourceLogo.classList.toggle('amgt-hidden', !shown);
+      if (shown) {
+        sourceLogo.src = shown.logo;
+        sourceLogo.alt = shown.logoAlt;
+        sourceLogo.title = shown.logoAlt;
+      }
+
       if (!item) {
         yearLabel.removeAttribute('title');
       } else if (hasChoice) {

@@ -246,6 +246,11 @@ dans cette unique série, de façon transparente pour l'utilisateur :
   sans (affichage correct, mais la capture d'écran du fond est alors
   impossible pour ces années).
 
+  **Logo de la source.** À droite de la date, un micro logo rond indique
+  l'entité dont l'orthophoto est affichée : le lion sur fond jaune pour la
+  Flandre, l'iris sur fond blanc pour Bruxelles (`assets/logo-vlaanderen.png`
+  et `assets/logo-bruxelles.png`, 96 px, recadrés depuis les logos officiels).
+
   **Crédits.** Le crédit en bas à droite suit la couche affichée (organisme
   et millésime : « © urban.brussels – Bruciel (1953) », « © CIRB/CIBG – UrbIS
   (2016) », « © Digitaal Vlaanderen – orthophoto 2016 »), et « © CIRB/CIBG –
