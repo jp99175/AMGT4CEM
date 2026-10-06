@@ -57,6 +57,7 @@ const AMGT4CEM_SettingsStore = {
       urbisLayers: config.basemaps.urbis.layers,
       brucielHistoriqueUrl: histEntry ? histEntry.url : '',
       brucielRecentUrl: recentEntry ? recentEntry.url : '',
+      flandreUrl: config.basemaps.flandre.url,
       geocoderUrl: config.geocoder.url,
       relayUrl: config.peLabelAnchorsRelayUrl || '',
     };
@@ -71,6 +72,8 @@ const AMGT4CEM_SettingsStore = {
         if (o.brucielRecentUrl && entry.year >= 2004) entry.url = o.brucielRecentUrl;
       }
     }
+
+    if (o.flandreUrl) config.basemaps.flandre.url = o.flandreUrl;
 
     if (o.geocoderUrl) config.geocoder.url = o.geocoderUrl;
     if (o.relayUrl) config.peLabelAnchorsRelayUrl = o.relayUrl;

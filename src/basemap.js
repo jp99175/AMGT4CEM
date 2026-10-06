@@ -1,6 +1,8 @@
 /**
- * Fonds de plan : UrbIS et Bruciel (ligne du temps orthophotos, une couche
- * par année, de 1935 à la plus récente disponible).
+ * Fonds de plan : UrbIS et orthophotos (ligne du temps unique alimentée par
+ * deux sources : Bruxelles — Bruciel/UrbIS, 1935-2022 — et Flandre — Digitaal
+ * Vlaanderen, 2000-2025). Un millésime présent dans les deux sources peut
+ * être affiché depuis l'une ou l'autre (choix mémorisé par année).
  *
  * Une seule couche de fond est ajoutée à la carte à la fois ; changer de fond
  * ou d'année Bruciel retire l'ancienne couche et ajoute la nouvelle.
@@ -20,15 +22,65 @@ const AMGT4CEM_Basemap = {
   _map: null,
   _currentLayer: null,
   _leafletCrsCache: {},
-  _brucielLayersByYear: {},
+  _layersById: {},
+  _entries: [],
   _accessibilityChecks: {},
+
+  // Sources d'orthophotos, dans l'ordre d'affichage du bouton de bascule.
+  // `defaultOrder` : préférence quand aucun choix n'a été mémorisé pour l'année.
+  SOURCES: {
+    bruxelles: { label: 'Bruxelles' },
+    vlaanderen: { label: 'Flandre' },
+  },
+  DEFAULT_SOURCE: 'bruxelles',
+  _SOURCE_STORAGE_PREFIX: 'amgt-ortho-source-',
 
   init(map) {
     this._map = map;
-    this._brucielLayersByYear = {};
-    for (const entry of AMGT4CEM_CONFIG.basemaps.bruciel.entries) {
-      this._brucielLayersByYear[entry.year] = this._buildLayer(entry);
+    this._layersById = {};
+    this._entries = this._buildEntries();
+    for (const entry of this._entries) this._layersById[entry.id] = this._buildLayer(entry);
+  },
+
+  /**
+   * Fusionne les séries bruxelloise (config.basemaps.bruciel) et flamande
+   * (config.basemaps.flandre) en une liste d'entrées WMS homogènes. Les
+   * entrées flamandes reçoivent les réglages communs du service (URL, emprise
+   * de la Région) ; la clé `key` désigne le millésime affiché dans la ligne
+   * du temps (l'année, ou la plage pour les compilations multi-années) : deux
+   * entrées de sources différentes partageant la même `key` sont des doublons
+   * entre lesquels l'utilisateur peut basculer.
+   */
+  _buildEntries() {
+    const cfg = AMGT4CEM_CONFIG.basemaps;
+    const entries = cfg.bruciel.entries.map((e) => ({ ...e, key: String(e.year), sortYear: e.year }));
+
+    const fl = cfg.flandre;
+    const flBounds = fl.regionBboxLambert
+      ? L.latLngBounds(
+          AMGT4CEM_CRS.lambertToLatLng([fl.regionBboxLambert[0], fl.regionBboxLambert[1]]),
+          AMGT4CEM_CRS.lambertToLatLng([fl.regionBboxLambert[2], fl.regionBboxLambert[3]]),
+        )
+      : null;
+    for (const e of fl.entries) {
+      const key = e.period || String(e.year);
+      entries.push({
+        id: `vlaanderen-${key}`,
+        key,
+        sortYear: e.year,
+        year: e.year,
+        label: `Flandre ${key}`,
+        source: 'vlaanderen',
+        type: 'wms',
+        url: fl.url,
+        layers: e.layers,
+        version: '1.3.0',
+        format: 'image/jpeg',
+        attribution: '&copy; Digitaal Vlaanderen',
+        bounds: flBounds,
+      });
     }
+    return entries;
   },
 
   /**
@@ -39,28 +91,55 @@ const AMGT4CEM_Basemap = {
   },
 
   /**
-   * Affiche la couche Bruciel correspondant à l'année donnée (voir
-   * AMGT4CEM_CONFIG.basemaps.bruciel.entries pour les années disponibles).
+   * Affiche l'orthophoto du millésime `key`, issue de la source `source`
+   * (par défaut : celle mémorisée pour ce millésime, sinon la source par
+   * défaut, sinon la première disponible — voir getPreferredSource).
+   * Retourne la source effectivement affichée.
    */
-  showBruciel(year) {
-    const layer = this._brucielLayersByYear[year];
-    if (!layer) {
-      console.warn('[AMGT4CEM] Année Bruciel inconnue :', year);
-      return;
-    }
-    this._setActiveLayer(layer);
+  showOrtho(item, source) {
+    const chosen = source || this.getPreferredSource(item);
+    const choice = item.sources.find((s) => s.source === chosen) || item.sources[0];
+    this._setActiveLayer(this._layersById[choice.entry.id]);
+    return choice.source;
+  },
+
+  /** Source préférée pour ce millésime (choix mémorisé, sinon défaut). */
+  getPreferredSource(item) {
+    let stored = null;
+    try {
+      stored = localStorage.getItem(this._SOURCE_STORAGE_PREFIX + item.key);
+    } catch (_) { /* stockage indisponible : on retombe sur le défaut */ }
+    if (stored && item.sources.some((s) => s.source === stored)) return stored;
+    if (item.sources.some((s) => s.source === this.DEFAULT_SOURCE)) return this.DEFAULT_SOURCE;
+    return item.sources[0].source;
+  },
+
+  /** Mémorise, par appareil, la source choisie pour ce millésime. */
+  rememberSource(item, source) {
+    try {
+      localStorage.setItem(this._SOURCE_STORAGE_PREFIX + item.key, source);
+    } catch (_) { /* sans conséquence : le choix vaut pour la session seulement */ }
   },
 
   /**
-   * Sonde l'accessibilité de chaque année Bruciel (une requête GetMap minimale
-   * par couche, mise en cache pour la session) et retourne les années
-   * effectivement accessibles, dans leur ordre chronologique.
-   * @returns {Promise<number[]>}
+   * Sonde l'accessibilité de chaque entrée (une requête GetMap minimale par
+   * couche, mise en cache pour la session) et retourne la ligne du temps :
+   * un élément par millésime, avec les sources accessibles pour ce millésime,
+   * en ordre chronologique. Les millésimes sans aucune source accessible sont
+   * omis.
+   * @returns {Promise<{key: string, sortYear: number, sources: {source: string, entry: object}[]}[]>}
    */
-  async getAccessibleBrucielYears() {
-    const entries = AMGT4CEM_CONFIG.basemaps.bruciel.entries;
-    const results = await Promise.all(entries.map((entry) => this._checkAccessible(entry)));
-    return entries.filter((_, i) => results[i]).map((entry) => entry.year);
+  async getAccessibleTimeline() {
+    const results = await Promise.all(this._entries.map((entry) => this._checkAccessible(entry)));
+    const byKey = new Map();
+    this._entries.forEach((entry, i) => {
+      if (!results[i]) return;
+      if (!byKey.has(entry.key)) byKey.set(entry.key, { key: entry.key, sortYear: entry.sortYear, sources: [] });
+      byKey.get(entry.key).sources.push({ source: entry.source, entry });
+    });
+    // Plage multi-années triée sur sa dernière année ; à égalité, la plage
+    // (compilation) passe après l'année isolée.
+    return [...byKey.values()].sort((a, b) => a.sortYear - b.sortYear || a.key.length - b.key.length);
   },
 
   _checkAccessible(entry) {
@@ -68,6 +147,8 @@ const AMGT4CEM_Basemap = {
 
     const promise = new Promise((resolve) => {
       const [minX, minY, maxX, maxY] = AMGT4CEM_CONFIG.probeBboxLambert;
+      // Les couches sans `crs` forcé (Flandre) sont sondées en Lambert 72 aussi :
+      // le service le déclare, et c'est la bbox de sondage qui est en Lambert.
       const params = new URLSearchParams({
         service: 'WMS',
         request: 'GetMap',
@@ -132,6 +213,9 @@ const AMGT4CEM_Basemap = {
     // Leaflet à requêter ce fond dans son CRS natif, sans changer le CRS
     // d'affichage général de la carte (Leaflet convertit automatiquement).
     if (entry.crs) options.crs = this._resolveLeafletCrs(entry.crs);
+    // Limite le chargement des tuiles à cette emprise (WGS84) : rien n'est
+    // demandé au serveur ni affiché au-delà (voir config.basemaps.flandre).
+    if (entry.bounds) options.bounds = entry.bounds;
 
     return L.tileLayer.wms(entry.url, options);
   },

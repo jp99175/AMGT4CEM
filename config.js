@@ -140,6 +140,7 @@ const AMGT4CEM_CONFIG = {
       ].map((e) => ({
         id: `bruciel-${e.year}`,
         label: `Bruciel ${e.year}`,
+        source: 'bruxelles',
         type: 'wms',
         url: e.url,
         layers: e.layers,
@@ -149,6 +150,38 @@ const AMGT4CEM_CONFIG = {
         attribution: e.attribution,
         year: e.year,
       })),
+    },
+
+    // Orthophotos de la Flandre (Digitaal Vlaanderen, "Orthofotomozaïek,
+    // middenschalig, winteropnamen"), proposées EN PLUS de la série bruxelloise
+    // ci-dessus, dans la même ligne du temps : quand une année existe dans les
+    // deux sources (2012, 2014, 2016-2022), l'utilisateur bascule de l'une à
+    // l'autre depuis la barre des années (la plus nette peut différer d'une
+    // année à l'autre) et son choix est mémorisé par année (voir basemap.js).
+    // Noms de couches confirmés via un GetCapabilities réel fourni par
+    // l'utilisateur (https://geo.api.vlaanderen.be/OMW/wms) : 25 cm jusqu'en
+    // 2021, 15 cm à partir de 2022 ; EPSG:3857 et 31370 déclarés, donc aucun
+    // `crs` forcé ici (contrairement à Bruciel). 2000-2003, 2005-2007 et
+    // 2008-2011 sont des compilations de plusieurs campagnes (`period`) ; la
+    // couche `<nom>_vdc` de chaque couche donne la date de vol exacte.
+    //
+    // `regionBboxLambert` : emprise [minX, minY, maxX, maxY] (Lambert 72) hors
+    // de laquelle aucune tuile flamande n'est demandée — seule la Région de
+    // Bruxelles-Capitale intéresse l'application, inutile de charger (ni
+    // d'afficher) la Flandre autour. Rectangle englobant approximatif (pas le
+    // contour exact de la Région) : à resserrer ici si besoin.
+    flandre: {
+      url: 'https://geo.api.vlaanderen.be/OMW/wms',
+      regionBboxLambert: [137000, 156000, 167000, 187000],
+      entries: [
+        { year: 2003, period: '2000-2003', layers: 'OMWRGB00_03VL' },
+        { year: 2007, period: '2005-2007', layers: 'OMWRGB05_07VL' },
+        { year: 2011, period: '2008-2011', layers: 'OMWRGB08_11VL' },
+        ...[12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25].map((yy) => ({
+          year: 2000 + yy,
+          layers: `OMWRGB${yy}VL`,
+        })),
+      ],
     },
   },
 

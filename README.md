@@ -189,7 +189,7 @@ poste.
 
 ### Orthophotos
 
-Une seule ligne du temps continue, de **1935 à 2022** (19 millésimes),
+Une seule ligne du temps continue, de **1935 à 2025**, alimentée par deux sources (Bruxelles et Flandre, voir plus bas),
 parcourue avec des chevrons ‹ › en bas de l'écran une fois "Orthophotos"
 sélectionné dans le menu. Contrairement à un simple curseur, **seules les
 années dont le service répond effectivement sont proposées** : à la
@@ -218,6 +218,30 @@ dans cette unique série, de façon transparente pour l'utilisateur :
   Couches `urbisgrid:Ortho<année>`. Noms confirmés en extrayant les URLs de
   légende réellement générées par la page MobiGIS (snapshot HTML fourni par
   l'utilisateur).
+
+- **Flandre, 2000-2025** : Digitaal Vlaanderen, « Orthofotomozaïek,
+  middenschalig, winteropnamen », service WMS
+  `https://geo.api.vlaanderen.be/OMW/wms` (`AMGT4CEM_CONFIG.basemaps.flandre`).
+  Couches `OMWRGB<aa>VL` pour 2012-2025 (25 cm jusqu'en 2021, 15 cm ensuite) et
+  trois compilations pluriannuelles : 2000-2003, 2005-2007 et 2008-2011
+  (la couche `…_vdc` de chacune donne les dates de vol exactes). Noms
+  confirmés via un `GetCapabilities` réel fourni par l'utilisateur.
+
+  **Doublons et choix de la source.** Les millésimes présents dans les deux
+  sources (2012, 2014, 2016-2022) affichent un bouton **Bruxelles / Flandre**
+  dans la barre des années : un clic bascule d'une source à l'autre, et le
+  choix est mémorisé **par année** sur l'appareil (par défaut : Bruxelles).
+  Les années propres à une source (1935-1996, 2004, 2009, 2013, 2015,
+  2023-2025, plages 2000-2003, 2005-2007 et 2008-2011) n'ont pas de bouton.
+
+  **Emprise.** Les tuiles flamandes ne sont demandées que dans un rectangle
+  autour de la Région de Bruxelles-Capitale (`regionBboxLambert` dans
+  `config.js`) : rien n'est chargé ni affiché plus loin en Flandre. C'est un
+  rectangle englobant, pas le contour exact de la Région : les coins peuvent
+  montrer un peu de Flandre/Wallonie, et les tuiles de bord sont chargées
+  entières. À vérifier : que la mosaïque flamande couvre bien Bruxelles (sinon
+  les années Flandre s'affichent vides — voir la requête de test GetMap
+  dans l'historique).
 
 Aucun nom de couche ci-dessus n'est deviné. Pour ajouter un millésime plus
 récent quand il sera identifié, ajoutez une entrée dans

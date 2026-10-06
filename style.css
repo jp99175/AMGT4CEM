@@ -528,7 +528,7 @@ html, body {
 }
 
 #amgt-bruciel-year-label {
-  min-width: 3.5em;
+  min-width: 5.5em;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -811,4 +811,20 @@ html, body {
   /* Halo blanc (au lieu d'un fond plein) pour rester lisible sur un fond de
      carte chargé, sans cacher le pixel transparent au centre du réticule. */
   filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff);
+}
+
+/* Bascule de source d'orthophoto (visible seulement pour un millésime présent dans plusieurs sources) */
+.amgt-source-btn {
+  background: #2c3e50;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  padding: 4px 8px;
+  margin-left: 2px;
+  cursor: pointer;
+}
+
+.amgt-source-btn:hover {
+  background: #3d566e;
 }

@@ -82,6 +82,7 @@ const AMGT4CEM_SettingsPanel = {
       urbisLayers: document.getElementById('amgt-settings-urbis-layers'),
       brucielHistoriqueUrl: document.getElementById('amgt-settings-bruciel-hist-url'),
       brucielRecentUrl: document.getElementById('amgt-settings-bruciel-recent-url'),
+      flandreUrl: document.getElementById('amgt-settings-flandre-url'),
       geocoderUrl: document.getElementById('amgt-settings-geocoder-url'),
       relayUrl: document.getElementById('amgt-settings-relay-url'),
     };
@@ -156,7 +157,7 @@ const AMGT4CEM_SettingsPanel = {
     document.getElementById('amgt-settings-reset').addEventListener('click', () => {
       // Remplit seulement les champs de cet onglet avec les adresses de config.js ; rien n'est enregistré avant « Enregistrer ».
       const fields = this._fields();
-      for (const key of ['urbisUrl', 'urbisLayers', 'brucielHistoriqueUrl', 'brucielRecentUrl', 'geocoderUrl']) {
+      for (const key of ['urbisUrl', 'urbisLayers', 'brucielHistoriqueUrl', 'brucielRecentUrl', 'flandreUrl', 'geocoderUrl']) {
         fields[key].value = AMGT4CEM_SettingsStore.defaults[key] || '';
       }
       this._status('sources', "Valeurs par défaut remplies : « Enregistrer » pour les envoyer au serveur.");

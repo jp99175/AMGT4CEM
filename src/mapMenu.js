@@ -88,49 +88,74 @@ const AMGT4CEM_MapMenu = {
     const nextBtn = document.getElementById('amgt-year-next');
     const latestBtn = document.getElementById('amgt-year-latest');
     const yearLabel = document.getElementById('amgt-bruciel-year-label');
+    const sourceBtn = document.getElementById('amgt-source-toggle');
 
-    // Années réellement accessibles, dans l'ordre chronologique. Sondées une
-    // seule fois (résultat mis en cache par AMGT4CEM_Basemap) lors du premier
-    // passage sur "Orthophotos" ; tant que le sondage n'est pas terminé, la
-    // navigation est désactivée plutôt que de risquer d'afficher une image
-    // cassée ou un message d'erreur.
-    let accessibleYears = null;
+    // Ligne du temps : un élément par millésime accessible (voir
+    // AMGT4CEM_Basemap.getAccessibleTimeline), chacun avec ses sources
+    // accessibles. Sondée une seule fois (résultat mis en cache par
+    // AMGT4CEM_Basemap) lors du premier passage sur "Orthophotos" ; tant que
+    // le sondage n'est pas terminé, la navigation est désactivée plutôt que
+    // de risquer d'afficher une image cassée ou un message d'erreur.
+    let timeline = null;
     let currentIndex = -1;
+    let currentSource = null;
 
     const renderNav = () => {
-      const hasYears = accessibleYears && accessibleYears.length > 0;
-      const atLatest = !hasYears || currentIndex >= accessibleYears.length - 1;
-      yearLabel.textContent = hasYears ? accessibleYears[currentIndex] : (accessibleYears ? '—' : '…');
+      const hasYears = timeline && timeline.length > 0;
+      const atLatest = !hasYears || currentIndex >= timeline.length - 1;
+      yearLabel.textContent = hasYears ? timeline[currentIndex].key : (timeline ? '—' : '…');
       prevBtn.disabled = !hasYears || currentIndex <= 0;
       nextBtn.disabled = atLatest;
       latestBtn.disabled = atLatest;
+
+      // Le bouton de source n'apparaît que si ce millésime existe dans
+      // plusieurs sources (doublon) : sinon il n'y a rien à choisir.
+      const item = hasYears ? timeline[currentIndex] : null;
+      const hasChoice = item && item.sources.length > 1;
+      sourceBtn.classList.toggle('amgt-hidden', !hasChoice);
+      if (hasChoice) {
+        const label = AMGT4CEM_Basemap.SOURCES[currentSource].label;
+        sourceBtn.textContent = label;
+        sourceBtn.title = `Source : ${label} (cliquer pour changer — ce millésime existe dans plusieurs sources)`;
+      }
     };
 
     const showYearAt = (index) => {
       currentIndex = index;
+      const item = timeline[currentIndex];
+      currentSource = AMGT4CEM_Basemap.showOrtho(item);
       renderNav();
-      AMGT4CEM_Basemap.showBruciel(accessibleYears[currentIndex]);
     };
 
-    const ensureAccessibleYearsLoaded = async () => {
-      if (accessibleYears) return;
+    const ensureTimelineLoaded = async () => {
+      if (timeline) return;
       renderNav(); // affiche "…" pendant le sondage
-      accessibleYears = await AMGT4CEM_Basemap.getAccessibleBrucielYears();
-      if (accessibleYears.length > 0) {
-        showYearAt(accessibleYears.length - 1); // la plus récente accessible
+      timeline = await AMGT4CEM_Basemap.getAccessibleTimeline();
+      if (timeline.length > 0) {
+        showYearAt(timeline.length - 1); // le plus récent accessible
       } else {
         renderNav();
       }
     };
 
     prevBtn.addEventListener('click', () => {
-      if (accessibleYears && currentIndex > 0) showYearAt(currentIndex - 1);
+      if (timeline && currentIndex > 0) showYearAt(currentIndex - 1);
     });
     nextBtn.addEventListener('click', () => {
-      if (accessibleYears && currentIndex < accessibleYears.length - 1) showYearAt(currentIndex + 1);
+      if (timeline && currentIndex < timeline.length - 1) showYearAt(currentIndex + 1);
     });
     latestBtn.addEventListener('click', () => {
-      if (accessibleYears && accessibleYears.length > 0) showYearAt(accessibleYears.length - 1);
+      if (timeline && timeline.length > 0) showYearAt(timeline.length - 1);
+    });
+    sourceBtn.addEventListener('click', () => {
+      if (!timeline || currentIndex < 0) return;
+      const item = timeline[currentIndex];
+      if (item.sources.length < 2) return;
+      const i = item.sources.findIndex((s) => s.source === currentSource);
+      const next = item.sources[(i + 1) % item.sources.length].source;
+      AMGT4CEM_Basemap.rememberSource(item, next);
+      currentSource = AMGT4CEM_Basemap.showOrtho(item, next);
+      renderNav();
     });
 
     document.querySelectorAll('input[name="amgt-basemap"]').forEach((radio) => {
@@ -138,7 +163,7 @@ const AMGT4CEM_MapMenu = {
         if (!radio.checked) return;
         bar.classList.toggle('amgt-hidden', radio.value !== 'bruciel');
         if (radio.value === 'urbis') AMGT4CEM_Basemap.showUrbis();
-        else if (radio.value === 'bruciel') ensureAccessibleYearsLoaded();
+        else if (radio.value === 'bruciel') ensureTimelineLoaded();
       });
     });
   },
