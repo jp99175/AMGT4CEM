@@ -528,7 +528,6 @@ html, body {
 }
 
 #amgt-bruciel-year-label {
-  min-width: 5.5em;
   text-align: center;
   font: inherit;
   font-variant-numeric: tabular-nums;
@@ -837,5 +836,6 @@ html, body {
   height: 22px;
   border-radius: 50%;
   box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
-  margin-left: 2px;
+  /* 6 px de marge de la date + 4 px de gap + 4 px = environ 1 em (espace long) entre la date et le logo. */
+  margin-left: 4px;
 }
