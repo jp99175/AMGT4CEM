@@ -31,7 +31,7 @@ const AMGT4CEM_UrbisTopoLayer = {
 
   init(map) {
     this._map = map;
-    this._group = L.layerGroup();
+    this._group = L.layerGroup([], { attribution: '&copy; CIRB/CIBG &ndash; UrbIS Topo' });
 
     AMGT4CEM_UrbisTopoSelectionStore.onChange(() => this.refresh());
 

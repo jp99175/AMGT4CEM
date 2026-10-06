@@ -25,6 +25,7 @@ const AMGT4CEM_Basemap = {
   _layersById: {},
   _entries: [],
   _accessibilityChecks: {},
+  _regionRingsPromise: null,
 
   // Sources d'orthophotos, dans l'ordre d'affichage du bouton de bascule.
   // `defaultOrder` : préférence quand aucun choix n'a été mémorisé pour l'année.
@@ -53,7 +54,14 @@ const AMGT4CEM_Basemap = {
    */
   _buildEntries() {
     const cfg = AMGT4CEM_CONFIG.basemaps;
-    const entries = cfg.bruciel.entries.map((e) => ({ ...e, key: String(e.year), sortYear: e.year }));
+    // Le crédit affiché (bas droit, contrôle d'attribution de Leaflet) suit
+    // la couche affichée : organisme + millésime.
+    const entries = cfg.bruciel.entries.map((e) => ({
+      ...e,
+      key: String(e.year),
+      sortYear: e.year,
+      attribution: `${e.attribution} (${e.year})`,
+    }));
 
     const fl = cfg.flandre;
     const flBounds = fl.regionBboxLambert
@@ -76,8 +84,9 @@ const AMGT4CEM_Basemap = {
         layers: e.layers,
         version: '1.3.0',
         format: 'image/jpeg',
-        attribution: '&copy; Digitaal Vlaanderen',
+        attribution: `${fl.attribution} &ndash; orthophoto ${key}`,
         bounds: flBounds,
+        clipToRegion: true,
       });
     }
     return entries;
@@ -184,6 +193,103 @@ const AMGT4CEM_Basemap = {
     return promise;
   },
 
+  // ---- Découpe selon le contour de la Région ---------------------------------
+
+  /**
+   * Contour de la Région (anneaux en WGS84), lu une seule fois dans UrbIS Adm
+   * (voir config.basemaps.flandre.regionBoundary). Résolu à `null` en cas
+   * d'échec : les tuiles sont alors affichées entières, dans le rectangle
+   * `bounds` seulement.
+   * @returns {Promise<L.LatLng[][]|null>}
+   */
+  _getRegionRings() {
+    if (this._regionRingsPromise) return this._regionRingsPromise;
+    const { wfsUrl, version, typeName } = AMGT4CEM_CONFIG.basemaps.flandre.regionBoundary;
+    const params = new URLSearchParams({
+      service: 'WFS',
+      version,
+      request: 'GetFeature',
+      typeName,
+      outputFormat: 'application/json',
+      srsName: AMGT4CEM_CONFIG.businessCRS.epsg,
+    });
+    this._regionRingsPromise = fetch(`${wfsUrl}?${params.toString()}`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((geojson) => {
+        const rings = [];
+        for (const feature of geojson.features || []) {
+          const g = feature.geometry;
+          if (!g) continue;
+          const polygons = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+          for (const polygon of polygons) {
+            for (const ring of polygon) rings.push(ring.map((pair) => AMGT4CEM_CRS.lambertToLatLng(pair)));
+          }
+        }
+        if (rings.length === 0) throw new Error('aucun polygone');
+        return rings;
+      })
+      .catch((err) => {
+        console.warn('[AMGT4CEM] Contour de la Région illisible, orthophotos Flandre non découpées :', err);
+        return null;
+      });
+    return this._regionRingsPromise;
+  },
+
+  /**
+   * Couche WMS dont chaque tuile est dessinée dans un canvas découpé selon le
+   * contour de la Région (option `regionRings`, fonction renvoyant la
+   * promesse des anneaux). L'image est d'abord demandée avec CORS (canvas non
+   * "souillé", capture d'écran possible) ; si le serveur ne l'autorise pas,
+   * elle est redemandée sans CORS (affichage correct, mais capture d'écran
+   * du fond impossible).
+   */
+  _ClippedWmsLayer: L.TileLayer.WMS.extend({
+    createTile(coords, done) {
+      const size = this.getTileSize();
+      const tile = document.createElement('canvas');
+      tile.width = size.x;
+      tile.height = size.y;
+      tile.className = 'leaflet-tile';
+
+      const draw = (img) => {
+        this.options.regionRings().then((rings) => {
+          const ctx = tile.getContext('2d');
+          if (rings) {
+            const origin = coords.scaleBy(size);
+            ctx.beginPath();
+            for (const ring of rings) {
+              ring.forEach((latlng, i) => {
+                const p = this._map.project(latlng, coords.z).subtract(origin);
+                if (i === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+              });
+              ctx.closePath();
+            }
+            ctx.clip();
+          }
+          ctx.drawImage(img, 0, 0, size.x, size.y);
+          done(null, tile);
+        });
+      };
+
+      const url = this.getTileUrl(coords);
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => draw(img);
+      img.onerror = () => {
+        const retry = new Image();
+        retry.onload = () => draw(retry);
+        retry.onerror = (e) => done(e, tile);
+        retry.src = url;
+      };
+      img.src = url;
+      return tile;
+    },
+  }),
+
   _setActiveLayer(layer) {
     if (this._currentLayer === layer) return;
     if (this._currentLayer) this._map.removeLayer(this._currentLayer);
@@ -217,6 +323,10 @@ const AMGT4CEM_Basemap = {
     // demandé au serveur ni affiché au-delà (voir config.basemaps.flandre).
     if (entry.bounds) options.bounds = entry.bounds;
 
+    if (entry.clipToRegion) {
+      options.regionRings = () => this._getRegionRings();
+      return new this._ClippedWmsLayer(entry.url, options);
+    }
     return L.tileLayer.wms(entry.url, options);
   },
 

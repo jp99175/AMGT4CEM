@@ -88,7 +88,6 @@ const AMGT4CEM_MapMenu = {
     const nextBtn = document.getElementById('amgt-year-next');
     const latestBtn = document.getElementById('amgt-year-latest');
     const yearLabel = document.getElementById('amgt-bruciel-year-label');
-    const sourceBtn = document.getElementById('amgt-source-toggle');
 
     // Ligne du temps : un élément par millésime accessible (voir
     // AMGT4CEM_Basemap.getAccessibleTimeline), chacun avec ses sources
@@ -108,15 +107,19 @@ const AMGT4CEM_MapMenu = {
       nextBtn.disabled = atLatest;
       latestBtn.disabled = atLatest;
 
-      // Le bouton de source n'apparaît que si ce millésime existe dans
-      // plusieurs sources (doublon) : sinon il n'y a rien à choisir.
+      // Un millésime présent dans plusieurs sources (doublon) a sa date
+      // soulignée et cliquable : le clic bascule d'une source à l'autre.
       const item = hasYears ? timeline[currentIndex] : null;
-      const hasChoice = item && item.sources.length > 1;
-      sourceBtn.classList.toggle('amgt-hidden', !hasChoice);
-      if (hasChoice) {
-        const label = AMGT4CEM_Basemap.SOURCES[currentSource].label;
-        sourceBtn.textContent = label;
-        sourceBtn.title = `Source : ${label} (cliquer pour changer — ce millésime existe dans plusieurs sources)`;
+      const hasChoice = !!item && item.sources.length > 1;
+      yearLabel.classList.toggle('amgt-has-choice', hasChoice);
+      yearLabel.disabled = !hasChoice;
+      if (!item) {
+        yearLabel.removeAttribute('title');
+      } else if (hasChoice) {
+        const names = item.sources.map((s) => AMGT4CEM_Basemap.SOURCES[s.source].label).join(' / ');
+        yearLabel.title = `Source affichée : ${AMGT4CEM_Basemap.SOURCES[currentSource].label} — cliquer pour changer (${names})`;
+      } else {
+        yearLabel.title = `Source : ${AMGT4CEM_Basemap.SOURCES[item.sources[0].source].label}`;
       }
     };
 
@@ -147,7 +150,7 @@ const AMGT4CEM_MapMenu = {
     latestBtn.addEventListener('click', () => {
       if (timeline && timeline.length > 0) showYearAt(timeline.length - 1);
     });
-    sourceBtn.addEventListener('click', () => {
+    yearLabel.addEventListener('click', () => {
       if (!timeline || currentIndex < 0) return;
       const item = timeline[currentIndex];
       if (item.sources.length < 2) return;

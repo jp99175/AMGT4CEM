@@ -164,15 +164,23 @@ const AMGT4CEM_CONFIG = {
     // `crs` forcé ici (contrairement à Bruciel). 2000-2003, 2005-2007 et
     // 2008-2011 sont des compilations de plusieurs campagnes (`period`) ; la
     // couche `<nom>_vdc` de chaque couche donne la date de vol exacte.
-    //
-    // `regionBboxLambert` : emprise [minX, minY, maxX, maxY] (Lambert 72) hors
-    // de laquelle aucune tuile flamande n'est demandée — seule la Région de
-    // Bruxelles-Capitale intéresse l'application, inutile de charger (ni
-    // d'afficher) la Flandre autour. Rectangle englobant approximatif (pas le
-    // contour exact de la Région) : à resserrer ici si besoin.
     flandre: {
       url: 'https://geo.api.vlaanderen.be/OMW/wms',
+      // Contour de la Région de Bruxelles-Capitale : les tuiles flamandes sont
+      // découpées selon ce contour (rien n'est affiché au-delà de la Région).
+      // Il est lu à la demande dans UrbIS Adm (WFS, couche des 19 communes
+      // `UrbisAdm:Mu`, dont l'ensemble forme la Région) et renvoyé en EPSG:31370.
+      // Adresse et nom de couche relevés dans la documentation publique d'UrbIS
+      // mais non testés ici (domaine *.irisnet.be bloqué) : si la lecture échoue
+      // (réseau, CORS, nom de couche), le repli est le rectangle
+      // `regionBboxLambert` ci-dessous (approximatif, rien n'est découpé).
+      regionBoundary: {
+        wfsUrl: 'https://geoservices-urbis.irisnet.be/geoserver/UrbisAdm/ows',
+        version: '1.0.0',
+        typeName: 'UrbisAdm:Mu',
+      },
       regionBboxLambert: [137000, 156000, 167000, 187000],
+      attribution: '&copy; Digitaal Vlaanderen',
       entries: [
         { year: 2003, period: '2000-2003', layers: 'OMWRGB00_03VL' },
         { year: 2007, period: '2005-2007', layers: 'OMWRGB05_07VL' },

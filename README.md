@@ -228,20 +228,28 @@ dans cette unique série, de façon transparente pour l'utilisateur :
   confirmés via un `GetCapabilities` réel fourni par l'utilisateur.
 
   **Doublons et choix de la source.** Les millésimes présents dans les deux
-  sources (2012, 2014, 2016-2022) affichent un bouton **Bruxelles / Flandre**
-  dans la barre des années : un clic bascule d'une source à l'autre, et le
-  choix est mémorisé **par année** sur l'appareil (par défaut : Bruxelles).
-  Les années propres à une source (1935-1996, 2004, 2009, 2013, 2015,
-  2023-2025, plages 2000-2003, 2005-2007 et 2008-2011) n'ont pas de bouton.
+  sources (2012, 2014, 2016-2022) ont leur **date soulignée** dans la barre
+  des années : un clic sur la date bascule de Bruxelles à la Flandre (et
+  inversement), et le choix est mémorisé **par année** sur l'appareil. Par
+  défaut, c'est la source bruxelloise qui s'affiche. Les années propres à
+  une source (1935-1996, 2004, 2009, 2013, 2015, 2023-2025, plages 2000-2003,
+  2005-2007 et 2008-2011) ne sont pas soulignées.
 
-  **Emprise.** Les tuiles flamandes ne sont demandées que dans un rectangle
-  autour de la Région de Bruxelles-Capitale (`regionBboxLambert` dans
-  `config.js`) : rien n'est chargé ni affiché plus loin en Flandre. C'est un
-  rectangle englobant, pas le contour exact de la Région : les coins peuvent
-  montrer un peu de Flandre/Wallonie, et les tuiles de bord sont chargées
-  entières. À vérifier : que la mosaïque flamande couvre bien Bruxelles (sinon
-  les années Flandre s'affichent vides — voir la requête de test GetMap
-  dans l'historique).
+  **Emprise.** Les tuiles flamandes sont découpées selon le contour de la
+  Région de Bruxelles-Capitale, lu à la demande dans UrbIS Adm (WFS, couche
+  `UrbisAdm:Mu` = les 19 communes, `config.basemaps.flandre.regionBoundary`) :
+  rien n'est affiché au-delà. Si cette lecture échoue (réseau, CORS, nom de
+  couche — non testé depuis le bac à sable), les tuiles s'affichent entières
+  dans le rectangle `regionBboxLambert` (approximatif). La découpe passe par
+  un canvas par tuile (`AMGT4CEM_Basemap._ClippedWmsLayer`) : l'image est
+  demandée avec CORS ; si le serveur ne l'autorise pas, elle est redemandée
+  sans (affichage correct, mais la capture d'écran du fond est alors
+  impossible pour ces années).
+
+  **Crédits.** Le crédit en bas à droite suit la couche affichée (organisme
+  et millésime : « © urban.brussels – Bruciel (1953) », « © CIRB/CIBG – UrbIS
+  (2016) », « © Digitaal Vlaanderen – orthophoto 2016 »), et « © CIRB/CIBG –
+  UrbIS Topo » s'ajoute quand la couche UrbIS Topo est active.
 
 Aucun nom de couche ci-dessus n'est deviné. Pour ajouter un millésime plus
 récent quand il sera identifié, ajoutez une entrée dans
