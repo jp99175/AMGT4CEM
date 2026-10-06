@@ -14,7 +14,7 @@ Vérifie :
   - identifiants au bon format (G + 6 chiffres), non vides, UNIQUES sur les deux fichiers à la fois
     (copier ou scinder une entité dans AutoCAD duplique son id) ;
   - aucune géométrie sans entrée de référentiel, aucune entrée de référentiel sans géométrie ;
-  - `prochain_id` du référentiel supérieur à tout id utilisé, et identique dans polygones.json / lignes.json ;
+  - `prochain_id` (compteur unique, vocabulaires.json) supérieur à tout id utilisé ;
   - `genre` de chaque entrée déclaré dans vocabulaires.json ;
   - champs propres à chaque genre : nom (FR ou NL) des stations et tunnels, `sheet_ref` présent et
     unique pour les planches ; aucun caractère de contrôle dans les textes (encodage mal lu) ;
@@ -263,12 +263,15 @@ def main():
     verifier_etiquettes(ref_pol, ref_lig)
 
     # prochain_id
-    suivants = [r.get("prochain_id") for r in (ref_pol, ref_lig) if r is not None]
-    if len(set(suivants)) > 1:
-        err(f"prochain_id différent entre polygones.json et lignes.json : {suivants}")
+    for nom, ref in (("polygones.json", ref_pol), ("lignes.json", ref_lig)):
+        if ref is not None and "prochain_id" in ref:
+            err(f"{nom} : prochain_id ne doit figurer que dans vocabulaires.json (compteur unique)")
+    prochain = (voc or {}).get("prochain_id")
     nums = [int(v[1:]) for v in vus if FORMAT_ID.match(v)]
-    if nums and suivants and suivants[0] is not None and suivants[0] <= max(nums):
-        err(f"prochain_id ({suivants[0]}) doit être supérieur au plus grand id utilisé (G{max(nums):06d})")
+    if voc is not None and not isinstance(prochain, int):
+        err("vocabulaires.json : prochain_id absent ou non entier")
+    elif nums and prochain <= max(nums):
+        err(f"prochain_id ({prochain}) doit être supérieur au plus grand id utilisé (G{max(nums):06d})")
 
     n_pol, n_lig = len(ids_pol or []), len(ids_lig or [])
     print(f"polygones : {n_pol} entités ; lignes : {n_lig if ids_lig is not None else 'fichier absent (toléré)'}")

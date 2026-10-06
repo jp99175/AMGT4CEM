@@ -39,7 +39,8 @@ except ImportError:
     sys.exit("pyshp est requis : pip install pyshp")
 
 RACINE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-DATE = "2026-10-05"
+DATE = "2026-10-06"
+VERSION = 2  # 2 : prochain_id et couleur des planches dans vocabulaires.json, sans niveau ni préfixe de nom
 CRS = "EPSG:31370"
 # Encodage réel des .dbf d'origine : Windows-1252 (et non ISO-8859-1 comme l'annonçait Metro.cst) —
 # l'octet 0x96 y est un tiret « – », pas un caractère de contrôle (13 noms de tunnel concernés).
@@ -87,6 +88,20 @@ def anneaux_shape(shape):
     return [[tuple(p) for p in shape.points[bornes[i]:bornes[i + 1]]] for i in range(len(shape.parts))]
 
 
+# Préfixes retirés des noms : ils répètent le genre (« Station Montgomery » -> « Montgomery »,
+# « Tunnel STIB Horta - Albert » -> « Horta - Albert »).
+PREFIXES = {"station": ("Station ",), "tunnel": ("Tunnel STIB ", "Tunnel MIVB ")}
+
+
+def sans_prefixe(genre, nom, anomalies):
+    for p in PREFIXES[genre]:
+        if nom.startswith(p):
+            return nom[len(p):]
+    if nom:
+        anomalies.append(f"{genre} « {nom} » : préfixe attendu absent, nom gardé tel quel")
+    return nom
+
+
 def main():
     rapport = []  # (rubrique, lignes)
     anomalies = []
@@ -96,17 +111,20 @@ def main():
 
     # ---------- 1. Lecture de Metro.shp : stations et tunnels --------------------------------
     metro = shapefile.Reader(chemin("Metro_export_SHP", "Metro"), encoding="cp1252")
+    niveaux_source = Counter()
     entites = []  # [{genre, anneaux, ref}] dans l'ordre d'attribution des id
     pe_metro = []
     for shape, rec in zip(metro.shapes(), metro.records()):
         r = rec.as_dict()
         t = r["type"]
         if t in ("MS", "MT"):
+            genre = "station" if t == "MS" else "tunnel"
+            # `niveau` n'est PAS repris : « - » (142) ou « 0 » (14) dans Metro.dbf, valeurs non crédibles.
+            niveaux_source[r["niveau"]] += 1
             ref = {
-                "genre": "station" if t == "MS" else "tunnel",
-                "name_fr": r["name_fr"],
-                "name_nl": r["name_nl"],
-                "niveau": r["niveau"],
+                "genre": genre,
+                "name_fr": sans_prefixe(genre, r["name_fr"], anomalies),
+                "name_nl": sans_prefixe(genre, r["name_nl"], anomalies),
                 "ids_externes": {"ogc_fid": r["ogc_fid"]},
             }
             if r["id_objet"]:
@@ -136,7 +154,7 @@ def main():
         anneau = anneaux[0]
         if aire_signee(anneau) > 0:
             anneau.reverse()
-        ref = {"genre": "planche", "sheet_ref": sheet_ref, "couleur": COULEUR_PLANCHE}
+        ref = {"genre": "planche", "sheet_ref": sheet_ref}
         if not sheet_ref:
             anomalies.append("Planche sans sheet_ref dans le JSON patrimoine")
         entites.append({"genre": "planche", "anneaux": anneaux, "ref": ref})
@@ -182,33 +200,29 @@ def main():
     note("Sorties", f"data/geometries/polygones.shp : {len(entites)} polygones, champ unique `id` (G000001 à G{len(entites):06d}) ; .prj copié de Metro.prj.")
 
     # ---------- 4. Référentiel ---------------------------------------------------------------------
-    ref_pol = {
-        "version": 1,
-        "date": DATE,
-        "crs": CRS,
-        "prochain_id": prochain,
-        "entites": {e["id"]: e["ref"] for e in entites},
-    }
-    ecrire_json(ref_pol, "data", "referentiel", "polygones.json")
+    # prochain_id : compteur UNIQUE, commun à polygones.shp et lignes.shp, dans vocabulaires.json.
     ecrire_json(
-        {"version": 1, "date": DATE, "crs": CRS, "prochain_id": prochain, "entites": {}},
-        "data", "referentiel", "lignes.json",
+        {"version": VERSION, "date": DATE, "crs": CRS, "entites": {e["id"]: e["ref"] for e in entites}},
+        "data", "referentiel", "polygones.json",
     )
-    niveaux = sorted({e["ref"].get("niveau") for e in entites if e["ref"].get("niveau")})
+    ecrire_json({"version": VERSION, "date": DATE, "crs": CRS, "entites": {}}, "data", "referentiel", "lignes.json")
     ecrire_json(
         {
-            "version": 1,
+            "version": VERSION,
             "date": DATE,
-            "regle_id": "Chaîne opaque « G » + 6 chiffres, attribuée une fois, jamais réutilisée, unique sur polygones.shp ET lignes.shp. Aucune signification métier.",
+            "prochain_id": prochain,
+            "regle_id": "Chaîne opaque « G » + 6 chiffres, attribuée une fois, jamais réutilisée, unique sur polygones.shp ET lignes.shp. Aucune signification métier. Le prochain à attribuer est prochain_id (compteur unique pour les deux fichiers), à incrémenter à chaque attribution.",
             "genres": {
                 "station": {"libelle": "Station", "geometrie": "polygone"},
                 "tunnel": {"libelle": "Tunnel (tronçon)", "geometrie": "polygone"},
-                "planche": {"libelle": "Planche 1/500", "geometrie": "polygone"},
+                "planche": {"libelle": "Planche 1/500", "geometrie": "polygone", "couleur": COULEUR_PLANCHE},
             },
-            "niveaux": {"valeurs": niveaux, "note": "Valeurs relevées telles quelles dans Metro.dbf ; aucune interprétation."},
+            "niveaux": {"valeurs": [], "note": "À définir. Les valeurs de Metro.dbf (« - », « 0 ») n'étaient pas crédibles et n'ont pas été reprises."},
         },
         "data", "referentiel", "vocabulaires.json",
     )
+    note("Niveau", "Champ `niveau` non repris : " + ", ".join(f"« {k or '(vide)'} » ×{n}" for k, n in sorted(niveaux_source.items())) + " dans Metro.dbf, valeurs non crédibles. À renseigner plus tard dans le référentiel.")
+    note("Noms", "Préfixes « Station », « Tunnel STIB », « Tunnel MIVB » retirés des noms (ils répètent le genre).")
     note("Sorties", "data/referentiel/polygones.json, lignes.json (vide), vocabulaires.json.")
 
     # ---------- 5. Noms de station ------------------------------------------------------------------

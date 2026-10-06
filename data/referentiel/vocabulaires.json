@@ -1,7 +1,8 @@
 {
-  "version": 1,
-  "date": "2026-10-05",
-  "regle_id": "Chaîne opaque « G » + 6 chiffres, attribuée une fois, jamais réutilisée, unique sur polygones.shp ET lignes.shp. Aucune signification métier.",
+  "version": 2,
+  "date": "2026-10-06",
+  "prochain_id": 193,
+  "regle_id": "Chaîne opaque « G » + 6 chiffres, attribuée une fois, jamais réutilisée, unique sur polygones.shp ET lignes.shp. Aucune signification métier. Le prochain à attribuer est prochain_id (compteur unique pour les deux fichiers), à incrémenter à chaque attribution.",
   "genres": {
     "station": {
       "libelle": "Station",
@@ -13,14 +14,12 @@
     },
     "planche": {
       "libelle": "Planche 1/500",
-      "geometrie": "polygone"
+      "geometrie": "polygone",
+      "couleur": "#b8860b"
     }
   },
   "niveaux": {
-    "valeurs": [
-      "-",
-      "0"
-    ],
-    "note": "Valeurs relevées telles quelles dans Metro.dbf ; aucune interprétation."
+    "valeurs": [],
+    "note": "À définir. Les valeurs de Metro.dbf (« - », « 0 ») n'étaient pas crédibles et n'ont pas été reprises."
   }
 }

@@ -1,7 +1,6 @@
 {
-  "version": 1,
-  "date": "2026-10-05",
+  "version": 2,
+  "date": "2026-10-06",
   "crs": "EPSG:31370",
-  "prochain_id": 193,
   "entites": {}
 }

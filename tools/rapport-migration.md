@@ -1,6 +1,6 @@
 # Rapport de migration
 
-Généré par `tools/migrer-donnees.py` le 2026-10-05. Rien n'est inventé ni deviné : ce qui ne se rattache pas est listé ici.
+Généré par `tools/migrer-donnees.py` le 2026-10-06. Rien n'est inventé ni deviné : ce qui ne se rattache pas est listé ici.
 
 ## Entités lues
 
@@ -19,6 +19,14 @@ Généré par `tools/migrer-donnees.py` le 2026-10-05. Rien n'est inventé ni de
 
 - data/geometries/polygones.shp : 192 polygones, champ unique `id` (G000001 à G000192) ; .prj copié de Metro.prj.
 - data/referentiel/polygones.json, lignes.json (vide), vocabulaires.json.
+
+## Niveau
+
+- Champ `niveau` non repris : « - » ×142, « 0 » ×14 dans Metro.dbf, valeurs non crédibles. À renseigner plus tard dans le référentiel.
+
+## Noms
+
+- Préfixes « Station », « Tunnel STIB », « Tunnel MIVB » retirés des noms (ils répètent le genre).
 
 ## Noms de station
 
@@ -39,12 +47,12 @@ Généré par `tools/migrer-donnees.py` le 2026-10-05. Rien n'est inventé ni de
 
 ## Doublons
 
-- Tunnels de même nom « Tunnel STIB Horta - Albert » : G000002, G000136 (même nom : seul l'id les distingue).
-- Tunnels de même nom « Tunnel STIB Delacroix - Clemenceau » : G000005, G000084, G000118 (même nom : seul l'id les distingue).
-- Tunnels de même nom « Tunnel STIB Demey - Hermann-Debroux » : G000014, G000057 (même nom : seul l'id les distingue).
-- Tunnels de même nom « Tunnel STIB Erasme - Eddy Merckx » : G000056, G000156 (même nom : seul l'id les distingue).
-- Tunnels de même nom « Tunnel STIB Delta - Beaulieu » : G000058, G000064 (même nom : seul l'id les distingue).
-- Tunnels de même nom « Tunnel STIB Beekkant - Gare de l'Ouest » : G000059, G000080, G000117, G000146 (même nom : seul l'id les distingue).
+- Tunnels de même nom « Horta - Albert » : G000002, G000136 (même nom : seul l'id les distingue).
+- Tunnels de même nom « Delacroix - Clemenceau » : G000005, G000084, G000118 (même nom : seul l'id les distingue).
+- Tunnels de même nom « Demey - Hermann-Debroux » : G000014, G000057 (même nom : seul l'id les distingue).
+- Tunnels de même nom « Erasme - Eddy Merckx » : G000056, G000156 (même nom : seul l'id les distingue).
+- Tunnels de même nom « Delta - Beaulieu » : G000058, G000064 (même nom : seul l'id les distingue).
+- Tunnels de même nom « Beekkant - Gare de l'Ouest » : G000059, G000080, G000117, G000146 (même nom : seul l'id les distingue).
 
 ## Noms sans emprise / emprises sans nom
 
@@ -57,10 +65,10 @@ Généré par `tools/migrer-donnees.py` le 2026-10-05. Rien n'est inventé ni de
 
 ### Tunnels sans numéro d'interstation
 
-- Tunnel STIB Delacroix - Clemenceau (G000005)
-- Tunnel STIB Demey - Hermann-Debroux (G000057)
-- Tunnel STIB Delta - Beaulieu (G000058)
-- Tunnel STIB Beekkant - Gare de l'Ouest (G000080)
-- Tunnel STIB Beekkant - Gare de l'Ouest (G000117)
-- Tunnel STIB Cité Modèle - Roi Baudouin (G000132)
-- Tunnel STIB Erasme - Eddy Merckx (G000156)
+- Delacroix - Clemenceau (G000005)
+- Demey - Hermann-Debroux (G000057)
+- Delta - Beaulieu (G000058)
+- Beekkant - Gare de l'Ouest (G000080)
+- Beekkant - Gare de l'Ouest (G000117)
+- Cité Modèle - Roi Baudouin (G000132)
+- Erasme - Eddy Merckx (G000156)

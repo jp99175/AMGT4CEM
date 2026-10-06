@@ -31,7 +31,7 @@ bouton de secours : les données ne sont pas chargées).
 1. La carte s'ouvre déjà recentrée sur l'emprise du réseau métro.
 2. Les couches **Stations** et **Tunnels** sont visibles.
 3. Cliquez sur une station ou un tunnel : ses informations du
-   référentiel (noms FR/NL — tous les noms d'une station —, niveau, identifiant...)
+   référentiel (noms FR/NL — tous les noms d'une station —, identifiant...)
    s'affichent dans une popup.
 4. Déplacez la carte (glisser) et zoomez (molette, pincement, ou
    double-clic — pas de boutons +/- dédiés, voir point 7 ci-dessous) : le
@@ -496,11 +496,16 @@ Les données greffées sur les fonds de plan sont de **trois familles** :
 2. **Cadastre / référentiel** — JSON rattaché aux géométries par `id`, dans
    `data/referentiel/` : `polygones.json`, `lignes.json`, `vocabulaires.json`. Il
    porte tout ce qui complète une géométrie : genre (`station`, `tunnel`,
-   `planche`), noms FR/NL, liste de noms et références d'une station (`noms`),
-   niveau, `sheet_ref` et couleur d'une planche, identifiants externes
-   (`ids_externes` : ancien `ogc_fid`, ancien `id_objet`), plus tard année de
-   construction, liens vers des plans... En-tête de chaque JSON : `version`,
-   `date`, `crs: "EPSG:31370"`, `prochain_id`.
+   `planche`), noms FR/NL **sans préfixe** (« Montgomery », « Horta - Albert » : le
+   genre dit déjà s'il s'agit d'une station ou d'un tunnel), liste de noms et
+   références d'une station (`noms`), `sheet_ref` d'une planche, identifiants
+   externes (`ids_externes` : ancien `ogc_fid`, ancien `id_objet`), plus tard niveau,
+   année de construction, liens vers des plans... En-tête de `polygones.json` et
+   `lignes.json` : `version`, `date`, `crs: "EPSG:31370"`. `vocabulaires.json` porte
+   ce qui est commun : le compteur `prochain_id`, les genres (libellé, géométrie,
+   couleur d'affichage — ex. celle des planches) et les valeurs admises.
+   Le **niveau** n'est pas renseigné : les valeurs de l'ancien `Metro.dbf` (« - » ×142,
+   « 0 » ×14) n'étaient pas crédibles et n'ont pas été reprises.
 3. **Données métier (suivi : fiches, constats...)** — **hors de ce dépôt**
    (dossier `data/suivi/`, listé dans `.gitignore` : le dépôt est public, ces données
    n'y entrent jamais). Phase B, pas encore réalisée : la couche « Points métier »
@@ -508,8 +513,8 @@ Les données greffées sur les fonds de plan sont de **trois familles** :
 
 **Règle de l'identifiant.** Chaîne opaque sans signification métier : « G » + 6
 chiffres (ex. `G000123`), attribuée une fois, **jamais réutilisée**, **unique sur
-les deux fichiers à la fois**. Le prochain à attribuer est `prochain_id` (en-tête
-des JSON du référentiel, identique dans `polygones.json` et `lignes.json`). Un code
+les deux fichiers à la fois**. Le prochain à attribuer est `prochain_id`, **compteur
+unique** des deux fichiers, dans `vocabulaires.json`. Un code
 de station ou un numéro de tronçon est un **attribut du référentiel**, jamais un
 identifiant. Les anciens identifiants (`ogc_fid`, `id_objet` comme
 `TRO-HORTA-ALBERT-01`) sont conservés dans `ids_externes`.
@@ -540,7 +545,7 @@ station rattaché, la source ayant été retirée).
 **Contrôles.** `python3 tools/verifier-donnees.py` (bibliothèque standard seule,
 code de sortie non nul en cas d'erreur) vérifie : identifiants uniques sur les deux
 fichiers, aucune géométrie sans entrée de référentiel, aucune entrée sans géométrie,
-présence de `.prj` et `.shx`, format des `id`, cohérence de `prochain_id`,
+présence de `.prj` et `.shx`, format des `id`, `prochain_id` (unique, dans `vocabulaires.json`) supérieur à tout `id` utilisé,
 nom des stations/tunnels, `sheet_ref` présent et unique pour les planches,
 caractères de contrôle (encodage mal lu), enregistrements marqués supprimés dans le
 `.dbf`, et références des étiquettes de `data/fond-de-plan/` (tronçon = `id` de genre
@@ -569,7 +574,8 @@ Workflow de mise à jour :
 1. **Modifier le dessin** dans AutoCAD (à partir du shapefile existant).
 2. **Exporter le shapefile** avec le **seul champ `id`**, même CRS (EPSG:31370),
    en gardant `.shp`, `.shx`, `.dbf`, `.prj`. Une entité **nouvelle** reçoit un
-   `id` neuf pris à `prochain_id` (puis `prochain_id` est incrémenté dans les JSON) ;
+   `id` neuf pris à `prochain_id` (puis `prochain_id` est incrémenté dans
+   `vocabulaires.json`) ;
    copier ou scinder une entité duplique son `id` : à corriger avant d'exporter.
 3. **Compléter le référentiel** : une entrée par `id` (genre, noms...) dans
    `data/referentiel/polygones.json` ou `lignes.json`.

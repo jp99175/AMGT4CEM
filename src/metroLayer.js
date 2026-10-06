@@ -100,7 +100,8 @@ const AMGT4CEM_MetroLayer = {
       const latlngs = ring.map(AMGT4CEM_CRS.lambertToLatLng);
 
       const polygon = L.polygon(latlngs, {
-        color: props.couleur || style.color,
+        // Couleur du genre (vocabulaires.json, ex. planches), sinon celle du style par défaut.
+        color: ((AMGT4CEM_Referentiel.vocabulaires.genres || {})[props.genre] || {}).couleur || style.color,
         weight: style.weight,
         fillOpacity: style.fillOpacity,
       });

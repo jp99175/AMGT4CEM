@@ -78,8 +78,11 @@ const AMGT4CEM_Referentiel = {
         }
       }
     }
-    const suivants = [refPolygones, refLignes].filter(Boolean).map((r) => r.prochain_id);
-    if (new Set(suivants).size > 1) avertissements.push(`prochain_id différent entre polygones.json et lignes.json : ${suivants.join(' / ')}`);
+    // prochain_id : compteur unique (vocabulaires.json), toujours au-delà du plus grand id utilisé.
+    const plusGrand = Math.max(0, ...[...vus.keys()].filter((id) => /^G\d{6}$/.test(id)).map((id) => Number(id.slice(1))));
+    const prochain = this.vocabulaires.prochain_id;
+    if (!Number.isInteger(prochain)) avertissements.push('vocabulaires.json : prochain_id absent');
+    else if (prochain <= plusGrand) avertissements.push(`prochain_id (${prochain}) doit être supérieur au plus grand id utilisé (G${String(plusGrand).padStart(6, '0')})`);
 
     for (const a of avertissements) console.warn('[AMGT4CEM] Données :', a);
     this.features = features;
