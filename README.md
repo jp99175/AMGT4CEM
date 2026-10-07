@@ -963,6 +963,11 @@ Pour repartir sur un vrai stockage partagé, deux pistes sérieuses :
   `data/points.json` par une vraie base, avec une interface de gestion des
   données comparable à phpMyAdmin. Un compte gratuit à créer.
 
+**Attention.** Ces pistes ont été étudiées avant la distinction des trois familles de
+données (section 4). La première (relais + fichier dans le dépôt) ne convient qu'à des
+données publiques et partageables (étiquettes, réglages, sélections par défaut), pas aux
+points métier ni au suivi.
+
 Le choix n'a pas encore été fait pour les points métier — voir la
 conversation de développement.
 
@@ -993,8 +998,11 @@ première fois, l'adresse du relais se saisit dans ⚙ Paramètres > Serveur ave
 administrateur ; elle est écrite dans `services.json`, d'où tous les visiteurs la lisent
 ensuite.
 
-Les points métier (`pointsStore.js`) restent en `localStorage` : le relais
-pourra être étendu à ces données si la piste est retenue.
+Les points métier (`pointsStore.js`) restent en `localStorage`. **Le relais ne doit pas
+être étendu à ces données** : il écrit dans le dépôt, qui est public, et les points
+métier relèvent du suivi (famille 3, section 4), qui n'entre jamais dans le dépôt. Un
+stockage partagé du suivi suppose une autre destination (par exemple le SharePoint de
+l'équipe) : le choix n'est pas fait.
 
 ### Exporter les points métier à la main (avant tout déploiement)
 
