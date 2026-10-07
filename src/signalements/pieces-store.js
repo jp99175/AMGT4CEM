@@ -9,7 +9,11 @@
  * l'empreinte SHA-256 du fichier d'origine est conservée avec celle du fichier
  * réduit, pour qu'un original retrouvé plus tard puisse toujours être rattaché.
  */
-const AMGT4CEM_PiecesStore = {
+(function () {
+const NS = (window.AMGT4CEM_Signalements = window.AMGT4CEM_Signalements || {});
+const DB_NAME = 'amgt4cem-pieces';
+
+NS.Pieces = {
   maxSide: 1600,
   jpegQuality: 0.8,
   _dbPromise: null,
@@ -17,7 +21,7 @@ const AMGT4CEM_PiecesStore = {
   _db() {
     if (!this._dbPromise) {
       this._dbPromise = new Promise((resolve, reject) => {
-        const req = indexedDB.open(AMGT4CEM_CONFIG.piecesDbName, 1);
+        const req = indexedDB.open(DB_NAME, 1);
         req.onupgradeneeded = () => {
           const store = req.result.createObjectStore('pieces', { keyPath: 'id' });
           store.createIndex('pointId', 'pointId', { unique: false });
@@ -95,3 +99,4 @@ const AMGT4CEM_PiecesStore = {
     });
   },
 };
+})();

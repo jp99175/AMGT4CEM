@@ -18,25 +18,13 @@
  * (id, type, label, x, y) et un sac libre `properties` pour tout champ
  * métier additionnel défini plus tard, sans migration de schéma.
  *
- * Deux FLUX, deux clés de stockage distinctes (config.js) :
- *  - STANDARD : points libres, signalements et demandes courants ;
- *  - AMIANTE  : demandes liées à l'amiante, séparées par criticité (elles ne
- *    partagent ni stockage, ni couche, ni fichier de dépôt avec le reste).
- * Le flux d'un point est lu dans `properties.flux` (absent = STANDARD).
- *
  * Les coordonnées x/y sont stockées en Lambert (même CRS que Metro.json),
  * en pleine précision (aucun arrondi).
  */
 const AMGT4CEM_PointsStore = {
-  _key(flux) {
-    return flux === 'AMIANTE'
-      ? AMGT4CEM_CONFIG.pointsAmianteStorageKey
-      : AMGT4CEM_CONFIG.pointsStorageKey;
-  },
-
-  _read(flux) {
+  _read() {
     try {
-      const raw = localStorage.getItem(this._key(flux));
+      const raw = localStorage.getItem(AMGT4CEM_CONFIG.pointsStorageKey);
       return raw ? JSON.parse(raw) : [];
     } catch (err) {
       console.error('[AMGT4CEM] Micro-DB illisible, réinitialisation.', err);
@@ -44,26 +32,16 @@ const AMGT4CEM_PointsStore = {
     }
   },
 
-  _write(flux, points) {
-    localStorage.setItem(this._key(flux), JSON.stringify(points));
+  _write(points) {
+    localStorage.setItem(AMGT4CEM_CONFIG.pointsStorageKey, JSON.stringify(points));
   },
 
-  _fluxOf(point) {
-    return point && point.properties && point.properties.flux === 'AMIANTE' ? 'AMIANTE' : 'STANDARD';
-  },
-
-  /** Tous les points, flux confondus (chaque point porte son flux dans properties). */
   async getAll() {
-    return [...this._read('STANDARD'), ...this._read('AMIANTE')];
-  },
-
-  /** Points d'un seul flux ('STANDARD' ou 'AMIANTE'). */
-  async getByFlux(flux) {
-    return this._read(flux);
+    return this._read();
   },
 
   async getById(id) {
-    return (await this.getAll()).find((p) => p.id === id) || null;
+    return this._read().find((p) => p.id === id) || null;
   },
 
   /**
@@ -71,20 +49,18 @@ const AMGT4CEM_PointsStore = {
    * @returns {Promise<object>} le point créé (avec id généré)
    */
   async add(data) {
-    const properties = data.properties || {};
-    const flux = properties.flux === 'AMIANTE' ? 'AMIANTE' : 'STANDARD';
-    const points = this._read(flux);
+    const points = this._read();
     const point = {
       id: (crypto.randomUUID ? crypto.randomUUID() : `pt-${Date.now()}-${Math.random().toString(16).slice(2)}`),
       type: data.type,
       label: data.label,
       x: data.x,
       y: data.y,
-      properties,
+      properties: data.properties || {},
       createdAt: new Date().toISOString(),
     };
     points.push(point);
-    this._write(flux, points);
+    this._write(points);
     return point;
   },
 
@@ -93,25 +69,16 @@ const AMGT4CEM_PointsStore = {
    * @param {object} patch - champs à mettre à jour (ex: { x, y } après déplacement)
    */
   async update(id, patch) {
-    for (const flux of ['STANDARD', 'AMIANTE']) {
-      const points = this._read(flux);
-      const idx = points.findIndex((p) => p.id === id);
-      if (idx === -1) continue;
-      points[idx] = { ...points[idx], ...patch, updatedAt: new Date().toISOString() };
-      this._write(flux, points);
-      return points[idx];
-    }
-    return null;
+    const points = this._read();
+    const idx = points.findIndex((p) => p.id === id);
+    if (idx === -1) return null;
+    points[idx] = { ...points[idx], ...patch, updatedAt: new Date().toISOString() };
+    this._write(points);
+    return points[idx];
   },
 
   async remove(id) {
-    for (const flux of ['STANDARD', 'AMIANTE']) {
-      const points = this._read(flux);
-      const kept = points.filter((p) => p.id !== id);
-      if (kept.length !== points.length) this._write(flux, kept);
-    }
-    if (typeof AMGT4CEM_PiecesStore !== 'undefined') {
-      try { await AMGT4CEM_PiecesStore.removeForPoint(id); } catch (err) { console.warn('[AMGT4CEM] Pièces non supprimées :', err); }
-    }
+    const points = this._read().filter((p) => p.id !== id);
+    this._write(points);
   },
 };

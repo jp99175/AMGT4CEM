@@ -124,6 +124,10 @@ const AMGT4CEM_MetroLayer = {
             AMGT4CEM_AddPointTool.handleMapClick(e);
             return;
           }
+          if (AMGT4CEM_Plugins.dispatchMapClick(e)) {
+            L.DomEvent.stopPropagation(e);
+            return;
+          }
           const refs = this._sheetRefsAt(e.latlng, peFeatures);
           polygon.setPopupContent(this._buildPePopupHtml(refs));
           polygon.openPopup(e.latlng);
@@ -136,6 +140,8 @@ const AMGT4CEM_MetroLayer = {
           if (AMGT4CEM_AddPointTool.isActive()) {
             L.DomEvent.stopPropagation(e);
             AMGT4CEM_AddPointTool.handleMapClick(e);
+          } else if (AMGT4CEM_Plugins.dispatchMapClick(e)) {
+            L.DomEvent.stopPropagation(e);
           } else {
             polygon.openPopup(e.latlng);
           }
@@ -321,6 +327,8 @@ const AMGT4CEM_MetroLayer = {
         if (AMGT4CEM_AddPointTool.isActive()) {
           L.DomEvent.stopPropagation(e);
           AMGT4CEM_AddPointTool.handleMapClick(e);
+        } else if (AMGT4CEM_Plugins.dispatchMapClick(e)) {
+          L.DomEvent.stopPropagation(e);
         } else {
           polygon.openPopup(e.latlng);
         }

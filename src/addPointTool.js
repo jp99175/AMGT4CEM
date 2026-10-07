@@ -17,77 +17,6 @@ const AMGT4CEM_AddPointTool = {
     this._map = map;
     this._onPointCreated = onPointCreated;
     map.on('click', (e) => this.handleMapClick(e));
-    AMGT4CEM_Signalements.load().then(() => this._initFormControls());
-  },
-
-  _photos: [], // fichiers choisis dans le formulaire, enregistrés à la validation
-
-  _el(id) { return document.getElementById(id); },
-
-  /** Remplit la liste Nature et branche les listes dépendantes (nature -> type -> domaine). */
-  _initFormControls() {
-    const sig = AMGT4CEM_Signalements;
-    const natureSel = this._el('amgt-form-nature');
-    for (const n of sig.natures()) natureSel.add(new Option(n.fr, n.code));
-    natureSel.add(new Option('Point libre (ancien format)', 'LIBRE'));
-    natureSel.addEventListener('change', () => this._onNatureChange());
-    this._el('amgt-form-sig-type').addEventListener('change', () => this._onTypeChange());
-    this._el('amgt-form-photos').addEventListener('change', (e) => this._onPhotosChosen(e));
-    this._el('amgt-form-date').value = sig.today();
-  },
-
-  _onNatureChange() {
-    const nature = this._el('amgt-form-nature').value;
-    this._el('amgt-form-signalement').classList.toggle('amgt-hidden', !nature || nature === 'LIBRE');
-    this._el('amgt-form-libre').classList.toggle('amgt-hidden', nature !== 'LIBRE');
-    const typeSel = this._el('amgt-form-sig-type');
-    typeSel.innerHTML = '';
-    if (nature && nature !== 'LIBRE') {
-      typeSel.add(new Option('— choisir —', ''));
-      for (const t of AMGT4CEM_Signalements.typesFor(nature)) {
-        typeSel.add(new Option(t.flux === 'AMIANTE' ? `${t.fr} (amiante)` : t.fr, t.code));
-      }
-    }
-    this._onTypeChange();
-  },
-
-  _onTypeChange() {
-    const sig = AMGT4CEM_Signalements;
-    if (!sig.vocab) return; // vocabulaire pas encore chargé : rien à remplir
-    const type = sig.type(this._el('amgt-form-sig-type').value);
-    const domSel = this._el('amgt-form-domaine');
-    domSel.innerHTML = '';
-    domSel.add(new Option(type && !type.domaineObligatoire ? 'Non précisé' : '— choisir —', ''));
-    for (const d of sig.vocab.domaines) domSel.add(new Option(d.fr, d.code));
-    this._el('amgt-form-domaine-label').textContent =
-      type && !type.domaineObligatoire ? 'Domaine technique (facultatif)' : 'Domaine technique';
-    this._el('amgt-form-amiante-banner').classList.toggle('amgt-hidden', !(type && type.flux === 'AMIANTE'));
-  },
-
-  _onPhotosChosen(e) {
-    for (const file of e.target.files) this._photos.push(file);
-    e.target.value = '';
-    this._renderPhotoList();
-  },
-
-  _renderPhotoList() {
-    const list = this._el('amgt-form-photo-list');
-    for (const img of list.querySelectorAll('img')) URL.revokeObjectURL(img.src);
-    list.textContent = '';
-    this._photos.forEach((file, i) => {
-      const item = document.createElement('span');
-      item.className = 'amgt-photo-item';
-      const img = document.createElement('img');
-      img.src = URL.createObjectURL(file);
-      img.alt = `Photo ${i + 1}`;
-      const rm = document.createElement('button');
-      rm.type = 'button';
-      rm.textContent = '✕';
-      rm.title = 'Retirer cette photo';
-      rm.addEventListener('click', () => { this._photos.splice(i, 1); this._renderPhotoList(); });
-      item.append(img, rm);
-      list.appendChild(item);
-    });
   },
 
   isActive() {
@@ -183,16 +112,6 @@ const AMGT4CEM_AddPointTool = {
     document.getElementById('amgt-point-form').classList.add('amgt-hidden');
     document.getElementById('amgt-form-type').value = '';
     document.getElementById('amgt-form-label').value = '';
-    const natureSel = this._el('amgt-form-nature');
-    natureSel.value = '';
-    this._onNatureChange();
-    this._el('amgt-form-date').value = AMGT4CEM_Signalements.vocab ? AMGT4CEM_Signalements.today() : '';
-    this._el('amgt-form-lieu').value = '';
-    this._el('amgt-form-demandeur').value = '';
-    this._el('amgt-form-ref-demandeur').value = '';
-    this._el('amgt-form-description').value = '';
-    this._photos = [];
-    this._renderPhotoList();
   },
 
   _removeTempMarker() {
@@ -203,83 +122,31 @@ const AMGT4CEM_AddPointTool = {
   },
 
   async confirm() {
-    const nature = this._el('amgt-form-nature').value;
-    if (!nature || !this._pendingLambert) {
-      alert('Merci de choisir la nature du point.');
+    const type = document.getElementById('amgt-form-type').value.trim();
+    const label = document.getElementById('amgt-form-label').value.trim();
+    if (!type || !label || !this._pendingLambert) {
+      alert('Merci de renseigner au minimum un type et un libellé.');
       return;
     }
 
     const confirmBtn = document.getElementById('amgt-form-confirm');
-    const setBusy = (busy) => {
-      confirmBtn.disabled = busy;
-      confirmBtn.textContent = busy ? 'Enregistrement…' : 'Enregistrer';
-    };
-
-    // Point libre (ancien format : type et libellé en texte libre)
-    if (nature === 'LIBRE') {
-      const type = this._el('amgt-form-type').value.trim();
-      const label = this._el('amgt-form-label').value.trim();
-      if (!type || !label) {
-        alert('Merci de renseigner au minimum un type et un libellé.');
-        return;
-      }
-      setBusy(true);
-      try {
-        const point = await AMGT4CEM_PointsStore.add({ type, label, x: this._pendingLambert.x, y: this._pendingLambert.y });
-        this._onPointCreated(point);
-        this.deactivate();
-      } catch (err) {
-        console.error('[AMGT4CEM] Enregistrement du point impossible :', err);
-        alert('Impossible d\'enregistrer ce point : ' + err.message);
-      } finally {
-        setBusy(false);
-      }
-      return;
-    }
-
-    // Signalement ou demande
-    const sig = AMGT4CEM_Signalements;
-    const type = sig.type(this._el('amgt-form-sig-type').value);
-    const domaine = this._el('amgt-form-domaine').value;
-    const date = this._el('amgt-form-date').value;
-    if (!type) { alert('Merci de choisir le type.'); return; }
-    if (type.domaineObligatoire && !domaine) { alert('Merci de choisir le domaine technique.'); return; }
-    if (!date) { alert('Merci de renseigner la date d\'observation.'); return; }
-
-    setBusy(true);
-    let point = null;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Enregistrement…';
     try {
-      point = await AMGT4CEM_PointsStore.add({
-        type: type.code,
-        label: sig.buildLabel(type.code, domaine),
+      const point = await AMGT4CEM_PointsStore.add({
+        type,
+        label,
         x: this._pendingLambert.x,
         y: this._pendingLambert.y,
-        properties: {
-          flux: type.flux,
-          nature,
-          domaine: domaine || null,
-          dateObservation: date,
-          lieu: this._el('amgt-form-lieu').value.trim(),
-          description: this._el('amgt-form-description').value.trim(),
-          demandeur: this._el('amgt-form-demandeur').value.trim(),
-          referenceDemandeur: this._el('amgt-form-ref-demandeur').value.trim(),
-          reference: null, // attribuée par le système à l'import (AAAA-NNNN)
-          pieces: [],
-        },
       });
-      const pieces = [];
-      for (const file of this._photos) pieces.push(await AMGT4CEM_PiecesStore.add(point.id, file));
-      if (pieces.length) {
-        point = await AMGT4CEM_PointsStore.update(point.id, { properties: { ...point.properties, pieces } });
-      }
       this._onPointCreated(point);
       this.deactivate();
     } catch (err) {
-      console.error('[AMGT4CEM] Enregistrement du signalement impossible :', err);
-      if (point) await AMGT4CEM_PointsStore.remove(point.id); // tout ou rien : pas de point sans ses photos
-      alert('Impossible d\'enregistrer ce signalement : ' + err.message);
+      console.error('[AMGT4CEM] Enregistrement du point impossible :', err);
+      alert('Impossible d\'enregistrer ce point : ' + err.message);
     } finally {
-      setBusy(false);
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Enregistrer';
     }
   },
 

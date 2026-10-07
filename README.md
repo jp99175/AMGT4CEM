@@ -907,10 +907,9 @@ src/patrimoinePicker.js      sélecteur plein écran "Plans patrimoine"
 src/patrimoineLayer.js       affichage carte des couches Plans patrimoine sélectionnées
 src/mapMenu.js                menu fond de plan / couches / réinitialisation
 src/searchTool.js             recherche station/tunnel/point (remplace le zoom +/-)
-src/pointsStore.js           micro-base de données (localStorage, schéma ouvert, un stockage par flux)
-src/piecesStore.js           photos des signalements (IndexedDB, réduites à 1600 px, empreintes SHA-256)
-src/signalements.js          vocabulaire, noms de fichiers (convention STIB) et dépôt des signalements
-src/zipWriter.js             écriture d'une archive ZIP (dépôt d'un signalement)
+src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
+src/plugins.js               chargeur de plugins (applications séparées branchées sur la carte)
+src/signalements/            plugin « Signalements » (voir son README.md)
 src/pointsLayer.js           affichage/déplacement des points métier
 src/addPointTool.js          workflow "Ajouter un point"
 src/measureTool.js           outil "📏 Mesurer" (segment + cote + cercle, 4s puis disparition)
@@ -1008,42 +1007,20 @@ métier relèvent du suivi (famille 3, section 4), qui n'entre jamais dans le d�
 stockage partagé du suivi suppose une autre destination (par exemple le SharePoint de
 l'équipe) : le choix n'est pas fait.
 
-### Signalements et demandes (points métier)
+### Plugins et signalements
 
-Le formulaire « ✚ Ajouter un point » propose, après un clic sur la carte : une **nature**
-(signalement, demande ou « point libre », l'ancien format), un **type**, un **domaine technique**,
-la date d'observation, une localisation précisée, une description et **une ou plusieurs photos**.
-Les listes viennent de `data/signalements/vocabulaire.json` (public, aucune donnée de suivi) :
-`AVARIE` et `INFILTRATION` (signalements) ; `MODIFICATION`, `RENOUVELLEMENT` et
-`MISE_A_JOUR_PLANS` (demandes), avec obligatoirement l'un des trois domaines (gros œuvre,
-parachèvement, drainage-égouttage-évacuation).
+Des applications **séparées** se branchent sur la carte sous forme de **plugins** : chacune vit dans son
+dossier (`src/<plugin>/`, avec son README, ses styles et ses scripts), est déclarée dans la liste `plugins`
+de `config.js` et chargée par `src/plugins.js`. Le cœur ne connaît aucun plugin par son nom ; un plugin
+désactivé (`enabled: false`), absent ou en erreur ne gêne pas le reste. Le plugin d'édition des étiquettes
+(`src/peLabelEditor/`) se charge à la demande depuis ⚙ Paramètres ; le plugin **Signalements** se charge au
+démarrage.
 
-**Flux amiante, séparé.** `CONTROLE`, `INVENTAIRE_DESTRUCTIF` et `TRAITEMENT` appartiennent au flux
-`AMIANTE` : stockage local distinct (`amgt4cem.points.amiante.v1`), couche et case propres dans
-☰ Carte, marqueur rouge en losange, archive de dépôt à part. Le domaine technique y est facultatif :
-l'amiante est un contexte, pas un domaine.
-
-**Référence.** Elle n'est pas attribuée dans l'application (un navigateur hors ligne ne peut pas
-garantir l'unicité) : le système la donne à l'import (format `AAAA-NNNN`, par exemple `2026-0122`).
-Le point porte en attendant son identifiant interne (UUID).
-
-**Demandeur.** Deux champs distinguent le demandeur (qui a signalé : service, entreprise, agent) du rédacteur (qui saisit) : le nom du demandeur et **sa référence dans son propre système**. Ils partent dans le bloc `provenance` du dépôt ; à l'import, la référence devient un identifiant externe (système du demandeur, type `REF_DEMANDEUR`). Plusieurs sources, liens et doublons se traitent à l'import sur les fiches (`DOUBLON_DE`, `LIE_A`), pas à la saisie.
-
-**Photos.** Stockées dans IndexedDB, sur l'appareil, en attendant le stockage des pièces (Cloudflare
-R2, voir le document de conception). Elles sont réduites à 1600 px (JPEG) ; l'empreinte du fichier
-d'origine est conservée avec celle du fichier réduit.
-
-**Dépôt.** Le bouton « Exporter le dépôt » du popup produit une archive
-`FICH_<réf. courte>-<type court>_<AAAAMMJJ>_FR.zip` contenant `signalement.json` (schéma
-`amgt4cem-depot-signalement`, version 1, positions en Lambert 72) et les photos
-`IMG_<réf. courte>-<type>-<domaine>-<n°>_<AAAAMMJJ>_MX.jpg`, selon la convention de nommage de
-l'organisation (`IMG` et `VID` adaptent le type `AUDI` de la liste STIB, jugé trop général). Aucun nom,
-initiales ni matricule dans les noms de fichiers ; le champ `redacteur` reste vide jusqu'au
-référentiel des intervenants.
-
-**Limites actuelles.** Les points et photos restent dans le navigateur de chaque agent : sans export,
-un signalement n'est ni partagé ni sauvegardé, et il est perdu si les données du site sont effacées.
-Comme pour tous les points métier, le relais d'enregistrement ne doit jamais les recevoir (dépôt public).
+**Signalements** (`src/signalements/`, voir son README) : saisie des signalements et demandes avec
+domaine technique, photos, demandeur et référence chez le demandeur ; flux **amiante** séparé (stockage,
+couche, marqueurs et dépôt distincts) ; export d'un dépôt ZIP par signalement. Ils n'utilisent pas le
+stockage des points métier du cœur (`amgt4cem.signalements.v1`, `amgt4cem.signalements.amiante.v1`) et ne
+doivent jamais passer par le relais d'enregistrement (dépôt public).
 
 ### Exporter les points métier à la main (avant tout déploiement)
 
@@ -1056,7 +1033,7 @@ copy(localStorage.getItem('amgt4cem.points.v1'))   // copie le JSON dans le pres
 ```
 
 Pour restaurer : `localStorage.setItem('amgt4cem.points.v1', '<le JSON>')`, puis recharger.
-Le flux amiante a sa propre clé (`amgt4cem.points.amiante.v1`), à exporter et restaurer de la même façon ; les photos (IndexedDB) ne se récupèrent que par le bouton « Exporter le dépôt » de chaque signalement.
+Les signalements du plugin ont leurs propres clés (`amgt4cem.signalements.v1` et `amgt4cem.signalements.amiante.v1`) ; leurs photos (IndexedDB) ne se récupèrent que par le bouton « Exporter le dépôt » de chaque signalement.
 La refonte des données n'y touche pas.
 
 ## 7. Retour arrière

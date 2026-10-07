@@ -118,11 +118,19 @@ const AMGT4CEM_CONFIG = {
   // les deux pistes sérieuses pour la suite (petit relais serveur, ou un
   // service pensé pour ça comme Supabase).
   pointsStorageKey: 'amgt4cem.points.v1',
-  // Flux AMIANTE : stockage local séparé (criticité du sujet), jamais mélangé aux points standard.
-  pointsAmianteStorageKey: 'amgt4cem.points.amiante.v1',
-  // Vocabulaire des signalements et demandes (public, aucune donnée de suivi) et base locale des photos.
-  signalementsVocabUrl: './data/signalements/vocabulaire.json',
-  piecesDbName: 'amgt4cem-pieces',
+
+  // --- Plugins (applications séparées branchées sur la carte, voir src/plugins.js) ---
+  // Chaque plugin vit dans son dossier : styles puis scripts chargés dans l'ordre ; le dernier
+  // script s'enregistre par AMGT4CEM_Plugins.register. `enabled: false` le retire sans rien supprimer.
+  plugins: [
+    {
+      id: 'signalements',
+      enabled: true,
+      base: './src/signalements/',
+      styles: ['signalements.css'],
+      scripts: ['pieces-store.js', 'zip-writer.js', 'depot.js', 'store.js', 'signalements.js'],
+    },
+  ],
 
   // --- Affichage ---
   maxZoom: 22,

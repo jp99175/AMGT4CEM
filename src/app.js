@@ -83,6 +83,15 @@
   AMGT4CEM_MeasureTool.init(map);
   AMGT4CEM_ScreenshotTool.init(map);
 
+  // Plugins (applications séparées, voir src/plugins.js) : après les outils du cœur, qu'ils peuvent arrêter.
+  AMGT4CEM_Plugins.init({
+    map,
+    deactivateCoreTools() {
+      AMGT4CEM_AddPointTool.deactivate();
+      AMGT4CEM_MeasureTool.deactivate();
+    },
+  });
+
   // Définitions d'ancrage des références de planche (fichier partagé, voir
   // peLabelAnchors.js) : lues en parallèle des géométries, attendues avant la
   // construction des étiquettes. Ne rejette jamais (absentes = aucune étiquette).
@@ -158,11 +167,13 @@
 
   document.getElementById('amgt-add-point-btn').addEventListener('click', () => {
     AMGT4CEM_MeasureTool.deactivate();
+    AMGT4CEM_Plugins.notifyCoreToolActivated('add-point');
     AMGT4CEM_AddPointTool.toggle();
   });
 
   document.getElementById('amgt-measure-btn').addEventListener('click', () => {
     AMGT4CEM_AddPointTool.deactivate();
+    AMGT4CEM_Plugins.notifyCoreToolActivated('measure');
     AMGT4CEM_MeasureTool.toggle();
   });
 

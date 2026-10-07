@@ -3,7 +3,10 @@
  * les photos JPEG sont déjà compressées). Aucune dépendance externe.
  * Les noms de fichiers sont en UTF-8 (bit 11 des drapeaux).
  */
-const AMGT4CEM_ZipWriter = {
+(function () {
+const NS = (window.AMGT4CEM_Signalements = window.AMGT4CEM_Signalements || {});
+
+NS.Zip = {
   _crcTable: null,
 
   _crc32(bytes) {
@@ -79,3 +82,4 @@ const AMGT4CEM_ZipWriter = {
     return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
   },
 };
+})();
