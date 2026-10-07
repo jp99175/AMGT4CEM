@@ -1,6 +1,6 @@
 /**
  * Sélection des types d'objets UrbIS Topo à afficher sur la carte (code -> couleur) : voir
- * catalogues/urbis-topo.js pour la liste des codes possibles et selectionStore.js pour le principe
+ * data/urbis-topo/catalogue.js pour la liste des codes possibles et selectionStore.js pour le principe
  * (sélection courante de l'appareil, préférences locales 💾, sélection par défaut partagée
  * data/urbis-topo/selection-par-defaut.json). Interface : urbisTopoPicker.js ; affichage carte :
  * urbisTopoLayer.js.

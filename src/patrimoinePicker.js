@@ -1,6 +1,6 @@
 /**
  * Sélecteur plein écran des couches "Plans patrimoine" (voir
- * catalogues/plans-patrimoine.js) — même principe que le sélecteur UrbIS Topo
+ * data/plans-patrimoine/catalogue.js) — même principe que le sélecteur UrbIS Topo
  * (urbisTopoPicker.js), en plus simple : peu d'entrées pour l'instant, donc
  * pas de recherche ni de regroupement par thème. Chaque case cochée/décochée
  * met à jour la sélection immédiatement (voir patrimoineSelectionStore.js).

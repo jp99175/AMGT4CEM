@@ -1,7 +1,7 @@
 /**
  * Affichage carte des couches "Plans patrimoine" choisies par l'utilisateur
  * (voir patrimoineSelectionStore.js / patrimoinePicker.js). Contrairement à
- * UrbIS Topo, ce sont des fichiers LOCAUX (catalogues/plans-patrimoine.js) —
+ * UrbIS Topo, ce sont des fichiers LOCAUX (data/plans-patrimoine/catalogue.js) —
  * chacun est chargé une seule fois (mis en cache), sans filtre d'emprise ni
  * de zoom (volumes très modestes : quelques centaines d'entités au plus).
  *

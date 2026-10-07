@@ -341,7 +341,7 @@ Plans patrimoine, section 3ter) :
    ne changent pas) ; **Enregistrer** l'envoie au relais (route
    `shared/urbis-topo/selection-par-defaut`), qui la commit ; **Annuler** l'abandonne.
 
-Voir `catalogues/urbis-topo.js` pour le catalogue complet,
+Voir `data/urbis-topo/catalogue.js` pour le catalogue complet,
 `src/selectionStore.js` (principe commun) et `src/urbisTopoSelectionStore.js` pour
 la sélection, `src/pickerDefaultBar.js` pour la barre « sélection par défaut »,
 `src/urbisTopoPicker.js` pour le sélecteur, `src/urbisTopoLayer.js` pour le chargement
@@ -369,7 +369,7 @@ sont proposés dans le sélecteur. Le catalogue contient aussi des types en
 géométrie "texte" (étiquettes, ex. noms de rue, numéros de maison) et un
 type en "polygone" (zones de mise à jour par levé) : leur affichage carte
 n'est pas encore pris en charge, ils restent listés dans
-`catalogues/urbis-topo.js` mais ne sont pas sélectionnables.
+`data/urbis-topo/catalogue.js` mais ne sont pas sélectionnables.
 
 Chargement strictement **à la demande**, pour deux raisons :
 - rien n'est requêté tant qu'aucun type n'est sélectionné ;
@@ -456,7 +456,7 @@ l'utilisateur (export de son propre SIG patrimoine, jamais rechargées
 depuis un service externe — contrairement à UrbIS Topo). Même principe que
 UrbIS Topo : le choix des plans à afficher se fait via le lien
 **"(modifier la sélection)"**, qui ouvre un sélecteur plein écran listant
-le catalogue disponible (voir `catalogues/plans-patrimoine.js`) ; rien n'est
+le catalogue disponible (voir `data/plans-patrimoine/catalogue.js`) ; rien n'est
 présélectionné au départ. Mêmes commandes et mêmes trois niveaux de sélection que
 pour UrbIS Topo (section 3) : **💾** = préférences locales (clé
 `amgt4cem.patrimoine-default.v1`), case **« Tout (dé)sélectionner »** en haut, et
@@ -483,7 +483,7 @@ l'infobulle de l'emprise de station (section 4).
 Les **plans d'ensemble au 1/500e** (36 planches) sont des polygones de genre
 `planche` de `data/shapefile/polygones.shp` ; leur étiquette est le `sheet_ref`
 du référentiel (géométrie et popups gérés par `src/metroLayer.js`, voir section
-4bis). Ils restent une entrée de ce sélecteur (`catalogues/plans-patrimoine.js`,
+4bis). Ils restent une entrée de ce sélecteur (`data/plans-patrimoine/catalogue.js`,
 `external: true`) : la case à cocher affiche/masque la couche déjà construite par
 `metroLayer.js` (voir `src/patrimoineLayer.js#registerExternalLayer`), sans
 proposer de couleur (couleur/opacité réglées avec le réseau métro, curseur
@@ -628,17 +628,18 @@ identifiant. Les anciens identifiants (`ogc_fid`, `id_objet` comme
     = ajouter ou retirer une entrée (mode édition : « ✚ Ajouter un élément », 🗑). L'axe
     du tunnel, le soulignement et la ligne de repère ne sont pas stockés : ils se
     recalculent à l'affichage ;
+  - `catalogue.js` : catalogue des couches proposées (code de configuration, chargé par
+    `index.html`) ;
   - `selection-par-defaut.json` : sélection par défaut partagée des couches (section 3ter) ;
   - `*.legacy.json` : fichiers conservés en attendant `lignes.shp`, **sans identifiant** —
     `numeros-interstation.legacy.json` (86 points texte, archive d'amorçage, plus lu par
     l'application) et `reperes-troncons.legacy.json` (triangles et codes de transition entre
     tronçons, encore affichés avec les planches). **Aucune géométrie de tronçon n'existe
     encore** : à rattacher à `lignes.shp` plus tard ;
-- `data/urbis-topo/` : `parametres.json` (réglages du service WFS) et
+- `data/urbis-topo/` : `catalogue.js` (catalogue des types d'objets : du code de configuration,
+  chargé par `index.html`), `parametres.json` (réglages du service WFS) et
   `selection-par-defaut.json` (sélection par défaut partagée, section 3) ;
 - `data/fonds-de-plan/` : configuration des services externes (section 3bis) ;
-- `catalogues/` : `urbis-topo.js`, `plans-patrimoine.js` (catalogues de couches : du code de
-  configuration, rattaché à l'interface plus qu'aux données) ;
 - `tools/` : `migrer-donnees.py` (migration unique, déjà exécutée),
   `verifier-donnees.py` (contrôle, voir plus bas), `rapport-migration.md`.
 
@@ -895,11 +896,11 @@ data/points-metier/          (réservé : structure des points métier, phase B)
 data/suivi/                  famille 3 (suivi) : HORS DÉPÔT (.gitignore), phase B
 tools/                       migrer-donnees.py (unique), verifier-donnees.py (après chaque export AutoCAD), rapport-migration.md
 src/basemap.js                fonds de plan (UrbIS, Orthophoto, Bruciel)
-catalogues/urbis-topo.js       catalogue complet des types d'objets UrbIS Topo (référence)
+data/urbis-topo/catalogue.js       catalogue complet des types d'objets UrbIS Topo (référence)
 src/urbisTopoSelectionStore.js sélection utilisateur des types UrbIS Topo affichés
 src/urbisTopoPicker.js        sélecteur plein écran (catalogue classé par thème)
 src/urbisTopoLayer.js        affichage carte des types UrbIS Topo sélectionnés
-catalogues/plans-patrimoine.js catalogue des couches "Plans patrimoine" (référence)
+data/plans-patrimoine/catalogue.js catalogue des couches "Plans patrimoine" (référence)
 src/patrimoineSelectionStore.js sélection utilisateur des couches Plans patrimoine affichées
 src/patrimoinePicker.js      sélecteur plein écran "Plans patrimoine"
 src/patrimoineLayer.js       affichage carte des couches Plans patrimoine sélectionnées
