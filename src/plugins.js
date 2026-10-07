@@ -16,6 +16,8 @@
  *  - options        : le bloc `options` de la déclaration du plugin dans config.js ({} si absent) ;
  *  - toolbar, menu  : éléments DOM de la barre d'outils et du menu ☰ Carte, où le plugin
  *                     ajoute ses boutons et ses cases de couche ;
+ *  - addPointMenu   : AMGT4CEM_AddPointMenu ; add(entry) ajoute une entrée au menu du bouton « ✚ Ajouter un
+ *                     point » (voir src/addPointMenu.js), setHighlight(on) allume le bouton pendant l'outil ;
  *  - captureClicks(handler)  : déclare un outil de placement ; handler.isActive() et
  *                     handler.handleMapClick(e) sont appelés pour les clics que les polygones
  *                     du réseau interceptent (voir metroLayer.js) ;
@@ -33,6 +35,7 @@ const AMGT4CEM_Plugins = {
       map: deps.map,
       crs: AMGT4CEM_CRS,
       config: AMGT4CEM_CONFIG,
+      addPointMenu: AMGT4CEM_AddPointMenu,
       toolbar: document.getElementById('amgt-toolbar'),
       menu: document.getElementById('amgt-map-menu'),
       captureClicks: (handler) => this._capturers.push(handler),

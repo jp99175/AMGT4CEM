@@ -41,7 +41,7 @@ const UI = {
     this.groups.STANDARD = L.layerGroup().addTo(ctx.map);
     this.groups.AMIANTE = L.layerGroup().addTo(ctx.map);
 
-    this._buildToolbarButton();
+    this._registerMenuEntries();
     this._buildMenuRows();
     this._buildForm();
 
@@ -51,15 +51,23 @@ const UI = {
     await this.refresh();
   },
 
-  _buildToolbarButton() {
-    this.btn = h('button', { id: 'amgt-sig-btn', class: 'amgt-btn', title: 'Saisir un signalement ou une demande', text: '⚠ Signalement' });
-    this.btn.addEventListener('click', () => {
-      if (!this.active) this.ctx.deactivateCoreTools();
-      this.toggle();
+  /** Entrées du menu du bouton « ✚ Ajouter un point » : saisie d'un signalement, téléversement des envois en attente. */
+  _registerMenuEntries() {
+    this.pending = 0;
+    this.ctx.addPointMenu.add({
+      order: 10,
+      label: '⚠ Signalement',
+      title: 'Saisir un signalement ou une demande',
+      onSelect: () => { this.ctx.deactivateCoreTools(); this.activate(); },
+      isActive: () => this.active,
+      deactivate: () => this.deactivate(),
     });
-    const anchor = document.getElementById('amgt-add-point-btn');
-    if (anchor && anchor.nextSibling) anchor.parentNode.insertBefore(this.btn, anchor.nextSibling);
-    else this.ctx.toolbar.appendChild(this.btn);
+    this.ctx.addPointMenu.add({
+      order: 30,
+      label: () => `⬆ Téléverser les fichiers sur le serveur (${this.pending})`,
+      title: () => (NS.Envoi.configured() ? 'Envoie au serveur les signalements pas encore référencés' : "Aucun serveur de dépôt configuré (options.serverUrl dans config.js)"),
+      onSelect: () => this.uploadPending(),
+    });
   },
 
   _buildMenuRows() {
@@ -73,10 +81,7 @@ const UI = {
     std.input.addEventListener('change', (e) => this._toggleGroup('STANDARD', e.target.checked));
     am.input.addEventListener('change', (e) => this._toggleGroup('AMIANTE', e.target.checked));
     const anchor = document.getElementById('amgt-reset-view-btn');
-    this.sendAllBtn = h('button', { type: 'button', class: 'amgt-btn', id: 'amgt-sig-send-all', text: '⬆ Envoyer les signalements en attente' });
-    this.sendAllBtn.addEventListener('click', () => this.sendPending());
-    this.sendStatus = h('p', { class: 'amgt-sig-send-status amgt-hidden' });
-    const nodes = [h('h3', { text: 'Signalements' }), std.el, am.el, this.sendAllBtn, this.sendStatus];
+    const nodes = [h('h3', { text: 'Signalements' }), std.el, am.el];
     for (const n of nodes) anchor.parentNode.insertBefore(n, anchor);
   },
 
@@ -186,13 +191,13 @@ const UI = {
   activate() {
     this.active = true;
     this.ctx.map.getContainer().classList.add('amgt-placing-mode');
-    this.btn.classList.add('amgt-btn--active');
+    this.ctx.addPointMenu.setHighlight(true);
   },
 
   deactivate() {
     this.active = false;
     this.ctx.map.getContainer().classList.remove('amgt-placing-mode');
-    this.btn.classList.remove('amgt-btn--active');
+    this.ctx.addPointMenu.setHighlight(false);
     if (this.tempMarker) { this.ctx.map.removeLayer(this.tempMarker); this.tempMarker = null; }
     this.form.classList.add('amgt-hidden');
     this.pendingLatLng = null;
@@ -280,10 +285,7 @@ const UI = {
     this.groups.AMIANTE.clearLayers();
     const all = await NS.Store.getAll();
     for (const s of all) this._addMarker(s);
-    const pending = all.filter((s) => !s.reference).length;
-    this.sendAllBtn.textContent = `⬆ Envoyer les signalements en attente (${pending})`;
-    this.sendAllBtn.disabled = !NS.Envoi.configured() || pending === 0;
-    this.sendAllBtn.title = NS.Envoi.configured() ? 'Envoie au serveur les signalements pas encore référencés' : "Aucun serveur de dépôt configuré (options.serverUrl dans config.js)";
+    this.pending = all.filter((s) => !s.reference).length;
   },
 
   /** Envoie un signalement et inscrit la référence reçue sur la copie locale. */
@@ -294,28 +296,24 @@ const UI = {
     return result;
   },
 
-  /** Envoie tous les signalements pas encore référencés, un par un ; s'arrête au premier échec. */
-  async sendPending() {
+  /** « Téléverser les fichiers sur le serveur » : envoie un par un les signalements pas encore référencés. */
+  async uploadPending() {
+    if (!NS.Envoi.configured()) {
+      alert("Aucun serveur de dépôt n'est configuré : les signalements restent sur cet appareil (export ZIP possible depuis leur fenêtre).");
+      return;
+    }
     const pending = (await NS.Store.getAll()).filter((s) => !s.reference);
-    if (!pending.length) return;
-    this.sendAllBtn.disabled = true;
-    const say = (text, error) => {
-      this.sendStatus.textContent = text;
-      this.sendStatus.classList.remove('amgt-hidden');
-      this.sendStatus.classList.toggle('amgt-sig-send-status--error', !!error);
-    };
-    let done = 0;
-    try {
-      for (const s of pending) {
-        say(`Envoi ${done + 1}/${pending.length}…`);
-        await this._send(s);
-        done++;
-      }
-      say(`${done} signalement(s) référencé(s).`);
-    } catch (err) {
-      say(`${done} envoyé(s) sur ${pending.length} ; arrêt : ${err.message}`, true);
+    if (!pending.length) { alert('Aucun signalement en attente : tous sont déjà référencés.'); return; }
+    const refs = [];
+    let failure = null;
+    for (const s of pending) {
+      try { refs.push((await this._send(s)).reference); } catch (err) { failure = err; break; }
     }
     await this.refresh();
+    let message = `${refs.length} signalement(s) téléversé(s) sur ${pending.length}.`;
+    if (refs.length) message += `\nRéférences : ${refs.join(', ')}`;
+    if (failure) message += `\n\nArrêt : ${failure.message}`;
+    alert(message);
   },
 
   _addMarker(s) {

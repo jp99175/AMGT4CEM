@@ -1,13 +1,13 @@
 # Plugin : Signalements
 
 Application séparée, branchée sur la carte par `src/plugins.js` (déclarée dans `plugins` de `config.js`).
-Elle ajoute à la carte un bouton **⚠ Signalement**, deux cases dans ☰ Carte (**Signalements et demandes**,
+Elle ajoute au menu du bouton **✚ Ajouter un point ▾** les entrées **⚠ Signalement** et **⬆ Téléverser les fichiers sur le serveur** (à côté de **✚ Point métier**, l'outil d'origine), deux cases dans ☰ Carte (**Signalements et demandes**,
 **Amiante (flux séparé)**) et son propre formulaire. Elle ne modifie aucun module du cœur et n'utilise pas
 le stockage des points métier (« ✚ Ajouter un point », inchangé). `enabled: false` dans `config.js` la retire.
 
 ## Saisie
 
-Clic sur **⚠ Signalement**, puis clic sur la carte (y compris sur une station ou un tunnel) : un marqueur
+**✚ Ajouter un point ▾** > **⚠ Signalement**, puis clic sur la carte (y compris sur une station ou un tunnel) : un marqueur
 déplaçable est posé et le formulaire s'ouvre.
 
 | Champ | Règle |
@@ -42,7 +42,8 @@ marqueur prend alors un contour vert et ne se déplace plus.
 ## Envoi au serveur
 
 1. Le signalement est d'abord **enregistré sur l'appareil** (localStorage, photos en IndexedDB) : il se saisit sans réseau.
-2. **⬆ Envoyer au serveur** (popup) ou **⬆ Envoyer les signalements en attente** (menu ☰ Carte) envoie l'archive de
+2. **⬆ Envoyer au serveur** (fenêtre du marqueur) ou **⬆ Téléverser les fichiers sur le serveur** (menu du bouton
+   ✚ Ajouter un point, tous les signalements en attente, avec le nombre entre parenthèses) envoie l'archive de
    dépôt au serveur `depot-signalements/` (voir son README). Le code d'accès est demandé une fois par onglet.
 3. Le serveur répond par la référence, inscrite sur le signalement local. Renvoyer un signalement déjà reçu redonne la
    même référence (pas de doublon). En cas d'échec, le signalement reste sur l'appareil et peut être renvoyé.

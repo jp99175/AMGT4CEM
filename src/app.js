@@ -165,10 +165,13 @@
     );
   }
 
-  document.getElementById('amgt-add-point-btn').addEventListener('click', () => {
-    AMGT4CEM_MeasureTool.deactivate();
-    AMGT4CEM_Plugins.notifyCoreToolActivated('add-point');
-    AMGT4CEM_AddPointTool.toggle();
+  // « ✚ Ajouter un point » : lance « Point métier » directement, ou ouvre le menu si un plugin y a ajouté des entrées.
+  AMGT4CEM_AddPointMenu.init(document.getElementById('amgt-add-point-btn'), {
+    corePoint: () => {
+      AMGT4CEM_MeasureTool.deactivate();
+      AMGT4CEM_Plugins.notifyCoreToolActivated('add-point');
+      AMGT4CEM_AddPointTool.toggle();
+    },
   });
 
   document.getElementById('amgt-measure-btn').addEventListener('click', () => {

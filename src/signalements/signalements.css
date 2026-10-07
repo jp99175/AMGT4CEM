@@ -100,12 +100,3 @@
   border-color: #2e7d32;
   box-shadow: 0 0 0 2px #2e7d32, 0 0 3px rgba(0, 0, 0, 0.6);
 }
-
-.amgt-sig-send-status {
-  margin: 4px 0;
-  font-size: 12px;
-}
-
-.amgt-sig-send-status--error {
-  color: #b71c1c;
-}

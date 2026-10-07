@@ -910,6 +910,7 @@ src/mapMenu.js                menu fond de plan / couches / réinitialisation
 src/searchTool.js             recherche station/tunnel/point (remplace le zoom +/-)
 src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
 src/plugins.js               chargeur de plugins (applications séparées branchées sur la carte)
+src/addPointMenu.js          menu du bouton « ✚ Ajouter un point » : Point métier + entrées ajoutées par les plugins
 src/signalements/            plugin « Signalements » (voir son README.md)
 src/pointsLayer.js           affichage/déplacement des points métier
 src/addPointTool.js          workflow "Ajouter un point"

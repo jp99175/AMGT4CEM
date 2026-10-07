@@ -53,6 +53,38 @@ html, body {
   border-color: #2c7a3d;
 }
 
+/* --- Menu du bouton « Ajouter un point » (addPointMenu.js) --- */
+.amgt-add-point-menu {
+  position: fixed;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.amgt-add-point-menu__item {
+  background: #fff;
+  border: 0;
+  border-bottom: 1px solid #eee;
+  padding: 10px 14px;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.amgt-add-point-menu__item:last-child {
+  border-bottom: 0;
+}
+
+.amgt-add-point-menu__item:hover {
+  background: #f0f0f0;
+}
+
 /* --- Bouton "💾" (screenshotTool.js) --- */
 /* Sous "☰ Carte" (1er bouton de la barre d'outils), pas dans la barre
    elle-même : elle n'apparaît/disparaît qu'avec une mesure en cours, la
