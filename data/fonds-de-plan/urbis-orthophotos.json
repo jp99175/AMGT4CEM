@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "date": "2026-10-07",
+  "note": "Orthophotos récentes UrbIS 2004-2022, les mêmes que celles de MobiGIS : GeoServer geoservices-urbis.irisnet.be, workspace urbisgrid, couches urbisgrid:Ortho<année>. Noms confirmés par un snapshot HTML de MobiGIS. Ne déclarent que EPSG:31370 et CRS:84 (`crs` forcé). Fusionné avec bruciel.json dans une seule ligne du temps. URL dans services.json (clé « urbis-orthophotos »).",
+  "type": "wms",
+  "wmsVersion": "1.3.0",
+  "format": "image/jpeg",
+  "crs": "EPSG:31370",
+  "attribution": "&copy; CIRB/CIBG &ndash; UrbIS",
+  "entries": [
+    {
+      "year": 2004,
+      "layers": "urbisgrid:Ortho2004"
+    },
+    {
+      "year": 2009,
+      "layers": "urbisgrid:Ortho2009"
+    },
+    {
+      "year": 2012,
+      "layers": "urbisgrid:Ortho2012"
+    },
+    {
+      "year": 2014,
+      "layers": "urbisgrid:Ortho2014"
+    },
+    {
+      "year": 2016,
+      "layers": "urbisgrid:Ortho2016"
+    },
+    {
+      "year": 2017,
+      "layers": "urbisgrid:Ortho2017"
+    },
+    {
+      "year": 2018,
+      "layers": "urbisgrid:Ortho2018"
+    },
+    {
+      "year": 2019,
+      "layers": "urbisgrid:Ortho2019"
+    },
+    {
+      "year": 2020,
+      "layers": "urbisgrid:Ortho2020"
+    },
+    {
+      "year": 2021,
+      "layers": "urbisgrid:Ortho2021Ns"
+    },
+    {
+      "year": 2022,
+      "layers": "urbisgrid:Ortho2022Ns"
+    }
+  ]
+}

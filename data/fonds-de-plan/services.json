@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "date": "2026-10-07",
+  "note": "Fichier GÉNÉRAL : adresse du relais d'enregistrement et URL de chaque service externe appelé par l'application. Les réglages propres à chaque service (couches, années, attribution, format) sont dans le fichier du même nom de ce dossier (data/urbis-topo/parametres.json pour UrbIS Topo). Modifiable depuis ⚙ Paramètres. Aucune URL ni nom de couche n'est deviné.",
+  "relais": {
+    "url": "https://amgt4cem-relay.jp99175.workers.dev"
+  },
+  "services": {
+    "urbis": {
+      "libelle": "UrbIS — fond de plan grisé (WMS)",
+      "url": "https://geoservices-urbis.irisnet.be/geoserver/Urbis/wms"
+    },
+    "bruciel": {
+      "libelle": "Bruciel — orthophotos historiques 1935-1996 (WMS)",
+      "url": "https://gis.urban.brussels/geoserver/URBAN_DCC_ER/wms"
+    },
+    "urbis-orthophotos": {
+      "libelle": "UrbIS — orthophotos récentes 2004-2022 (WMS)",
+      "url": "https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms"
+    },
+    "flandre": {
+      "libelle": "Digitaal Vlaanderen — orthophotos 2000-2025 (WMS)",
+      "url": "https://geo.api.vlaanderen.be/OMW/wms"
+    },
+    "urbis-adm": {
+      "libelle": "UrbIS Adm — contour de la Région (WFS)",
+      "url": "https://geoservices-urbis.irisnet.be/geoserver/UrbisAdm/ows"
+    },
+    "geocodeur": {
+      "libelle": "UrbIS — recherche d'adresses",
+      "url": "https://geoservices.irisnet.be/localization/Rest/Localize/getaddresses"
+    },
+    "urbis-topo": {
+      "libelle": "UrbIS Topo — objets détaillés (WFS)",
+      "url": "https://geoservices-urbis.irisnet.be/geoserver/urbistopo/wfs"
+    }
+  }
+}

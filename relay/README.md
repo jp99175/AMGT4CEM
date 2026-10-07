@@ -9,9 +9,13 @@ par un administrateur :
   références de planche ; `etiquettes-troncons` : position et tronçon de
   rattachement des numéros d'interstation), modifiés avec le plugin
   `src/peLabelEditor/` ; plus tard `amiante`, `chantiers`...
-- `PUT /settings` : paramètres généraux de l'application — adresses des
-  services externes et adresse du relais (`data/app-settings.json`),
-  modifiés dans ⚙ Paramètres.
+  **`fonds-de-plan`** (`services` : adresse du relais et URL des services externes ;
+  `urbis` : couche du fond UrbIS), modifiés dans ⚙ Paramètres ; **`urbis-topo`** et
+  **`plans-patrimoine`** (`selection-par-defaut` : sélections par défaut partagées),
+  modifiées depuis les sélecteurs de couches.
+- `PUT /settings` : ancienne route des paramètres généraux (`data/app-settings.json`),
+  **plus utilisée par l'application** depuis la refonte des données (tout passe par
+  `/shared/…`) ; conservée dans le relais déjà déployé, sans effet.
 
 **Une seule autorisation.** Le code administrateur (`ADMIN_TOKEN`) ouvre
 toutes les routes : elles ne sont pas des droits distincts, ce sont des
@@ -62,7 +66,7 @@ Prérequis : un compte Cloudflare (gratuit), Node.js installé.
    (« Relais joignable, code administrateur accepté ») et **Enregistrer**.
    L'adresse (adresse **sans** `/shared/…` ni `/settings` : l'application
    ajoute la route) est alors écrite par le relais dans
-   `data/app-settings.json` : c'est un paramètre général, lu par tous les
+   `data/fonds-de-plan/services.json` (clé `relais`) : c'est un paramètre général, lu par tous les
    visiteurs après le redéploiement de GitHub Pages. Le code n'est gardé que
    le temps de l'onglet (`sessionStorage`), jamais sur disque.
 5. Dans le mode édition des étiquettes, **Enregistrer dans l'application**
@@ -81,7 +85,7 @@ Prérequis : un compte Cloudflare (gratuit), Node.js installé.
 - `PUT /settings` : `{ "version": 1, "settings": { urbisUrl?, urbisLayers?,
   brucielHistoriqueUrl?, brucielRecentUrl?, geocoderUrl?, relayUrl? } }` —
   clés connues seulement, adresses en `https://` (ou `http://localhost`).
-- N'écrit que `data/<dossier>/<fichier>.json` et `data/app-settings.json` (contenu : un enregistrement
+- N'écrit que `data/<dossier>/<fichier>.json` (et, pour l'ancienne route, `data/app-settings.json`) (contenu : un enregistrement
   sans changement réel ne crée aucun commit).
 - Le jeton GitHub n'est jamais renvoyé au navigateur.
 

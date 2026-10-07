@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "date": "2026-10-07",
+  "note": "Recherche d'adresses : service officiel UrbIS (CIRB/CIBG). Endpoint et format confirmés par le code du connecteur PHP geo6/geocoder-php-urbis-provider ; répond nativement en EPSG:31370. Appel fetch() JSON : le support CORS n'a pu être vérifié que depuis un navigateur réel. URL dans services.json (clé « geocodeur »).",
+  "spatialReference": 31370,
+  "language": "fr"
+}

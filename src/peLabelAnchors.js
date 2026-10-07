@@ -133,8 +133,8 @@ const AMGT4CEM_PeLabelAnchors = {
 
   /**
    * Envoie un contenu au relais (PUT <relais>/<route>). Sert aussi à
-   * l'enregistrement des paramètres généraux (settingsStore.js, route
-   * « settings »).
+   * l'enregistrement de la configuration des services (services.js) et des
+   * sélections par défaut partagées (selectionStore.js).
    */
   async putToRelay(relayUrl, route, body, adminCode) {
     if (!relayUrl) {

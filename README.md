@@ -7,7 +7,8 @@ sans backend).
 ## 1. Lancer l'application
 
 L'application est une page statique. Les géométries (shapefiles
-`data/geometries/`) et le référentiel (JSON `data/referentiel/`) sont chargés via
+`data/shapefile/`), les référentiels (JSON de `data/metro/` et `data/plans-patrimoine/`) et la
+configuration des services (`data/fonds-de-plan/`) sont chargés via
 `fetch()`, ce qui **ne fonctionne pas** si vous ouvrez `index.html` directement
 en double-clic (`file://`) — c'est une restriction des navigateurs, pas un bug.
 Servez le dossier avec un petit serveur HTTP local :
@@ -92,7 +93,7 @@ bouton de secours : les données ne sont pas chargées).
     onglets — **Sources** (corriger l'URL d'un service externe — fond UrbIS,
     orthophotos, géocodeur — si celui-ci change d'adresse, sans modifier le
     code ; voir section 3bis), **Serveur** (adresse du relais d'enregistrement
-    et code administrateur, bouton **Tester**) et **Fonds de plan** (lancer le
+    et code administrateur, bouton **Tester**) et **Données** (lancer le
     mode édition des étiquettes (planches, interstations) ; charger un nouveau shapefile :
     à venir — il devra accepter un ou plusieurs fichiers du dossier du
     shapefile : .shp, .dbf, .shx, .prj, .cpg…, pas seulement le .shp). La fenêtre est **réservée aux administrateurs** : son ouverture
@@ -174,8 +175,9 @@ données) et sa mise en place.
 
 ## 3. Les fonds de plan
 
-Deux choix dans le menu **☰ Carte**, déclarés dans `config.js`
-(`AMGT4CEM_CONFIG.basemaps`) :
+Deux choix dans le menu **☰ Carte**, dont la configuration vit dans
+`data/fonds-de-plan/` (un fichier général `services.json` + un fichier par
+service, voir section 3bis) :
 
 ### UrbIS
 
@@ -264,14 +266,15 @@ dans cette unique série, de façon transparente pour l'utilisateur :
 
 Aucun nom de couche ci-dessus n'est deviné. Pour ajouter un millésime plus
 récent quand il sera identifié, ajoutez une entrée dans
-`AMGT4CEM_CONFIG.basemaps.bruciel.entries` (voir `config.js`).
+`data/fonds-de-plan/urbis-orthophotos.json` (ou `bruciel.json` pour une année
+historique), tableau `entries`.
 
 ### Recherche d'adresses (géocodage)
 
 La recherche (bouton **🔍**) inclut aussi les noms de rues, via le service
 officiel de géocodage UrbIS (CIRB/CIBG),
 `https://geoservices.irisnet.be/localization/Rest/Localize/getaddresses`
-(déclaré dans `AMGT4CEM_CONFIG.geocoder`, utilisé par `src/searchTool.js`).
+(configuré dans `data/fonds-de-plan/services.json` et `geocodeur.json`, utilisé par `src/searchTool.js`).
 Endpoint et format confirmés via le code source public du connecteur PHP
 `geo6/geocoder-php-urbis-provider` (pas deviné) ; il répond nativement en
 EPSG:31370, pas de conversion nécessaire côté client.
@@ -291,7 +294,7 @@ stations/tunnels/points restent disponibles normalement.
 Les couches Bruciel (les deux périodes) ne déclarent que
 `EPSG:31370`/`CRS:84` dans leurs `GetCapabilities` (pas `EPSG:3857`,
 contrairement au fond UrbIS) — la carte Leaflet fonctionnant par défaut en
-Web Mercator, ces couches précisent `crs: 'EPSG:31370'` dans `config.js`
+Web Mercator, ces couches précisent `crs: 'EPSG:31370'` dans `data/fonds-de-plan/bruciel.json` et `urbis-orthophotos.json`
 pour forcer Leaflet à les requêter dans leur CRS natif (via Proj4Leaflet,
 voir `src/basemap.js`), sous peine de tuiles vides ou d'erreur serveur.
 
@@ -319,19 +322,30 @@ repliable, pour ne pas encombrer le menu par défaut.
 
 Chaque thème a sa propre case "tout cocher/décocher" (à côté de son titre,
 état indéterminé si seule une partie des types du thème est sélectionnée),
-pour sélectionner une famille entière d'un coup plutôt que type par type.
-Le bouton **💾** en haut du sélecteur enregistre la sélection courante comme
-sélection par défaut de cet appareil — utilisée à la prochaine fois que
-l'application démarre sans aucune sélection enregistrée (première visite,
-ou après effacement des données du navigateur), à la place de la
-présélection intégrée au code (grilles de ventilation seules).
+pour sélectionner une famille entière d'un coup plutôt que type par type ; une
+case **« Tout (dé)sélectionner »**, au-dessus de tout, agit sur tous les types
+affichés (la recherche restreint cet ensemble).
+
+**Sélections** (trois niveaux, du plus au moins prioritaire — même principe pour
+Plans patrimoine, section 3ter) :
+1. la **sélection courante** de l'appareil, mise à jour à chaque case cochée
+   (`localStorage`, clé `amgt4cem.urbistopo-selection.v1`) ;
+2. les **préférences locales** de l'utilisateur : le bouton **💾** en haut du
+   sélecteur les enregistre (clé `amgt4cem.urbistopo-default.v1`) ; elles servent
+   quand il n'y a pas de sélection courante (première visite, données du
+   navigateur effacées) ;
+3. la **sélection par défaut partagée** : `data/urbis-topo/selection-par-defaut.json`,
+   lue par tous. Sous la liste, le bouton **« 🔒 Modifier la sélection par défaut
+   (administrateur) »** vérifie le code administrateur auprès du relais, puis fait
+   modifier un *brouillon* de cette sélection (la carte et la sélection de l'appareil
+   ne changent pas) ; **Enregistrer** l'envoie au relais (route
+   `shared/urbis-topo/selection-par-defaut`), qui la commit ; **Annuler** l'abandonne.
 
 Voir `catalogues/urbis-topo.js` pour le catalogue complet,
-`src/urbisTopoSelectionStore.js` pour la sélection (persistée dans
-`localStorage`, propre à cet appareil : clé `amgt4cem.urbistopo-selection.v1`
-pour la sélection courante, `amgt4cem.urbistopo-default.v1` pour la
-sélection par défaut enregistrée via 💾), `src/urbisTopoPicker.js` pour le
-sélecteur, et `src/urbisTopoLayer.js` pour le chargement carte.
+`src/selectionStore.js` (principe commun) et `src/urbisTopoSelectionStore.js` pour
+la sélection, `src/pickerDefaultBar.js` pour la barre « sélection par défaut »,
+`src/urbisTopoPicker.js` pour le sélecteur, `src/urbisTopoLayer.js` pour le chargement
+carte, et `data/urbis-topo/parametres.json` pour les réglages du service.
 
 **Rien de tout cela n'est deviné.** Le service WFS officiel
 (`geoservices-urbis.irisnet.be/geoserver/urbistopo/wfs`) ne regroupe le
@@ -363,7 +377,7 @@ Chargement strictement **à la demande**, pour deux raisons :
   visible sont demandés (`CQL_FILTER` avec `TYPE IN (...)` et `BBOX(...)`,
   au plus 2 requêtes quel que soit le nombre de types sélectionnés — une par
   géométrie), et seulement à partir d'un niveau de zoom minimal
-  (`AMGT4CEM_CONFIG.urbisTopo.minZoom`, 16 par défaut, ajustable) — une seule
+  (`minZoom` de `data/urbis-topo/parametres.json`, 16 par défaut, ajustable) — une seule
   des 3 couches globales dépasse 450 000 objets au total, tous types
   confondus, il serait à la fois lent et inutile de tout charger d'un coup.
   La zone se met à jour (avec un léger délai) quand vous déplacez ou zoomez
@@ -383,44 +397,56 @@ mise à jour mensuelle du produit (section 9).
 
 ## 3bis. Toutes les sources de données sont-elles externes ? Que faire si l'une change ?
 
-Oui, à quelques exceptions près : les géométries (`data/geometries/`, export
-AutoCAD) et le référentiel (`data/referentiel/`) — voir section 4 — sont
-fournis par l'utilisateur et servis localement, comme les fichiers « Plans
-patrimoine » (section 3ter) ; la micro-base de points métier vit uniquement dans
-le `localStorage` du navigateur (section 6). Tout le reste — fond UrbIS,
-orthophotos Bruciel, géocodeur d'adresses, UrbIS Topo — est interrogé en direct
-auprès de services externes (CIRB/CIBG, urban.brussels), à chaque affichage,
-sans rien mettre en cache de façon permanente côté application.
+Oui, à quelques exceptions près : les géométries (`data/shapefile/`, export
+AutoCAD) et les référentiels (`data/metro/`, `data/plans-patrimoine/`) — voir
+section 4 — sont fournis par l'utilisateur et servis localement, comme les
+fichiers « Plans patrimoine » (section 3ter) ; la micro-base de points métier vit
+uniquement dans le `localStorage` du navigateur (section 6). Tout le reste — fond
+UrbIS, orthophotos (Bruciel, UrbIS, Flandre), géocodeur d'adresses, UrbIS Topo —
+est interrogé en direct auprès de services externes (CIRB/CIBG, urban.brussels,
+Digitaal Vlaanderen), à chaque affichage, sans rien mettre en cache de façon
+permanente côté application.
 
-Ces URLs sont en dur dans `config.js`. Si l'un de ces services change
-d'adresse (migration de serveur, changement de nom de domaine...), il n'est
-pas nécessaire de modifier le code : l'icône **⚙** en haut à droite du menu
-**☰ Carte** ouvre la fenêtre de paramètres ; son onglet **Sources** permet de corriger :
+**Où est configuré chaque service.** Plus rien n'est en dur dans `config.js` :
+- `data/fonds-de-plan/services.json` — fichier **général** : adresse du relais et
+  URL de chaque service (`urbis`, `bruciel`, `urbis-orthophotos`, `flandre`,
+  `urbis-adm`, `geocodeur`, `urbis-topo`) ;
+- un fichier par service pour ses réglages propres (couches, années, attribution,
+  format, CRS, notes de provenance) : `data/fonds-de-plan/urbis.json`, `bruciel.json`,
+  `urbis-orthophotos.json`, `flandre.json`, `geocodeur.json`, et
+  `data/urbis-topo/parametres.json` pour UrbIS Topo (avec sa sélection par défaut).
+
+`src/services.js` lit ces fichiers au démarrage, avant toute création de couche, et
+les assemble dans `AMGT4CEM_CONFIG` (`basemaps`, `geocoder`, `urbisTopo`) ; un fichier
+absent ou illisible est signalé en console et le service concerné reste non configuré.
+
+Si l'un de ces services change d'adresse (migration de serveur, changement de
+nom de domaine...), il n'est pas nécessaire de modifier le code : l'icône **⚙**
+en haut à droite du menu **☰ Carte** ouvre la fenêtre de paramètres ; son onglet
+**Sources** permet de corriger :
 
 - l'URL du service WMS du fond UrbIS et le nom de sa couche,
 - l'URL du service WMS des orthophotos historiques (1935&ndash;1996),
 - l'URL du service WMS des orthophotos récentes (2004&ndash;2022),
+- l'URL du service WMS des orthophotos de Flandre,
 - l'URL du géocodeur d'adresses.
 
-Ces valeurs sont des **paramètres généraux de l'application**, pas des
-réglages de l'appareil : **Enregistrer** les envoie au serveur (relais
-`relay/`, route `/settings`), qui les commit dans `data/app-settings.json`
-(dépôt). L'application lit ce fichier à chaque démarrage
-(`src/settingsStore.js`, avant toute création de couche) : tous les visiteurs
-les voient, après le redéploiement de GitHub Pages (~1 min). Seules les
-valeurs différentes de `config.js` sont enregistrées ; fichier absent ou vide
-= valeurs par défaut de `config.js`. Le bouton **Valeurs par défaut** remplit
-les champs avec celles de `config.js` (à enregistrer ensuite). Cette fenêtre
-est réservée aux administrateurs (voir section 1, item 11) ; l'enregistrement
-exige l'adresse du relais et le code administrateur (onglet **Serveur**). Les
-anciens réglages locaux (`localStorage`, clé `amgt4cem.settings.v1`) ne sont
-plus lus et sont effacés au démarrage.
+Ces valeurs sont des **paramètres généraux de l'application**, pas des réglages de
+l'appareil : **Enregistrer** les envoie au serveur (relais `relay/`, routes
+`shared/fonds-de-plan/services` et, si le nom de la couche UrbIS change,
+`shared/fonds-de-plan/urbis`), qui commit les fichiers dans le dépôt : tous les
+visiteurs les voient après le redéploiement de GitHub Pages (~1 min). Les adresses
+doivent être en `https` (ou `http://localhost`). Il n'y a plus de « valeurs par
+défaut » dans le code : les fichiers du dépôt font foi, et l'historique Git permet
+de revenir en arrière. Cette fenêtre est réservée aux administrateurs (voir section 1,
+item 11) ; l'enregistrement exige l'adresse du relais et le code administrateur
+(onglet **Serveur**).
 
-Cela ne couvre que les adresses de service (le cas le plus probable :
-migration d'un serveur entier) : les noms de couches par année pour les
-orthophotos (`Orthophotoplans_1996`, `urbisgrid:Ortho2022Ns`...) restent
-dans `config.js`, car les vérifier nécessite de toute façon de consulter le
-`GetCapabilities` réel du service (voir section 3).
+Cela ne couvre que les adresses de service (le cas le plus probable : migration d'un
+serveur entier) : les noms de couches par année pour les orthophotos
+(`Orthophotoplans_1996`, `urbisgrid:Ortho2022Ns`...) se modifient dans le fichier du
+service, car les vérifier nécessite de toute façon de consulter le `GetCapabilities`
+réel du service (voir section 3).
 
 ## 3ter. Plans patrimoine
 
@@ -431,10 +457,12 @@ depuis un service externe — contrairement à UrbIS Topo). Même principe que
 UrbIS Topo : le choix des plans à afficher se fait via le lien
 **"(modifier la sélection)"**, qui ouvre un sélecteur plein écran listant
 le catalogue disponible (voir `catalogues/plans-patrimoine.js`) ; rien n'est
-présélectionné par défaut tant que l'utilisateur n'a pas enregistré sa
-propre sélection avec le bouton **💾** en haut du sélecteur (même principe
-que pour UrbIS Topo : sélection par défaut propre à cet appareil, clé
-`amgt4cem.patrimoine-default.v1`, voir `src/patrimoineSelectionStore.js`).
+présélectionné au départ. Mêmes commandes et mêmes trois niveaux de sélection que
+pour UrbIS Topo (section 3) : **💾** = préférences locales (clé
+`amgt4cem.patrimoine-default.v1`), case **« Tout (dé)sélectionner »** en haut, et
+sous la liste le bouton « Modifier la sélection par défaut (administrateur) » qui
+modifie `data/plans-patrimoine/selection-par-defaut.json` via le relais (voir
+`src/patrimoineSelectionStore.js`).
 Le lien de sélection, comme le curseur d'opacité, ne s'affiche que
 lorsqu'on clique sur l'icône **curseurs** de la case Plans patrimoine — les
 deux partagent le même volet repliable, pour ne pas encombrer le menu par
@@ -448,12 +476,12 @@ Familles actuelles :
 
 La couche **« Noms de station »** importée d'INFRAVIEW (206 textes, sans lien
 fiable avec les emprises) a été **retirée**. Les noms et références de station
-seront saisis dans le **référentiel** (`data/referentiel/polygones.json`, liste
+seront saisis dans le **référentiel** (`data/metro/polygones.json`, liste
 `noms` de chaque station : entrées `{fr, nl, reference}`) et affichés dans
 l'infobulle de l'emprise de station (section 4).
 
 Les **plans d'ensemble au 1/500e** (36 planches) sont des polygones de genre
-`planche` de `data/geometries/polygones.shp` ; leur étiquette est le `sheet_ref`
+`planche` de `data/shapefile/polygones.shp` ; leur étiquette est le `sheet_ref`
 du référentiel (géométrie et popups gérés par `src/metroLayer.js`, voir section
 4bis). Ils restent une entrée de ce sélecteur (`catalogues/plans-patrimoine.js`,
 `external: true`) : la case à cocher affiche/masque la couche déjà construite par
@@ -464,7 +492,7 @@ dans ce jeu de données) liste toujours **toutes** celles concernées à cet end
 précis, pas seulement celle au-dessus visuellement (`_sheetRefsAt`). La même case
 affiche aussi les **repères de tronçon** (triangles et codes D0, D1, G1a... relevés
 dans INFRAVIEW.pdf) et les références de planche — voir section 4bis.
-Les repères de tronçon sont **legacy** : `data/legacy/reperes-troncons.legacy.json`
+Les repères de tronçon sont **legacy** : `data/plans-patrimoine/reperes-troncons.legacy.json`
 (106 triangles, 80 codes), sans identifiant, à rattacher à `lignes.shp` quand il
 existera.
 
@@ -498,7 +526,7 @@ recouvrent sur plus de 1 m ; 64 tunnels en ont deux, 23 un seul) — voir
 l'en-tête de `src/interstation.js` pour la construction.
 
 **Déplacer une étiquette de tronçon** : **mode édition commun** aux références
-de planche et aux numéros d'interstation (⚙ Paramètres > Fonds de plan, bouton
+de planche et aux numéros d'interstation (⚙ Paramètres > Données, bouton
 « ✥ Mode édition » ; plugin `src/peLabelEditor/`, voir son README). Au
 survol l'étiquette s'illumine ; un premier clic la **sélectionne**, un second
 lance la modification : 1) on la **déplace parallèlement au trajet du
@@ -509,8 +537,8 @@ en cours s'affiche en haut à gauche, sous le menu carte (Retour, Suivant,
 Annuler, Terminer) ; le suivi et l'enregistrement sont dans le panneau du bouton
 « ✥ Mode édition » (masqué par défaut). Position (Lambert 72) et tronçon
 (identifiant `id` du référentiel, voir section 4) sont enregistrés dans
-`data/fond-de-plan/etiquettes-troncons.json` (clé `numéro#rang`), via la route
-`/shared/fond-de-plan/etiquettes-troncons` du relais (à redéployer une fois, voir
+`data/plans-patrimoine/etiquettes-troncons.json` (clé `numéro#rang`), via la route
+`/shared/plans-patrimoine/etiquettes-troncons` du relais (à redéployer une fois, voir
 `relay/README.md`), et remplacent le rattachement automatique pour cette étiquette. Limites du
 rattachement automatique : 3 numéros sur 86 à moins de 15 m d'écart entre
 les deux premiers tunnels, 4 à plus de 140 m de tout tunnel (243, 243-3,
@@ -533,55 +561,84 @@ catalogue à la fois.
 
 ## 4. Architecture des données
 
-Les données greffées sur les fonds de plan sont de **trois familles** :
+L'application appelle plusieurs **services de fonds de plan** (UrbIS, orthophotos...)
+et y superpose des informations qui se répartissent en **couches** et **points
+métier**. Le dossier `data/` suit cette répartition (une couche ou un domaine par
+dossier) :
 
-1. **Géométries pérennes** — shapefiles Lambert 72 (EPSG:31370), éditables dans
-   AutoCAD, **strictement limités à deux fichiers** : `data/geometries/polygones.*`
-   et `data/geometries/lignes.*` (`.shp`, `.shx`, `.dbf`, `.prj`, `.cpg`). Chaque
+```
+data/
+  shapefile/          géométries pérennes, éditables dans AutoCAD (2 shapefiles) + identifiants.json
+  metro/              référentiel de la couche Métro : stations, tunnels (et tronçons, plus tard)
+  plans-patrimoine/   référentiel des planches, étiquettes, sélection par défaut, fichiers legacy
+  urbis-topo/         réglages du service UrbIS Topo + sélection par défaut partagée
+  fonds-de-plan/      services externes : services.json (général) + un fichier par service
+  points-metier/      (réservé : structure des points métier, phase B)
+  suivi/              suivi (fiches, constats...) : HORS DÉPÔT (.gitignore), phase B
+```
+
+### Les trois familles de données
+
+1. **Géométries pérennes** — `data/shapefile/` : shapefiles Lambert 72 (EPSG:31370),
+   éditables dans AutoCAD, **strictement limités à deux fichiers** : `polygones.*` et
+   `lignes.*` (`.shp`, `.shx`, `.dbf`, `.prj`, `.cpg`). On n'y met que des informations
+   **pérennes, transverses, dont le partage présente un intérêt** (emprises des stations,
+   des tunnels et des planches, dont le géoréférencement reste à corriger). Chaque
    entité ne porte qu'**un champ : `id`**. Aucun nom, type, niveau ni autre attribut.
    `lignes.*` peut rester absent tant qu'aucun tronçon n'est dessiné (l'application
    le tolère).
-2. **Cadastre / référentiel** — JSON rattaché aux géométries par `id`, dans
-   `data/referentiel/` : `polygones.json`, `lignes.json`, `vocabulaires.json`. Il
-   porte tout ce qui complète une géométrie : genre (`station`, `tunnel`,
-   `planche`), noms FR/NL **sans préfixe** (« Montgomery », « Horta - Albert » : le
-   genre dit déjà s'il s'agit d'une station ou d'un tunnel), liste de noms et
-   références d'une station (`noms`), `sheet_ref` d'une planche, identifiants
-   externes (`ids_externes` : ancien `ogc_fid`, ancien `id_objet`), plus tard niveau,
-   année de construction, liens vers des plans... En-tête de `polygones.json` et
-   `lignes.json` : `version`, `date`, `crs: "EPSG:31370"`. `vocabulaires.json` porte
-   ce qui est commun : le compteur `prochain_id`, les genres (libellé, géométrie,
-   couleur d'affichage — ex. celle des planches) et les valeurs admises.
-   Le **niveau** n'est pas renseigné : les valeurs de l'ancien `Metro.dbf` (« - » ×142,
-   « 0 » ×14) n'étaient pas crédibles et n'ont pas été reprises.
+2. **Cadastre / référentiel** — JSON rattaché aux géométries par `id`, **rangé dans le
+   dossier de la couche concernée** : `data/metro/polygones.json` (stations et tunnels),
+   `data/metro/lignes.json` (tronçons : vide pour l'instant),
+   `data/plans-patrimoine/polygones.json` (planches), chacun avec son
+   `vocabulaires.json` (genres : libellé, géométrie, couleur d'affichage). Il porte tout ce
+   qui complète une géométrie : genre (`station`, `tunnel`, `planche`), noms FR/NL **sans
+   préfixe** (« Montgomery », « Horta - Albert » : le genre dit déjà s'il s'agit d'une
+   station ou d'un tunnel), liste de noms et références d'une station (`noms`),
+   `sheet_ref` d'une planche, identifiants externes (`ids_externes` : ancien `ogc_fid`,
+   ancien `id_objet`), plus tard niveau, année de construction, liens vers des plans...
+   En-tête de chaque JSON : `version`, `date`, `crs: "EPSG:31370"`. Le **niveau** n'est
+   pas renseigné : les valeurs de l'ancien `Metro.dbf` (« - » ×142, « 0 » ×14) n'étaient
+   pas crédibles et n'ont pas été reprises. Un même `id` ne figure que dans **un seul**
+   dossier. L'application et `tools/verifier-donnees.py` fusionnent ces référentiels
+   avant de les joindre aux deux shapefiles.
 3. **Données métier (suivi : fiches, constats...)** — **hors de ce dépôt**
    (dossier `data/suivi/`, listé dans `.gitignore` : le dépôt est public, ces données
    n'y entrent jamais). Phase B, pas encore réalisée : la couche « Points métier »
-   (`localStorage`, section 6) fonctionne comme avant.
+   (`localStorage`, section 6) fonctionne comme avant ; `data/points-metier/` est
+   réservé à leur structure (champs, listes de types) quand elle sera définie.
 
 **Règle de l'identifiant.** Chaîne opaque sans signification métier : « G » + 6
 chiffres (ex. `G000123`), attribuée une fois, **jamais réutilisée**, **unique sur
 les deux fichiers à la fois**. Le prochain à attribuer est `prochain_id`, **compteur
-unique** des deux fichiers, dans `vocabulaires.json`. Un code
-de station ou un numéro de tronçon est un **attribut du référentiel**, jamais un
+unique** des deux fichiers, dans `data/shapefile/identifiants.json` (avec la règle). Un
+code de station ou un numéro de tronçon est un **attribut du référentiel**, jamais un
 identifiant. Les anciens identifiants (`ogc_fid`, `id_objet` comme
 `TRO-HORTA-ALBERT-01`) sont conservés dans `ids_externes`.
 
-**Autres fichiers** (hors des trois familles) :
-- `data/fond-de-plan/` : `etiquettes-planches.json` (ancrage des références de planche,
-  clé « sheet_ref#rang ») et `etiquettes-troncons.json` (position du texte et tronçon
-  de rattachement des numéros d'interstation, clé « numéro#rang », tronçon désigné par
-  son `id`), écrits par l'application via le relais (section 6), en Lambert 72. Ce sont
-  les listes **complètes** des étiquettes (source unique) : créer ou supprimer une
-  étiquette = ajouter ou retirer une entrée (mode édition : « ✚ Ajouter un élément »,
-  🗑). L'axe du tunnel, le soulignement et la ligne de repère ne sont pas stockés : ils
-  se recalculent à l'affichage ;
-- `data/legacy/` : fichiers conservés en attendant `lignes.shp`, **sans identifiant**
-  — `numeros-interstation.legacy.json` (86 points texte, archive d'amorçage, plus lu
-  par l'application) et `reperes-troncons.legacy.json` (triangles et codes de
-  transition entre tronçons, encore affichés avec les planches). **Aucune géométrie de
-  tronçon n'existe encore** : à rattacher à `lignes.shp` plus tard ;
-- `catalogues/` : `urbis-topo.js`, `plans-patrimoine.js` (catalogues de couches) ;
+### Contenu de chaque dossier
+
+- `data/plans-patrimoine/` :
+  - `polygones.json`, `vocabulaires.json` : référentiel des planches ;
+  - `etiquettes-planches.json` (ancrage des références de planche, clé
+    « sheet_ref#rang ») et `etiquettes-troncons.json` (position du texte et tronçon de
+    rattachement des numéros d'interstation, clé « numéro#rang », tronçon désigné par son
+    `id`), écrits par l'application via le relais (section 6), en Lambert 72. Ce sont les
+    listes **complètes** des étiquettes (source unique) : créer ou supprimer une étiquette
+    = ajouter ou retirer une entrée (mode édition : « ✚ Ajouter un élément », 🗑). L'axe
+    du tunnel, le soulignement et la ligne de repère ne sont pas stockés : ils se
+    recalculent à l'affichage ;
+  - `selection-par-defaut.json` : sélection par défaut partagée des couches (section 3ter) ;
+  - `*.legacy.json` : fichiers conservés en attendant `lignes.shp`, **sans identifiant** —
+    `numeros-interstation.legacy.json` (86 points texte, archive d'amorçage, plus lu par
+    l'application) et `reperes-troncons.legacy.json` (triangles et codes de transition entre
+    tronçons, encore affichés avec les planches). **Aucune géométrie de tronçon n'existe
+    encore** : à rattacher à `lignes.shp` plus tard ;
+- `data/urbis-topo/` : `parametres.json` (réglages du service WFS) et
+  `selection-par-defaut.json` (sélection par défaut partagée, section 3) ;
+- `data/fonds-de-plan/` : configuration des services externes (section 3bis) ;
+- `catalogues/` : `urbis-topo.js`, `plans-patrimoine.js` (catalogues de couches : du code de
+  configuration, rattaché à l'interface plus qu'aux données) ;
 - `tools/` : `migrer-donnees.py` (migration unique, déjà exécutée),
   `verifier-donnees.py` (contrôle, voir plus bas), `rapport-migration.md`.
 
@@ -593,20 +650,21 @@ station rattaché, la source ayant été retirée).
 **Contrôles.** `python3 tools/verifier-donnees.py` (bibliothèque standard seule,
 code de sortie non nul en cas d'erreur) vérifie : identifiants uniques sur les deux
 fichiers, aucune géométrie sans entrée de référentiel, aucune entrée sans géométrie,
-présence de `.prj` et `.shx`, format des `id`, `prochain_id` (unique, dans `vocabulaires.json`) supérieur à tout `id` utilisé,
-nom des stations/tunnels, `sheet_ref` présent et unique pour les planches,
+aucun `id` décrit dans deux dossiers, présence de `.prj` et `.shx`, format des `id`,
+`prochain_id` (unique, dans `data/shapefile/identifiants.json`) supérieur à tout `id`
+utilisé, nom des stations/tunnels, `sheet_ref` présent et unique pour les planches,
 caractères de contrôle (encodage mal lu), enregistrements marqués supprimés dans le
-`.dbf`, et références des étiquettes de `data/fond-de-plan/` (tronçon = `id` de genre
-`tunnel`, planche existante).
-
-**Transition (tant que la refonte n'est pas déployée).** L'ancienne version en ligne
-continue d'écrire, via le relais, les anciens identifiants de tunnel (`id_objet`, ex.
-`TRO-HORTA-ALBERT-01`) dans `etiquettes-troncons.json` sur la branche déployée. Après la
-fusion, `python3 tools/verifier-donnees.py --corriger` les remplace par le nouvel `id`
-grâce à `ids_externes.id_objet` du référentiel. Une fois le fichier stabilisé, `id_objet`
-n'a plus d'usage et pourra être retiré de `ids_externes`. Les mêmes
-règles sont appliquées **sans bloquer** au démarrage de l'application
+`.dbf`, références des étiquettes de `data/plans-patrimoine/` (tronçon = `id` de genre
+`tunnel`, planche existante) et configuration des services (JSON valides, URL en https).
+Les mêmes règles sont appliquées **sans bloquer** au démarrage de l'application
 (avertissements en console, `src/referentiel.js`).
+
+**Si d'anciens identifiants réapparaissent.** Tant qu'une ancienne version de
+l'application écrit via le relais, `etiquettes-troncons.json` peut recevoir les anciens
+identifiants de tunnel (`id_objet`, ex. `TRO-HORTA-ALBERT-01`) :
+`python3 tools/verifier-donnees.py --corriger` les remplace par le nouvel `id` grâce à
+`ids_externes.id_objet` du référentiel. Une fois le fichier stabilisé, `id_objet`
+n'a plus d'usage et pourra être retiré de `ids_externes`.
 
 ## 4bis. Shapefiles : workflow AutoCAD
 
@@ -623,12 +681,13 @@ Workflow de mise à jour :
 2. **Exporter le shapefile** avec le **seul champ `id`**, même CRS (EPSG:31370),
    en gardant `.shp`, `.shx`, `.dbf`, `.prj`. Une entité **nouvelle** reçoit un
    `id` neuf pris à `prochain_id` (puis `prochain_id` est incrémenté dans
-   `vocabulaires.json`) ;
+   `data/shapefile/identifiants.json`) ;
    copier ou scinder une entité duplique son `id` : à corriger avant d'exporter.
-3. **Compléter le référentiel** : une entrée par `id` (genre, noms...) dans
-   `data/referentiel/polygones.json` ou `lignes.json`.
+3. **Compléter le référentiel** : une entrée par `id` (genre, noms...) dans le
+   `polygones.json` (ou `lignes.json`) du dossier de la couche : `data/metro/` pour
+   une station ou un tunnel, `data/plans-patrimoine/` pour une planche.
 4. **Lancer `python3 tools/verifier-donnees.py`** : corriger jusqu'à « OK ».
-5. **Committer** (`data/geometries/`, `data/referentiel/`). Le suivi (famille 3)
+5. **Committer** (`data/shapefile/`, `data/metro/`, `data/plans-patrimoine/`). Le suivi (famille 3)
    n'est jamais committé.
 
 Origine historique : les polygones viennent de l'export WFS MobiGIS
@@ -644,8 +703,8 @@ supprimés du dépôt ; ils restent récupérables via le tag de sauvegarde (sec
 `MetroLabels.shp`, `Metro.json`) sont ceux d'**avant la refonte des données** :
 ils décrivent l'historique du calage et sont récupérables via le tag de sauvegarde.
 Équivalents actuels : planches = genre `planche` de `polygones.shp` ; triangles et
-codes = `data/legacy/reperes-troncons.legacy.json` ; références de planche =
-`data/fond-de-plan/etiquettes-planches.json`.*
+codes = `data/plans-patrimoine/reperes-troncons.legacy.json` ; références de planche =
+`data/plans-patrimoine/etiquettes-planches.json`.*
 
 Tout ce qui vient d'INFRAVIEW.pdf (STIB, plan "Station & Interstation
 Infrastructure", `DITP`, juillet 2025) est placé **par rapport au réseau
@@ -653,9 +712,9 @@ métro tel qu'il est dessiné dans ce PDF**, pas d'après un calage de
 coordonnées pris isolément :
 
 - emprises des planches (genre `planche` de `polygones.shp`) ;
-- triangles de transition de tronçon et leurs codes (`data/legacy/reperes-troncons.legacy.json`) ;
-- références de planche (`data/fond-de-plan/etiquettes-planches.json`) ;
-- numéros d'interstation (`data/legacy/numeros-interstation.legacy.json`, archive) ;
+- triangles de transition de tronçon et leurs codes (`data/plans-patrimoine/reperes-troncons.legacy.json`) ;
+- références de planche (`data/plans-patrimoine/etiquettes-planches.json`) ;
+- numéros d'interstation (`data/plans-patrimoine/numeros-interstation.legacy.json`, archive) ;
   (les noms de station ont été retirés).
 
 **Méthode.** Le réseau du PDF (stations en rouge, tunnels en bleu — 4 934
@@ -732,7 +791,7 @@ segments que délimitent les sommets ET les intersections (petite pastille
 ronde claire) ; un point n'est ajouté que si aucun autre n'est à moins de
 5 m. La définition (`{ r1, a1, r2, a2 }`) est calculée à l'affichage par
 `AMGT4CEM_ScaledText` (taille de boîte mesurée dans le navigateur) et
-**enregistrée dans l'application** : `data/fond-de-plan/etiquettes-planches.json`, lu pour
+**enregistrée dans l'application** : `data/plans-patrimoine/etiquettes-planches.json`, lu pour
 tous les visiteurs (voir section 6 et `relay/README.md`).
 
 **Numéros d'interstation** (couche "Plans patrimoine") :
@@ -814,20 +873,25 @@ du réseau.
 
 ```
 index.html, style.css        interface
-config.js                    configuration (CRS, services, clés de stockage)
+config.js                    configuration (CRS, chemins des données, clés de stockage) ; la configuration des services est dans data/fonds-de-plan/
 src/admin.js                 accès administrateur (point de branchement du futur mot de passe)
-src/settingsStore.js         paramètres généraux partagés (data/app-settings.json) : lecture au démarrage, enregistrement via le relais
-src/settingsPanel.js         fenêtre "⚙ Paramètres" à onglets (Sources / Serveur / Fonds de plan)
+src/services.js              configuration des services externes (data/fonds-de-plan/, data/urbis-topo/parametres.json) : lecture au démarrage, enregistrement via le relais
+src/peLabelEditor/          mode édition des étiquettes (planches, interstations), chargé à la demande
+src/selectionStore.js        sélection des couches/objets : courante, préférences locales, défaut partagé
+src/pickerDefaultBar.js      barre « sélection par défaut » (administrateur) des sélecteurs
+src/settingsPanel.js         fenêtre "⚙ Paramètres" à onglets (Sources / Serveur / Données)
 src/layerOpacityStore.js     opacité individuelle des couches (icône curseurs, persistée)
 src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
 src/shpLoader.js             lecture Shapefile (polygones type 5, polylignes type 3, champ `id` seul), côté navigateur, sans bibliothèque tierce
 src/referentiel.js           chargement des géométries + référentiel JSON, jointure par `id`, contrôles non bloquants
 src/scaledText.js            texte HTML à taille réelle constante (zoom), pour les codes de tronçon et les références de planche
 src/metroLayer.js            construction des couches Leaflet Stations/Tunnels/Planches (+ repères legacy)
-data/geometries/             famille 1 : polygones.* et lignes.* (shapefiles Lambert 72, champ `id` seul) — voir section 4
-data/referentiel/            famille 2 : polygones.json, lignes.json, vocabulaires.json (jointure par `id`)
-data/fond-de-plan/           positions d'étiquettes écrites par l'application (via le relais)
-data/legacy/                 fichiers sans identifiant conservés jusqu'à lignes.shp
+data/shapefile/              famille 1 : polygones.* et lignes.* (shapefiles Lambert 72, champ `id` seul) + identifiants.json — voir section 4
+data/metro/                  famille 2 : référentiel stations/tunnels/tronçons (polygones.json, lignes.json, vocabulaires.json)
+data/plans-patrimoine/       référentiel des planches, étiquettes (écrites via le relais), sélection par défaut, fichiers legacy
+data/urbis-topo/             réglages du service UrbIS Topo, sélection par défaut partagée
+data/fonds-de-plan/          services externes : services.json + un fichier par service
+data/points-metier/          (réservé : structure des points métier, phase B)
 data/suivi/                  famille 3 (suivi) : HORS DÉPÔT (.gitignore), phase B
 tools/                       migrer-donnees.py (unique), verifier-donnees.py (après chaque export AutoCAD), rapport-migration.md
 src/basemap.js                fonds de plan (UrbIS, Orthophoto, Bruciel)
@@ -856,7 +920,7 @@ vendor/proj4leaflet,
 vendor/html2canvas           bibliothèques embarquées localement
 ```
 
-Les géométries et le référentiel (`data/geometries/`, `data/referentiel/`) et la
+Les géométries et les référentiels (`data/shapefile/`, `data/metro/`, `data/plans-patrimoine/`) et la
 micro-base de points métier (`pointsStore.js`) sont deux sources totalement
 indépendantes : les premiers ne sont modifiés que par un export AutoCAD (jamais par
 l'application elle-même) ; la seconde peut être remplacée plus tard par un vrai
@@ -908,23 +972,25 @@ navigateur) est la position/orientation des références de planche
 (`PE_label`), modifiées par un administrateur. Elle utilise la première
 piste ci-dessus (petit relais serveur) :
 
-- le fichier `data/fond-de-plan/etiquettes-planches.json` (dans le dépôt) est lu par
+- le fichier `data/plans-patrimoine/etiquettes-planches.json` (dans le dépôt) est lu par
   l'application pour tous les visiteurs (`src/peLabelAnchors.js`, appliqué
-  par `src/metroLayer.js` / `src/scaledText.js`) ; absent ou vide, les
-  aucune référence de planche n'est affichée ;
+  par `src/metroLayer.js` / `src/scaledText.js`) ; absent ou vide, aucune
+  référence de planche n'est affichée ;
 - le plugin `src/peLabelEditor/` (administrateurs) l'enregistre via le
   relais `relay/` (Cloudflare Worker, à déployer une fois : `relay/README.md`),
   qui commit le fichier dans le dépôt ; GitHub Pages le redéploie ;
-- tant qu'aucune adresse de relais n'est connue (paramètre général `relayUrl`,
-  `data/app-settings.json`, ou `peLabelAnchorsRelayUrl` de `config.js`),
-  l'enregistrement est refusé avec un message explicite.
+- tant qu'aucune adresse de relais n'est connue (clé `relais` de
+  `data/fonds-de-plan/services.json`), l'enregistrement est refusé avec un message
+  explicite.
 
-Le même relais enregistre les **paramètres généraux** de l'application
-(route `/settings` → `data/app-settings.json`, fenêtre ⚙ Paramètres) :
-adresses des services externes et adresse du relais elle-même. La toute
-première fois, l'adresse du relais se saisit dans ⚙ Paramètres > Serveur avec
-le code administrateur ; le relais l'écrit dans le fichier partagé, d'où tous
-les visiteurs la lisent ensuite.
+Le même relais enregistre les **paramètres des services** (fenêtre ⚙ Paramètres : routes
+`shared/fonds-de-plan/services` et `shared/fonds-de-plan/urbis`) et les **sélections par
+défaut partagées** (routes `shared/urbis-topo/selection-par-defaut` et
+`shared/plans-patrimoine/selection-par-defaut`) : tout passe par la route générique
+`shared/<dossier>/<fichier>`, sans modification ni redéploiement du relais. La toute
+première fois, l'adresse du relais se saisit dans ⚙ Paramètres > Serveur avec le code
+administrateur ; elle est écrite dans `services.json`, d'où tous les visiteurs la lisent
+ensuite.
 
 Les points métier (`pointsStore.js`) restent en `localStorage` : le relais
 pourra être étendu à ces données si la piste est retenue.

@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "date": "2026-10-07",
+  "note": "Bruciel historique (Bruxelles Urbanisme & Patrimoine / urban.brussels) : GeoServer gis.urban.brussels, workspace URBAN_DCC_ER (et non BRUCIEL, qui ne contient que des couches thématiques annexes), couches Orthophotoplans_<année>, 1935-1996. Noms confirmés par un GetCapabilities réel. Ces couches ne déclarent que EPSG:31370 et CRS:84 : `crs` force les requêtes dans ce CRS (sinon tuiles vides). Fusionné avec urbis-orthophotos.json dans une seule ligne du temps. URL dans services.json (clé « bruciel »).",
+  "type": "wms",
+  "wmsVersion": "1.3.0",
+  "format": "image/jpeg",
+  "crs": "EPSG:31370",
+  "attribution": "&copy; urban.brussels &ndash; Bruciel",
+  "entries": [
+    {
+      "year": 1935,
+      "layers": "Orthophotoplans_1935"
+    },
+    {
+      "year": 1944,
+      "layers": "Orthophotoplans_1944"
+    },
+    {
+      "year": 1953,
+      "layers": "Orthophotoplans_1953"
+    },
+    {
+      "year": 1961,
+      "layers": "Orthophotoplans_1961"
+    },
+    {
+      "year": 1971,
+      "layers": "Orthophotoplans_1971"
+    },
+    {
+      "year": 1977,
+      "layers": "Orthophotoplans_1977"
+    },
+    {
+      "year": 1987,
+      "layers": "Orthophotoplans_1987"
+    },
+    {
+      "year": 1996,
+      "layers": "Orthophotoplans_1996"
+    }
+  ]
+}

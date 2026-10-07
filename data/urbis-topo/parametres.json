@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "date": "2026-10-07",
+  "note": "Réglages du service UrbIS Topo (WFS ; URL dans data/fonds-de-plan/services.json, clé « urbis-topo »). Catalogue des types : catalogues/urbis-topo.js (fiche technique officielle ISO 19131). Attribut de type TYPE, libellés DESCRFRE/DESCRDUT et sortie EPSG:31370 confirmés par un GetFeature réel. Le service ne regroupe le catalogue que sous 3 couches globales (TopoPoints, TopoLines, TopoShapes) : au plus 2 requêtes filtrées par TYPE IN (...), limitées à l'emprise visible, à partir de `minZoom`, et plafonnées à `maxFeaturesPerQuery` (une seule couche dépasse 450 000 objets). `colorPalette` : couleurs attribuées aux types sélectionnés. Le support CORS du fetch() n'a pu être vérifié que depuis un navigateur réel.",
+  "wfsVersion": "2.0.0",
+  "typeAttribute": "TYPE",
+  "minZoom": 16,
+  "maxFeaturesPerQuery": 500,
+  "colorPalette": [
+    "#1e88e5",
+    "#00897b",
+    "#6d4c41",
+    "#e64a19",
+    "#8e24aa",
+    "#c0ca33",
+    "#00acc1",
+    "#f4511e",
+    "#3949ab",
+    "#7cb342"
+  ]
+}

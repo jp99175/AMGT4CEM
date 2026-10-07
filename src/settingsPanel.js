@@ -6,8 +6,8 @@
  * passe administrateur — pas encore implémenté, accès ouvert pour l'instant.
  *
  * Ce sont des paramètres GÉNÉRAUX, pas des réglages de l'appareil : enregistrés
- * sur le serveur (data/app-settings.json, via le relais d'enregistrement),
- * communs à tous les visiteurs, appliqués au démarrage (voir settingsStore.js).
+ * sur le serveur (data/fonds-de-plan/, via le relais d'enregistrement),
+ * communs à tous les visiteurs, appliqués au démarrage (voir services.js).
  * Rien n'est gardé dans le navigateur, hormis le code administrateur, le temps
  * de l'onglet (sessionStorage), pour s'identifier auprès du relais.
  *
@@ -17,7 +17,7 @@
  *    l'interface avec le serveur qui modifie les données) et code
  *    administrateur ; bouton Tester. Enregistrer envoie TOUS les paramètres
  *    généraux (onglets Sources et Serveur).
- * 3. Fonds de plan : modifications des données de fond — lancement du mode
+ * 3. Données : modifications des données — lancement du mode
  *    édition des étiquettes de planche et de tronçon (plugin
  *    src/peLabelEditor/, chargé à la demande) ; chargement d'un nouveau shapefile : à venir.
  *
@@ -90,7 +90,7 @@ const AMGT4CEM_SettingsPanel = {
 
   /** Remplit les champs avec les valeurs en vigueur (défauts de config.js + paramètres généraux). */
   _fillFields() {
-    const current = AMGT4CEM_SettingsStore.current();
+    const current = AMGT4CEM_Services.current();
     for (const [key, input] of Object.entries(this._fields())) input.value = current[key] || '';
     this._showCodeState();
     this._status('sources', '');
@@ -138,7 +138,7 @@ const AMGT4CEM_SettingsPanel = {
     }
     this._status(which, 'Enregistrement sur le serveur…');
     try {
-      await AMGT4CEM_SettingsStore.save(values, relayUrl, code);
+      await AMGT4CEM_Services.save(values, relayUrl, code);
       AMGT4CEM_PeLabelAnchors.setAdminCode(code);
       this._showCodeState();
       this._status(which, 'Enregistré sur le serveur. Appliqué à tous les visiteurs après le redéploiement du site (~1 min) ; rechargez ensuite la page.', 'ok');
@@ -153,15 +153,6 @@ const AMGT4CEM_SettingsPanel = {
 
   _initSourcesTab() {
     document.getElementById('amgt-settings-save').addEventListener('click', () => this._saveAll('sources'));
-
-    document.getElementById('amgt-settings-reset').addEventListener('click', () => {
-      // Remplit seulement les champs de cet onglet avec les adresses de config.js ; rien n'est enregistré avant « Enregistrer ».
-      const fields = this._fields();
-      for (const key of ['urbisUrl', 'urbisLayers', 'brucielHistoriqueUrl', 'brucielRecentUrl', 'flandreUrl', 'geocoderUrl']) {
-        fields[key].value = AMGT4CEM_SettingsStore.defaults[key] || '';
-      }
-      this._status('sources', "Valeurs par défaut remplies : « Enregistrer » pour les envoyer au serveur.");
-    });
   },
 
   // ---- 2. Serveur ----------------------------------------------------------
@@ -170,11 +161,6 @@ const AMGT4CEM_SettingsPanel = {
     const fields = this._fields();
 
     document.getElementById('amgt-settings-relay-save').addEventListener('click', () => this._saveAll('relay'));
-
-    document.getElementById('amgt-settings-relay-reset').addEventListener('click', () => {
-      fields.relayUrl.value = AMGT4CEM_SettingsStore.defaults.relayUrl || '';
-      this._status('relay', "Valeur par défaut remplie : « Enregistrer » pour l'envoyer au serveur.");
-    });
 
     document.getElementById('amgt-settings-relay-test').addEventListener('click', async () => {
       this._status('relay', 'Test en cours…');
@@ -186,7 +172,7 @@ const AMGT4CEM_SettingsPanel = {
     });
   },
 
-  // ---- 3. Fonds de plan ----------------------------------------------------
+  // ---- 3. Données ----------------------------------------------------
 
   _initBasemapsTab(panel) {
     document.getElementById('amgt-settings-edit-labels').addEventListener('click', () => {

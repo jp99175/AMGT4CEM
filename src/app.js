@@ -3,12 +3,11 @@
  * couche Metro, points métier, outils de navigation et de création).
  */
 (async function () {
-  // Paramètres généraux (adresses des services externes et du serveur
-  // d'enregistrement, communs à tous, enregistrés sur le serveur — voir
-  // settingsStore.js) : lus et appliqués AVANT que basemap.js/searchTool.js ne
-  // lisent AMGT4CEM_CONFIG. load() ne rejette jamais (délai borné).
-  await AMGT4CEM_SettingsStore.load();
-  AMGT4CEM_SettingsStore.applyToConfig(AMGT4CEM_CONFIG);
+  // Configuration des services externes et adresse du serveur d'enregistrement
+  // (data/fonds-de-plan/, communes à tous, enregistrées sur le serveur — voir
+  // services.js) : lue et assemblée dans AMGT4CEM_CONFIG AVANT que
+  // basemap.js/searchTool.js ne la lisent. load() ne rejette jamais (délai borné).
+  await AMGT4CEM_Services.load();
   // Sélections par défaut PARTAGÉES (UrbIS Topo, Plans patrimoine) : lues avant la création des couches, qui
   // en dépendent pour une première visite. Ne rejette jamais (délai borné).
   await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared()]);

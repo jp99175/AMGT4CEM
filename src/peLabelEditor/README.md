@@ -45,7 +45,7 @@ infobulles de l'application (planches, stations, points, UrbIS Topo) ne
 s'ouvrent plus, pour ne pas gêner le choix des points. Elles reviennent à la
 sortie (**Quitter l'édition**).
 
-**Depuis l'application** : ⚙ Paramètres > onglet **Fonds de plan** > **✥ Mode
+**Depuis l'application** : ⚙ Paramètres > onglet **Données** > **✥ Mode
 édition**. Cela affiche les couches « Plans d'ensemble » et « Numéros
 interstation », charge ce plugin à la demande (une seule fois) et ouvre le
 panneau de suivi (l'aide) ; **Quitter l'édition** (dans ce panneau) recharge la

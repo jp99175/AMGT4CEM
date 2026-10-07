@@ -25,6 +25,8 @@ Vérifie :
   - champs propres à chaque genre : nom (FR ou NL) des stations et tunnels, `sheet_ref` présent et
     unique pour les planches ; aucun caractère de contrôle dans les textes (encodage mal lu) ;
   - enregistrements marqués « supprimé » dans le .dbf (ils restent comptés dans le .shp) ;
+  - configuration des services (data/fonds-de-plan/, data/urbis-topo/) : JSON valides, URL en https, un fichier
+    par service déclaré dans services.json ;
   - références des étiquettes (data/plans-patrimoine/) : chaque tronçon désigné par etiquettes-troncons.json
     est un `id` de genre « tunnel », chaque planche d'etiquettes-planches.json existe.
 
@@ -237,6 +239,28 @@ def verifier_etiquettes(ref_pol, ref_lig):
                 err(f"etiquettes-planches.json : « {cle} » ne correspond à aucune planche du référentiel")
 
 
+def verifier_services():
+    """data/fonds-de-plan/services.json (URL https) et fichier de réglages de chaque service."""
+    chemin = os.path.join(DATA, "fonds-de-plan", "services.json")
+    srv = charger_json(chemin, True)
+    if srv is None:
+        return
+    url_ok = re.compile(r"^(https://\S+|http://localhost(:\d+)?(/\S*)?)$")
+    relais = (srv.get("relais") or {}).get("url", "")
+    if relais and not url_ok.match(relais):
+        err(f"services.json : adresse du relais invalide : {relais}")
+    fichiers = {"urbis": "fonds-de-plan/urbis.json", "bruciel": "fonds-de-plan/bruciel.json",
+                "urbis-orthophotos": "fonds-de-plan/urbis-orthophotos.json", "flandre": "fonds-de-plan/flandre.json",
+                "geocodeur": "fonds-de-plan/geocodeur.json", "urbis-topo": "urbis-topo/parametres.json"}
+    for cle, rel in fichiers.items():
+        s = (srv.get("services") or {}).get(cle)
+        if not s or not url_ok.match(s.get("url", "")):
+            err(f"services.json : service « {cle} » absent ou URL invalide (https attendu)")
+        charger_json(os.path.join(DATA, rel), True)
+    if not (srv.get("services") or {}).get("urbis-adm", {}).get("url", "").startswith("https://"):
+        err("services.json : service « urbis-adm » absent ou URL invalide (https attendu)")
+
+
 def main():
     ids_pol = verifier_shapefile("polygones", 5, True)
     ids_lig = verifier_shapefile("lignes", 3, False)
@@ -291,6 +315,7 @@ def main():
                 err(f"{fichier} : sheet_ref « {sr} » porté par plusieurs planches : {', '.join(ids)}")
 
     verifier_etiquettes(ref_pol, ref_lig)
+    verifier_services()
 
     # prochain_id : compteur unique, uniquement dans identifiants.json
     for d in DOMAINES:

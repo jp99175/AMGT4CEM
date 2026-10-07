@@ -144,13 +144,13 @@
      1. Sources : adresses des services externes (UrbIS, orthophotos,
         géocodeur), à corriger si l'un d'eux change d'adresse.
      2. Serveur : communication avec le serveur d'enregistrement (relais).
-     3. Fonds de plan : modifications des données de fond (nouveau shapefile,
+     3. Données : modifications des données (nouveau shapefile,
         mode édition des étiquettes de planche). -->
 <div id="amgt-settings-panel" class="amgt-hidden">
   <div class="amgt-tabs" role="tablist">
     <button type="button" class="amgt-tab amgt-tab--active" role="tab" data-tab="sources">Sources</button>
     <button type="button" class="amgt-tab" role="tab" data-tab="server">Serveur</button>
-    <button type="button" class="amgt-tab" role="tab" data-tab="basemaps">Fonds de plan</button>
+    <button type="button" class="amgt-tab" role="tab" data-tab="basemaps">Données</button>
   </div>
 
   <section class="amgt-tab-pane" data-pane="sources">
@@ -189,7 +189,6 @@
     <p id="amgt-settings-sources-status" class="amgt-settings-status" hidden></p>
 
     <div class="amgt-form-actions">
-      <button id="amgt-settings-reset" class="amgt-btn" title="Remplit les champs avec les adresses de config.js (à enregistrer ensuite)">Valeurs par défaut</button>
       <button id="amgt-settings-save" class="amgt-btn amgt-btn--primary">Enregistrer</button>
     </div>
   </section>
@@ -218,14 +217,13 @@
     <p id="amgt-settings-relay-status" class="amgt-settings-status" hidden></p>
 
     <div class="amgt-form-actions">
-      <button id="amgt-settings-relay-reset" class="amgt-btn" title="Remplit le champ avec l'adresse de config.js (à enregistrer ensuite)">Valeur par défaut</button>
       <button id="amgt-settings-relay-test" class="amgt-btn">Tester</button>
       <button id="amgt-settings-relay-save" class="amgt-btn amgt-btn--primary">Enregistrer</button>
     </div>
   </section>
 
   <section class="amgt-tab-pane amgt-hidden" data-pane="basemaps">
-    <h3>Modifications des fonds de plan</h3>
+    <h3>Modifications des données</h3>
     <div class="amgt-settings-action">
       <button id="amgt-settings-edit-labels" class="amgt-btn amgt-btn--primary">✥ Mode édition</button>
       <p class="amgt-settings-hint">
@@ -341,7 +339,7 @@
 <script src="./catalogues/urbis-topo.js"></script>
 <script src="./catalogues/plans-patrimoine.js"></script>
 <script src="./src/admin.js"></script>
-<script src="./src/settingsStore.js"></script>
+<script src="./src/services.js"></script>
 <script src="./src/layerOpacityStore.js"></script>
 <script src="./src/crs.js"></script>
 <script src="./src/shpLoader.js"></script>

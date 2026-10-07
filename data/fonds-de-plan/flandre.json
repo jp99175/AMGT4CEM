@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "date": "2026-10-07",
+  "note": "Orthophotos de la Flandre (Digitaal Vlaanderen, « Orthofotomozaïek, middenschalig, winteropnamen »), en plus de la série bruxelloise : quand une année existe dans les deux sources, l'utilisateur bascule de l'une à l'autre. Noms confirmés par un GetCapabilities réel : 25 cm jusqu'en 2021, 15 cm dès 2022 ; EPSG:3857 et 31370 déclarés (aucun `crs` forcé). Les entrées avec `period` sont des compilations de plusieurs campagnes ; la couche <nom>_vdc donne la date de vol. Les tuiles sont découpées selon le contour de la Région, lu dans UrbIS Adm (WFS, couche UrbisAdm:Mu ; URL = services.json « urbis-adm »), non testé ici : en cas d'échec, repli sur le rectangle `regionBboxLambert` (rien n'est découpé). URL dans services.json (clé « flandre »).",
+  "attribution": "&copy; Digitaal Vlaanderen",
+  "regionBoundary": {
+    "version": "1.0.0",
+    "typeName": "UrbisAdm:Mu"
+  },
+  "regionBboxLambert": [
+    137000,
+    156000,
+    167000,
+    187000
+  ],
+  "entries": [
+    {
+      "year": 2003,
+      "period": "2000-2003",
+      "layers": "OMWRGB00_03VL"
+    },
+    {
+      "year": 2007,
+      "period": "2005-2007",
+      "layers": "OMWRGB05_07VL"
+    },
+    {
+      "year": 2011,
+      "period": "2008-2011",
+      "layers": "OMWRGB08_11VL"
+    },
+    {
+      "year": 2012,
+      "layers": "OMWRGB12VL"
+    },
+    {
+      "year": 2013,
+      "layers": "OMWRGB13VL"
+    },
+    {
+      "year": 2014,
+      "layers": "OMWRGB14VL"
+    },
+    {
+      "year": 2015,
+      "layers": "OMWRGB15VL"
+    },
+    {
+      "year": 2016,
+      "layers": "OMWRGB16VL"
+    },
+    {
+      "year": 2017,
+      "layers": "OMWRGB17VL"
+    },
+    {
+      "year": 2018,
+      "layers": "OMWRGB18VL"
+    },
+    {
+      "year": 2019,
+      "layers": "OMWRGB19VL"
+    },
+    {
+      "year": 2020,
+      "layers": "OMWRGB20VL"
+    },
+    {
+      "year": 2021,
+      "layers": "OMWRGB21VL"
+    },
+    {
+      "year": 2022,
+      "layers": "OMWRGB22VL"
+    },
+    {
+      "year": 2023,
+      "layers": "OMWRGB23VL"
+    },
+    {
+      "year": 2024,
+      "layers": "OMWRGB24VL"
+    },
+    {
+      "year": 2025,
+      "layers": "OMWRGB25VL"
+    }
+  ]
+}

@@ -15,7 +15,8 @@
  *       format libre ; contrôle commun : Lambert 72 pour toute coordonnée x/y/a1/a2 d'un jeu
  *       `labels`, crs « EPSG:31370 » si présent. Un nouveau dossier (amiante, chantiers...) ou un
  *       nouveau fichier ne demande NI modification NI redéploiement de ce relais.
- *   PUT /settings                     paramètres généraux -> data/app-settings.json
+ *   PUT /settings                     (ancienne route, plus utilisée par l'application : les paramètres des
+ *       services passent par /shared/fonds-de-plan/services) paramètres généraux -> data/app-settings.json
  *       (contrôle strict : adresses de services en https).
  *   GET (toute route) contrôle de connexion et du code, n'écrit rien.
  *

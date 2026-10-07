@@ -120,7 +120,7 @@
     },
 
     /**
-     * Lance le mode édition (appelé par ⚙ Paramètres > Fonds de plan, qui charge ce plugin à la
+     * Lance le mode édition (appelé par ⚙ Paramètres > Données, qui charge ce plugin à la
      * demande) : affiche le bouton « ✥ Mode édition » et, une fois, son panneau (l'aide).
      */
     open() {
