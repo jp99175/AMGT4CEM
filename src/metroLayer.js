@@ -1,6 +1,6 @@
 /**
  * Construction des couches Leaflet à partir des entités jointes par referentiel.js
- * (data/geometries/polygones.shp + data/referentiel/polygones.json, jointure par `id`).
+ * (data/shapefile/polygones.shp + data/metro/ et data/plans-patrimoine/ (polygones.json), jointure par `id`).
  *
  * Chaque polygone porte son `genre` (issu du référentiel, pas du shapefile) :
  *  - "station" : emprise de station (couche Stations) ;
@@ -11,7 +11,7 @@
  * Un polygone sans entrée de référentiel n'a pas de genre : il n'est pas affiché.
  * Chaque polygone est un seul anneau extérieur, sans trou. CRS : EPSG:31370 (Belgian Lambert 72).
  *
- * LEGACY (data/legacy/reperes-troncons.legacy.json, type "PE_info", sans identifiant) : les
+ * LEGACY (data/plans-patrimoine/reperes-troncons.legacy.json, type "PE_info", sans identifiant) : les
  * TRIANGLES de transition entre tronçons de construction relevés dans INFRAVIEW.pdf (Polygon)
  * et leurs CODES (Point, ex. "D1", "G1a"), rendus en texte HTML dont la taille suit le zoom
  * (scaledText.js). Ils seront rattachés à lignes.shp quand il existera ; en attendant ils
@@ -19,7 +19,7 @@
  * forme en dessous.
  *
  * Les références de planche (texte orange) ne viennent pas des shapefiles : leur liste est
- * celle de data/fond-de-plan/etiquettes-planches.json (source unique, voir peLabelAnchors.js).
+ * celle de data/plans-patrimoine/etiquettes-planches.json (source unique, voir peLabelAnchors.js).
  *
  * CALAGE PDF → Lambert (commun à tout ce qui vient d'INFRAVIEW.pdf) : voir README, section 4bis.
  *
@@ -161,7 +161,7 @@ const AMGT4CEM_MetroLayer = {
       });
     }
 
-    // Références de planche : le JSON (data/fond-de-plan/etiquettes-planches.json) est la liste COMPLÈTE.
+    // Références de planche : le JSON (data/plans-patrimoine/etiquettes-planches.json) est la liste COMPLÈTE.
     this._peLabelGroup = layersByType.PE_label;
     this._peLabelDisplayGroup = null;
     for (const [key, def] of Object.entries(AMGT4CEM_PeLabelAnchors.all())) {

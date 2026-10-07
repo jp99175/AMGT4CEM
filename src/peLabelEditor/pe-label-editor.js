@@ -35,11 +35,11 @@
  *      montré (violet). La ligne de repère rejoint le milieu de l'axe du tronçon.
  *
  * ENREGISTREMENT PARTAGÉ : les définitions des planches vivent dans
- * data/fond-de-plan/etiquettes-planches.json, celles des tronçons dans
- * data/fond-de-plan/etiquettes-troncons.json (dépôt, Lambert 72), lus par
+ * data/plans-patrimoine/etiquettes-planches.json, celles des tronçons dans
+ * data/plans-patrimoine/etiquettes-troncons.json (dépôt, Lambert 72), lus par
  * l'application pour tous les visiteurs (peLabelAnchors.js, interstation.js).
  * « Enregistrer » envoie les deux (celui qui a des modifications) au relais
- * serveur (relay/, route /shared/fond-de-plan/<fichier>) qui écrit le fichier
+ * serveur (relay/, route /shared/plans-patrimoine/<fichier>) qui écrit le fichier
  * dans le dépôt ; il faut le code
  * administrateur du relais. Tant que le relais n'est pas déployé (config.js,
  * peLabelAnchorsRelayUrl), l'enregistrement est impossible : l'export JSON
@@ -1189,7 +1189,7 @@
 
     /**
      * Enregistre dans l'application TOUTES les modifications : celles des planches
-     * (data/fond-de-plan/etiquettes-planches.json) et celles des tronçons (…/etiquettes-troncons.json),
+     * (data/plans-patrimoine/etiquettes-planches.json) et celles des tronçons (…/etiquettes-troncons.json),
      * chacune seulement si elle a changé. `report(msg)` affiche un message à l'endroit voulu.
      * Retourne true si tout ce qui devait l'être a été enregistré.
      */

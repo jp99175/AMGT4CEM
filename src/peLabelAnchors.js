@@ -1,6 +1,6 @@
 /**
  * Définitions d'ancrage/orientation des références de planche (PE_label),
- * PARTAGÉES : lues dans un fichier du dépôt (data/fond-de-plan/etiquettes-planches.json,
+ * PARTAGÉES : lues dans un fichier du dépôt (data/plans-patrimoine/etiquettes-planches.json,
  * voir config.js `peLabelAnchorsUrl`) et appliquées pour tous les visiteurs, pas
  * propres à un navigateur.
  *
@@ -16,7 +16,7 @@
  * (_fromFile) et à l'enregistrement (_toFile), et nulle part ailleurs.
  *
  * Enregistrement (réservé aux administrateurs, voir le plugin
- * plugins/pe-label-editor/) : un navigateur ne peut pas écrire dans le dépôt
+ * src/peLabelEditor/) : un navigateur ne peut pas écrire dans le dépôt
  * (l'API GitHub refuse les requêtes préparatoires CORS, voir README section
  * 6) ; l'écriture passe donc par un petit relais serveur (relay/, à déployer
  * une fois) qui valide la demande et enregistre le fichier dans le dépôt.
@@ -127,7 +127,7 @@ const AMGT4CEM_PeLabelAnchors = {
    * @returns {Promise<void>} rejetée avec un Error au message lisible en cas d'échec
    */
   async save(labels, adminCode) {
-    await this.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, 'shared/fond-de-plan/etiquettes-planches', { version: 1, crs: 'EPSG:31370', labels: this._toFile(labels) }, adminCode);
+    await this.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, 'shared/plans-patrimoine/etiquettes-planches', { version: 1, crs: 'EPSG:31370', labels: this._toFile(labels) }, adminCode);
     this._labels = JSON.parse(JSON.stringify(labels));
   },
 

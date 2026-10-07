@@ -499,7 +499,7 @@ l'en-tête de `src/interstation.js` pour la construction.
 
 **Déplacer une étiquette de tronçon** : **mode édition commun** aux références
 de planche et aux numéros d'interstation (⚙ Paramètres > Fonds de plan, bouton
-« ✥ Mode édition » ; plugin `plugins/pe-label-editor/`, voir son README). Au
+« ✥ Mode édition » ; plugin `src/peLabelEditor/`, voir son README). Au
 survol l'étiquette s'illumine ; un premier clic la **sélectionne**, un second
 lance la modification : 1) on la **déplace parallèlement au trajet du
 pointeur** (appui n'importe où sur la carte, souris ou doigt, puis
@@ -719,7 +719,7 @@ point. Position inchangée par rapport au PDF à la taille d'origine ; mais
 quand la taille du texte change avec le zoom (ou est bornée, `minPx`/`maxPx`
 de `src/scaledText.js`), le texte pousse **à partir de ce bord** et reste
 collé à son cadre au lieu de déborder de part et d'autre d'un centre fixe.
-Le plugin d'édition (`plugins/pe-label-editor/`, voir son README) permet
+Le plugin d'édition (`src/peLabelEditor/`, voir son README) permet
 à un administrateur de redéfinir cet ancrage étiquette par étiquette : clic
 dans le texte → bulle d'info avec l'icône « déplacer » → choix d'un point
 de référence parmi les 8 de la boîte de texte, d'un point d'ancrage parmi
@@ -912,7 +912,7 @@ piste ci-dessus (petit relais serveur) :
   l'application pour tous les visiteurs (`src/peLabelAnchors.js`, appliqué
   par `src/metroLayer.js` / `src/scaledText.js`) ; absent ou vide, les
   aucune référence de planche n'est affichée ;
-- le plugin `plugins/pe-label-editor/` (administrateurs) l'enregistre via le
+- le plugin `src/peLabelEditor/` (administrateurs) l'enregistre via le
   relais `relay/` (Cloudflare Worker, à déployer une fois : `relay/README.md`),
   qui commit le fichier dans le dépôt ; GitHub Pages le redéploie ;
 - tant qu'aucune adresse de relais n'est connue (paramètre général `relayUrl`,

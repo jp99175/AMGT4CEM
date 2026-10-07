@@ -6,6 +6,11 @@ Contrôle de cohérence des données : à lancer après CHAQUE export AutoCAD, a
 
 Aucune dépendance (bibliothèque standard seule). Code de sortie 0 si tout est bon, 1 en cas d'erreur.
 
+Organisation vérifiée (voir README, section 4) :
+  data/shapefile/     polygones.* et lignes.* (shapefiles Lambert 72, champ `id` seul) + identifiants.json
+  data/metro/         référentiel des stations, tunnels et tronçons : polygones.json, lignes.json, vocabulaires.json
+  data/plans-patrimoine/  référentiel des planches : polygones.json, vocabulaires.json ; étiquettes
+
 Vérifie :
   - présence des fichiers du shapefile (.shp, .shx, .dbf, .prj) : polygones obligatoire, lignes facultatif
     (tant qu'aucun tronçon n'est dessiné) ;
@@ -13,18 +18,18 @@ Vérifie :
   - nombre d'entités identique entre .shp, .shx et .dbf ;
   - identifiants au bon format (G + 6 chiffres), non vides, UNIQUES sur les deux fichiers à la fois
     (copier ou scinder une entité dans AutoCAD duplique son id) ;
-  - aucune géométrie sans entrée de référentiel, aucune entrée de référentiel sans géométrie ;
-  - `prochain_id` (compteur unique, vocabulaires.json) supérieur à tout id utilisé ;
-  - `genre` de chaque entrée déclaré dans vocabulaires.json ;
+  - aucune géométrie sans entrée de référentiel (dans l'un des dossiers), aucune entrée sans géométrie,
+    aucun `id` décrit dans deux dossiers ;
+  - `prochain_id` (compteur unique, identifiants.json) supérieur à tout id utilisé ;
+  - `genre` de chaque entrée déclaré dans les vocabulaires ;
   - champs propres à chaque genre : nom (FR ou NL) des stations et tunnels, `sheet_ref` présent et
     unique pour les planches ; aucun caractère de contrôle dans les textes (encodage mal lu) ;
   - enregistrements marqués « supprimé » dans le .dbf (ils restent comptés dans le .shp) ;
-  - références des étiquettes (data/fond-de-plan/) : chaque tronçon désigné par etiquettes-troncons.json
+  - références des étiquettes (data/plans-patrimoine/) : chaque tronçon désigné par etiquettes-troncons.json
     est un `id` de genre « tunnel », chaque planche d'etiquettes-planches.json existe.
 
 Option --corriger : remplace dans etiquettes-troncons.json les anciens identifiants de tunnel
-(`id_objet`, ex. « TRO-HORTA-ALBERT-01 », encore écrits par l'ancienne version de l'application tant
-que la refonte n'est pas déployée) par le nouvel `id`, grâce à `ids_externes.id_objet` du référentiel.
+(`id_objet`, ex. « TRO-HORTA-ALBERT-01 ») par le nouvel `id`, grâce à `ids_externes.id_objet` du référentiel.
 """
 import json
 import os
@@ -34,11 +39,12 @@ import sys
 from collections import defaultdict
 
 RACINE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-GEO = os.path.join(RACINE, "data", "geometries")
-REF = os.path.join(RACINE, "data", "referentiel")
+GEO = os.path.join(RACINE, "data", "shapefile")
+DATA = os.path.join(RACINE, "data")
+DOMAINES = ["metro", "plans-patrimoine"]  # dossiers portant un référentiel (polygones.json, lignes.json, vocabulaires.json)
 FORMAT_ID = re.compile(r"^G\d{6}$")
 CONTROLE = re.compile("[\x00-\x1f\x7f-\x9f]")
-FOND = os.path.join(RACINE, "data", "fond-de-plan")
+FOND = os.path.join(RACINE, "data", "plans-patrimoine")
 
 erreurs = []
 avertissements = []
@@ -138,18 +144,43 @@ def verifier_shapefile(nom, type_attendu, obligatoire):
     return ids
 
 
-def charger_ref(nom, obligatoire):
-    chemin = os.path.join(REF, nom)
+def charger_json(chemin, obligatoire):
+    rel = os.path.relpath(chemin, DATA)
     if not os.path.exists(chemin):
         if obligatoire:
-            err(f"referentiel/{nom} absent")
+            err(f"{rel} absent")
         return None
     try:
         with open(chemin, encoding="utf-8") as f:
             return json.load(f)
     except ValueError as e:
-        err(f"referentiel/{nom} : JSON invalide ({e})")
+        err(f"{rel} : JSON invalide ({e})")
         return None
+
+
+def charger_referentiel(nom, obligatoire_pour):
+    """Référentiel `nom` (polygones, lignes) fusionné sur tous les dossiers : { id: entrée } (None si aucun fichier).
+    Un `id` décrit dans deux dossiers est une erreur ; `obligatoire_pour` : dossiers où le fichier doit exister."""
+    entites, trouve = {}, False
+    for d in DOMAINES:
+        ref = charger_json(os.path.join(DATA, d, f"{nom}.json"), d in obligatoire_pour)
+        if ref is None:
+            continue
+        trouve = True
+        for k, e in (ref.get("entites") or {}).items():
+            if k in entites:
+                err(f"{nom} : id « {k} » décrit dans deux dossiers (dont {d}/)")
+            else:
+                entites[k] = {**e, "_dossier": d}
+    return entites if trouve else None
+
+
+def charger_vocabulaires():
+    genres = {}
+    for d in DOMAINES:
+        v = charger_json(os.path.join(DATA, d, "vocabulaires.json"), True)
+        genres.update((v or {}).get("genres") or {})
+    return {"genres": genres}
 
 
 def textes(valeur, cle=""):
@@ -165,10 +196,10 @@ def textes(valeur, cle=""):
 
 
 def verifier_etiquettes(ref_pol, ref_lig):
-    """Références des étiquettes de data/fond-de-plan/ vers le référentiel (option --corriger)."""
+    """Références des étiquettes de data/plans-patrimoine/ vers le référentiel (option --corriger)."""
     entites = {}
     for ref in (ref_pol, ref_lig):
-        entites.update((ref or {}).get("entites") or {})
+        entites.update(ref or {})
     tunnels = {v for v, e in entites.items() if e.get("genre") == "tunnel"}
     par_ancien = {
         e["ids_externes"]["id_objet"]: v
@@ -209,9 +240,10 @@ def verifier_etiquettes(ref_pol, ref_lig):
 def main():
     ids_pol = verifier_shapefile("polygones", 5, True)
     ids_lig = verifier_shapefile("lignes", 3, False)
-    ref_pol = charger_ref("polygones.json", True)
-    ref_lig = charger_ref("lignes.json", False)
-    voc = charger_ref("vocabulaires.json", True)
+    ref_pol = charger_referentiel("polygones", DOMAINES)
+    ref_lig = charger_referentiel("lignes", [])
+    voc = charger_vocabulaires()
+    identifiants = charger_json(os.path.join(GEO, "identifiants.json"), True)
 
     # Unicité sur les deux fichiers à la fois
     vus = defaultdict(list)
@@ -224,27 +256,25 @@ def main():
             err(f"id « {v} » en double : {', '.join(ou)}")
 
     # Référentiel <-> géométries
-    for fichier, ids, ref in (("polygones", ids_pol, ref_pol), ("lignes", ids_lig, ref_lig)):
-        entrees = (ref or {}).get("entites", {}) if ref is not None else None
+    for fichier, ids, entrees in (("polygones", ids_pol, ref_pol), ("lignes", ids_lig, ref_lig)):
         geo = set(ids or [])
         if entrees is None:
             if ids:
-                err(f"{fichier}.shp contient {len(ids)} entités mais referentiel/{fichier}.json est absent")
+                err(f"{fichier}.shp contient {len(ids)} entités mais aucun référentiel {fichier}.json n'existe")
             continue
         for v in sorted(geo - set(entrees)):
             if v:
                 err(f"{fichier} : géométrie « {v} » sans entrée de référentiel")
         for v in sorted(set(entrees) - geo):
-            err(f"{fichier} : entrée de référentiel « {v} » sans géométrie")
-        genres = (voc or {}).get("genres", {})
+            err(f"{fichier} : entrée de référentiel « {v} » ({entrees[v]['_dossier']}/) sans géométrie")
         for v, e in entrees.items():
-            if voc is not None and e.get("genre") not in genres:
-                err(f"{fichier} : entrée « {v} » : genre « {e.get('genre')} » absent de vocabulaires.json")
+            if e.get("genre") not in voc["genres"]:
+                err(f"{fichier} : entrée « {v} » : genre « {e.get('genre')} » absent des vocabulaires")
 
     # Champs propres à chaque genre, textes
-    for fichier, ref in (("polygones", ref_pol), ("lignes", ref_lig)):
+    for fichier, entrees in (("polygones", ref_pol), ("lignes", ref_lig)):
         sheet_refs = defaultdict(list)
-        for v, e in ((ref or {}).get("entites") or {}).items():
+        for v, e in (entrees or {}).items():
             g = e.get("genre")
             if g in ("station", "tunnel") and not (e.get("name_fr") or e.get("name_nl")):
                 err(f"{fichier} : {g} « {v} » sans nom (name_fr ou name_nl)")
@@ -253,7 +283,7 @@ def main():
                     sheet_refs[e["sheet_ref"]].append(v)
                 else:
                     err(f"{fichier} : planche « {v} » sans sheet_ref")
-            for cle, texte in textes(e):
+            for cle, texte in textes({k: x for k, x in e.items() if k != "_dossier"}):
                 if CONTROLE.search(texte):
                     err(f"{fichier} : « {v} ».{cle} contient un caractère de contrôle ({texte!r}) — encodage mal lu ?")
         for sr, ids in sheet_refs.items():
@@ -262,15 +292,17 @@ def main():
 
     verifier_etiquettes(ref_pol, ref_lig)
 
-    # prochain_id
-    for nom, ref in (("polygones.json", ref_pol), ("lignes.json", ref_lig)):
-        if ref is not None and "prochain_id" in ref:
-            err(f"{nom} : prochain_id ne doit figurer que dans vocabulaires.json (compteur unique)")
-    prochain = (voc or {}).get("prochain_id")
+    # prochain_id : compteur unique, uniquement dans identifiants.json
+    for d in DOMAINES:
+        for nom in ("polygones", "lignes"):
+            ref = charger_json(os.path.join(DATA, d, f"{nom}.json"), False)
+            if ref is not None and "prochain_id" in ref:
+                err(f"{d}/{nom}.json : prochain_id ne doit figurer que dans shapefile/identifiants.json (compteur unique)")
+    prochain = (identifiants or {}).get("prochain_id")
     nums = [int(v[1:]) for v in vus if FORMAT_ID.match(v)]
-    if voc is not None and not isinstance(prochain, int):
-        err("vocabulaires.json : prochain_id absent ou non entier")
-    elif nums and prochain <= max(nums):
+    if identifiants is not None and not isinstance(prochain, int):
+        err("shapefile/identifiants.json : prochain_id absent ou non entier")
+    elif nums and isinstance(prochain, int) and prochain <= max(nums):
         err(f"prochain_id ({prochain}) doit être supérieur au plus grand id utilisé (G{max(nums):06d})")
 
     n_pol, n_lig = len(ids_pol or []), len(ids_lig or [])

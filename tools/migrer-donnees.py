@@ -15,13 +15,14 @@ Entrées :
   Metro_export_SHP/MetroInfo.shp, MetroLabels.shp   repères de tronçon PE_info (-> fichier legacy)
   data/patrimoine-plans-ensemble-500e.json  36 planches au 1/500
   data/patrimoine-numero-interstation.json  numéros interstation (conservés tels quels, fichier legacy)
-  data/fond-de-plan/etiquettes-troncons.json  (identifiants de tunnel réécrits : ancien id_objet -> nouveau id)
+  data/plans-patrimoine/etiquettes-troncons.json  (identifiants de tunnel réécrits : ancien id_objet -> nouveau id)
 
 Sorties :
-  data/geometries/polygones.{shp,shx,dbf,prj,cpg}   un seul champ attributaire : `id`
-  data/referentiel/polygones.json, lignes.json, vocabulaires.json
-  data/legacy/numeros-interstation.legacy.json, data/legacy/reperes-troncons.legacy.json
-  data/fond-de-plan/etiquettes-troncons.json        (réécrit)
+  data/shapefile/polygones.{shp,shx,dbf,prj,cpg}   un seul champ attributaire : `id`
+  data/metro/ (polygones.json, lignes.json, vocabulaires.json), data/plans-patrimoine/ (polygones.json, vocabulaires.json)
+  data/shapefile/identifiants.json   règle de l'id et compteur prochain_id
+  data/plans-patrimoine/numeros-interstation.legacy.json, data/plans-patrimoine/reperes-troncons.legacy.json
+  data/plans-patrimoine/etiquettes-troncons.json        (réécrit)
   tools/rapport-migration.md
 
 Rien n'est deviné : ce qui manque ou ne se rattache pas est consigné dans le rapport.
@@ -39,8 +40,8 @@ except ImportError:
     sys.exit("pyshp est requis : pip install pyshp")
 
 RACINE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-DATE = "2026-10-06"
-VERSION = 2  # 2 : prochain_id et couleur des planches dans vocabulaires.json, sans niveau ni préfixe de nom
+DATE = "2026-10-07"
+VERSION = 3  # 3 : référentiel réparti par domaine (metro, plans-patrimoine), prochain_id dans shapefile/identifiants.json
 CRS = "EPSG:31370"
 # Encodage réel des .dbf d'origine : Windows-1252 (et non ISO-8859-1 comme l'annonçait Metro.cst) —
 # l'octet 0x96 y est un tiret « – », pas un caractère de contrôle (13 noms de tunnel concernés).
@@ -187,43 +188,58 @@ def main():
         e["id"] = f"G{i:06d}"
     prochain = len(entites) + 1
 
-    os.makedirs(chemin("data", "geometries"), exist_ok=True)
-    w = shapefile.Writer(chemin("data", "geometries", "polygones"), shapeType=shapefile.POLYGON, encoding="utf-8")
+    os.makedirs(chemin("data", "shapefile"), exist_ok=True)
+    w = shapefile.Writer(chemin("data", "shapefile", "polygones"), shapeType=shapefile.POLYGON, encoding="utf-8")
     w.field("id", "C", size=12)
     for e in entites:
         w.poly(e["anneaux"])
         w.record(e["id"])
     w.close()
-    shutil.copyfile(chemin("Metro_export_SHP", "Metro.prj"), chemin("data", "geometries", "polygones.prj"))
-    with open(chemin("data", "geometries", "polygones.cpg"), "w", newline="") as f:
+    shutil.copyfile(chemin("Metro_export_SHP", "Metro.prj"), chemin("data", "shapefile", "polygones.prj"))
+    with open(chemin("data", "shapefile", "polygones.cpg"), "w", newline="") as f:
         f.write("UTF-8")
-    note("Sorties", f"data/geometries/polygones.shp : {len(entites)} polygones, champ unique `id` (G000001 à G{len(entites):06d}) ; .prj copié de Metro.prj.")
+    note("Sorties", f"data/shapefile/polygones.shp : {len(entites)} polygones, champ unique `id` (G000001 à G{len(entites):06d}) ; .prj copié de Metro.prj.")
 
-    # ---------- 4. Référentiel ---------------------------------------------------------------------
-    # prochain_id : compteur UNIQUE, commun à polygones.shp et lignes.shp, dans vocabulaires.json.
+    # ---------- 4. Référentiel, réparti par domaine métier --------------------------------------------
+    # prochain_id : compteur UNIQUE, commun à polygones.shp et lignes.shp, dans shapefile/identifiants.json.
+    metro = {e["id"]: e["ref"] for e in entites if e["genre"] in ("station", "tunnel")}
+    planches = {e["id"]: e["ref"] for e in entites if e["genre"] == "planche"}
+    entete = {"version": VERSION, "date": DATE, "crs": CRS}
+    ecrire_json({**entete, "entites": metro}, "data", "metro", "polygones.json")
+    ecrire_json({**entete, "entites": {}}, "data", "metro", "lignes.json")
     ecrire_json(
-        {"version": VERSION, "date": DATE, "crs": CRS, "entites": {e["id"]: e["ref"] for e in entites}},
-        "data", "referentiel", "polygones.json",
+        {
+            "version": VERSION,
+            "date": DATE,
+            "genres": {
+                "station": {"libelle": "Station", "geometrie": "polygone"},
+                "tunnel": {"libelle": "Tunnel (tronçon)", "geometrie": "polygone"},
+            },
+            "niveaux": {"valeurs": [], "note": "À définir. Les valeurs de Metro.dbf (« - », « 0 ») n'étaient pas crédibles et n'ont pas été reprises."},
+        },
+        "data", "metro", "vocabulaires.json",
     )
-    ecrire_json({"version": VERSION, "date": DATE, "crs": CRS, "entites": {}}, "data", "referentiel", "lignes.json")
+    ecrire_json({**entete, "entites": planches}, "data", "plans-patrimoine", "polygones.json")
+    ecrire_json(
+        {
+            "version": VERSION,
+            "date": DATE,
+            "genres": {"planche": {"libelle": "Planche 1/500", "geometrie": "polygone", "couleur": COULEUR_PLANCHE}},
+        },
+        "data", "plans-patrimoine", "vocabulaires.json",
+    )
     ecrire_json(
         {
             "version": VERSION,
             "date": DATE,
             "prochain_id": prochain,
             "regle_id": "Chaîne opaque « G » + 6 chiffres, attribuée une fois, jamais réutilisée, unique sur polygones.shp ET lignes.shp. Aucune signification métier. Le prochain à attribuer est prochain_id (compteur unique pour les deux fichiers), à incrémenter à chaque attribution.",
-            "genres": {
-                "station": {"libelle": "Station", "geometrie": "polygone"},
-                "tunnel": {"libelle": "Tunnel (tronçon)", "geometrie": "polygone"},
-                "planche": {"libelle": "Planche 1/500", "geometrie": "polygone", "couleur": COULEUR_PLANCHE},
-            },
-            "niveaux": {"valeurs": [], "note": "À définir. Les valeurs de Metro.dbf (« - », « 0 ») n'étaient pas crédibles et n'ont pas été reprises."},
         },
-        "data", "referentiel", "vocabulaires.json",
+        "data", "shapefile", "identifiants.json",
     )
     note("Niveau", "Champ `niveau` non repris : " + ", ".join(f"« {k or '(vide)'} » ×{n}" for k, n in sorted(niveaux_source.items())) + " dans Metro.dbf, valeurs non crédibles. À renseigner plus tard dans le référentiel.")
     note("Noms", "Préfixes « Station », « Tunnel STIB », « Tunnel MIVB » retirés des noms (ils répètent le genre).")
-    note("Sorties", "data/referentiel/polygones.json, lignes.json (vide), vocabulaires.json.")
+    note("Sorties", "data/metro/ (polygones.json, lignes.json vide, vocabulaires.json), data/plans-patrimoine/ (polygones.json, vocabulaires.json), data/shapefile/identifiants.json.")
 
     # ---------- 5. Noms de station ------------------------------------------------------------------
     chemin_noms = chemin("data", "patrimoine-nom-station.json")
@@ -242,12 +258,12 @@ def main():
         )
 
     # ---------- 6. Numéros interstation (legacy) ----------------------------------------------------
-    os.makedirs(chemin("data", "legacy"), exist_ok=True)
+    os.makedirs(chemin("data", "plans-patrimoine"), exist_ok=True)
     src_num = chemin("data", "patrimoine-numero-interstation.json")
     if os.path.exists(src_num):
-        shutil.copyfile(src_num, chemin("data", "legacy", "numeros-interstation.legacy.json"))
+        shutil.copyfile(src_num, chemin("data", "plans-patrimoine", "numeros-interstation.legacy.json"))
         nb_num = len(charger_json("data", "patrimoine-numero-interstation.json")["features"])
-        note("Legacy", f"data/legacy/numeros-interstation.legacy.json : {nb_num} points texte copiés tels quels (aucune géométrie de tronçon n'existe).")
+        note("Legacy", f"data/plans-patrimoine/numeros-interstation.legacy.json : {nb_num} points texte copiés tels quels (aucune géométrie de tronçon n'existe).")
 
     # ---------- 7. Repères de tronçon PE_info (legacy) -----------------------------------------------
     feats = []
@@ -265,7 +281,7 @@ def main():
     for shape, rec in zip(labels.shapes(), labels.records()):
         r = rec.as_dict()
         if r["type"] == "PE_label":
-            nb_pelabel += 1  # amorçage d'origine : la source des références de planche est data/fond-de-plan/etiquettes-planches.json
+            nb_pelabel += 1  # amorçage d'origine : la source des références de planche est data/plans-patrimoine/etiquettes-planches.json
             continue
         nb_codes += 1
         feats.append({
@@ -281,17 +297,17 @@ def main():
             "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:EPSG::31370"}},
             "features": feats,
         },
-        "data", "legacy", "reperes-troncons.legacy.json", indent=None,
+        "data", "plans-patrimoine", "reperes-troncons.legacy.json", indent=None,
     )
-    note("Legacy", f"data/legacy/reperes-troncons.legacy.json : {nb_tri} triangles + {nb_codes} codes (MetroInfo.shp / MetroLabels.shp, type PE_info), conservés pour que la couche « Plans d'ensemble » continue de les afficher.")
-    note("Non migré", f"{nb_pelabel} points PE_label de MetroLabels.shp : amorçage d'origine des références de planche, remplacé depuis longtemps par data/fond-de-plan/etiquettes-planches.json (source unique).")
+    note("Legacy", f"data/plans-patrimoine/reperes-troncons.legacy.json : {nb_tri} triangles + {nb_codes} codes (MetroInfo.shp / MetroLabels.shp, type PE_info), conservés pour que la couche « Plans d'ensemble » continue de les afficher.")
+    note("Non migré", f"{nb_pelabel} points PE_label de MetroLabels.shp : amorçage d'origine des références de planche, remplacé depuis longtemps par data/plans-patrimoine/etiquettes-planches.json (source unique).")
 
     # ---------- 8. etiquettes-troncons.json : ancien id_objet -> nouvel id -----------------------------
     par_ancien = {}
     for e in entites:
         if e["genre"] == "tunnel" and "id_objet" in e["ref"]["ids_externes"]:
             par_ancien[e["ref"]["ids_externes"]["id_objet"]] = e["id"]
-    et = charger_json("data", "fond-de-plan", "etiquettes-troncons.json")
+    et = charger_json("data", "plans-patrimoine", "etiquettes-troncons.json")
     non_trouves = []
     utilises = Counter()
     for cle, d in et["labels"].items():
@@ -304,8 +320,8 @@ def main():
             utilises[nouveau] += 1
         else:
             non_trouves.append((cle, d.get("tunnel")))
-    ecrire_json(et, "data", "fond-de-plan", "etiquettes-troncons.json")
-    note("Étiquettes de tronçon", f"data/fond-de-plan/etiquettes-troncons.json : {len(et['labels']) - len(non_trouves)}/{len(et['labels'])} références de tunnel réécrites (ancien id_objet -> id).")
+    ecrire_json(et, "data", "plans-patrimoine", "etiquettes-troncons.json")
+    note("Étiquettes de tronçon", f"data/plans-patrimoine/etiquettes-troncons.json : {len(et['labels']) - len(non_trouves)}/{len(et['labels'])} références de tunnel réécrites (ancien id_objet -> id).")
     for cle, t in non_trouves:
         anomalies.append(f"Étiquette de tronçon « {cle} » : tunnel « {t} » introuvable, référence laissée inchangée")
     sans_numero = [e["ref"]["name_fr"] + " (" + e["id"] + ")" for e in entites if e["genre"] == "tunnel" and e["id"] not in utilises]
@@ -314,7 +330,7 @@ def main():
     note("Contrôles", f"Tunnels portant plusieurs numéros : {len(partages)}.")
 
     # Références de planche : chaque clé « ref#rang » doit correspondre à une planche existante.
-    ep = charger_json("data", "fond-de-plan", "etiquettes-planches.json")
+    ep = charger_json("data", "plans-patrimoine", "etiquettes-planches.json")
     refs_planches = {sr for sr, _ in planches_json}
     inconnues = sorted({k.split("#")[0] for k in ep["labels"]} - refs_planches)
     for k in inconnues:

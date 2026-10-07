@@ -1,19 +1,22 @@
 /**
  * Géométries pérennes + référentiel, jointure par `id`.
  *
- *  - data/geometries/polygones.shp et lignes.shp : géométries Lambert 72 éditées dans AutoCAD, chaque
+ *  - data/shapefile/polygones.shp et lignes.shp : géométries Lambert 72 éditées dans AutoCAD, chaque
  *    entité ne portant que le champ `id` (identifiant opaque « G » + 6 chiffres, voir README) ;
- *  - data/referentiel/polygones.json et lignes.json : tout ce qui complète une géométrie (genre, noms,
- *    niveau, références de planche, identifiants externes...), indexé par `id` ;
- *  - data/referentiel/vocabulaires.json : genres et valeurs admises.
+ *  - data/shapefile/identifiants.json : règle de l'id et compteur `prochain_id` ;
+ *  - référentiel réparti par domaine métier, chaque dossier portant celui des géométries qui le
+ *    concernent : data/metro/ (stations, tunnels, tronçons) et data/plans-patrimoine/ (planches), avec
+ *    polygones.json (lignes.json pour les tronçons) et vocabulaires.json. Tout ce qui complète une
+ *    géométrie y est indexé par `id` (genre, noms, références de planche, identifiants externes...).
  *
  * lignes.shp / lignes.json peuvent être absents (aucun tronçon dessiné pour l'instant) : toléré ;
- * lignes.shp n'est lu que si lignes.json décrit au moins une ligne.
+ * lignes.shp n'est lu que si un référentiel de lignes décrit au moins une ligne.
  *
  * load() renvoie les entités jointes { geometry, properties: { id, source, ...entrée du référentiel } }.
  * Les contrôles (mêmes règles que tools/verifier-donnees.py) sont NON BLOQUANTS : avertissements en
  * console, jamais d'exception pour une incohérence de données. Une géométrie sans entrée de référentiel
- * est gardée mais sans `genre` (aucune couche ne l'affiche) ; une entrée sans géométrie est ignorée.
+ * est gardée mais sans `genre` (aucune couche ne l'affiche) ; une entrée sans géométrie est ignorée ;
+ * un `id` décrit dans deux dossiers est signalé (la première entrée est gardée).
  * Seule l'impossibilité totale de lire polygones.shp rejette la promesse (message affiché par app.js).
  */
 const AMGT4CEM_Referentiel = {
@@ -28,30 +31,30 @@ const AMGT4CEM_Referentiel = {
 
   async _load() {
     const cfg = AMGT4CEM_CONFIG.donnees;
-    const [refPolygones, refLignes, vocabulaires] = await Promise.all([
-      this._fetchJson(cfg.polygonesJson, true),
-      this._fetchJson(cfg.lignesJson, false),
-      this._fetchJson(cfg.vocabulairesJson, false),
+    const [refPolygones, refLignes, vocabulaires, identifiants] = await Promise.all([
+      this._fetchEntites(cfg.polygonesJson, true),
+      this._fetchEntites(cfg.lignesJson, false),
+      this._fetchVocabulaires(cfg.vocabulairesJson),
+      this._fetchJson(cfg.identifiantsJson, false),
     ]);
     const polygones = await AMGT4CEM_ShpLoader.load(cfg.polygonesShp);
     // lignes.shp n'est demandé que si le référentiel décrit au moins une ligne : tant qu'aucun tronçon
     // n'est dessiné, le fichier n'existe pas (et une requête 404 inutile salirait la console).
-    const lignes = refLignes && Object.keys(refLignes.entites || {}).length
+    const lignes = Object.keys(refLignes.entites).length
       ? await AMGT4CEM_ShpLoader.load(cfg.lignesShp, { optional: true })
       : { type: 'FeatureCollection', features: [] };
-    this.vocabulaires = vocabulaires || {};
+    this.vocabulaires = vocabulaires;
+    this.identifiants = identifiants || {};
 
+    const avertissements = [...refPolygones.avertissements, ...refLignes.avertissements];
     const sources = [
-      { nom: 'polygones', geo: polygones, ref: refPolygones },
-      { nom: 'lignes', geo: lignes, ref: refLignes },
+      { nom: 'polygones', geo: polygones, entrees: refPolygones.entites },
+      { nom: 'lignes', geo: lignes, entrees: refLignes.entites },
     ];
     const vus = new Map(); // id -> fichier déjà rencontré (unicité sur les deux fichiers à la fois)
     const features = [];
-    const avertissements = [];
 
-    for (const { nom, geo, ref } of sources) {
-      const entrees = (ref && ref.entites) || {};
-      if (geo.features.length && !ref) avertissements.push(`referentiel/${nom}.json absent : aucune entrée pour ${geo.features.length} géométries`);
+    for (const { nom, geo, entrees } of sources) {
       const utilisees = new Set();
       for (const f of geo.features) {
         const id = f.properties.id;
@@ -60,33 +63,55 @@ const AMGT4CEM_Referentiel = {
           avertissements.push(`${nom}.shp : entité sans id, ignorée`);
           continue;
         }
-        if (vus.has(id)) avertissements.push(`id « ${id} » en double (${vus.get(id)} et ${nom}) : la première entité est conservée`);
-        if (vus.has(id)) continue;
+        if (vus.has(id)) {
+          avertissements.push(`id « ${id} » en double (${vus.get(id)} et ${nom}) : la première entité est conservée`);
+          continue;
+        }
         vus.set(id, nom);
         const entree = entrees[id];
         utilisees.add(id);
         if (!entree) avertissements.push(`${nom} : géométrie « ${id} » sans entrée de référentiel (non affichée)`);
         features.push({ type: 'Feature', geometry: f.geometry, properties: { ...(entree || {}), id, source: nom } });
       }
-      for (const id of Object.keys(entrees)) {
+      for (const [id, e] of Object.entries(entrees)) {
         if (!utilisees.has(id)) avertissements.push(`${nom} : entrée de référentiel « ${id} » sans géométrie`);
-      }
-      const genres = (this.vocabulaires.genres) || {};
-      if (this.vocabulaires.genres) {
-        for (const [id, e] of Object.entries(entrees)) {
-          if (!genres[e.genre]) avertissements.push(`${nom} : entrée « ${id} » : genre « ${e.genre} » absent de vocabulaires.json`);
+        if (this.vocabulaires.genres && !this.vocabulaires.genres[e.genre]) {
+          avertissements.push(`${nom} : entrée « ${id} » : genre « ${e.genre} » absent des vocabulaires`);
         }
       }
     }
-    // prochain_id : compteur unique (vocabulaires.json), toujours au-delà du plus grand id utilisé.
+    // prochain_id : compteur unique (identifiants.json), toujours au-delà du plus grand id utilisé.
     const plusGrand = Math.max(0, ...[...vus.keys()].filter((id) => /^G\d{6}$/.test(id)).map((id) => Number(id.slice(1))));
-    const prochain = this.vocabulaires.prochain_id;
-    if (!Number.isInteger(prochain)) avertissements.push('vocabulaires.json : prochain_id absent');
+    const prochain = this.identifiants.prochain_id;
+    if (!Number.isInteger(prochain)) avertissements.push('identifiants.json : prochain_id absent');
     else if (prochain <= plusGrand) avertissements.push(`prochain_id (${prochain}) doit être supérieur au plus grand id utilisé (G${String(plusGrand).padStart(6, '0')})`);
 
     for (const a of avertissements) console.warn('[AMGT4CEM] Données :', a);
     this.features = features;
     return features;
+  },
+
+  /** Référentiels de plusieurs dossiers fusionnés : { entites, avertissements } (un `id` décrit deux fois : signalé, le premier gagne). */
+  async _fetchEntites(urls, required) {
+    const entites = {};
+    const avertissements = [];
+    const fichiers = await Promise.all(urls.map((url) => this._fetchJson(url, required)));
+    fichiers.forEach((ref, i) => {
+      for (const [id, e] of Object.entries((ref && ref.entites) || {})) {
+        if (entites[id]) avertissements.push(`id « ${id} » décrit dans deux référentiels (${urls[i]} et un précédent) : le premier est gardé`);
+        else entites[id] = e;
+      }
+    });
+    return { entites, avertissements };
+  },
+
+  /** Vocabulaires de plusieurs dossiers fusionnés (genres réunis ; niveaux : listes concaténées). */
+  async _fetchVocabulaires(urls) {
+    const out = { genres: {} };
+    for (const v of await Promise.all(urls.map((url) => this._fetchJson(url, false)))) {
+      if (v) Object.assign(out.genres, v.genres || {});
+    }
+    return out;
   },
 
   /** JSON du référentiel ; absent (404) ou illisible = null (avertissement), sauf `required`, qui rejette. */

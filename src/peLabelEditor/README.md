@@ -52,9 +52,7 @@ panneau de suivi (l'aide) ; **Quitter l'édition** (dans ce panneau) recharge la
 page et revient au mode normal. La couleur des étiquettes repositionnées
 (ci-dessous) n'apparaît que dans ce mode.
 
-Alternative (développement) : ouvrir `plugins/pe-label-editor/index.html` au
-lieu de `index.html` (la page charge l'appli telle quelle et y ajoute ce
-plugin à la fin). Dans les deux cas le site doit être servi en http(s).
+Le site doit être servi en http(s).
 
 ## Références de planche
 
@@ -137,13 +135,13 @@ sélectionné »), **second clic** (début de la modification, deux étapes) :
 **✓ Terminer** garde le résultat (à enregistrer), **Annuler** l'abandonne,
 **↺** remet la position et le tronçon d'origine. Les étiquettes modifiées
 s'affichent dans la couleur opposée, comme les références de planche.
-Enregistrement : `data/fond-de-plan/etiquettes-troncons.json` (`{ "version": 1, "crs": "EPSG:31370", "labels":
+Enregistrement : `data/plans-patrimoine/etiquettes-troncons.json` (`{ "version": 1, "crs": "EPSG:31370", "labels":
 { "648#0": { x, y, tunnel } } }` — position en Lambert 72, `id` du tronçon (référentiel)
-du tunnel), route `/shared/fond-de-plan/etiquettes-troncons` du relais.
+du tunnel), route `/shared/plans-patrimoine/etiquettes-troncons` du relais.
 
 ## Supprimer et créer des étiquettes
 
-**Source unique** : les JSON de `data/fond-de-plan/` sont la liste COMPLÈTE des
+**Source unique** : les JSON de `data/plans-patrimoine/` sont la liste COMPLÈTE des
 étiquettes (planches : 37 ; tronçons : 86 au départ). Créer ou supprimer une
 étiquette revient à ajouter ou retirer une entrée ; les fichiers d'origine
 (`MetroLabels.shp`, `patrimoine-numero-interstation.json` : supprimés ou déplacés dans `data/legacy/`) ne servent plus
@@ -178,8 +176,8 @@ sont abandonnées après confirmation), couvrent ce besoin.
 Les modifications sont **enregistrées dans l'application**, partagées par
 tous les visiteurs — pas dans le navigateur (rien n'est gardé dans
 `localStorage`). Les références de planche vivent dans
-`data/fond-de-plan/etiquettes-planches.json` (ancrages en Lambert 72), les
-numéros d'interstation dans `data/fond-de-plan/etiquettes-troncons.json`
+`data/plans-patrimoine/etiquettes-planches.json` (ancrages en Lambert 72), les
+numéros d'interstation dans `data/plans-patrimoine/etiquettes-troncons.json`
 (dépôt), lus par l'application elle-même
 (`src/peLabelAnchors.js`, `src/interstation.js`) : un visiteur sans le plugin
 voit les étiquettes à leur nouvelle place.
@@ -208,8 +206,6 @@ ne sont plus lus.
 
 ## Fichiers
 
-- `index.html` — page de lancement (récupère l'`index.html` de l'appli et
-  y injecte le CSS/JS ci-dessous avant `</body>`).
 - `pe-label-editor.css` — styles de la barre d'étape, des points et des panneaux.
 - `pe-label-editor.js` — logique (voir l'en-tête du fichier : principe,
   calcul des points remarquables, alignement, persistance).

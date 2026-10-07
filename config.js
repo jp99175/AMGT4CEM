@@ -24,27 +24,30 @@ const AMGT4CEM_CONFIG = {
   //  3. données métier (suivi) : hors de ce dépôt (phase B).
   // Lecture côté navigateur (src/shpLoader.js, src/referentiel.js), sans conversion externe.
   // lignes.shp / lignes.json peuvent être absents tant qu'aucun tronçon n'est dessiné.
+  // Chaque dossier métier (data/metro/, data/plans-patrimoine/) porte le référentiel des géométries
+  // qui le concernent : polygones.json (et lignes.json s'il y a des tronçons) + vocabulaires.json.
+  // Le chargeur fusionne ces fichiers et les joint aux deux shapefiles par `id` (src/referentiel.js).
   donnees: {
-    polygonesShp: './data/geometries/polygones',
-    lignesShp: './data/geometries/lignes',
-    polygonesJson: './data/referentiel/polygones.json',
-    lignesJson: './data/referentiel/lignes.json',
-    vocabulairesJson: './data/referentiel/vocabulaires.json',
+    polygonesShp: './data/shapefile/polygones',
+    lignesShp: './data/shapefile/lignes',
+    identifiantsJson: './data/shapefile/identifiants.json',
+    polygonesJson: ['./data/metro/polygones.json', './data/plans-patrimoine/polygones.json'],
+    lignesJson: ['./data/metro/lignes.json'],
+    vocabulairesJson: ['./data/metro/vocabulaires.json', './data/plans-patrimoine/vocabulaires.json'],
   },
   // LEGACY : repères de transition entre tronçons (triangles + codes D0, D1, G1a...), sans identifiant ;
   // à rattacher à lignes.shp quand il existera (voir metroLayer.js et le README).
-  reperesTronconsLegacyUrl: './data/legacy/reperes-troncons.legacy.json',
+  reperesTronconsLegacyUrl: './data/plans-patrimoine/reperes-troncons.legacy.json',
 
-  // Données du FOND DE PLAN écrites par l'application (tout ce qui n'est pas une
-  // géométrie de data/geometries/, seule éditable sous AutoCAD) : dossier
-  // data/fond-de-plan/, un fichier JSON par type d'élément, en Lambert 72, partagés
-  // entre visiteurs. Lus par tous ; enregistrés (administrateurs, plugin
-  // plugins/pe-label-editor/) par un relais serveur à déployer une fois
-  // (relay/README.md), route PUT /shared/fond-de-plan/<fichier>.
+  // Étiquettes des Plans patrimoine, écrites par l'application (tout ce qui n'est pas une
+  // géométrie de data/shapefile/, seule éditable sous AutoCAD) : un fichier JSON par type
+  // d'élément dans data/plans-patrimoine/, en Lambert 72, partagés entre visiteurs. Lus par
+  // tous ; enregistrés (administrateurs, outil d'édition src/peLabelEditor/) par un relais
+  // serveur à déployer une fois (relay/README.md), route PUT /shared/plans-patrimoine/<fichier>.
   // Ancrage/orientation des références de planche (src/peLabelAnchors.js) :
-  peLabelAnchorsUrl: './data/fond-de-plan/etiquettes-planches.json',
+  peLabelAnchorsUrl: './data/plans-patrimoine/etiquettes-planches.json',
   // Position et tronçon de rattachement des numéros d'interstation (src/interstation.js) :
-  interstationLabelsUrl: './data/fond-de-plan/etiquettes-troncons.json',
+  interstationLabelsUrl: './data/plans-patrimoine/etiquettes-troncons.json',
   // Adresse du relais d'enregistrement. Vide par défaut : elle se renseigne
   // dans ⚙ Paramètres > Serveur, qui l'enregistre sur le serveur avec les
   // autres paramètres généraux (data/app-settings.json) et prime alors sur

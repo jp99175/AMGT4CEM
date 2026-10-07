@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "date": "2026-10-07",
+  "prochain_id": 193,
+  "regle_id": "Chaîne opaque « G » + 6 chiffres, attribuée une fois, jamais réutilisée, unique sur polygones.shp ET lignes.shp. Aucune signification métier. Le prochain à attribuer est prochain_id (compteur unique pour les deux fichiers), à incrémenter à chaque attribution."
+}

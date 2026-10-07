@@ -1,6 +1,6 @@
 # Rapport de migration
 
-Généré par `tools/migrer-donnees.py` le 2026-10-06. Rien n'est inventé ni deviné : ce qui ne se rattache pas est listé ici.
+Généré par `tools/migrer-donnees.py` le 2026-10-07. Rien n'est inventé ni deviné : ce qui ne se rattache pas est listé ici.
 
 ## Entités lues
 
@@ -17,8 +17,8 @@ Généré par `tools/migrer-donnees.py` le 2026-10-06. Rien n'est inventé ni de
 
 ## Sorties
 
-- data/geometries/polygones.shp : 192 polygones, champ unique `id` (G000001 à G000192) ; .prj copié de Metro.prj.
-- data/referentiel/polygones.json, lignes.json (vide), vocabulaires.json.
+- data/shapefile/polygones.shp : 192 polygones, champ unique `id` (G000001 à G000192) ; .prj copié de Metro.prj.
+- data/metro/ (polygones.json, lignes.json vide, vocabulaires.json), data/plans-patrimoine/ (polygones.json, vocabulaires.json), data/shapefile/identifiants.json.
 
 ## Niveau
 
@@ -34,16 +34,16 @@ Généré par `tools/migrer-donnees.py` le 2026-10-06. Rien n'est inventé ni de
 
 ## Legacy
 
-- data/legacy/numeros-interstation.legacy.json : 86 points texte copiés tels quels (aucune géométrie de tronçon n'existe).
-- data/legacy/reperes-troncons.legacy.json : 106 triangles + 80 codes (MetroInfo.shp / MetroLabels.shp, type PE_info), conservés pour que la couche « Plans d'ensemble » continue de les afficher.
+- data/plans-patrimoine/numeros-interstation.legacy.json : 86 points texte copiés tels quels (aucune géométrie de tronçon n'existe).
+- data/plans-patrimoine/reperes-troncons.legacy.json : 106 triangles + 80 codes (MetroInfo.shp / MetroLabels.shp, type PE_info), conservés pour que la couche « Plans d'ensemble » continue de les afficher.
 
 ## Non migré
 
-- 37 points PE_label de MetroLabels.shp : amorçage d'origine des références de planche, remplacé depuis longtemps par data/fond-de-plan/etiquettes-planches.json (source unique).
+- 37 points PE_label de MetroLabels.shp : amorçage d'origine des références de planche, remplacé depuis longtemps par data/plans-patrimoine/etiquettes-planches.json (source unique).
 
 ## Étiquettes de tronçon
 
-- data/fond-de-plan/etiquettes-troncons.json : 86/86 références de tunnel réécrites (ancien id_objet -> id).
+- data/plans-patrimoine/etiquettes-troncons.json : 86/86 références de tunnel réécrites (ancien id_objet -> id).
 
 ## Doublons
 

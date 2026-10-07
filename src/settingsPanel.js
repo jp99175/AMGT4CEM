@@ -19,7 +19,7 @@
  *    généraux (onglets Sources et Serveur).
  * 3. Fonds de plan : modifications des données de fond — lancement du mode
  *    édition des étiquettes de planche et de tronçon (plugin
- *    plugins/pe-label-editor/, chargé à la demande) ; chargement d'un nouveau shapefile : à venir.
+ *    src/peLabelEditor/, chargé à la demande) ; chargement d'un nouveau shapefile : à venir.
  *
  * Exclusif avec le menu "☰ Carte" (un seul panneau ouvert à la fois, même
  * position à l'écran) — voir mapMenu.js pour la réciproque.
@@ -199,7 +199,7 @@ const AMGT4CEM_SettingsPanel = {
    * Lance le mode édition des étiquettes (références de planche ET numéros
    * d'interstation, un seul mode) : affiche les couches « Plans d'ensemble » et
    * « Numéros interstation » (les étiquettes n'existent à l'écran que si elles
-   * le sont), charge le plugin plugins/pe-label-editor/ à la demande (une
+   * le sont), charge le plugin src/peLabelEditor/ à la demande (une
    * seule fois), puis ouvre son panneau de suivi (l'aide).
    */
   _launchLabelEditor() {
@@ -213,7 +213,7 @@ const AMGT4CEM_SettingsPanel = {
     };
     if (window.AMGT4CEM_PeLabelEditor) return open();
 
-    const base = './plugins/pe-label-editor/';
+    const base = './src/peLabelEditor/';
     const css = document.createElement('link');
     css.rel = 'stylesheet';
     css.href = `${base}pe-label-editor.css`;
@@ -221,7 +221,7 @@ const AMGT4CEM_SettingsPanel = {
     const script = document.createElement('script');
     script.src = `${base}pe-label-editor.js`;
     script.onload = open;
-    script.onerror = () => alert("Impossible de charger l'outil d'édition des étiquettes (plugins/pe-label-editor/).");
+    script.onerror = () => alert("Impossible de charger l'outil d'édition des étiquettes (src/peLabelEditor/).");
     document.body.appendChild(script);
   },
 

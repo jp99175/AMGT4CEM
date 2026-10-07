@@ -9,8 +9,8 @@
  * toutes les routes. Les routes ne sont pas des droits distincts : ce sont des
  * chemins de fichiers. Deux familles :
  *   PUT /shared/<dossier>/<fichier>   donnée écrite par l'application -> data/<dossier>/<fichier>.json
- *       ex. /shared/fond-de-plan/etiquettes-planches   -> data/fond-de-plan/etiquettes-planches.json
- *           /shared/fond-de-plan/etiquettes-troncons   -> data/fond-de-plan/etiquettes-troncons.json
+ *       ex. /shared/plans-patrimoine/etiquettes-planches   -> data/plans-patrimoine/etiquettes-planches.json
+ *           /shared/plans-patrimoine/etiquettes-troncons   -> data/plans-patrimoine/etiquettes-troncons.json
  *       (<dossier>, <fichier> : minuscules, chiffres, tirets). Corps JSON { "version": 1, ... }, au
  *       format libre ; contrôle commun : Lambert 72 pour toute coordonnée x/y/a1/a2 d'un jeu
  *       `labels`, crs « EPSG:31370 » si présent. Un nouveau dossier (amiante, chantiers...) ou un

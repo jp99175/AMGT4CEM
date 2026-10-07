@@ -1,11 +1,11 @@
 /**
  * Numéros d'interstation (couche « Numéros interstation » des Plans patrimoine) : chaque
- * numéro est rattaché à un TRONÇON (polygone de genre « tunnel » de data/geometries/polygones.shp, emprise de tunnel).
+ * numéro est rattaché à un TRONÇON (polygone de genre « tunnel » de data/shapefile/polygones.shp, emprise de tunnel).
  *
- * SOURCE UNIQUE : data/fond-de-plan/etiquettes-troncons.json, liste COMPLÈTE des étiquettes
+ * SOURCE UNIQUE : data/plans-patrimoine/etiquettes-troncons.json, liste COMPLÈTE des étiquettes
  * { "numéro#rang": { x, y, tunnel } } — position du texte (Lambert 72, mètres) et identifiant
  * stable `id` du tunnel (référentiel, ex. « G000002 »). Créer ou supprimer une étiquette = ajouter ou retirer une entrée
- * (plugin pe-label-editor). Le fichier d'origine data/legacy/numeros-interstation.legacy.json n'est
+ * (plugin pe-label-editor). Le fichier d'origine data/plans-patrimoine/numeros-interstation.legacy.json n'est
  * plus lu : archive (amorçage initial du JSON), à retirer quand lignes.shp existera.
  *
  * Deux usages :
@@ -147,13 +147,13 @@ const AMGT4CEM_Interstation = {
   },
 
   /**
-   * Enregistre l'ensemble des définitions dans le dépôt, via le relais (data/fond-de-plan/etiquettes-troncons.json).
+   * Enregistre l'ensemble des définitions dans le dépôt, via le relais (data/plans-patrimoine/etiquettes-troncons.json).
    * @param {Object} labels - { "numéro#rang": { x, y, tunnel } }, x/y en Lambert 72, tunnel = id du référentiel (étiquettes SANS définition : absentes)
    * @param {string} adminCode - code administrateur attendu par le relais
    */
   async saveOverrides(labels, adminCode) {
     const sorted = Object.fromEntries(Object.keys(labels).sort().map((k) => [k, labels[k]])); // clés triées : pas de commit sans changement réel
-    await AMGT4CEM_PeLabelAnchors.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, 'shared/fond-de-plan/etiquettes-troncons', { version: 1, crs: 'EPSG:31370', labels: sorted }, adminCode);
+    await AMGT4CEM_PeLabelAnchors.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, 'shared/plans-patrimoine/etiquettes-troncons', { version: 1, crs: 'EPSG:31370', labels: sorted }, adminCode);
     this._overrides = JSON.parse(JSON.stringify(labels));
   },
 

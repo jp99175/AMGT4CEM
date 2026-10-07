@@ -3,9 +3,9 @@
  * bibliothèque tierce (pas de "npm install", pas de droits admin nécessaires).
  *
  * Les géométries pérennes de l'application sont deux shapefiles Lambert 72
- * (data/geometries/polygones.* et lignes.*), éditables dans AutoCAD, dont chaque
+ * (data/shapefile/polygones.* et lignes.*), éditables dans AutoCAD, dont chaque
  * entité ne porte qu'UN champ : `id` (identifiant stable, voir README). Tout le
- * reste (noms, genre, niveau...) vit dans le référentiel JSON (data/referentiel/),
+ * reste (noms, genre, niveau...) vit dans le référentiel JSON (data/metro/, data/plans-patrimoine/),
  * rattaché par cet `id` (voir referentiel.js).
  *
  * Types de forme pris en charge, coordonnées 2D (pas de Z/M) :
@@ -23,7 +23,7 @@
  */
 const AMGT4CEM_ShpLoader = {
   /**
-   * @param {string} baseUrl - chemin sans extension (ex: './data/geometries/polygones')
+   * @param {string} baseUrl - chemin sans extension (ex: './data/shapefile/polygones')
    * @param {{ optional?: boolean }} [options] - optional : fichier absent (404) = collection vide, sans erreur
    * @returns {Promise<{type: 'FeatureCollection', features: object[]}>} entités { geometry, properties: { id } }
    */

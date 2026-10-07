@@ -5,10 +5,10 @@ par un administrateur :
 
 - `PUT /shared/<dossier>/<fichier>` : toute donnée écrite par l'application,
   dans `data/<dossier>/<fichier>.json` — aujourd'hui le dossier
-  **`fond-de-plan`** (`etiquettes-planches` : ancrage/orientation des
+  **`plans-patrimoine`** (`etiquettes-planches` : ancrage/orientation des
   références de planche ; `etiquettes-troncons` : position et tronçon de
   rattachement des numéros d'interstation), modifiés avec le plugin
-  `plugins/pe-label-editor/` ; plus tard `amiante`, `chantiers`...
+  `src/peLabelEditor/` ; plus tard `amiante`, `chantiers`...
 - `PUT /settings` : paramètres généraux de l'application — adresses des
   services externes et adresse du relais (`data/app-settings.json`),
   modifiés dans ⚙ Paramètres.
@@ -85,7 +85,7 @@ Prérequis : un compte Cloudflare (gratuit), Node.js installé.
   sans changement réel ne crée aucun commit).
 - Le jeton GitHub n'est jamais renvoyé au navigateur.
 
-Chaque enregistrement est un commit du dépôt (« Données « fond-de-plan/etiquettes-planches » :
+Chaque enregistrement est un commit du dépôt (« Données « plans-patrimoine/etiquettes-planches » :
 mise à jour (via l'application) ») : l'historique permet de revenir en
 arrière.
 
