@@ -34,17 +34,30 @@ est un **contexte**, pas un domaine technique : le domaine y est facultatif.
 
 ## Référence
 
-La référence officielle (`AAAA-NNNN`, par exemple `2026-0122`) est attribuée **par le système à l'import**,
-jamais ici : un navigateur hors ligne ne peut pas garantir l'unicité. Le signalement porte en attendant son
-identifiant interne (UUID). Une fois attribuée, la référence est la clé primaire de la fiche.
+La référence officielle (`AAAA-NNNN`, par exemple `2026-0122`) est attribuée **par le serveur de dépôt à la
+réception**, jamais ici : un navigateur hors ligne ne peut pas garantir l'unicité. Le signalement porte en
+attendant son identifiant interne (UUID). Une fois attribuée, la référence est la clé primaire de la fiche ; le
+marqueur prend alors un contour vert et ne se déplace plus.
 
-## Dépôt
+## Envoi au serveur
 
-Le bouton **⬇ Exporter le dépôt (.zip)** du popup produit `FICH_<réf. courte>-<type court>_<AAAAMMJJ>_FR.zip` :
+1. Le signalement est d'abord **enregistré sur l'appareil** (localStorage, photos en IndexedDB) : il se saisit sans réseau.
+2. **⬆ Envoyer au serveur** (popup) ou **⬆ Envoyer les signalements en attente** (menu ☰ Carte) envoie l'archive de
+   dépôt au serveur `depot-signalements/` (voir son README). Le code d'accès est demandé une fois par onglet.
+3. Le serveur répond par la référence, inscrite sur le signalement local. Renvoyer un signalement déjà reçu redonne la
+   même référence (pas de doublon). En cas d'échec, le signalement reste sur l'appareil et peut être renvoyé.
+
+Le serveur se déclare dans `config.js` : `plugins` > `signalements` > `options.serverUrl` (vide : pas d'envoi, les
+boutons d'envoi sont masqués ou grisés).
+
+## Export manuel
+
+Le bouton **⬇ Exporter le dépôt (.zip)** du popup produit la même archive en téléchargement,
+`FICH_<réf. courte>-<type court>_<AAAAMMJJ>_FR.zip` :
 
 - `signalement.json` : schéma `amgt4cem-depot-signalement` (version 1), positions en Lambert 72 ; bloc
-  `provenance` (demandeur et sa référence : identifiant externe à l'import, type `REF_DEMANDEUR`) ; `reference`
-  et `redacteur` vides (référence attribuée à l'import ; référentiel des intervenants à venir) ;
+  `provenance` (demandeur et sa référence : identifiant externe, type `REF_DEMANDEUR`) ; `reference`
+  et `redacteur` vides (référence attribuée par le serveur ; référentiel des intervenants à venir) ;
 - les photos `IMG_<réf. courte>-<type>-<domaine>-<n°>_<AAAAMMJJ>_MX.jpg`.
 
 Les noms suivent la convention de nommage de l'organisation `TYPE_Titre_date_LANGUE` : `IMG` (images) et
@@ -53,11 +66,11 @@ matricule dans les noms de fichiers.
 
 ## Limites actuelles
 
-Signalements et photos restent dans le navigateur de chaque agent (localStorage et IndexedDB) : sans
-export, ils ne sont ni partagés ni sauvegardés, et ils sont perdus si les données du site sont effacées.
-Le stockage partagé du suivi, le stockage des photos (Cloudflare R2) et l'identification des rédacteurs
-restent à décider ou à construire (voir le document de conception). Les signalements ne sont pas encore
-trouvables par la recherche de la carte.
+Tant qu'un signalement n'est pas envoyé, il n'existe que dans le navigateur de l'agent : il est perdu si les
+données du site sont effacées. Une fois envoyé, la copie du serveur fait foi, mais l'application ne relit pas
+encore le serveur (pas de vue partagée des signalements des autres agents). Les photos partent dans l'archive ;
+leur stockage séparé et l'identification des rédacteurs restent à construire. Les signalements ne sont pas
+encore trouvables par la recherche de la carte.
 
 ## Fichiers
 
@@ -65,11 +78,13 @@ trouvables par la recherche de la carte.
 |---|---|
 | `signalements.js` | plugin : bouton, couches, formulaire, placement, popup (enregistrement auprès de `AMGT4CEM_Plugins`) |
 | `depot.js` | vocabulaire, noms de fichiers, contenu et export du dépôt |
+| `envoi.js` | envoi de l'archive au serveur de dépôt, code d'accès (onglet) |
 | `store.js` | stockage local, un par flux |
 | `pieces-store.js` | photos (IndexedDB), réduction, empreintes |
 | `zip-writer.js` | écriture d'une archive ZIP sans dépendance |
 | `signalements.css` | styles propres au plugin |
 | `../../data/signalements/vocabulaire.json` | vocabulaire public |
+| `../../depot-signalements/` | serveur de dépôt (Cloudflare Worker + R2), attribue la référence |
 
 ## Retirer ou déplacer le plugin
 

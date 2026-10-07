@@ -13,6 +13,7 @@
  *  - crs            : AMGT4CEM_CRS (conversions Lambert 72 <-> carte) ;
  *  - config         : AMGT4CEM_CONFIG ;
  *  - base           : adresse du dossier du plugin (ex. './src/signalements/') ;
+ *  - options        : le bloc `options` de la déclaration du plugin dans config.js ({} si absent) ;
  *  - toolbar, menu  : éléments DOM de la barre d'outils et du menu ☰ Carte, où le plugin
  *                     ajoute ses boutons et ses cases de couche ;
  *  - captureClicks(handler)  : déclare un outil de placement ; handler.isActive() et
@@ -69,7 +70,8 @@ const AMGT4CEM_Plugins = {
   /** Appelé par le script principal d'un plugin. */
   register(plugin) {
     try {
-      plugin.init({ ...this._ctx, base: (AMGT4CEM_CONFIG.plugins.find((p) => p.id === plugin.id) || {}).base });
+      const entry = AMGT4CEM_CONFIG.plugins.find((p) => p.id === plugin.id) || {};
+      plugin.init({ ...this._ctx, base: entry.base, options: entry.options || {} });
     } catch (err) {
       console.error(`[AMGT4CEM] Plugin « ${plugin.id} » : initialisation impossible :`, err);
     }

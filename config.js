@@ -133,7 +133,12 @@ const AMGT4CEM_CONFIG = {
       enabled: true,
       base: './src/signalements/',
       styles: ['signalements.css'],
-      scripts: ['pieces-store.js', 'zip-writer.js', 'depot.js', 'store.js', 'signalements.js'],
+      scripts: ['pieces-store.js', 'zip-writer.js', 'depot.js', 'store.js', 'envoi.js', 'signalements.js'],
+      options: {
+        // Adresse du serveur de dépôt (depot-signalements/, Cloudflare Worker) qui attribue la référence
+        // AAAA-NNNN. '' = pas de serveur : les signalements restent sur l'appareil (export ZIP à la main).
+        serverUrl: '',
+      },
     },
   ],
 

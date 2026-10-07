@@ -36,6 +36,7 @@ const UI = {
   // ---------------------------------------------------------------- initialisation
   async init(ctx) {
     this.ctx = ctx;
+    NS.Envoi.init(ctx.options);
     await NS.Depot.load();
     this.groups.STANDARD = L.layerGroup().addTo(ctx.map);
     this.groups.AMIANTE = L.layerGroup().addTo(ctx.map);
@@ -72,7 +73,10 @@ const UI = {
     std.input.addEventListener('change', (e) => this._toggleGroup('STANDARD', e.target.checked));
     am.input.addEventListener('change', (e) => this._toggleGroup('AMIANTE', e.target.checked));
     const anchor = document.getElementById('amgt-reset-view-btn');
-    const nodes = [h('h3', { text: 'Signalements' }), std.el, am.el];
+    this.sendAllBtn = h('button', { type: 'button', class: 'amgt-btn', id: 'amgt-sig-send-all', text: '⬆ Envoyer les signalements en attente' });
+    this.sendAllBtn.addEventListener('click', () => this.sendPending());
+    this.sendStatus = h('p', { class: 'amgt-sig-send-status amgt-hidden' });
+    const nodes = [h('h3', { text: 'Signalements' }), std.el, am.el, this.sendAllBtn, this.sendStatus];
     for (const n of nodes) anchor.parentNode.insertBefore(n, anchor);
   },
 
@@ -274,16 +278,53 @@ const UI = {
   async refresh() {
     this.groups.STANDARD.clearLayers();
     this.groups.AMIANTE.clearLayers();
-    for (const s of await NS.Store.getAll()) this._addMarker(s);
+    const all = await NS.Store.getAll();
+    for (const s of all) this._addMarker(s);
+    const pending = all.filter((s) => !s.reference).length;
+    this.sendAllBtn.textContent = `⬆ Envoyer les signalements en attente (${pending})`;
+    this.sendAllBtn.disabled = !NS.Envoi.configured() || pending === 0;
+    this.sendAllBtn.title = NS.Envoi.configured() ? 'Envoie au serveur les signalements pas encore référencés' : "Aucun serveur de dépôt configuré (options.serverUrl dans config.js)";
+  },
+
+  /** Envoie un signalement et inscrit la référence reçue sur la copie locale. */
+  async _send(s) {
+    const result = await NS.Envoi.send(s);
+    const updated = await NS.Store.update(s.id, { reference: result.reference, envoyeLe: result.recuLe });
+    if (updated) Object.assign(s, updated);
+    return result;
+  },
+
+  /** Envoie tous les signalements pas encore référencés, un par un ; s'arrête au premier échec. */
+  async sendPending() {
+    const pending = (await NS.Store.getAll()).filter((s) => !s.reference);
+    if (!pending.length) return;
+    this.sendAllBtn.disabled = true;
+    const say = (text, error) => {
+      this.sendStatus.textContent = text;
+      this.sendStatus.classList.remove('amgt-hidden');
+      this.sendStatus.classList.toggle('amgt-sig-send-status--error', !!error);
+    };
+    let done = 0;
+    try {
+      for (const s of pending) {
+        say(`Envoi ${done + 1}/${pending.length}…`);
+        await this._send(s);
+        done++;
+      }
+      say(`${done} signalement(s) référencé(s).`);
+    } catch (err) {
+      say(`${done} envoyé(s) sur ${pending.length} ; arrêt : ${err.message}`, true);
+    }
+    await this.refresh();
   },
 
   _addMarker(s) {
     const crs = this.ctx.crs;
     const amiante = s.flux === 'AMIANTE';
     const marker = L.marker(crs.lambertToLatLng([s.x, s.y]), {
-      draggable: true,
+      draggable: !s.reference, // une fois référencé, la position envoyée ne bouge plus
       icon: L.divIcon({
-        className: amiante ? 'amgt-sig-marker amgt-sig-marker--amiante' : 'amgt-sig-marker',
+        className: `${amiante ? 'amgt-sig-marker amgt-sig-marker--amiante' : 'amgt-sig-marker'}${s.reference ? ' amgt-sig-marker--refere' : ''}`,
         html: '<div class="amgt-sig-marker__dot"></div>',
         iconSize: [16, 16],
         iconAnchor: [8, 8],
@@ -309,7 +350,7 @@ const UI = {
     if (s.flux === 'AMIANTE') box.append(h('p', { class: 'amgt-sig-amiante-banner', text: '⚠ Flux amiante' }));
     const table = h('table');
     const add = (k, v) => { if (v !== null && v !== undefined && v !== '') table.append(h('tr', {}, h('th', { text: k }), h('td', { text: v }))); };
-    add('Référence', s.reference || "attribuée à l'import");
+    add('Référence', s.reference || 'pas encore envoyé au serveur');
     add('Nature', (D.nature(s.nature) || {}).fr || s.nature);
     add('Type', (D.type(s.type) || {}).fr || s.type);
     add('Domaine technique', s.domaine ? (D.domaine(s.domaine) || {}).fr || s.domaine : '');
@@ -320,6 +361,7 @@ const UI = {
     add('Description', s.description);
     add('X Lambert', this.ctx.crs.formatCoord(s.x));
     add('Y Lambert', this.ctx.crs.formatCoord(s.y));
+    add('Envoyé le', s.envoyeLe ? s.envoyeLe.slice(0, 16).replace('T', ' ') : '');
     add('Exporté le', s.exporteLe ? s.exporteLe.slice(0, 16).replace('T', ' ') : 'pas encore exporté');
     box.append(table);
 
@@ -334,7 +376,22 @@ const UI = {
       });
     }
 
-    const exportBtn = h('button', { type: 'button', class: 'amgt-btn amgt-btn--primary', text: '⬇ Exporter le dépôt (.zip)' });
+    const sendBtn = h('button', { type: 'button', class: 'amgt-btn amgt-btn--primary', text: '⬆ Envoyer au serveur' });
+    sendBtn.addEventListener('click', async () => {
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Envoi…';
+      try {
+        const result = await this._send(s);
+        await this.refresh();
+        alert(`Signalement référencé : ${result.reference}`);
+      } catch (err) {
+        console.error('[AMGT4CEM] Envoi impossible :', err);
+        alert(err.message);
+        sendBtn.disabled = false;
+        sendBtn.textContent = '⬆ Envoyer au serveur';
+      }
+    });
+    const exportBtn = h('button', { type: 'button', class: 'amgt-btn', text: '⬇ Exporter le dépôt (.zip)' });
     exportBtn.addEventListener('click', async () => {
       exportBtn.disabled = true;
       try {
@@ -351,12 +408,15 @@ const UI = {
     });
     const delBtn = h('button', { type: 'button', class: 'amgt-btn amgt-popup__delete-btn', text: '🗑 Supprimer' });
     delBtn.addEventListener('click', async () => {
-      const warn = s.exporteLe ? '' : "\n\nCe signalement n'a pas encore été exporté : sa suppression est définitive.";
+      const warn = s.reference
+        ? `\n\nIl est référencé (${s.reference}) : la copie du serveur est conservée, seule la copie de cet appareil disparaît.`
+        : s.exporteLe ? '' : "\n\nCe signalement n'a ni été envoyé ni exporté : sa suppression est définitive.";
       if (!confirm(`Supprimer « ${s.label} » ?${warn}`)) return;
       delBtn.disabled = true;
       try { await NS.Store.remove(s.id); await this.refresh(); }
       catch (err) { alert('Impossible de supprimer ce signalement : ' + err.message); delBtn.disabled = false; }
     });
+    if (!s.reference && NS.Envoi.configured()) box.append(sendBtn);
     box.append(exportBtn, delBtn);
     return box;
   },

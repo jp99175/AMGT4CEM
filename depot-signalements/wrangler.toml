@@ -1,0 +1,19 @@
+# Serveur de dépôt des signalements — déploiement : voir README.md (npx wrangler deploy depuis ce dossier).
+name = "amgt4cem-depot-signalements"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://jp99175.github.io"   # + ",http://localhost:8000" pour tester en local
+
+[[r2_buckets]]
+binding = "DEPOTS"
+bucket_name = "amgt4cem-depots"
+
+[[durable_objects.bindings]]
+name = "COMPTEUR"
+class_name = "Compteur"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Compteur"]

@@ -7,9 +7,9 @@
  * - Noms de fichiers : convention « Corporate » STIB TYPE_Titre_date_LANGUE, adaptée
  *   (IMG pour les images). Le titre (40 caractères au plus, sans accents) est généré :
  *   <référence courte>-<type court>[-<domaine court>]-<n°>.
- * - Dépôt : une archive ZIP par signalement (signalement.json + photos), à déposer à la main
- *   en attendant l'import automatique. La référence officielle (AAAA-NNNN) est attribuée
- *   par le système à l'import : elle est donc vide ici.
+ * - Dépôt : une archive ZIP par signalement (signalement.json + photos), téléchargeable ou envoyée
+ *   au serveur de dépôt (envoi.js). La référence officielle (AAAA-NNNN) est attribuée par le serveur
+ *   à la réception : elle est donc vide dans l'archive.
  *
  * Aucun nom de personne, initiales ni matricule dans les noms de fichiers : l'identification
  * des rédacteurs viendra avec le référentiel des intervenants (champ `redacteur`, vide pour l'instant).
@@ -103,8 +103,8 @@ NS.Depot = {
     };
   },
 
-  /** Construit l'archive de dépôt d'un signalement et la télécharge. */
-  async exportOne(s) {
+  /** Construit l'archive de dépôt d'un signalement (signalement.json + photos). */
+  async buildArchive(s) {
     const enc = new TextEncoder();
     const depot = this.buildDepot(s);
     const entries = [{ name: 'signalement.json', data: enc.encode(JSON.stringify(depot, null, 2)) }];
@@ -113,7 +113,12 @@ NS.Depot = {
       if (!record) throw new Error(`Photo ${i + 1} introuvable dans cet appareil.`);
       entries.push({ name: depot.pieces[i].nom, data: new Uint8Array(await record.blob.arrayBuffer()) });
     }
-    const blob = NS.Zip.build(entries);
+    return { blob: NS.Zip.build(entries), depot };
+  },
+
+  /** Construit l'archive de dépôt d'un signalement et la télécharge. */
+  async exportOne(s) {
+    const { blob, depot } = await this.buildArchive(s);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
