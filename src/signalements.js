@@ -96,6 +96,9 @@ const AMGT4CEM_Signalements = {
       type: point.type,
       domaine: p.domaine || null,
       contexte: p.flux === 'AMIANTE' ? 'AMIANTE' : null,
+      // Provenance : le demandeur n'est pas le rédacteur (celui qui saisit). Sa référence est un
+      // identifiant externe à l'import (système du demandeur, type REF_DEMANDEUR, valeur).
+      provenance: { demandeur: p.demandeur || '', referenceDemandeur: p.referenceDemandeur || '' },
       description: p.description || '',
       lieu: p.lieu || '',
       dateObservation: p.dateObservation,

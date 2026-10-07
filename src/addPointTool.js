@@ -188,6 +188,8 @@ const AMGT4CEM_AddPointTool = {
     this._onNatureChange();
     this._el('amgt-form-date').value = AMGT4CEM_Signalements.vocab ? AMGT4CEM_Signalements.today() : '';
     this._el('amgt-form-lieu').value = '';
+    this._el('amgt-form-demandeur').value = '';
+    this._el('amgt-form-ref-demandeur').value = '';
     this._el('amgt-form-description').value = '';
     this._photos = [];
     this._renderPhotoList();
@@ -259,6 +261,8 @@ const AMGT4CEM_AddPointTool = {
           dateObservation: date,
           lieu: this._el('amgt-form-lieu').value.trim(),
           description: this._el('amgt-form-description').value.trim(),
+          demandeur: this._el('amgt-form-demandeur').value.trim(),
+          referenceDemandeur: this._el('amgt-form-ref-demandeur').value.trim(),
           reference: null, // attribuée par le système à l'import (AAAA-NNNN)
           pieces: [],
         },

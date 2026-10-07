@@ -170,6 +170,8 @@ const AMGT4CEM_PointsLayer = {
     addRow('Domaine technique', domaine ? domaine.fr : p.domaine);
     addRow('Date d\'observation', p.dateObservation);
     addRow('Localisation', p.lieu);
+    addRow('Demandeur', p.demandeur);
+    addRow('Réf. chez le demandeur', p.referenceDemandeur);
     addRow('Description', p.description);
     addRow('X Lambert', AMGT4CEM_CRS.formatCoord(point.x));
     addRow('Y Lambert', AMGT4CEM_CRS.formatCoord(point.y));

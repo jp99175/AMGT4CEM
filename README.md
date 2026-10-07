@@ -1027,6 +1027,8 @@ l'amiante est un contexte, pas un domaine.
 garantir l'unicité) : le système la donne à l'import (format `AAAA-NNNN`, par exemple `2026-0122`).
 Le point porte en attendant son identifiant interne (UUID).
 
+**Demandeur.** Deux champs distinguent le demandeur (qui a signalé : service, entreprise, agent) du rédacteur (qui saisit) : le nom du demandeur et **sa référence dans son propre système**. Ils partent dans le bloc `provenance` du dépôt ; à l'import, la référence devient un identifiant externe (système du demandeur, type `REF_DEMANDEUR`). Plusieurs sources, liens et doublons se traitent à l'import sur les fiches (`DOUBLON_DE`, `LIE_A`), pas à la saisie.
+
 **Photos.** Stockées dans IndexedDB, sur l'appareil, en attendant le stockage des pièces (Cloudflare
 R2, voir le document de conception). Elles sont réduites à 1600 px (JPEG) ; l'empreinte du fichier
 d'origine est conservée avec celle du fichier réduit.
