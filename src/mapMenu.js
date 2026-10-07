@@ -11,7 +11,7 @@ const AMGT4CEM_MapMenu = {
   _metroOpacityFactor: 1,
 
   /**
-   * @param {{ map: L.Map, pointsGroup: L.LayerGroup, getMetroBounds: () => (L.LatLngBounds|null) }} deps
+   * @param {{ map: L.Map, pointsGroup: {standard: L.LayerGroup, amiante: L.LayerGroup}, getMetroBounds: () => (L.LatLngBounds|null) }} deps
    */
   init({ map, pointsGroup, getMetroBounds }) {
     const menuBtn = document.getElementById('amgt-menu-btn');
@@ -206,8 +206,15 @@ const AMGT4CEM_MapMenu = {
 
     document.getElementById('amgt-layer-points').addEventListener('change', (e) => {
       AMGT4CEM_ScreenshotTool.invalidateBackground();
-      if (e.target.checked) pointsGroup.addTo(map);
-      else map.removeLayer(pointsGroup);
+      if (e.target.checked) pointsGroup.standard.addTo(map);
+      else map.removeLayer(pointsGroup.standard);
+    });
+
+    // Flux amiante : couche et case séparées des points standard.
+    document.getElementById('amgt-layer-amiante').addEventListener('change', (e) => {
+      AMGT4CEM_ScreenshotTool.invalidateBackground();
+      if (e.target.checked) pointsGroup.amiante.addTo(map);
+      else map.removeLayer(pointsGroup.amiante);
     });
 
     // Traitée comme une couche parmi d'autres (Stations, Tunnels, Points

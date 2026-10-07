@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "description": "Vocabulaire des signalements et demandes (points métier). Public : ne contient aucune donnée de suivi. Les codes ne sont jamais supprimés ni réaffectés. Libellés NL à ajouter et à faire valider par un néerlandophone.",
+  "flux": [
+    { "code": "STANDARD", "fr": "Standard", "nl": null },
+    { "code": "AMIANTE", "fr": "Amiante", "nl": null, "note": "Flux séparé : stockage, couche, marqueurs et dépôts distincts, en raison de la criticité du sujet." }
+  ],
+  "natures": [
+    { "code": "SIGNALEMENT", "fr": "Signalement", "nl": null },
+    { "code": "DEMANDE", "fr": "Demande", "nl": null }
+  ],
+  "domaines": [
+    { "code": "GROS_OEUVRE", "fr": "Gros œuvre", "nl": null, "court": "GO" },
+    { "code": "PARACHEVEMENT", "fr": "Parachèvement", "nl": null, "court": "PAR" },
+    { "code": "DRAINAGE", "fr": "Drainage, égouttage, évacuation", "nl": null, "court": "DRA" }
+  ],
+  "types": [
+    { "code": "AVARIE", "nature": "SIGNALEMENT", "flux": "STANDARD", "fr": "Avarie", "nl": null, "court": "AVA", "domaineObligatoire": true },
+    { "code": "INFILTRATION", "nature": "SIGNALEMENT", "flux": "STANDARD", "fr": "Infiltration", "nl": null, "court": "INF", "domaineObligatoire": true },
+    { "code": "MODIFICATION", "nature": "DEMANDE", "flux": "STANDARD", "fr": "Modification", "nl": null, "court": "MOD", "domaineObligatoire": true },
+    { "code": "RENOUVELLEMENT", "nature": "DEMANDE", "flux": "STANDARD", "fr": "Renouvellement", "nl": null, "court": "REN", "domaineObligatoire": true },
+    { "code": "MISE_A_JOUR_PLANS", "nature": "DEMANDE", "flux": "STANDARD", "fr": "Mise à jour des plans", "nl": null, "court": "MAJP", "domaineObligatoire": true },
+    { "code": "CONTROLE", "nature": "DEMANDE", "flux": "AMIANTE", "fr": "Contrôle", "nl": null, "court": "CTR", "domaineObligatoire": false },
+    { "code": "INVENTAIRE_DESTRUCTIF", "nature": "DEMANDE", "flux": "AMIANTE", "fr": "Inventaire destructif", "nl": null, "court": "IDE", "domaineObligatoire": false },
+    { "code": "TRAITEMENT", "nature": "DEMANDE", "flux": "AMIANTE", "fr": "Traitement", "nl": null, "court": "TRA", "domaineObligatoire": false }
+  ]
+}

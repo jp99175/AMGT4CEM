@@ -893,6 +893,7 @@ data/plans-patrimoine/       référentiel des planches, étiquettes (écrites v
 data/urbis-topo/             réglages du service UrbIS Topo, sélection par défaut partagée
 data/fonds-de-plan/          services externes : services.json + un fichier par service
 data/points-metier/          (réservé : structure des points métier, phase B)
+data/signalements/           vocabulaire.json : natures, types, domaines techniques, flux (public)
 data/suivi/                  famille 3 (suivi) : HORS DÉPÔT (.gitignore), phase B
 tools/                       migrer-donnees.py (unique), verifier-donnees.py (après chaque export AutoCAD), rapport-migration.md
 src/basemap.js                fonds de plan (UrbIS, Orthophoto, Bruciel)
@@ -906,7 +907,10 @@ src/patrimoinePicker.js      sélecteur plein écran "Plans patrimoine"
 src/patrimoineLayer.js       affichage carte des couches Plans patrimoine sélectionnées
 src/mapMenu.js                menu fond de plan / couches / réinitialisation
 src/searchTool.js             recherche station/tunnel/point (remplace le zoom +/-)
-src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
+src/pointsStore.js           micro-base de données (localStorage, schéma ouvert, un stockage par flux)
+src/piecesStore.js           photos des signalements (IndexedDB, réduites à 1600 px, empreintes SHA-256)
+src/signalements.js          vocabulaire, noms de fichiers (convention STIB) et dépôt des signalements
+src/zipWriter.js             écriture d'une archive ZIP (dépôt d'un signalement)
 src/pointsLayer.js           affichage/déplacement des points métier
 src/addPointTool.js          workflow "Ajouter un point"
 src/measureTool.js           outil "📏 Mesurer" (segment + cote + cercle, 4s puis disparition)
@@ -1004,6 +1008,41 @@ métier relèvent du suivi (famille 3, section 4), qui n'entre jamais dans le d�
 stockage partagé du suivi suppose une autre destination (par exemple le SharePoint de
 l'équipe) : le choix n'est pas fait.
 
+### Signalements et demandes (points métier)
+
+Le formulaire « ✚ Ajouter un point » propose, après un clic sur la carte : une **nature**
+(signalement, demande ou « point libre », l'ancien format), un **type**, un **domaine technique**,
+la date d'observation, une localisation précisée, une description et **une ou plusieurs photos**.
+Les listes viennent de `data/signalements/vocabulaire.json` (public, aucune donnée de suivi) :
+`AVARIE` et `INFILTRATION` (signalements) ; `MODIFICATION`, `RENOUVELLEMENT` et
+`MISE_A_JOUR_PLANS` (demandes), avec obligatoirement l'un des trois domaines (gros œuvre,
+parachèvement, drainage-égouttage-évacuation).
+
+**Flux amiante, séparé.** `CONTROLE`, `INVENTAIRE_DESTRUCTIF` et `TRAITEMENT` appartiennent au flux
+`AMIANTE` : stockage local distinct (`amgt4cem.points.amiante.v1`), couche et case propres dans
+☰ Carte, marqueur rouge en losange, archive de dépôt à part. Le domaine technique y est facultatif :
+l'amiante est un contexte, pas un domaine.
+
+**Référence.** Elle n'est pas attribuée dans l'application (un navigateur hors ligne ne peut pas
+garantir l'unicité) : le système la donne à l'import (format `AAAA-NNNN`, par exemple `2026-0122`).
+Le point porte en attendant son identifiant interne (UUID).
+
+**Photos.** Stockées dans IndexedDB, sur l'appareil, en attendant le stockage des pièces (Cloudflare
+R2, voir le document de conception). Elles sont réduites à 1600 px (JPEG) ; l'empreinte du fichier
+d'origine est conservée avec celle du fichier réduit.
+
+**Dépôt.** Le bouton « Exporter le dépôt » du popup produit une archive
+`FICH_<réf. courte>-<type court>_<AAAAMMJJ>_FR.zip` contenant `signalement.json` (schéma
+`amgt4cem-depot-signalement`, version 1, positions en Lambert 72) et les photos
+`IMG_<réf. courte>-<type>-<domaine>-<n°>_<AAAAMMJJ>_MX.jpg`, selon la convention de nommage de
+l'organisation (`IMG` et `VID` adaptent le type `AUDI` de la liste STIB, jugé trop général). Aucun nom,
+initiales ni matricule dans les noms de fichiers ; le champ `redacteur` reste vide jusqu'au
+référentiel des intervenants.
+
+**Limites actuelles.** Les points et photos restent dans le navigateur de chaque agent : sans export,
+un signalement n'est ni partagé ni sauvegardé, et il est perdu si les données du site sont effacées.
+Comme pour tous les points métier, le relais d'enregistrement ne doit jamais les recevoir (dépôt public).
+
 ### Exporter les points métier à la main (avant tout déploiement)
 
 Ils sont dans le `localStorage` de chaque navigateur, donc **hors dépôt** et hors
@@ -1015,6 +1054,7 @@ copy(localStorage.getItem('amgt4cem.points.v1'))   // copie le JSON dans le pres
 ```
 
 Pour restaurer : `localStorage.setItem('amgt4cem.points.v1', '<le JSON>')`, puis recharger.
+Le flux amiante a sa propre clé (`amgt4cem.points.amiante.v1`), à exporter et restaurer de la même façon ; les photos (IndexedDB) ne se récupèrent que par le bouton « Exporter le dépôt » de chaque signalement.
 La refonte des données n'y touche pas.
 
 ## 7. Retour arrière

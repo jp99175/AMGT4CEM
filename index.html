@@ -132,6 +132,12 @@
     <input type="range" min="0" max="100" value="100" class="amgt-opacity-slider" />
   </div>
 
+  <div class="amgt-layer-row">
+    <label class="amgt-checkbox-row">
+      <input type="checkbox" id="amgt-layer-amiante" checked /> Amiante (flux séparé)
+    </label>
+  </div>
+
   <button id="amgt-reset-view-btn" class="amgt-link-btn" title="Revenir à l'emprise générale du réseau">
     ⤢ Réinitialiser la vue
   </button>
@@ -268,7 +274,8 @@
   <button id="amgt-year-latest" class="amgt-chevron-btn" title="Revenir à l'année la plus récente accessible">⏭</button>
 </div>
 
-<!-- Formulaire de création d'un point métier -->
+<!-- Formulaire de création d'un point métier : signalement / demande (vocabulaire
+     data/signalements/vocabulaire.json) ou point libre (ancien format). -->
 <div id="amgt-point-form" class="amgt-hidden">
   <h3>Nouveau point</h3>
   <div class="amgt-form-row">
@@ -278,13 +285,54 @@
     <span>Y Lambert :</span> <span id="amgt-form-y">-</span>
   </div>
   <div class="amgt-form-row">
-    <label for="amgt-form-type">Type</label>
-    <input type="text" id="amgt-form-type" placeholder="ex : ouvrage, défaut, capteur..." />
+    <label for="amgt-form-nature">Nature</label>
+    <select id="amgt-form-nature">
+      <option value="">— choisir —</option>
+    </select>
   </div>
-  <div class="amgt-form-row">
-    <label for="amgt-form-label">Libellé</label>
-    <input type="text" id="amgt-form-label" placeholder="Nom / description courte" />
+
+  <div id="amgt-form-signalement" class="amgt-hidden">
+    <div class="amgt-form-row">
+      <label for="amgt-form-sig-type">Type</label>
+      <select id="amgt-form-sig-type"></select>
+    </div>
+    <p id="amgt-form-amiante-banner" class="amgt-amiante-banner amgt-hidden">
+      ⚠ Flux amiante : enregistré et exporté séparément des autres points.
+    </p>
+    <div class="amgt-form-row">
+      <label for="amgt-form-domaine" id="amgt-form-domaine-label">Domaine technique</label>
+      <select id="amgt-form-domaine"></select>
+    </div>
+    <div class="amgt-form-row">
+      <label for="amgt-form-date">Date d'observation</label>
+      <input type="date" id="amgt-form-date" />
+    </div>
+    <div class="amgt-form-row">
+      <label for="amgt-form-lieu">Localisation précisée</label>
+      <input type="text" id="amgt-form-lieu" placeholder="station, niveau, local, PK…" maxlength="200" />
+    </div>
+    <div class="amgt-form-row">
+      <label for="amgt-form-description">Description</label>
+      <textarea id="amgt-form-description" rows="3" maxlength="2000"></textarea>
+    </div>
+    <div class="amgt-form-row">
+      <label for="amgt-form-photos">Photos</label>
+      <input type="file" id="amgt-form-photos" accept="image/*" multiple />
+      <div id="amgt-form-photo-list" class="amgt-photo-list"></div>
+    </div>
   </div>
+
+  <div id="amgt-form-libre" class="amgt-hidden">
+    <div class="amgt-form-row">
+      <label for="amgt-form-type">Type</label>
+      <input type="text" id="amgt-form-type" placeholder="ex : ouvrage, défaut, capteur..." />
+    </div>
+    <div class="amgt-form-row">
+      <label for="amgt-form-label">Libellé</label>
+      <input type="text" id="amgt-form-label" placeholder="Nom / description courte" />
+    </div>
+  </div>
+
   <div class="amgt-form-actions">
     <button id="amgt-form-cancel" class="amgt-btn">Annuler</button>
     <button id="amgt-form-confirm" class="amgt-btn amgt-btn--primary">Enregistrer</button>
@@ -348,6 +396,9 @@
 <script src="./src/peLabelAnchors.js"></script>
 <script src="./src/interstation.js"></script>
 <script src="./src/metroLayer.js"></script>
+<script src="./src/piecesStore.js"></script>
+<script src="./src/zipWriter.js"></script>
+<script src="./src/signalements.js"></script>
 <script src="./src/pointsStore.js"></script>
 <script src="./src/pointsLayer.js"></script>
 <script src="./src/selectionStore.js"></script>
