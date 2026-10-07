@@ -258,11 +258,9 @@ const AMGT4CEM_CONFIG = {
       '#1e88e5', '#00897b', '#6d4c41', '#e64a19', '#8e24aa',
       '#c0ca33', '#00acc1', '#f4511e', '#3949ab', '#7cb342',
     ],
-    // Présélection au tout premier lancement (avant toute personnalisation) :
-    // uniquement les grilles de ventilation. Les autres familles (chambres/
-    // taques, avaloirs...) restent disponibles dans le sélecteur mais ne
-    // sont plus cochées par défaut.
-    defaultSelectionCodes: ['BR14L'],
+    // Sélection par défaut PARTAGÉE (grilles de ventilation seules au départ), modifiable par un
+    // administrateur depuis le sélecteur (voir selectionStore.js).
+    defaultSelectionUrl: './data/urbis-topo/selection-par-defaut.json',
   },
 
   // --- Plans patrimoine (à la demande) ---
@@ -275,6 +273,8 @@ const AMGT4CEM_CONFIG = {
     // Couleurs attribuées automatiquement aux plans sélectionnés (voir
     // patrimoineSelectionStore.js), dans cet ordre, en boucle si besoin.
     colorPalette: ['#e64a19', '#1565c0', '#2e7d32', '#8e24aa', '#00838f'],
+    // Sélection par défaut PARTAGÉE (rien de présélectionné au départ), modifiable par un administrateur.
+    defaultSelectionUrl: './data/plans-patrimoine/selection-par-defaut.json',
   },
 
   // --- Micro-base de données métier (stockage local du prototype) ---

@@ -298,7 +298,7 @@
   <div class="amgt-fs-picker-header">
     <h2>Objets UrbIS Topo à afficher</h2>
     <div class="amgt-fs-picker-header-actions">
-      <button id="amgt-topo-picker-save-default" class="amgt-btn amgt-btn--icon" title="Enregistrer la sélection actuelle comme sélection par défaut">
+      <button id="amgt-topo-picker-save-default" class="amgt-btn amgt-btn--icon" title="Enregistrer mes préférences (sélection locale, propre à cet appareil)">
         💾
       </button>
       <button id="amgt-topo-picker-close" class="amgt-btn" title="Retour à la carte">✕ Fermer</button>
@@ -312,6 +312,7 @@
     autocomplete="off"
   />
   <div id="amgt-topo-picker-content" class="amgt-fs-picker-content"></div>
+  <div id="amgt-topo-picker-default-bar"></div>
 </div>
 
 <!-- Sélecteur plein écran des couches "Plans patrimoine" (mêmes classes que
@@ -320,13 +321,14 @@
   <div class="amgt-fs-picker-header">
     <h2>Plans patrimoine à afficher</h2>
     <div class="amgt-fs-picker-header-actions">
-      <button id="amgt-patrimoine-picker-save-default" class="amgt-btn amgt-btn--icon" title="Enregistrer la sélection actuelle comme sélection par défaut">
+      <button id="amgt-patrimoine-picker-save-default" class="amgt-btn amgt-btn--icon" title="Enregistrer mes préférences (sélection locale, propre à cet appareil)">
         💾
       </button>
       <button id="amgt-patrimoine-picker-close" class="amgt-btn" title="Retour à la carte">✕ Fermer</button>
     </div>
   </div>
   <div id="amgt-patrimoine-picker-content" class="amgt-fs-picker-content"></div>
+  <div id="amgt-patrimoine-picker-default-bar"></div>
 </div>
 
 <script src="./vendor/leaflet/leaflet.js"></script>
@@ -350,6 +352,8 @@
 <script src="./src/metroLayer.js"></script>
 <script src="./src/pointsStore.js"></script>
 <script src="./src/pointsLayer.js"></script>
+<script src="./src/selectionStore.js"></script>
+<script src="./src/pickerDefaultBar.js"></script>
 <script src="./src/urbisTopoSelectionStore.js"></script>
 <script src="./src/urbisTopoLayer.js"></script>
 <script src="./src/urbisTopoPicker.js"></script>

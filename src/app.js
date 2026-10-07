@@ -9,6 +9,9 @@
   // lisent AMGT4CEM_CONFIG. load() ne rejette jamais (délai borné).
   await AMGT4CEM_SettingsStore.load();
   AMGT4CEM_SettingsStore.applyToConfig(AMGT4CEM_CONFIG);
+  // Sélections par défaut PARTAGÉES (UrbIS Topo, Plans patrimoine) : lues avant la création des couches, qui
+  // en dépendent pour une première visite. Ne rejette jamais (délai borné).
+  await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared()]);
 
   const map = L.map('map', {
     // Pas de contrôle de zoom Leaflet : remplacé par la recherche en haut à
