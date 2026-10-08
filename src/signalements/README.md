@@ -1,8 +1,8 @@
 # Plugin : Signalements
 
 Application séparée, branchée sur la carte par `src/plugins.js` (déclarée dans `plugins` de `config.js`).
-Elle ajoute au menu du bouton **✚ Ajouter un point ▾** les entrées **⚠ Signalement** et **⬆ Téléverser les fichiers sur le serveur** (à côté de **✚ Point métier**, l'outil d'origine), deux cases dans ☰ Carte (**Signalements et demandes**,
-**Amiante (flux séparé)**) et son propre formulaire. Elle ne modifie aucun module du cœur et n'utilise pas
+Elle ajoute au menu du bouton **✚ Ajouter un point ▾** les entrées **⚠ Signalement** et **⬆ Téléverser les fichiers sur le serveur** (à côté de **✚ Point métier**, l'outil d'origine), deux cases dans ☰ Carte, section Points métier (**Signalements et demandes**,
+**Amiante**) et son propre formulaire. Elle ne modifie aucun module du cœur et n'utilise pas
 le stockage des points métier (« ✚ Ajouter un point », inchangé). `enabled: false` dans `config.js` la retire.
 
 ## Saisie

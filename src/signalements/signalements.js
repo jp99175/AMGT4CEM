@@ -77,12 +77,12 @@ const UI = {
       return { input, el: h('div', { class: 'amgt-layer-row' }, h('label', { class: 'amgt-checkbox-row' }, input, ` ${label}`)) };
     };
     const std = row('amgt-sig-layer-standard', 'Signalements et demandes');
-    const am = row('amgt-sig-layer-amiante', 'Amiante (flux séparé)');
+    const am = row('amgt-sig-layer-amiante', 'Amiante');
     std.input.addEventListener('change', (e) => this._toggleGroup('STANDARD', e.target.checked));
     am.input.addEventListener('change', (e) => this._toggleGroup('AMIANTE', e.target.checked));
     const anchor = document.getElementById('amgt-reset-view-btn');
-    const nodes = [h('h3', { text: 'Signalements' }), std.el, am.el];
-    for (const n of nodes) anchor.parentNode.insertBefore(n, anchor);
+    // Dans la section « Points métier » du menu (après la couche des points, avant « Réinitialiser la vue »).
+    for (const n of [std.el, am.el]) anchor.parentNode.insertBefore(n, anchor);
   },
 
   _toggleGroup(flux, visible) {

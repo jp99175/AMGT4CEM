@@ -122,11 +122,6 @@ const AMGT4CEM_CONFIG = {
   // --- Plugins (applications séparées branchées sur la carte, voir src/plugins.js) ---
   // Chaque plugin vit dans son dossier : styles puis scripts chargés dans l'ordre ; le dernier
   // script s'enregistre par AMGT4CEM_Plugins.register. `enabled: false` le retire sans rien supprimer.
-  // Lien du repère BUILD (bas à droite de la carte) : télécharge cette version en ZIP.
-  // Lancement : décompresser, puis `python -m http.server 8000` dans le dossier et ouvrir http://localhost:8000.
-  // Remplacer par l'adresse du site déployé quand il existe ; '' = pas de lien.
-  buildLinkUrl: 'https://github.com/jp99175/AMGT4CEM/archive/refs/heads/claude/signalements.zip',
-
   plugins: [
     {
       id: 'signalements',
