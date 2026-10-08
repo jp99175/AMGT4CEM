@@ -9,7 +9,7 @@ sans backend).
 L'application est une page statique. Les géométries (shapefiles
 `data/shapefile/`), les référentiels (JSON de `data/metro/` et `data/plans-patrimoine/`) et la
 configuration des services (`data/fonds-de-plan/`) sont chargés via
-`fetch()`, ce qui **ne fonctionne pas** si vous ouvrez `index.html` directement
+`fetch()`, ce qui **ne fonctionne pas** si vous ouvrez `home.html` directement
 en double-clic (`file://`) — c'est une restriction des navigateurs, pas un bug.
 Servez le dossier avec un petit serveur HTTP local :
 
@@ -18,7 +18,12 @@ cd AMGT4CEM
 python3 -m http.server 8000
 ```
 
-Puis ouvrez : http://localhost:8000/
+Puis ouvrez l'une des deux interfaces de la page unique `home.html` :
+
+- http://localhost:8000/home.html?app=carto : **AMGT4CEM**, visualisation de toutes les données sur la carte
+  (interface par défaut, aussi atteinte par `index.html` et par `home.html` sans paramètre) ;
+- http://localhost:8000/home.html?app=signal : **SIG4CEM**, saisie des signalements et demandes
+  (squelette du menu pour l'instant).
 
 *(Si vous n'avez pas Python, `npx serve` ou l'extension VS Code "Live Server"
 fonctionnent tout aussi bien.)*
@@ -637,7 +642,7 @@ identifiant. Les anciens identifiants (`ogc_fid`, `id_objet` comme
     tronçons, encore affichés avec les planches). **Aucune géométrie de tronçon n'existe
     encore** : à rattacher à `lignes.shp` plus tard ;
 - `data/urbis-topo/` : `catalogue.js` (catalogue des types d'objets : du code de configuration,
-  chargé par `index.html`), `parametres.json` (réglages du service WFS) et
+  chargé par `home.html`, interface carto), `parametres.json` (réglages du service WFS) et
   `selection-par-defaut.json` (sélection par défaut partagée, section 3) ;
 - `data/fonds-de-plan/` : configuration des services externes (section 3bis) ;
 - `tools/` : `migrer-donnees.py` (migration unique, déjà exécutée),
@@ -873,8 +878,10 @@ du réseau.
 ## 5. Architecture
 
 ```
-index.html, style.css        interface
-config.js                    configuration (CRS, chemins des données, clés de stockage) ; la configuration des services est dans data/fonds-de-plan/
+home.html, style.css         page unique : gabarits des deux interfaces (carto, signal) ; index.html : simple renvoi vers home.html
+src/router.js                routeur : lit ?app=, copie le gabarit choisi, charge ses scripts dans l'ordre (liste `apps` de config.js)
+src/signal/                  interface de saisie SIG4CEM (home.html?app=signal), séparée de la carte
+config.js                    configuration (interfaces `apps`, CRS, chemins des données, clés de stockage) ; la configuration des services est dans data/fonds-de-plan/
 src/admin.js                 accès administrateur (point de branchement du futur mot de passe)
 src/services.js              configuration des services externes (data/fonds-de-plan/, data/urbis-topo/parametres.json) : lecture au démarrage, enregistrement via le relais
 src/peLabelEditor/          mode édition des étiquettes (planches, interstations), chargé à la demande
@@ -1059,3 +1066,26 @@ plus jamais être modifiée. Elle contient l'ancienne structure (`Metro_export_S
   à créer à la main si souhaité (`git tag -a sauvegarde-avant-refonte-20261005 f42ccea`).
 - Les points métier ne sont pas concernés (`localStorage`, voir ci-dessus).
 
+
+
+## Interfaces : carte et saisie (home.html?app=)
+
+Une seule page, `home.html`, deux interfaces choisies par le paramètre d'adresse `app` :
+
+| Adresse | Interface | Contenu |
+|---|---|---|
+| `home.html?app=carto` (défaut) | AMGT4CEM | visualisation de toutes les données sur la carte, vues paramétrables |
+| `home.html?app=signal` | SIG4CEM | saisie des signalements et demandes : menu, brouillons, file d'envoi |
+
+Le routeur (`src/router.js`) copie dans la page le gabarit de l'interface choisie, puis charge ses styles
+et ses scripts dans l'ordre, d'après la liste `apps` de `config.js`. Une interface ne charge jamais l'autre :
+la carte n'embarque pas le code de la saisie et la saisie n'embarque pas la carte. `config.js` est commun.
+`AMGT4CEM_Router.url('carto', { ... })` fabrique un lien d'une interface vers l'autre (paramètres libres,
+lus par l'interface cible dans `AMGT4CEM_Router.params`). Interface inconnue : message avec des liens
+vers les interfaces existantes.
+
+Dans la carte, « ✚ Ajouter un point » est revenu à son rôle d'origine (poser un point métier : type et
+libellé). Le plugin `signalements` y est désactivé (`enabled: false` dans `config.js`) : son formulaire,
+son menu et ses couches n'y apparaissent plus. Son code reste dans `src/signalements/`, en attendant d'être
+repris par l'interface de saisie ; une couche en lecture seule des signalements du serveur reviendra
+dans la carte une fois le serveur de dépôt branché.

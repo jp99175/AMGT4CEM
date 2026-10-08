@@ -1,5 +1,10 @@
 # Plugin : Signalements
 
+> **État : désactivé dans la carte** (`enabled: false` dans `config.js`). La saisie vit désormais dans
+> l'interface SIG4CEM (`home.html?app=signal`, `src/signal/`) ; ce dossier est conservé le temps que son code
+> (stockage, photos, dépôt, envoi) soit repris par cette interface. Ce qui suit décrit le plugin tel qu'il
+> fonctionnait dans la carte.
+
 Application séparée, branchée sur la carte par `src/plugins.js` (déclarée dans `plugins` de `config.js`).
 Elle ajoute au menu du bouton **✚ Ajouter un point ▾** les entrées **⚠ Signalement** et **⬆ Téléverser les fichiers sur le serveur** (à côté de **✚ Point métier**, l'outil d'origine), deux cases dans ☰ Carte, section Points métier (**Signalements et demandes**,
 **Amiante**) et son propre formulaire. Elle ne modifie aucun module du cœur et n'utilise pas

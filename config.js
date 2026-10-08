@@ -125,7 +125,10 @@ const AMGT4CEM_CONFIG = {
   plugins: [
     {
       id: 'signalements',
-      enabled: true,
+      // Retiré de la carto (la saisie vit dans home.html?app=signal, SIG4CEM) : le code du plugin reste
+      // en place le temps d'être repris par l'interface de saisie. Une couche en lecture seule des
+      // signalements du serveur reviendra dans la carto (à brancher avec le serveur de dépôt).
+      enabled: false,
       base: './src/signalements/',
       styles: ['signalements.css'],
       scripts: ['pieces-store.js', 'zip-writer.js', 'depot.js', 'store.js', 'envoi.js', 'signalements.js'],
@@ -136,6 +139,72 @@ const AMGT4CEM_CONFIG = {
       },
     },
   ],
+
+  // --- Interfaces (une seule page, home.html ; voir src/router.js) ---
+  // home.html?app=<id> choisit l'interface. Le routeur copie le gabarit `template` (balise <template>
+  // de home.html), charge les `styles` puis les `scripts` dans l'ordre, sans jamais charger une
+  // autre interface. config.js, lui, est commun (chargé par home.html avant le routeur).
+  //  - carto  : AMGT4CEM, visualisation de toutes les données sur la carte (interface par défaut) ;
+  //  - signal : SIG4CEM, saisie des signalements et demandes (menu, brouillons, envois).
+  defaultApp: 'carto',
+  apps: {
+    carto: {
+      title: 'AMGT4CEM – Carte du réseau métro',
+      template: 'amgt-tpl-carto',
+      styles: [],
+      scripts: [
+        './vendor/leaflet/leaflet.js',
+        './vendor/proj4/proj4.js',
+        './vendor/proj4leaflet/proj4leaflet.js',
+        './vendor/html2canvas/html2canvas.min.js',
+        './src/buildInfo.js',
+        './data/urbis-topo/catalogue.js',
+        './data/plans-patrimoine/catalogue.js',
+        './src/admin.js',
+        './src/services.js',
+        './src/layerOpacityStore.js',
+        './src/crs.js',
+        './src/shpLoader.js',
+        './src/referentiel.js',
+        './src/scaledText.js',
+        './src/peLabelAnchors.js',
+        './src/interstation.js',
+        './src/metroLayer.js',
+        './src/pointsStore.js',
+        './src/pointsLayer.js',
+        './src/selectionStore.js',
+        './src/pickerDefaultBar.js',
+        './src/urbisTopoSelectionStore.js',
+        './src/urbisTopoLayer.js',
+        './src/urbisTopoPicker.js',
+        './src/patrimoineSelectionStore.js',
+        './src/patrimoineLayer.js',
+        './src/patrimoinePicker.js',
+        './src/addPointTool.js',
+        './src/measureTool.js',
+        './src/screenshotTool.js',
+        './src/scaleControl.js',
+        './src/buildInfoControl.js',
+        './src/creditsLayout.js',
+        './src/basemap.js',
+        './src/mapMenu.js',
+        './src/settingsPanel.js',
+        './src/searchTool.js',
+        './src/plugins.js',
+        './src/addPointMenu.js',
+        './src/app.js',
+      ],
+    },
+    signal: {
+      title: 'SIG4CEM – Signalements et demandes',
+      template: 'amgt-tpl-signal',
+      styles: ['./src/signal/signal.css'],
+      scripts: [
+        './src/buildInfo.js',
+        './src/signal/signal.js',
+      ],
+    },
+  },
 
   // --- Affichage ---
   maxZoom: 22,

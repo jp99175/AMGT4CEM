@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="data:," />
+<title>AMGT4CEM</title>
+
+<link rel="stylesheet" href="./vendor/leaflet/leaflet.css" />
+<link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+
+<!-- Point d'entrée UNIQUE de l'application. Le paramètre d'adresse ?app= choisit l'interface :
+       home.html?app=carto   visualisation de toutes les données sur la carte (par défaut) ;
+       home.html?app=signal  SIG4CEM : saisie des signalements et demandes.
+     Le routeur (src/router.js) copie ici le gabarit de l'interface choisie, puis charge ses
+     scripts (liste `apps` de config.js). Les deux interfaces partagent config.js et les
+     modules du socle commun ; elles ne se chargent jamais l'une l'autre. -->
+
+<!-- ========== Interface « carto » : AMGT4CEM (carte) ========== -->
+<template id="amgt-tpl-carto">
+
+  <div id="map"></div>
+
+  <!-- Barre d'outils principale -->
+  <div id="amgt-toolbar">
+    <button id="amgt-menu-btn" class="amgt-btn" title="Fond de plan, couches, vue">
+      ☰ Carte
+    </button>
+    <button id="amgt-add-point-btn" class="amgt-btn" title="Ajouter un point">
+      ✚ Ajouter un point
+    </button>
+    <button id="amgt-measure-btn" class="amgt-btn" title="Mesurer un rayon : presser-glisser-relâcher">
+      📏
+    </button>
+  </div>
+
+  <!-- Sous "☰ Carte" (pas dans la barre d'outils, pour ne pas la faire
+       déborder pendant l'affichage d'une mesure) : visible seulement le
+       temps d'une mesure (measureTool.js, _hideDelayMs). -->
+  <button id="amgt-screenshot-btn" class="amgt-btn amgt-hidden" title="Enregistrer la capture de la mesure (image PNG)">
+    💾
+  </button>
+
+  <!-- Menu : fond de plan, couches visibles, réinitialisation de la vue -->
+  <div id="amgt-map-menu" class="amgt-panel amgt-hidden">
+    <h3>Fond de plan</h3>
+    <button id="amgt-settings-btn" class="amgt-map-menu__settings-btn" title="Paramètres des sources de données">
+      ⚙
+    </button>
+    <label class="amgt-radio-row">
+      <input type="radio" name="amgt-basemap" value="urbis" checked /> UrbIS
+    </label>
+    <label class="amgt-radio-row">
+      <input type="radio" name="amgt-basemap" value="bruciel" /> Orthophotos
+    </label>
+
+    <h3>Couches</h3>
+
+    <div class="amgt-layer-row">
+      <label class="amgt-checkbox-row">
+        <input type="checkbox" id="amgt-layer-metro" checked /> Métro
+      </label>
+      <button type="button" class="amgt-opacity-toggle-btn" data-layer="metro" title="Régler l'opacité">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <line x1="1" y1="3" x2="15" y2="3" />
+          <circle cx="5" cy="3" r="1.6" />
+          <line x1="1" y1="8" x2="15" y2="8" />
+          <circle cx="11" cy="8" r="1.6" />
+          <line x1="1" y1="13" x2="15" y2="13" />
+          <circle cx="7" cy="13" r="1.6" />
+        </svg>
+      </button>
+    </div>
+    <div class="amgt-opacity-slider-row amgt-hidden" data-layer="metro">
+      <input type="range" min="0" max="100" value="100" class="amgt-opacity-slider" />
+    </div>
+
+    <div class="amgt-layer-row">
+      <label class="amgt-checkbox-row">
+        <input type="checkbox" id="amgt-layer-urbistopo" checked /> UrbIS Topo
+      </label>
+      <button type="button" class="amgt-opacity-toggle-btn" data-layer="urbistopo" title="Régler l'opacité">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <line x1="1" y1="3" x2="15" y2="3" />
+          <circle cx="5" cy="3" r="1.6" />
+          <line x1="1" y1="8" x2="15" y2="8" />
+          <circle cx="11" cy="8" r="1.6" />
+          <line x1="1" y1="13" x2="15" y2="13" />
+          <circle cx="7" cy="13" r="1.6" />
+        </svg>
+      </button>
+    </div>
+    <div class="amgt-opacity-slider-row amgt-hidden" data-layer="urbistopo">
+      <input type="range" min="0" max="100" value="100" class="amgt-opacity-slider" />
+      <p class="amgt-topo-edit-hint">
+        <a href="#" id="amgt-topo-edit-link">(modifier la sélection)</a>
+      </p>
+    </div>
+
+    <div class="amgt-layer-row">
+      <label class="amgt-checkbox-row">
+        <input type="checkbox" id="amgt-layer-patrimoine" checked /> Plans patrimoine
+      </label>
+      <button type="button" class="amgt-opacity-toggle-btn" data-layer="patrimoine" title="Régler l'opacité">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <line x1="1" y1="3" x2="15" y2="3" />
+          <circle cx="5" cy="3" r="1.6" />
+          <line x1="1" y1="8" x2="15" y2="8" />
+          <circle cx="11" cy="8" r="1.6" />
+          <line x1="1" y1="13" x2="15" y2="13" />
+          <circle cx="7" cy="13" r="1.6" />
+        </svg>
+      </button>
+    </div>
+    <div class="amgt-opacity-slider-row amgt-hidden" data-layer="patrimoine">
+      <input type="range" min="0" max="100" value="100" class="amgt-opacity-slider" />
+      <p class="amgt-topo-edit-hint">
+        <a href="#" id="amgt-patrimoine-edit-link">(modifier la sélection)</a>
+      </p>
+    </div>
+
+    <h3>Points métier</h3>
+
+    <div class="amgt-layer-row">
+      <label class="amgt-checkbox-row">
+        <input type="checkbox" id="amgt-layer-points" checked /> Points métier
+      </label>
+      <button type="button" class="amgt-opacity-toggle-btn" data-layer="points" title="Régler l'opacité">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <line x1="1" y1="3" x2="15" y2="3" />
+          <circle cx="5" cy="3" r="1.6" />
+          <line x1="1" y1="8" x2="15" y2="8" />
+          <circle cx="11" cy="8" r="1.6" />
+          <line x1="1" y1="13" x2="15" y2="13" />
+          <circle cx="7" cy="13" r="1.6" />
+        </svg>
+      </button>
+    </div>
+    <div class="amgt-opacity-slider-row amgt-hidden" data-layer="points">
+      <input type="range" min="0" max="100" value="100" class="amgt-opacity-slider" />
+    </div>
+
+    <button id="amgt-reset-view-btn" class="amgt-link-btn" title="Revenir à l'emprise générale du réseau">
+      ⤢ Réinitialiser la vue
+    </button>
+  </div>
+
+  <!-- Fenêtre de paramètres (⚙), à onglets. Exclusive avec le menu ☰ Carte.
+       Réservée aux administrateurs (mot de passe à venir, voir src/admin.js).
+       Ce sont des paramètres GÉNÉRAUX : enregistrés sur le serveur, communs à
+       tous les visiteurs — pas des réglages de l'appareil.
+       1. Sources : adresses des services externes (UrbIS, orthophotos,
+          géocodeur), à corriger si l'un d'eux change d'adresse.
+       2. Serveur : communication avec le serveur d'enregistrement (relais).
+       3. Données : modifications des données (nouveau shapefile,
+          mode édition des étiquettes de planche). -->
+  <div id="amgt-settings-panel" class="amgt-hidden">
+    <div class="amgt-tabs" role="tablist">
+      <button type="button" class="amgt-tab amgt-tab--active" role="tab" data-tab="sources">Sources</button>
+      <button type="button" class="amgt-tab" role="tab" data-tab="server">Serveur</button>
+      <button type="button" class="amgt-tab" role="tab" data-tab="basemaps">Données</button>
+    </div>
+
+    <section class="amgt-tab-pane" data-pane="sources">
+      <h3>Sources de données</h3>
+      <p class="amgt-settings-hint">
+        Paramètres généraux, enregistrés sur le serveur et communs à tous les
+        visiteurs. À corriger uniquement si l'un de ces services externes change
+        d'adresse.
+      </p>
+
+      <label class="amgt-settings-row">
+        Fond UrbIS &mdash; URL du service WMS
+        <input type="text" id="amgt-settings-urbis-url" />
+      </label>
+      <label class="amgt-settings-row">
+        Fond UrbIS &mdash; nom de la couche
+        <input type="text" id="amgt-settings-urbis-layers" />
+      </label>
+      <label class="amgt-settings-row">
+        Orthophotos historiques (1935&ndash;1996) &mdash; URL du service WMS
+        <input type="text" id="amgt-settings-bruciel-hist-url" />
+      </label>
+      <label class="amgt-settings-row">
+        Orthophotos récentes (2004&ndash;2022) &mdash; URL du service WMS
+        <input type="text" id="amgt-settings-bruciel-recent-url" />
+      </label>
+      <label class="amgt-settings-row">
+        Orthophotos Flandre (2000&ndash;2025) &mdash; URL du service WMS
+        <input type="text" id="amgt-settings-flandre-url" />
+      </label>
+      <label class="amgt-settings-row">
+        Recherche d'adresses &mdash; URL du géocodeur
+        <input type="text" id="amgt-settings-geocoder-url" />
+      </label>
+
+      <p id="amgt-settings-sources-status" class="amgt-settings-status" hidden></p>
+
+      <div class="amgt-form-actions">
+        <button id="amgt-settings-save" class="amgt-btn amgt-btn--primary">Enregistrer</button>
+      </div>
+    </section>
+
+    <section class="amgt-tab-pane amgt-hidden" data-pane="server">
+      <h3>Communication avec le serveur</h3>
+      <p class="amgt-settings-hint">
+        Paramètres généraux, enregistrés sur le serveur et communs à tous les
+        visiteurs. Le serveur d'enregistrement (relais) écrit dans le dépôt les
+        modifications faites dans l'application. Enregistrer ici envoie aussi
+        les adresses de l'onglet Sources.
+      </p>
+
+      <label class="amgt-settings-row">
+        Adresse du relais d'enregistrement
+        <input type="text" id="amgt-settings-relay-url" placeholder="https://…workers.dev" autocomplete="off" />
+      </label>
+      <label class="amgt-settings-row">
+        Code administrateur
+        <input type="password" id="amgt-settings-admin-code" autocomplete="off" />
+      </label>
+      <p class="amgt-settings-hint">
+        Le code administrateur n'est jamais enregistré : il n'est gardé que le
+        temps de cet onglet du navigateur, pour s'identifier auprès du relais.
+      </p>
+      <p id="amgt-settings-relay-status" class="amgt-settings-status" hidden></p>
+
+      <div class="amgt-form-actions">
+        <button id="amgt-settings-relay-test" class="amgt-btn">Tester</button>
+        <button id="amgt-settings-relay-save" class="amgt-btn amgt-btn--primary">Enregistrer</button>
+      </div>
+    </section>
+
+    <section class="amgt-tab-pane amgt-hidden" data-pane="basemaps">
+      <h3>Modifications des données</h3>
+      <div class="amgt-settings-action">
+        <button id="amgt-settings-edit-labels" class="amgt-btn amgt-btn--primary">✥ Mode édition</button>
+        <p class="amgt-settings-hint">
+          Affiche les couches « Plans d'ensemble » et « Numéros interstation » et
+          active le mode édition des étiquettes (références de planche, numéros
+          d'interstation) : survol = surbrillance, premier clic = sélection, second
+          clic = modification. Le bouton « ✥ Mode édition » (en bas à droite)
+          affiche l'aide et le suivi.
+        </p>
+      </div>
+
+      <div class="amgt-settings-action">
+        <button id="amgt-settings-load-shapefile" class="amgt-btn" disabled>Charger un nouveau shapefile…</button>
+        <p class="amgt-settings-hint">À venir : remplacer les shapefiles de data/shapefile/ depuis l’application (nécessite l’enregistrement sur le serveur). Le chargement prendra <strong>un ou plusieurs fichiers du dossier</strong> du shapefile (.shp, .dbf, .shx, .prj, .cpg…), pas seulement le .shp.</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- Recherche (station, tunnel, point métier) : remplace le contrôle de zoom
+       Leaflet en haut à droite. Le zoom reste possible à la molette, au
+       pincement et au double-clic. -->
+  <div id="amgt-search-box">
+    <button id="amgt-search-toggle" class="amgt-btn amgt-btn--icon" title="Rechercher une station, un tunnel ou un point">
+      🔍
+    </button>
+    <div id="amgt-search-panel" class="amgt-hidden">
+      <input type="text" id="amgt-search-input" placeholder="Station, tunnel, point..." autocomplete="off" />
+      <ul id="amgt-search-results"></ul>
+    </div>
+  </div>
+
+  <!-- Échec de chargement des données (ex. ouverture en file:// sans serveur HTTP) : message rempli par app.js -->
+  <div id="amgt-load-error" class="amgt-banner amgt-hidden"></div>
+
+  <!-- Navigation temporelle orthophotos (visible uniquement quand ce fond est actif) -->
+  <div id="amgt-year-slider-bar" class="amgt-hidden">
+    <button id="amgt-year-prev" class="amgt-chevron-btn" title="Année accessible précédente">‹</button>
+    <button id="amgt-bruciel-year-label" type="button" disabled>&hellip;</button>
+    <!-- Logo de l'entité dont l'orthophoto est affichée (voir mapMenu.js) -->
+    <img id="amgt-source-logo" class="amgt-hidden" width="22" height="22" alt="" />
+    <button id="amgt-year-next" class="amgt-chevron-btn" title="Année accessible suivante">›</button>
+    <button id="amgt-year-latest" class="amgt-chevron-btn" title="Revenir à l'année la plus récente accessible">⏭</button>
+  </div>
+
+  <!-- Formulaire de création d'un point métier -->
+  <div id="amgt-point-form" class="amgt-hidden">
+    <h3>Nouveau point</h3>
+    <div class="amgt-form-row">
+      <span>X Lambert :</span> <span id="amgt-form-x">-</span>
+    </div>
+    <div class="amgt-form-row">
+      <span>Y Lambert :</span> <span id="amgt-form-y">-</span>
+    </div>
+    <div class="amgt-form-row">
+      <label for="amgt-form-type">Type</label>
+      <input type="text" id="amgt-form-type" placeholder="ex : ouvrage, défaut, capteur..." />
+    </div>
+    <div class="amgt-form-row">
+      <label for="amgt-form-label">Libellé</label>
+      <input type="text" id="amgt-form-label" placeholder="Nom / description courte" />
+    </div>
+    <div class="amgt-form-actions">
+      <button id="amgt-form-cancel" class="amgt-btn">Annuler</button>
+      <button id="amgt-form-confirm" class="amgt-btn amgt-btn--primary">Enregistrer</button>
+    </div>
+  </div>
+
+  <!-- Sélecteur plein écran du catalogue UrbIS Topo (grouper par thème + recherche) -->
+  <div id="amgt-topo-picker" class="amgt-hidden amgt-fs-picker">
+    <div class="amgt-fs-picker-header">
+      <h2>Objets UrbIS Topo à afficher</h2>
+      <div class="amgt-fs-picker-header-actions">
+        <button id="amgt-topo-picker-save-default" class="amgt-btn amgt-btn--icon" title="Enregistrer mes préférences (sélection locale, propre à cet appareil)">
+          💾
+        </button>
+        <button id="amgt-topo-picker-close" class="amgt-btn" title="Retour à la carte">✕ Fermer</button>
+      </div>
+    </div>
+    <input
+      type="text"
+      id="amgt-topo-picker-search"
+      class="amgt-fs-picker-search"
+      placeholder="Rechercher un type d'objet..."
+      autocomplete="off"
+    />
+    <div id="amgt-topo-picker-content" class="amgt-fs-picker-content"></div>
+    <div id="amgt-topo-picker-default-bar"></div>
+  </div>
+
+  <!-- Sélecteur plein écran des couches "Plans patrimoine" (mêmes classes que
+       le sélecteur UrbIS Topo ci-dessus, sans recherche : peu d'entrées) -->
+  <div id="amgt-patrimoine-picker" class="amgt-hidden amgt-fs-picker">
+    <div class="amgt-fs-picker-header">
+      <h2>Plans patrimoine à afficher</h2>
+      <div class="amgt-fs-picker-header-actions">
+        <button id="amgt-patrimoine-picker-save-default" class="amgt-btn amgt-btn--icon" title="Enregistrer mes préférences (sélection locale, propre à cet appareil)">
+          💾
+        </button>
+        <button id="amgt-patrimoine-picker-close" class="amgt-btn" title="Retour à la carte">✕ Fermer</button>
+      </div>
+    </div>
+    <div id="amgt-patrimoine-picker-content" class="amgt-fs-picker-content"></div>
+    <div id="amgt-patrimoine-picker-default-bar"></div>
+  </div>
+
+</template>
+
+<!-- ========== Interface « signal » : SIG4CEM (saisie) ========== -->
+<template id="amgt-tpl-signal">
+  <div id="sig4cem-root"></div>
+</template>
+
+<script src="./config.js"></script>
+<script src="./src/router.js"></script>
+</body>
+</html>

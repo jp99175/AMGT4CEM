@@ -1,0 +1,97 @@
+/* Interface « signal » (SIG4CEM) : pensée pour le téléphone (colonne unique, cibles tactiles larges). */
+html[data-app="signal"] body {
+  background: #f4f6f8;
+  color: #1f2933;
+}
+
+#sig4cem-root {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px 16px 32px;
+  box-sizing: border-box;
+}
+
+.sig4cem-header h1 {
+  margin: 8px 0 0;
+  font-size: 26px;
+  letter-spacing: 0.04em;
+}
+
+.sig4cem-header p {
+  margin: 2px 0 16px;
+  color: #52606d;
+}
+
+.sig4cem-menu h2 {
+  margin: 20px 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: #52606d;
+}
+
+.sig4cem-menu h3 {
+  margin: 16px 0 6px;
+  font-size: 15px;
+}
+
+.sig4cem-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 14px 16px;
+  font-size: 16px;
+  text-align: left;
+  background: #fff;
+  border: 1px solid #cbd2d9;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+}
+
+.sig4cem-item--sub {
+  width: calc(100% - 20px);
+  margin-left: 20px;
+}
+
+.sig4cem-item:disabled {
+  color: #7b8794;
+  background: #eceff2;
+  box-shadow: none;
+  cursor: default;
+}
+
+.sig4cem-item__counter {
+  margin-left: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sig4cem-note {
+  margin: 20px 0 0;
+  font-size: 13px;
+  color: #7b8794;
+}
+
+.sig4cem-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 28px;
+  font-size: 13px;
+}
+
+.sig4cem-build {
+  color: #7b8794;
+}
+
+/* Message du routeur (interface inconnue, chargement impossible), commun aux deux interfaces. */
+.amgt-router-error {
+  max-width: 560px;
+  margin: 40px auto;
+  padding: 16px;
+  background: #fff4e5;
+  border: 1px solid #f0b25e;
+  border-radius: 6px;
+}
