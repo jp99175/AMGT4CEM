@@ -199,8 +199,25 @@ const AMGT4CEM_CONFIG = {
       title: 'SIG4CEM – Signalements et demandes',
       template: 'amgt-tpl-signal',
       styles: ['./src/signal/signal.css'],
+      // Socle commun avec la carte (Leaflet, projections, services et fond de plan UrbIS, pour le choix du
+      // point) ; modules de dépôt repris de src/signalements/ (vocabulaire, photos, archive, envoi) ;
+      // puis l'interface de saisie. L'ordre compte : chaque script dépend des précédents.
       scripts: [
+        './vendor/leaflet/leaflet.js',
+        './vendor/proj4/proj4.js',
+        './vendor/proj4leaflet/proj4leaflet.js',
         './src/buildInfo.js',
+        './src/crs.js',
+        './src/services.js',
+        './src/screenshotTool.js', // basemap.js l'appelle (invalidateBackground) ; jamais initialisé ici
+        './src/basemap.js',
+        './src/signalements/pieces-store.js',
+        './src/signalements/zip-writer.js',
+        './src/signalements/depot.js',
+        './src/signalements/envoi.js',
+        './src/signal/entries.js',
+        './src/signal/mapPicker.js',
+        './src/signal/form.js',
         './src/signal/signal.js',
       ],
     },

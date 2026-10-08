@@ -95,3 +95,64 @@ html[data-app="signal"] body {
   border: 1px solid #f0b25e;
   border-radius: 6px;
 }
+
+
+/* ---- Écrans, boutons, messages ---- */
+.sig4cem-hidden { display: none !important; }
+
+.sig4cem-btn {
+  padding: 12px 16px;
+  font-size: 16px;
+  background: #fff;
+  border: 1px solid #cbd2d9;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+}
+.sig4cem-btn--primary { background: #2c3e50; color: #fff; border-color: #2c3e50; }
+.sig4cem-btn--small { padding: 6px 10px; font-size: 14px; }
+.sig4cem-btn:disabled { opacity: 0.5; cursor: default; }
+
+.sig4cem-item--off { color: #7b8794; background: #eceff2; box-shadow: none; cursor: default; }
+.sig4cem-notice { margin: 0 0 12px; padding: 10px 12px; background: #e6f4ea; border: 1px solid #8cc9a0; border-radius: 6px; }
+.sig4cem-badge { margin: 0 0 12px; padding: 8px 12px; background: #fde8e8; border: 1px solid #e07a7a; color: #9b1c1c; border-radius: 6px; font-weight: 600; }
+
+/* Écran de choix du point : plein cadre, carte entre un bandeau et une barre d'actions. */
+.sig4cem-screen--map {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+.sig4cem-map__top { padding: 8px 12px; background: #fff; border-bottom: 1px solid #cbd2d9; }
+.sig4cem-map__hint { margin: 0; font-size: 15px; }
+.sig4cem-map__coords { font-size: 13px; color: #52606d; font-variant-numeric: tabular-nums; }
+.sig4cem-map__canvas { flex: 1; min-height: 0; }
+.sig4cem-map__actions { display: flex; gap: 8px; padding: 8px 12px; background: #fff; border-top: 1px solid #cbd2d9; }
+.sig4cem-map__actions .sig4cem-btn--primary { flex: 1; }
+
+/* Formulaire */
+.sig4cem-screen--form h2 { margin: 8px 0 12px; font-size: 20px; }
+.sig4cem-row { display: flex; flex-direction: column; gap: 4px; margin: 0 0 12px; }
+.sig4cem-row label { font-size: 14px; font-weight: 600; }
+.sig4cem-row select, .sig4cem-row input[type="text"], .sig4cem-row input[type="date"], .sig4cem-row textarea {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px; /* 16 px : évite le zoom automatique de iOS dans les champs */
+  box-sizing: border-box;
+  border: 1px solid #cbd2d9;
+  border-radius: 6px;
+  background: #fff;
+}
+.sig4cem-row--pos { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
+.sig4cem-form__pos { font-size: 13px; color: #52606d; font-variant-numeric: tabular-nums; }
+.sig4cem-amiante { margin: 0 0 12px; padding: 8px 12px; background: #fde8e8; border: 1px solid #e07a7a; border-radius: 6px; }
+.sig4cem-photo-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.sig4cem-photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.sig4cem-photo { position: relative; }
+.sig4cem-photo img { display: block; width: 88px; height: 88px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd2d9; }
+.sig4cem-photo button { position: absolute; top: 2px; right: 2px; width: 26px; height: 26px; border: none; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: #fff; cursor: pointer; }
+.sig4cem-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.sig4cem-actions .sig4cem-btn--primary { flex: 1; min-width: 160px; }

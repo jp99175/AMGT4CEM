@@ -23,7 +23,7 @@ Puis ouvrez l'une des deux interfaces de la page unique `home.html` :
 - http://localhost:8000/home.html?app=carto : **AMGT4CEM**, visualisation de toutes les données sur la carte
   (interface par défaut, aussi atteinte par `index.html` et par `home.html` sans paramètre) ;
 - http://localhost:8000/home.html?app=signal : **SIG4CEM**, saisie des signalements et demandes
-  (squelette du menu pour l'instant).
+  (menu, nouvelle entrée avec choix du point sur sa propre carte, enregistrement local ou envoi : voir `src/signal/README.md`).
 
 *(Si vous n'avez pas Python, `npx serve` ou l'extension VS Code "Live Server"
 fonctionnent tout aussi bien.)*
@@ -880,7 +880,7 @@ du réseau.
 ```
 home.html, style.css         page unique : gabarits des deux interfaces (carto, signal) ; index.html : simple renvoi vers home.html
 src/router.js                routeur : lit ?app=, copie le gabarit choisi, charge ses scripts dans l'ordre (liste `apps` de config.js)
-src/signal/                  interface de saisie SIG4CEM (home.html?app=signal), séparée de la carte
+src/signal/                  interface de saisie SIG4CEM (home.html?app=signal), séparée de la carte, avec sa propre carte de choix du point
 config.js                    configuration (interfaces `apps`, CRS, chemins des données, clés de stockage) ; la configuration des services est dans data/fonds-de-plan/
 src/admin.js                 accès administrateur (point de branchement du futur mot de passe)
 src/services.js              configuration des services externes (data/fonds-de-plan/, data/urbis-topo/parametres.json) : lecture au démarrage, enregistrement via le relais
@@ -1075,7 +1075,7 @@ Une seule page, `home.html`, deux interfaces choisies par le paramètre d'adress
 | Adresse | Interface | Contenu |
 |---|---|---|
 | `home.html?app=carto` (défaut) | AMGT4CEM | visualisation de toutes les données sur la carte, vues paramétrables |
-| `home.html?app=signal` | SIG4CEM | saisie des signalements et demandes : menu, brouillons, file d'envoi |
+| `home.html?app=signal` | SIG4CEM | saisie des signalements et demandes : nouvelle entrée (carte puis formulaire), brouillons, file d'envoi (en cours de construction) |
 
 Le routeur (`src/router.js`) copie dans la page le gabarit de l'interface choisie, puis charge ses styles
 et ses scripts dans l'ordre, d'après la liste `apps` de `config.js`. Une interface ne charge jamais l'autre :

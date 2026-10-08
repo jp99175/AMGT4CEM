@@ -1,0 +1,43 @@
+# SIG4CEM : saisie des signalements et demandes (`home.html?app=signal`)
+
+Interface de saisie, **séparée de la carte AMGT4CEM** (`home.html?app=carto`) : elle ne renvoie jamais vers elle.
+Elle embarque son propre écran de carte, juste pour choisir le point. Chargée par `src/router.js` d'après la liste
+`apps.signal` de `config.js`.
+
+## Parcours « Nouvelle entrée »
+
+1. **Carte, tout de suite.** Fond UrbIS (même socle que la carte : `crs.js`, `services.js`, `basemap.js`). Un toucher pose
+   un marqueur déplaçable ; **📍 Ma position** centre sur le GPS ; **Valider la position** ouvre le formulaire.
+2. **Formulaire.** Nature > type > domaine technique, date d'observation, localisation précisée, demandeur (et sa référence),
+   description, photos (prise directe ou fichiers ; réduites à 2000 px, JPEG 85). **Modifier la position** revient à la carte
+   sans effacer la saisie ; **Annuler** supprime l'entrée et ses photos.
+3. **Deux enregistrements.** **Enregistrer en local** : brouillon (`draft`). **Enregistrer et envoyer** : envoi demandé (`file`),
+   puis `envoye` (référence attribuée par le serveur) ou `erreur`. Sans serveur configuré
+   (`plugins` > `signalements` > `options.serverUrl`), l'entrée reste `file` et attend.
+
+## Cycle d'une entrée
+
+`draft` → `file` → `envoye` (ou `erreur`, à relancer). L'identifiant (UUID) est créé sur l'appareil ; la référence publique
+`AAAA-NNNN` vient du serveur. Stockage : IndexedDB (`amgt4cem-signal`), photos dans `amgt4cem-pieces`.
+
+## Menu
+
+Compteurs réels : Nouvelle entrée et Draft = brouillons en local ; Téléversement en cours = (encore en local / déjà sur le
+serveur) pour l'envoi en cours ; Mes dernières entrées = entrées envoyées. Un bandeau rouge signale les entrées en erreur.
+
+## À faire
+
+Listes « Draft », « Téléversement en cours » (interrompre, reprendre, repasser en brouillon), « Mes dernières entrées »
+(filtre 7 jours / 1 mois / période) ; édition d'une entrée et révisions ; recadrage et commentaire des photos ; identité des
+utilisateurs ; couche du réseau (stations, tunnels) sur la carte de choix du point ; fond de carte hors connexion.
+
+## Fichiers
+
+| Fichier | Rôle |
+|---|---|
+| `signal.js` | écrans, menu, enregistrement et envoi |
+| `entries.js` | stockage IndexedDB, statuts, compteurs ; constructeur DOM `SIG4CEM.h` |
+| `mapPicker.js` | écran carte : choix du point |
+| `form.js` | formulaire et photos |
+| `signal.css` | styles (pensés pour le téléphone) |
+| `../signalements/` | modules repris du plugin : vocabulaire et archive (`depot.js`), photos (`pieces-store.js`), envoi (`envoi.js`) |

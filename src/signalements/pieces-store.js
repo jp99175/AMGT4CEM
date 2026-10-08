@@ -14,8 +14,8 @@ const NS = (window.AMGT4CEM_Signalements = window.AMGT4CEM_Signalements || {});
 const DB_NAME = 'amgt4cem-pieces';
 
 NS.Pieces = {
-  maxSide: 1600,
-  jpegQuality: 0.8,
+  maxSide: 2000,
+  jpegQuality: 0.85,
   _dbPromise: null,
 
   _db() {
@@ -80,6 +80,11 @@ NS.Pieces = {
 
   async get(id) {
     return this._tx('readonly', (store) => store.get(id));
+  },
+
+  /** Supprime une photo (par son identifiant). */
+  async remove(id) {
+    return this._tx('readwrite', (store) => store.delete(id));
   },
 
   async removeForPoint(pointId) {
