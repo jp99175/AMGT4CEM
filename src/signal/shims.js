@@ -6,3 +6,6 @@
  * voir mapPicker.js). Ce raccord répond « jamais actif » pour que les clics soient relayés à la carte de choix.
  */
 const AMGT4CEM_AddPointTool = { isActive: () => false, handleMapClick: () => {} };
+
+/** La recherche (src/searchTool.js) interroge les points métier : SIG4CEM n'en affiche aucun. */
+const AMGT4CEM_PointsStore = { getAll: async () => [] };

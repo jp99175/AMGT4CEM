@@ -230,6 +230,7 @@ const AMGT4CEM_CONFIG = {
         './src/screenshotTool.js', // basemap.js l'appelle (invalidateBackground) ; jamais initialisé ici
         './src/basemap.js',
         './src/plugins.js', // seulement captureClicks : les polygones du réseau lui renvoient les clics
+        './src/searchTool.js',
         './src/signal/shims.js',
         './src/signalements/pieces-store.js',
         './src/signalements/zip-writer.js',

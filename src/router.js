@@ -62,16 +62,25 @@ const AMGT4CEM_Router = {
       document.head.appendChild(link);
     }
     try {
-      for (const src of app.scripts) await this._loadScript(src);
+      await this._loadScripts(app.scripts);
     } catch (err) {
       console.error(`[AMGT4CEM] Interface « ${id} » non chargée :`, err);
       this._showError(`L'interface « ${id} » n'a pas pu être chargée : ${err.message}`, id);
     }
   },
 
+  /**
+   * Télécharge tous les scripts EN PARALLÈLE mais les exécute dans l'ordre déclaré (`async = false` sur des
+   * scripts ajoutés dynamiquement) : un chargement l'un après l'autre ajoutait un aller-retour réseau par script.
+   */
+  _loadScripts(srcs) {
+    return Promise.all(srcs.map((src) => this._loadScript(src)));
+  },
+
   _loadScript(src) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
+      script.async = false; // exécution dans l'ordre d'insertion, téléchargement en parallèle
       script.src = src;
       script.onload = resolve;
       script.onerror = () => reject(new Error(`script introuvable : ${src}`));

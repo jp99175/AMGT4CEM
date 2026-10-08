@@ -129,7 +129,8 @@ html[data-app="signal"] body {
 .sig4cem-map__top { padding: 8px 12px; background: #fff; border-bottom: 1px solid #cbd2d9; }
 .sig4cem-map__hint { margin: 0; font-size: 15px; }
 .sig4cem-map__coords { font-size: 13px; color: #52606d; font-variant-numeric: tabular-nums; }
-.sig4cem-map__canvas { flex: 1; min-height: 0; }
+.sig4cem-map__body { flex: 1; min-height: 0; position: relative; }
+.sig4cem-map__canvas { position: absolute; inset: 0; }
 .sig4cem-map__actions { display: flex; gap: 8px; padding: 8px 12px; background: #fff; border-top: 1px solid #cbd2d9; }
 .sig4cem-map__actions .sig4cem-btn--primary { flex: 1; }
 

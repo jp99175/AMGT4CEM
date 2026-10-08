@@ -44,9 +44,16 @@ SIG.MapPicker = {
     this.btnCancel = h('button', { type: 'button', class: 'sig4cem-btn', text: 'Annuler' });
     this.btnOk = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--primary', text: 'Valider la position', disabled: '' });
     this.canvas = h('div', { id: 'sig4cem-map', class: 'sig4cem-map__canvas' });
+    // Recherche de la carte AMGT4CEM (src/searchTool.js), mêmes identifiants : station, tunnel, adresse.
+    const searchBox = h('div', { id: 'amgt-search-box' },
+      h('button', { type: 'button', id: 'amgt-search-toggle', class: 'amgt-btn amgt-btn--icon', title: 'Rechercher une station, un tunnel ou une adresse', text: '\u{1F50D}' }),
+      h('div', { id: 'amgt-search-panel', class: 'amgt-hidden' },
+        h('input', { type: 'text', id: 'amgt-search-input', placeholder: 'Station, tunnel, adresse...', autocomplete: 'off' }),
+        h('ul', { id: 'amgt-search-results' })));
+    const body = h('div', { class: 'sig4cem-map__body' }, this.canvas, searchBox);
     this.el = h('section', { class: 'sig4cem-screen sig4cem-screen--map sig4cem-hidden' },
       h('div', { class: 'sig4cem-map__top' }, this.hint, this.coords),
-      this.canvas,
+      body,
       h('div', { class: 'sig4cem-map__actions' }, this.btnCancel, this.btnLocate, this.btnOk));
     document.getElementById('sig4cem-root').append(this.el);
     this.btnLocate.addEventListener('click', () => this._locate());
@@ -78,6 +85,7 @@ SIG.MapPicker = {
       AMGT4CEM_UrbisTopoLayer.setOpacity(AMGT4CEM_LayerOpacityStore.getFactor('urbistopo'));
       AMGT4CEM_PatrimoineLayer.setOpacity(AMGT4CEM_LayerOpacityStore.getFactor('patrimoine'));
 
+      AMGT4CEM_SearchTool.init(map);
       this.entriesGroup = L.layerGroup().addTo(map);
       map.on('click', (e) => this._place(e.latlng));
       // Les polygones du réseau interceptent les clics : ils les relaient ici tant que l'écran est ouvert.
@@ -90,8 +98,9 @@ SIG.MapPicker = {
 
   _loadNetwork() {
     AMGT4CEM_Network.load(this.map).then(
-      ({ layersByType, bounds }) => {
+      ({ layersByType, bounds, searchIndex }) => {
         this.network = layersByType;
+        AMGT4CEM_SearchTool.setMetroIndex(searchIndex);
         AMGT4CEM_Network.setOpacity(layersByType, AMGT4CEM_LayerOpacityStore.getFactor('metro'));
         // Vue sur le réseau, sauf si un point est déjà posé ou si l'utilisateur a déjà bougé la carte.
         if (bounds.isValid() && !this.marker && !this._moved) this.map.fitBounds(bounds, { padding: [20, 20] });
