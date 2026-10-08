@@ -78,6 +78,27 @@ NS.Pieces = {
     return { id, taille: blob.size, largeur: width, hauteur: height, sha256, sha256Original };
   },
 
+  /**
+   * Annotations d'une photo : traits (pour les modifier plus tard) + calque PNG transparent (`png`) qui se
+   * superpose à la photo. La photo elle-même n'est JAMAIS modifiée. `traits` vide ou null : annotations retirées.
+   * @returns {Promise<null|{taille:number,sha256:string}>} description du calque, ou null s'il n'y en a plus
+   */
+  async setAnnotations(id, traits, png) {
+    const record = await this.get(id);
+    if (!record) throw new Error('Photo introuvable');
+    if (traits && traits.length && png) {
+      record.traits = traits;
+      record.annot = png;
+      record.annotSha256 = await this.sha256(png);
+    } else {
+      delete record.traits;
+      delete record.annot;
+      delete record.annotSha256;
+    }
+    await this._tx('readwrite', (store) => store.put(record));
+    return record.annot ? { taille: record.annot.size, sha256: record.annotSha256 } : null;
+  },
+
   async get(id) {
     return this._tx('readonly', (store) => store.get(id));
   },

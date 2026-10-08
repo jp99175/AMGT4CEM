@@ -7,7 +7,7 @@ Elle embarque son propre écran de carte, juste pour choisir le point. Chargée 
 ## Parcours « Nouvelle entrée »
 
 1. **Carte, tout de suite.** Fond UrbIS (même socle que la carte : `crs.js`, `services.js`, `basemap.js`). Un toucher pose
-   un marqueur déplaçable ; **📍 Ma position** centre sur le GPS ; **Valider la position** ouvre le formulaire.
+   un marqueur déplaçable ; l'icône GPS (cible, en bas à droite de la carte) centre sur la position de l'appareil ; **Valider la position** ouvre le formulaire.
 2. **Formulaire.** Nature > type > domaine technique, date d'observation, localisation précisée, demandeur (et sa référence),
    description, photos (prise directe ou fichiers ; réduites à 2000 px, JPEG 85). **Modifier la position** revient à la carte
    sans effacer la saisie ; **Annuler** supprime l'entrée et ses photos.
@@ -32,10 +32,19 @@ Elle affiche ce que la sélection locale de la carte affiche (lue dans le localS
 d'interstation. Pas de points métier. Seuls points affichés : les entrées locales non encore téléversées.
 `src/signal/shims.js` fournit le stub `AMGT4CEM_AddPointTool` attendu par `metroLayer.js`.
 
+## Photos : commentaire et annotations
+
+Chaque photo (réduite à 2000 px, JPEG 85) a un commentaire texte et, au choix, des annotations (crayon, flèche, cercle,
+texte) saisies dans `photoEditor.js`. La photo n'est jamais modifiée : les annotations sont enregistrées à part, sur un
+calque PNG transparent (grand côté 1000 px) superposé à l'affichage, avec les traits (coordonnées relatives) pour les
+reprendre. Dans l'archive de dépôt : `IMG_…_MX.jpg` (photo), `IMG_…_MX_ANNOT.png` (calque) et, dans `signalement.json`,
+`pieces[i].commentaire` et `pieces[i].annotations` (nom, taille, SHA-256), champs facultatifs (schéma version 1).
+Reste à faire : recadrage.
+
 ## À faire
 
 Listes « Draft », « Téléversement en cours » (interrompre, reprendre, repasser en brouillon), « Mes dernières entrées »
-(filtre 7 jours / 1 mois / période) ; édition d'une entrée et révisions ; recadrage et commentaire des photos ; identité des
+(filtre 7 jours / 1 mois / période) ; édition d'une entrée et révisions ; recadrage des photos ; identité des
 utilisateurs ; fond de carte hors connexion.
 
 ## Fichiers
@@ -48,3 +57,4 @@ utilisateurs ; fond de carte hors connexion.
 | `form.js` | formulaire et photos |
 | `signal.css` | styles (pensés pour le téléphone) |
 | `../signalements/` | modules repris du plugin : vocabulaire et archive (`depot.js`), photos (`pieces-store.js`), envoi (`envoi.js`) |
+tools/stamp-build.sh : horodatage du build, lancé par le hook git pre-commit (.git/hooks, non versionné : à recréer sur un autre clone).

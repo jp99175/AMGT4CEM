@@ -67,6 +67,11 @@ NS.Depot = {
     return `IMG_${titre}_${s.dateObservation.replace(/-/g, '')}_MX.jpg`;
   },
 
+  /** Calque d'annotations d'une photo : même nom que la photo, suffixe _ANNOT, en PNG. */
+  annotationFileName(s, index) {
+    return this.pieceFileName(s, index).replace(/\.jpg$/, '_ANNOT.png');
+  },
+
   /** Nom de l'archive de dépôt : FICH_<titre>_<AAAAMMJJ>_FR.zip. */
   depotFileName(s) {
     return `FICH_${this.shortRef(s.id)}-${this.type(s.type).court}_${s.dateObservation.replace(/-/g, '')}_FR.zip`;
@@ -99,6 +104,11 @@ NS.Depot = {
         taille: meta.taille,
         sha256: meta.sha256,
         sha256Original: meta.sha256Original,
+        // Commentaire de la photo et calque d'annotations (PNG transparent, à superposer : la photo reste intacte).
+        commentaire: meta.commentaire || '',
+        annotations: meta.annotation
+          ? { nom: this.annotationFileName(s, i), type: 'image/png', taille: meta.annotation.taille, sha256: meta.annotation.sha256 }
+          : null,
       })),
     };
   },
@@ -112,6 +122,10 @@ NS.Depot = {
       const record = await NS.Pieces.get(s.pieces[i].id);
       if (!record) throw new Error(`Photo ${i + 1} introuvable dans cet appareil.`);
       entries.push({ name: depot.pieces[i].nom, data: new Uint8Array(await record.blob.arrayBuffer()) });
+      if (depot.pieces[i].annotations) {
+        if (!record.annot) throw new Error(`Annotations de la photo ${i + 1} introuvables dans cet appareil.`);
+        entries.push({ name: depot.pieces[i].annotations.nom, data: new Uint8Array(await record.annot.arrayBuffer()) });
+      }
     }
     return { blob: NS.Zip.build(entries), depot };
   },

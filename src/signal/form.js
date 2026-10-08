@@ -47,8 +47,8 @@ SIG.Form = {
     f.description = h('textarea', { id: 'sig4cem-f-description', rows: '4', maxlength: '2000' });
     f.camera = h('input', { type: 'file', accept: 'image/*', capture: 'environment', class: 'sig4cem-hidden', id: 'sig4cem-f-camera' });
     f.files = h('input', { type: 'file', accept: 'image/*', multiple: '', class: 'sig4cem-hidden', id: 'sig4cem-f-files' });
-    f.btnCamera = h('button', { type: 'button', class: 'sig4cem-btn', text: '\u{1F4F7} Prendre une photo' });
-    f.btnFiles = h('button', { type: 'button', class: 'sig4cem-btn', text: '\u{1F5BC} Joindre des fichiers' });
+    f.btnCamera = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--icon', title: 'Prendre une photo', 'aria-label': 'Prendre une photo', text: '\u{1F4F7}' });
+    f.btnFiles = h('button', { type: 'button', class: 'sig4cem-link', text: 'Joindre des fichiers' });
     f.photoList = h('div', { class: 'sig4cem-photos' });
     f.fields = h('div', { class: 'sig4cem-hidden' },
       this._row('Type', f.type, 'sig4cem-f-type'),
@@ -60,7 +60,7 @@ SIG.Form = {
       this._row('Référence chez le demandeur', f.refDemandeur, 'sig4cem-f-refdem'),
       this._row('Description', f.description, 'sig4cem-f-description'),
       h('div', { class: 'sig4cem-row' }, h('label', { text: 'Photos' }),
-        h('div', { class: 'sig4cem-photo-buttons' }, f.btnCamera, f.btnFiles), f.camera, f.files, f.photoList));
+        h('div', { class: 'sig4cem-photo-buttons' }, f.btnFiles, f.btnCamera), f.camera, f.files, f.photoList));
     f.btnCancel = h('button', { type: 'button', class: 'sig4cem-btn', text: 'Annuler' });
     f.btnLocal = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--primary', text: 'Enregistrer en local' });
     f.btnSend = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--primary', text: 'Enregistrer et envoyer' });
@@ -124,13 +124,28 @@ SIG.Form = {
     for (const [i, meta] of this.photos.entries()) {
       const record = await NS.Pieces.get(meta.id);
       if (!record) continue;
-      const rm = h('button', { type: 'button', title: 'Retirer cette photo', text: '✕' });
+      const rm = h('button', { type: 'button', class: 'sig4cem-photo__rm', title: 'Retirer cette photo', 'aria-label': 'Retirer cette photo', text: '✕' });
       rm.addEventListener('click', async () => {
         this.photos.splice(i, 1);
         await NS.Pieces.remove(meta.id);
         await this._renderPhotos();
       });
-      list.append(h('span', { class: 'sig4cem-photo' }, h('img', { src: URL.createObjectURL(record.blob), alt: `Photo ${i + 1}` }), rm));
+      // La photo d'origine ; les annotations sont un calque transparent superposé, jamais fondu dans la photo.
+      const thumb = h('span', { class: 'sig4cem-photo' }, h('img', { src: URL.createObjectURL(record.blob), alt: `Photo ${i + 1}` }));
+      if (record.annot) thumb.append(h('img', { class: 'sig4cem-photo__overlay', src: URL.createObjectURL(record.annot), alt: '' }));
+      thumb.append(rm);
+      const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: record.annot ? '✏️ Modifier les annotations' : '✏️ Annoter' });
+      edit.addEventListener('click', () => {
+        SIG.PhotoEditor.open(record.blob, record.traits || [], async (traits) => {
+          const png = await SIG.PhotoEditor.overlayPng(traits, meta.largeur, meta.hauteur);
+          meta.annotation = await NS.Pieces.setAnnotations(meta.id, traits, png);
+          await this._renderPhotos();
+        });
+      });
+      const comment = h('textarea', { class: 'sig4cem-photo__comment', rows: '2', maxlength: '500', placeholder: 'Commentaire sur cette photo (facultatif)' });
+      comment.value = meta.commentaire || '';
+      comment.addEventListener('input', () => { meta.commentaire = comment.value; });
+      list.append(h('div', { class: 'sig4cem-photo-card' }, thumb, h('div', { class: 'sig4cem-photo-card__side' }, comment, edit)));
     }
   },
 
@@ -161,7 +176,7 @@ SIG.Form = {
       demandeur: f.demandeur.value.trim(),
       referenceDemandeur: f.refDemandeur.value.trim(),
       description: f.description.value.trim(),
-      pieces: this.photos.slice(),
+      pieces: this.photos.map((m) => ({ ...m, commentaire: (m.commentaire || '').trim() })),
     };
   },
 

@@ -40,7 +40,6 @@ SIG.MapPicker = {
     if (this.el) return;
     this.hint = h('p', { class: 'sig4cem-map__hint', text: 'Touchez la carte pour placer le point.' });
     this.coords = h('span', { class: 'sig4cem-map__coords', text: '' });
-    this.btnLocate = h('button', { type: 'button', class: 'sig4cem-btn', text: '\u{1F4CD} Ma position' });
     this.btnCancel = h('button', { type: 'button', class: 'sig4cem-btn', text: 'Annuler' });
     this.btnOk = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--primary', text: 'Valider la position', disabled: '' });
     this.canvas = h('div', { id: 'sig4cem-map', class: 'sig4cem-map__canvas' });
@@ -50,11 +49,19 @@ SIG.MapPicker = {
       h('div', { id: 'amgt-search-panel', class: 'amgt-hidden' },
         h('input', { type: 'text', id: 'amgt-search-input', placeholder: 'Station, tunnel, adresse...', autocomplete: 'off' }),
         h('ul', { id: 'amgt-search-results' })));
-    const body = h('div', { class: 'sig4cem-map__body' }, this.canvas, searchBox);
+    // Bouton GPS : en bas à droite de la carte (cible), à la place du bouton « Ma position » de la barre du bas.
+    const NSVG = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NSVG, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '26');
+    svg.setAttribute('height', '26');
+    svg.innerHTML = '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.8"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></g>';
+    this.btnLocate = h('button', { type: 'button', class: 'sig4cem-gps', title: 'Ma position', 'aria-label': 'Ma position (GPS)' }, svg);
+    const body = h('div', { class: 'sig4cem-map__body' }, this.canvas, searchBox, this.btnLocate);
     this.el = h('section', { class: 'sig4cem-screen sig4cem-screen--map sig4cem-hidden' },
       h('div', { class: 'sig4cem-map__top' }, this.hint, this.coords),
       body,
-      h('div', { class: 'sig4cem-map__actions' }, this.btnCancel, this.btnLocate, this.btnOk));
+      h('div', { class: 'sig4cem-map__actions' }, this.btnCancel, this.btnOk));
     document.getElementById('sig4cem-root').append(this.el);
     this.btnLocate.addEventListener('click', () => this._locate());
   },

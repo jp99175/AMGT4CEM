@@ -134,6 +134,12 @@ html[data-app="signal"] body {
 .sig4cem-map__actions { display: flex; gap: 8px; padding: 8px 12px; background: #fff; border-top: 1px solid #cbd2d9; }
 .sig4cem-map__actions .sig4cem-btn--primary { flex: 1; }
 
+/* Bouton GPS (cible) : bas droite de la carte, au-dessus du crédit */
+.sig4cem-gps { position: absolute; right: 10px; bottom: 28px; z-index: 1000; width: 46px; height: 46px; padding: 0; display: flex;
+  align-items: center; justify-content: center; background: #fff; color: #111; border: 1px solid #cbd2d9; border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); cursor: pointer; }
+.sig4cem-gps:active { background: #e4e7eb; }
+
 /* Formulaire */
 .sig4cem-screen--form h2 { margin: 8px 0 12px; font-size: 20px; }
 .sig4cem-row { display: flex; flex-direction: column; gap: 4px; margin: 0 0 12px; }
@@ -150,11 +156,17 @@ html[data-app="signal"] body {
 .sig4cem-row--pos { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
 .sig4cem-form__pos { font-size: 13px; color: #52606d; font-variant-numeric: tabular-nums; }
 .sig4cem-amiante { margin: 0 0 12px; padding: 8px 12px; background: #fde8e8; border: 1px solid #e07a7a; border-radius: 6px; }
-.sig4cem-photo-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
-.sig4cem-photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-.sig4cem-photo { position: relative; }
-.sig4cem-photo img { display: block; width: 88px; height: 88px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd2d9; }
-.sig4cem-photo button { position: absolute; top: 2px; right: 2px; width: 26px; height: 26px; border: none; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: #fff; cursor: pointer; }
+.sig4cem-photo-buttons { display: flex; gap: 14px; align-items: center; }
+.sig4cem-link { padding: 8px 0; background: none; border: none; color: #1565c0; font-size: 16px; text-decoration: underline; cursor: pointer; }
+.sig4cem-btn--icon { padding: 8px 12px; font-size: 22px; line-height: 1; }
+.sig4cem-photos { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+.sig4cem-photo-card { display: flex; gap: 10px; align-items: flex-start; }
+.sig4cem-photo-card__side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.sig4cem-photo__comment { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; padding: 6px 8px; border: 1px solid #cbd2d9; border-radius: 6px; }
+.sig4cem-photo { position: relative; flex: 0 0 auto; width: 110px; height: 110px; }
+.sig4cem-photo__overlay { position: absolute; inset: 0; border: none !important; background: none; pointer-events: none; }
+.sig4cem-photo img { display: block; width: 110px; height: 110px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd2d9; }
+.sig4cem-photo__rm { position: absolute; top: 2px; right: 2px; width: 26px; height: 26px; border: none; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: #fff; cursor: pointer; }
 .sig4cem-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
 .sig4cem-actions .sig4cem-btn--primary { flex: 1; min-width: 160px; }
 
@@ -172,3 +184,13 @@ html[data-app="signal"] body {
 .sig4cem-entry-marker--amiante .sig4cem-entry-marker__dot { background: #c62828; transform: rotate(45deg); }
 .sig4cem-entry-marker--erreur .sig4cem-entry-marker__dot { border-color: #c62828; }
 .sig4cem-popup p { margin: 4px 0 0; font-size: 13px; }
+
+/* Éditeur d'annotations de photo */
+.sig4cem-screen--editor { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; background: #fff; }
+.sig4cem-pe__bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #cbd2d9; }
+.sig4cem-pe__body { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; background: #222; padding: 4px; }
+.sig4cem-pe__stage { position: relative; max-width: 100%; max-height: 100%; line-height: 0; }
+.sig4cem-pe__img { display: block; max-width: 100%; max-height: calc(100vh - 190px); user-select: none; -webkit-user-drag: none; }
+.sig4cem-pe__canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.sig4cem-pe__color { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #9aa5b1; cursor: pointer; }
+.sig4cem-pe__color--on { box-shadow: 0 0 0 3px #2c3e50; }
