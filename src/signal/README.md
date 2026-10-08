@@ -25,11 +25,18 @@ Elle embarque son propre écran de carte, juste pour choisir le point. Chargée 
 Compteurs réels : Nouvelle entrée et Draft = brouillons en local ; Téléversement en cours = (encore en local / déjà sur le
 serveur) pour l'envoi en cours ; Mes dernières entrées = entrées envoyées. Un bandeau rouge signale les entrées en erreur.
 
+## Carte de choix du point
+
+Elle affiche ce que la sélection locale de la carte affiche (lue dans le localStorage du même navigateur) : réseau
+(stations, tunnels, planches, via `src/network.js`), UrbIS Topo et Plans patrimoine avec leurs opacités, numéros
+d'interstation. Pas de points métier. Seuls points affichés : les entrées locales non encore téléversées.
+`src/signal/shims.js` fournit le stub `AMGT4CEM_AddPointTool` attendu par `metroLayer.js`.
+
 ## À faire
 
 Listes « Draft », « Téléversement en cours » (interrompre, reprendre, repasser en brouillon), « Mes dernières entrées »
 (filtre 7 jours / 1 mois / période) ; édition d'une entrée et révisions ; recadrage et commentaire des photos ; identité des
-utilisateurs ; couche du réseau (stations, tunnels) sur la carte de choix du point ; fond de carte hors connexion.
+utilisateurs ; fond de carte hors connexion.
 
 ## Fichiers
 

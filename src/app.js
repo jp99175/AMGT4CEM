@@ -62,7 +62,7 @@
   const pointsGroup = AMGT4CEM_PointsLayer.init(map);
   AMGT4CEM_UrbisTopoLayer.init(map);
   AMGT4CEM_UrbisTopoPicker.init();
-  AMGT4CEM_Interstation.init(); // charge les numéros d'interstation (associés aux tunnels dans buildMetro)
+  AMGT4CEM_Interstation.init(); // charge les numéros d'interstation (associés aux tunnels dans AMGT4CEM_Network.build)
   AMGT4CEM_PatrimoineLayer.init(map);
   AMGT4CEM_PatrimoinePicker.init();
 
@@ -92,49 +92,8 @@
     },
   });
 
-  // Définitions d'ancrage des références de planche (fichier partagé, voir
-  // peLabelAnchors.js) : lues en parallèle des géométries, attendues avant la
-  // construction des étiquettes. Ne rejette jamais (absentes = aucune étiquette).
-  const anchorsReady = AMGT4CEM_PeLabelAnchors.load();
-
-  /** Repères legacy (triangles + codes de tronçon, sans identifiant) : facultatifs, jamais bloquants. */
-  async function loadLegacyMarkers() {
-    try {
-      const response = await fetch(AMGT4CEM_CONFIG.reperesTronconsLegacyUrl);
-      if (response.ok) return (await response.json()).features || [];
-    } catch (err) {
-      console.warn('[AMGT4CEM] Repères de tronçon (legacy) illisibles, ignorés :', err);
-    }
-    return [];
-  }
-
-  function buildMetro(features) {
-    const { layersByType, bounds, searchIndex } = AMGT4CEM_MetroLayer.build({
-      type: 'FeatureCollection',
-      features,
-    });
-    // PE (planches), PE_label (référence de planche tracée dans l'emprise)
-    // et PE_info (repères de transition entre tronçons) ne sont pas
-    // ajoutées directement ici : leur visibilité est pilotée ensemble
-    // depuis le sélecteur "Plans patrimoine" (voir plans-patrimoine.js,
-    // entrée `external: true`, et patrimoineLayer.js#registerExternalLayer),
-    // sous une seule case à cocher — d'où leur fusion dans un groupe
-    // commun. Les polygones PE restent néanmoins ajoutés à ce groupe AVANT
-    // MS/MT construits juste en dessous : ce sont de larges zones qui
-    // recouvrent des stations/tunnels, elles ne doivent jamais passer
-    // devant et intercepter leur clic (voir metroLayer.js et
-    // patrimoineLayer.js#registerExternalLayer, bringToBack()).
-    const peAndInfoGroup = L.layerGroup();
-    layersByType.PE.eachLayer((l) => peAndInfoGroup.addLayer(l));
-    layersByType.PE_label.eachLayer((l) => peAndInfoGroup.addLayer(l));
-    layersByType.PE_info.eachLayer((l) => peAndInfoGroup.addLayer(l));
-    layersByType.PE_info_text.eachLayer((l) => peAndInfoGroup.addLayer(l));
-    AMGT4CEM_MetroLayer.setPeLabelDisplayGroup(peAndInfoGroup); // les références créées à l'exécution s'ajoutent aussi à ce groupe
-    AMGT4CEM_PatrimoineLayer.registerExternalLayer('plans-ensemble-500e', peAndInfoGroup);
-    AMGT4CEM_Interstation.setMetroFeatures(features); // rattache les numéros d'interstation à leur tronçon (genre « tunnel »)
-
-    layersByType.MS.addTo(map);
-    layersByType.MT.addTo(map);
+  /** Réseau construit : le menu (opacité), la recherche et la vue en dépendent. */
+  function onNetworkBuilt({ layersByType, bounds, searchIndex }) {
     AMGT4CEM_MapMenu.setMetroLayers(layersByType);
     AMGT4CEM_SearchTool.setMetroIndex(searchIndex);
 
@@ -156,8 +115,8 @@
       'Servez le dossier par un petit serveur HTTP : « python3 -m http.server 8000 » dans le dossier, ' +
       'puis ouvrez http://localhost:8000/.');
   } else {
-    Promise.all([AMGT4CEM_Referentiel.load(), loadLegacyMarkers(), anchorsReady]).then(
-      ([features, legacy]) => buildMetro(features.concat(legacy)),
+    AMGT4CEM_Network.load(map).then(
+      onNetworkBuilt,
       (err) => {
         console.error('[AMGT4CEM] Chargement des données impossible :', err);
         showLoadError(`Chargement des données impossible : ${err.message}`);

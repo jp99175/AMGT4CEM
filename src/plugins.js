@@ -38,7 +38,7 @@ const AMGT4CEM_Plugins = {
       addPointMenu: AMGT4CEM_AddPointMenu,
       toolbar: document.getElementById('amgt-toolbar'),
       menu: document.getElementById('amgt-map-menu'),
-      captureClicks: (handler) => this._capturers.push(handler),
+      captureClicks: (handler) => this.captureClicks(handler),
       deactivateCoreTools: () => deps.deactivateCoreTools(),
       onCoreToolActivated: (fn) => this._coreToolListeners.push(fn),
     };
@@ -68,6 +68,15 @@ const AMGT4CEM_Plugins = {
         document.body.appendChild(script);
       });
     }
+  },
+
+  /**
+   * Déclare un outil de placement (handler.isActive(), handler.handleMapClick(e)) : relaie à cet outil les clics
+   * que les polygones du réseau interceptent. Utilisable sans init() : la carte de choix du point de SIG4CEM
+   * (src/signal/mapPicker.js) s'en sert sans charger les plugins.
+   */
+  captureClicks(handler) {
+    this._capturers.push(handler);
   },
 
   /** Appelé par le script principal d'un plugin. */

@@ -170,6 +170,7 @@ const AMGT4CEM_CONFIG = {
         './src/peLabelAnchors.js',
         './src/interstation.js',
         './src/metroLayer.js',
+        './src/network.js',
         './src/pointsStore.js',
         './src/pointsLayer.js',
         './src/selectionStore.js',
@@ -199,18 +200,37 @@ const AMGT4CEM_CONFIG = {
       title: 'SIG4CEM – Signalements et demandes',
       template: 'amgt-tpl-signal',
       styles: ['./src/signal/signal.css'],
-      // Socle commun avec la carte (Leaflet, projections, services et fond de plan UrbIS, pour le choix du
-      // point) ; modules de dépôt repris de src/signalements/ (vocabulaire, photos, archive, envoi) ;
-      // puis l'interface de saisie. L'ordre compte : chaque script dépend des précédents.
+      // Socle commun avec la carte AMGT4CEM, pour que la carte de choix du point affiche ce que ta sélection
+      // locale affiche dans la carte (réseau, UrbIS Topo, Plans patrimoine ; jamais les points métier) :
+      // mêmes modules, même ordre. Sans les menus, la recherche, les outils (mesure, ajout de point) ni les
+      // sélecteurs. Puis les modules de dépôt repris de src/signalements/ (vocabulaire, photos, archive,
+      // envoi) et l'interface de saisie. L'ordre compte : chaque script dépend des précédents.
       scripts: [
         './vendor/leaflet/leaflet.js',
         './vendor/proj4/proj4.js',
         './vendor/proj4leaflet/proj4leaflet.js',
         './src/buildInfo.js',
-        './src/crs.js',
+        './data/urbis-topo/catalogue.js',
+        './data/plans-patrimoine/catalogue.js',
         './src/services.js',
+        './src/layerOpacityStore.js',
+        './src/crs.js',
+        './src/shpLoader.js',
+        './src/referentiel.js',
+        './src/scaledText.js',
+        './src/peLabelAnchors.js',
+        './src/interstation.js',
+        './src/metroLayer.js',
+        './src/network.js',
+        './src/selectionStore.js',
+        './src/urbisTopoSelectionStore.js',
+        './src/urbisTopoLayer.js',
+        './src/patrimoineSelectionStore.js',
+        './src/patrimoineLayer.js',
         './src/screenshotTool.js', // basemap.js l'appelle (invalidateBackground) ; jamais initialisé ici
         './src/basemap.js',
+        './src/plugins.js', // seulement captureClicks : les polygones du réseau lui renvoient les clics
+        './src/signal/shims.js',
         './src/signalements/pieces-store.js',
         './src/signalements/zip-writer.js',
         './src/signalements/depot.js',

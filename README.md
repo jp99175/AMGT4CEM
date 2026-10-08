@@ -892,6 +892,7 @@ src/layerOpacityStore.js     opacité individuelle des couches (icône curseurs,
 src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
 src/shpLoader.js             lecture Shapefile (polygones type 5, polylignes type 3, champ `id` seul), côté navigateur, sans bibliothèque tierce
 src/referentiel.js           chargement des géométries + référentiel JSON, jointure par `id`, contrôles non bloquants
+src/network.js               construction partagée du réseau (stations/tunnels/planches) pour carto et signal
 src/scaledText.js            texte HTML à taille réelle constante (zoom), pour les codes de tronçon et les références de planche
 src/metroLayer.js            construction des couches Leaflet Stations/Tunnels/Planches (+ repères legacy)
 data/shapefile/              famille 1 : polygones.* et lignes.* (shapefiles Lambert 72, champ `id` seul) + identifiants.json — voir section 4

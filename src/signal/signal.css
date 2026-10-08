@@ -156,3 +156,18 @@ html[data-app="signal"] body {
 .sig4cem-photo button { position: absolute; top: 2px; right: 2px; width: 26px; height: 26px; border: none; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: #fff; cursor: pointer; }
 .sig4cem-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
 .sig4cem-actions .sig4cem-btn--primary { flex: 1; min-width: 160px; }
+
+/* Entrées locales pas encore téléversées, sur la carte de choix du point : carré bleu ; amiante : losange rouge ;
+   en erreur d'envoi : contour rouge. */
+.sig4cem-entry-marker__dot {
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  background: #1565c0;
+  border: 2px solid #fff;
+  border-radius: 3px;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+}
+.sig4cem-entry-marker--amiante .sig4cem-entry-marker__dot { background: #c62828; transform: rotate(45deg); }
+.sig4cem-entry-marker--erreur .sig4cem-entry-marker__dot { border-color: #c62828; }
+.sig4cem-popup p { margin: 4px 0 0; font-size: 13px; }
