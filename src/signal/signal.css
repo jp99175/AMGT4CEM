@@ -156,9 +156,9 @@ html[data-app="signal"] body {
 .sig4cem-row--pos { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
 .sig4cem-form__pos { font-size: 13px; color: #52606d; font-variant-numeric: tabular-nums; }
 .sig4cem-amiante { margin: 0 0 12px; padding: 8px 12px; background: #fde8e8; border: 1px solid #e07a7a; border-radius: 6px; }
-.sig4cem-photo-buttons { display: flex; gap: 14px; align-items: center; }
+.sig4cem-photo-buttons { display: flex; gap: 8px; align-items: center; }
 .sig4cem-link { padding: 8px 0; background: none; border: none; color: #1565c0; font-size: 16px; text-decoration: underline; cursor: pointer; }
-.sig4cem-btn--icon { padding: 8px 12px; font-size: 22px; line-height: 1; }
+.sig4cem-btn--icon { padding: 4px; font-size: 18px; line-height: 1; background: transparent; border: none; cursor: pointer; }
 .sig4cem-photos { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
 .sig4cem-photo-card { display: flex; gap: 10px; align-items: flex-start; }
 .sig4cem-photo-card__side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }

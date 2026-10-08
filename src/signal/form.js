@@ -60,7 +60,7 @@ SIG.Form = {
       this._row('Référence chez le demandeur', f.refDemandeur, 'sig4cem-f-refdem'),
       this._row('Description', f.description, 'sig4cem-f-description'),
       h('div', { class: 'sig4cem-row' }, h('label', { text: 'Photos' }),
-        h('div', { class: 'sig4cem-photo-buttons' }, f.btnFiles, f.btnCamera), f.camera, f.files, f.photoList));
+        h('div', { class: 'sig4cem-photo-buttons' }, f.btnCamera, f.btnFiles), f.camera, f.files, f.photoList));
     f.btnCancel = h('button', { type: 'button', class: 'sig4cem-btn', text: 'Annuler' });
     f.btnLocal = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--primary', text: 'Enregistrer en local' });
     f.btnSend = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--primary', text: 'Enregistrer et envoyer' });
