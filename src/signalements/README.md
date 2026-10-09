@@ -17,8 +17,7 @@ déplaçable est posé et le formulaire s'ouvre.
 
 | Champ | Règle |
 |---|---|
-| Nature | signalement ou demande |
-| Type | selon la nature (voir `data/signalements/vocabulaire.json`) |
+| Type | voir l'arborescence ci-dessous (`data/signalements/vocabulaire.json`) |
 | Domaine technique | selon le type : obligatoire, facultatif ou absent (voir l'arborescence ci-dessous) |
 | Date d'observation | aujourd'hui par défaut |
 | Localisation précisée | texte libre (station, niveau, local, PK…) en plus de la position |
@@ -27,19 +26,20 @@ déplaçable est posé et le formulaire s'ouvre.
 | Description | texte libre |
 | Photos | une ou plusieurs ; réduites à 1600 px (JPEG), empreinte SHA-256 de l'original conservée |
 
-Arborescence (vocabulaire version 3, `data/signalements/vocabulaire.json`) : le domaine technique ne se renseigne pas
-toujours, chaque type liste les domaines qu'il accepte.
+Arborescence (vocabulaire version 4, `data/signalements/vocabulaire.json`) : **deux niveaux seulement**, type puis
+domaine technique. La nature (signalement ou demande) n'est plus choisie : elle découle du type et reste dans les données.
 
-| Nature | Type | Domaines proposés |
+| Type | Nature (dérivée) | Domaine technique |
 |---|---|---|
-| Signalement | Avarie | gros œuvre, parachèvement, drainage-égouttage-évacuation (un choix obligatoire) |
-| Signalement | Infiltration / écoulement | aucun |
-| Signalement | Application amiante | aucun |
-| Demande | Modification | les trois ci-dessus, plus documentaire (plan / fond de plan) |
-| Demande | Renouvellement | gros œuvre, parachèvement, drainage-égouttage-évacuation |
+| Avarie | signalement | gros œuvre, parachèvement, drainage-égouttage-évacuation (obligatoire) |
+| Infiltration / écoulement | signalement | sans objet |
+| Application amiante | signalement | sans objet |
+| Demande de modification / renouvellement | demande | gros œuvre, parachèvement, drainage-égouttage-évacuation (obligatoire) |
 
-« Mise à jour des plans » (remplacée par Modification > documentaire) et les anciennes demandes amiante (contrôle, inventaire
-destructif, traitement) sont abandonnées : leurs codes restent dans le vocabulaire, marqués `obsolete`, pour que les entrées déjà saisies restent lisibles et modifiables.
+Sont abandonnés, et marqués `obsolete` (codes conservés, entrées déjà saisies lisibles et modifiables) : « Mise à jour des
+plans », « Modification » et « Renouvellement » (fusionnés dans la demande ci-dessus), les anciennes demandes amiante
+(contrôle, inventaire destructif, traitement). La « demande de modification documentaire » est retirée : le signalement
+d'une incohérence dans les plans sera prévu ailleurs.
 
 ## Un seul formulaire
 

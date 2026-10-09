@@ -2,7 +2,7 @@
  * Formulaire de saisie d'une entrée (signalement ou demande), dans SIG4CEM.
  *
  * Mêmes champs et même vocabulaire que le plugin `signalements` (data/signalements/vocabulaire.json via
- * src/signalements/depot.js) : nature > type > domaine technique, date d'observation, localisation précisée,
+ * src/signalements/depot.js) : type > domaine technique, date d'observation, localisation précisée,
  * demandeur et sa référence, description, photos. La position vient du choix sur la carte (mapPicker.js).
  * Les photos sont réduites et rangées dans IndexedDB dès leur ajout (src/signalements/pieces-store.js),
  * sous l'identifiant de l'entrée : annuler les supprime.
@@ -36,8 +36,6 @@ SIG.Form = {
     const D = NS.Depot;
     f.pos = h('span', { class: 'sig4cem-form__pos' });
     f.changePos = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: 'Modifier la position' });
-    f.nature = h('select', { id: 'sig4cem-f-nature' }, new Option('— choisir —', ''));
-    for (const n of D.natures()) f.nature.add(new Option(n.fr, n.code));
     f.type = h('select', { id: 'sig4cem-f-type' });
     f.domaineLabel = h('label', { for: 'sig4cem-f-domaine', text: 'Domaine technique' });
     f.domaine = h('select', { id: 'sig4cem-f-domaine' });
@@ -69,12 +67,10 @@ SIG.Form = {
     this.el = h('section', { class: 'sig4cem-screen sig4cem-screen--form sig4cem-hidden' },
       f.title,
       h('div', { class: 'sig4cem-row sig4cem-row--pos' }, f.pos, f.changePos),
-      this._row('Nature', f.nature, 'sig4cem-f-nature'),
       f.fields,
       h('div', { class: 'sig4cem-actions' }, f.btnLocal, f.btnSend, f.btnCancel));
     document.getElementById('sig4cem-root').append(this.el);
 
-    f.nature.addEventListener('change', () => this._onNature());
     f.type.addEventListener('change', () => this._onType());
     f.btnCamera.addEventListener('click', () => f.camera.click());
     f.btnFiles.addEventListener('click', () => f.files.click());
@@ -87,15 +83,12 @@ SIG.Form = {
     }
   },
 
-  _onNature() {
+  /** Liste des types (un seul niveau avant le domaine ; la nature découle du type). */
+  _fillTypes() {
     const f = this.f;
-    const nature = f.nature.value;
-    f.fields.classList.toggle('sig4cem-hidden', !nature);
     f.type.textContent = '';
-    if (nature) {
-      f.type.add(new Option('— choisir —', ''));
-      for (const t of NS.Depot.typesFor(nature)) f.type.add(new Option(t.fr, t.code));
-    }
+    f.type.add(new Option('— choisir —', ''));
+    for (const t of NS.Depot.typesFor()) f.type.add(new Option(t.fr, t.code));
     this._onType();
   },
 
@@ -162,14 +155,13 @@ SIG.Form = {
     const f = this.f;
     const D = NS.Depot;
     const type = D.type(f.type.value);
-    if (!f.nature.value) { alert('Merci de choisir la nature.'); return null; }
     if (!type) { alert('Merci de choisir le type.'); return null; }
     if (type.domaineObligatoire && NS.Depot.domainesFor(type.code).length && !f.domaine.value) { alert('Merci de choisir le domaine technique.'); return null; }
     if (!f.date.value) { alert("Merci de renseigner la date d'observation."); return null; }
     return {
       id: this.entryId,
       flux: 'STANDARD', // plus de flux séparé : champ conservé pour le schéma d'échange et le serveur de dépôt
-      nature: f.nature.value,
+      nature: type.nature,
       type: type.code,
       domaine: f.domaine.value || null,
       label: D.buildLabel(type.code, f.domaine.value),
@@ -198,8 +190,8 @@ SIG.Form = {
       this.entryId = entry ? entry.id : entryId;
       this.photos = entry ? (entry.pieces || []).map((m) => ({ ...m })) : [];
       f.title.textContent = entry ? "Modifier l'entrée" : 'Nouvelle entrée';
-      f.nature.value = entry ? entry.nature : '';
-      this._onNature();
+      f.fields.classList.remove('sig4cem-hidden');
+      this._fillTypes();
       if (entry) {
         // Un type abandonné (vocabulaire) n'est plus proposé, mais une entrée qui le porte doit rester modifiable.
         if (!Array.from(f.type.options).some((o) => o.value === entry.type) && NS.Depot.type(entry.type)) {

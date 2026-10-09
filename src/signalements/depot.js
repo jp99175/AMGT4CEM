@@ -36,7 +36,8 @@ NS.Depot = {
 
   natures() { return this.vocab.natures; },
   /** Types proposés à la saisie (les types abandonnés restent lisibles via type(code) mais ne sont plus proposés). */
-  typesFor(nature) { return this.vocab.types.filter((t) => t.nature === nature && !t.obsolete); },
+  /** Types proposés à la saisie (sans la nature : un seul niveau de choix avant le domaine). */
+  typesFor(nature) { return this.vocab.types.filter((t) => (!nature || t.nature === nature) && !t.obsolete); },
   /** Domaines techniques que le type accepte (liste vide : aucun domaine à renseigner). Sans liste, tous. */
   domainesFor(typeCode) {
     const t = this.type(typeCode);
