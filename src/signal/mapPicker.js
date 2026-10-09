@@ -85,6 +85,8 @@ SIG.MapPicker = {
 
       AMGT4CEM_SearchTool.init(map);
       this.entriesGroup = L.layerGroup().addTo(map);
+      this._amiante = [];
+      map.on('zoomend', () => this._updateAmianteIcons());
       map.on('click', (e) => this._place(e.latlng));
       // Les polygones du réseau interceptent les clics : ils les relaient ici tant que l'écran est ouvert.
       AMGT4CEM_Plugins.captureClicks({ isActive: () => this.isOpen, handleMapClick: (e) => this._place(e.latlng) });
@@ -109,6 +111,7 @@ SIG.MapPicker = {
   /** Entrées locales pas encore téléversées : brouillon, envoi demandé, envoi en erreur. */
   async _showLocalEntries() {
     this.entriesGroup.clearLayers();
+    this._amiante = [];
     const crs = AMGT4CEM_CRS;
     for (const e of await SIG.Entries.all()) {
       if (e.statut === SIG.STATUT.ENVOYE || e.x == null) continue;
@@ -117,15 +120,39 @@ SIG.MapPicker = {
         h('strong', { text: e.label || 'Entrée' }),
         h('p', { text: STATUT_TEXTE[e.statut] || e.statut }),
         h('p', { text: `Observée le ${e.dateObservation || '?'}` }));
-      L.marker(crs.lambertToLatLng([e.x, e.y]), {
-        icon: L.divIcon({
-          className: `sig4cem-entry-marker${amiante ? ' sig4cem-entry-marker--amiante' : ''}${e.statut === SIG.STATUT.ERREUR ? ' sig4cem-entry-marker--erreur' : ''}`,
-          html: '<div class="sig4cem-entry-marker__dot"></div>',
-          iconSize: [16, 16],
-          iconAnchor: [8, 8],
-        }),
-      }).bindPopup(box).addTo(this.entriesGroup);
+      const erreur = e.statut === SIG.STATUT.ERREUR ? ' sig4cem-entry-marker--erreur' : '';
+      const small = L.divIcon({
+        className: `sig4cem-entry-marker${amiante ? ' sig4cem-entry-marker--amiante' : ''}${erreur}`,
+        html: '<div class="sig4cem-entry-marker__dot"></div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      });
+      const marker = L.marker(crs.lambertToLatLng([e.x, e.y]), { icon: small }).bindPopup(box).addTo(this.entriesGroup);
+      // Amiante : pictogramme (« a » blanc sur noir, rouge en bas) à partir d'un zoom réglable, losange rouge en dessous.
+      if (amiante) {
+        const picto = L.divIcon({
+          className: `sig4cem-entry-marker sig4cem-entry-marker--picto${erreur}`,
+          html: '<img src="./src/signal/img/amiante.svg" alt="Amiante" width="17" height="36" draggable="false">',
+          iconSize: [17, 36],
+          iconAnchor: [8, 18],
+        });
+        this._amiante.push({ marker, small, picto });
+      }
     }
+    this._updateAmianteIcons();
+  },
+
+  /** Zoom à partir duquel le pictogramme amiante remplace le losange (config.js : options.amiantePictoZoomMin). */
+  _pictoZoomMin() {
+    const plugin = (AMGT4CEM_CONFIG.plugins || []).find((p) => p.id === 'signalements') || {};
+    const z = Number((plugin.options || {}).amiantePictoZoomMin);
+    return Number.isFinite(z) ? z : 17;
+  },
+
+  _updateAmianteIcons() {
+    if (!this.map) return;
+    const showPicto = this.map.getZoom() >= this._pictoZoomMin();
+    for (const a of this._amiante) a.marker.setIcon(showPicto ? a.picto : a.small);
   },
 
   _place(latlng) {

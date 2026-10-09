@@ -136,6 +136,8 @@ const AMGT4CEM_CONFIG = {
         // Adresse du serveur de dépôt (depot-signalements/, Cloudflare Worker) qui attribue la référence
         // AAAA-NNNN. '' = pas de serveur : les signalements restent sur l'appareil (export ZIP à la main).
         serverUrl: 'https://amgt4cem-depot-signalements.jp99175.workers.dev',
+        // SIG4CEM : zoom à partir duquel le pictogramme amiante remplace le losange rouge sur la carte (à ajuster).
+        amiantePictoZoomMin: 17,
       },
     },
   ],

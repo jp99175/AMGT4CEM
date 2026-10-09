@@ -176,6 +176,7 @@ html[data-app="signal"] body {
   box-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
 }
 .sig4cem-entry-marker--amiante .sig4cem-entry-marker__dot { background: #c62828; transform: rotate(45deg); }
+.sig4cem-entry-marker--picto img { display: block; filter: drop-shadow(0 0 1px #fff); }
 .sig4cem-entry-marker--erreur .sig4cem-entry-marker__dot { border-color: #c62828; }
 .sig4cem-popup p { margin: 4px 0 0; font-size: 13px; }
 
