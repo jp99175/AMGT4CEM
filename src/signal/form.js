@@ -55,6 +55,7 @@ SIG.Form = {
       this._row('Type', f.type, 'sig4cem-f-type'),
       f.domaineRow,
       this._row("Date d'observation", f.date, 'sig4cem-f-date'),
+      this._row('Localisation', h('div', { class: 'sig4cem-posfield' }, f.pos, f.clearPos), 'sig4cem-f-pos'),
       this._row('Précision du lieu (station, niveau, local, PK…)', f.lieu, 'sig4cem-f-lieu'),
       this._row('Demandeur', f.demandeur, 'sig4cem-f-demandeur'),
       this._row('Référence chez le demandeur', f.refDemandeur, 'sig4cem-f-refdem'),
@@ -67,7 +68,6 @@ SIG.Form = {
     f.title = h('h2', { text: 'Nouvelle entrée' });
     this.el = h('section', { class: 'sig4cem-screen sig4cem-screen--form sig4cem-hidden' },
       f.title,
-      this._row('Localisation sur la carte (facultatif, fortement conseillé)', h('div', { class: 'sig4cem-posfield' }, f.pos, f.clearPos), 'sig4cem-f-pos'),
       f.fields,
       h('div', { class: 'sig4cem-actions' }, f.btnLocal, f.btnSend, f.btnCancel));
     document.getElementById('sig4cem-root').append(this.el);
@@ -150,7 +150,7 @@ SIG.Form = {
   _showPosition() {
     const p = this.position;
     this.f.pos.value = p ? `X ${AMGT4CEM_CRS.formatCoord(p.x)} · Y ${AMGT4CEM_CRS.formatCoord(p.y)}` : '';
-    this.f.pos.placeholder = '📍 Toucher ici pour pointer sur la carte';
+    this.f.pos.placeholder = '📍 Pointer sur la carte (facultatif, fortement conseillé)';
     this.f.clearPos.classList.toggle('sig4cem-hidden', !p);
   },
 
