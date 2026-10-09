@@ -39,7 +39,6 @@ SIG.Form = {
     f.nature = h('select', { id: 'sig4cem-f-nature' }, new Option('— choisir —', ''));
     for (const n of D.natures()) f.nature.add(new Option(n.fr, n.code));
     f.type = h('select', { id: 'sig4cem-f-type' });
-    f.amiante = h('p', { class: 'sig4cem-amiante sig4cem-hidden', text: '⚠ Flux amiante : enregistré et envoyé séparément des autres entrées.' });
     f.domaineLabel = h('label', { for: 'sig4cem-f-domaine', text: 'Domaine technique' });
     f.domaine = h('select', { id: 'sig4cem-f-domaine' });
     f.domaineRow = h('div', { class: 'sig4cem-row' }, f.domaineLabel, f.domaine);
@@ -55,7 +54,6 @@ SIG.Form = {
     f.photoList = h('div', { class: 'sig4cem-photos' });
     f.fields = h('div', { class: 'sig4cem-hidden' },
       this._row('Type', f.type, 'sig4cem-f-type'),
-      f.amiante,
       f.domaineRow,
       this._row("Date d'observation", f.date, 'sig4cem-f-date'),
       this._row('Localisation précisée', f.lieu, 'sig4cem-f-lieu'),
@@ -96,7 +94,7 @@ SIG.Form = {
     f.type.textContent = '';
     if (nature) {
       f.type.add(new Option('— choisir —', ''));
-      for (const t of NS.Depot.typesFor(nature)) f.type.add(new Option(t.flux === 'AMIANTE' && !/amiante/i.test(t.fr) ? `${t.fr} (amiante)` : t.fr, t.code));
+      for (const t of NS.Depot.typesFor(nature)) f.type.add(new Option(t.fr, t.code));
     }
     this._onType();
   },
@@ -106,11 +104,11 @@ SIG.Form = {
     const type = NS.Depot.type(f.type.value);
     f.domaine.textContent = '';
     const domaines = type ? NS.Depot.domainesFor(type.code) : [];
-    f.domaineRow.classList.toggle('sig4cem-hidden', !domaines.length); // pas de domaine à renseigner pour ce type
-    f.domaine.add(new Option(type && !type.domaineObligatoire ? 'Non précisé' : '— choisir —', ''));
+    // Même formulaire pour tous les types : le champ reste affiché, désactivé et vide quand le type n'a pas de domaine.
+    f.domaine.disabled = !!type && !domaines.length;
+    f.domaine.add(new Option(f.domaine.disabled ? 'Sans objet pour ce type' : type && !type.domaineObligatoire ? 'Non précisé' : '— choisir —', ''));
     for (const d of domaines) f.domaine.add(new Option(d.fr, d.code));
-    f.domaineLabel.textContent = type && !type.domaineObligatoire ? 'Domaine technique (facultatif)' : 'Domaine technique';
-    f.amiante.classList.toggle('sig4cem-hidden', !(type && type.flux === 'AMIANTE'));
+    f.domaineLabel.textContent = type && !type.domaineObligatoire && domaines.length ? 'Domaine technique (facultatif)' : 'Domaine technique';
   },
 
   async _addPhoto(file) {
@@ -170,7 +168,7 @@ SIG.Form = {
     if (!f.date.value) { alert("Merci de renseigner la date d'observation."); return null; }
     return {
       id: this.entryId,
-      flux: type.flux,
+      flux: 'STANDARD', // plus de flux séparé : champ conservé pour le schéma d'échange et le serveur de dépôt
       nature: f.nature.value,
       type: type.code,
       domaine: f.domaine.value || null,

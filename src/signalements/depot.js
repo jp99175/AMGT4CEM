@@ -3,7 +3,7 @@
  *
  * - Vocabulaire : data/signalements/vocabulaire.json (public, aucune donnée de suivi).
  *   Une nature (SIGNALEMENT, DEMANDE) regroupe des types ; chaque type appartient à un
- *   FLUX (STANDARD ou AMIANTE) et se combine avec un domaine technique, obligatoire ou non.
+ *   domaine technique (liste propre à chaque type, obligatoire ou non).
  * - Noms de fichiers : convention « Corporate » STIB TYPE_Titre_date_LANGUE, adaptée
  *   (IMG pour les images). Le titre (40 caractères au plus, sans accents) est généré :
  *   <référence courte>-<type court>[-<domaine court>]-<n°>.
@@ -91,11 +91,11 @@ NS.Depot = {
       version: 1,
       id: s.id,
       reference: null, // attribuée par le système à l'import (AAAA-NNNN)
-      flux: s.flux,
+      flux: 'STANDARD', // plus de flux séparé : champ conservé pour le schéma d'échange (version 1)
       nature: s.nature,
       type: s.type,
       domaine: s.domaine || null,
-      contexte: s.flux === 'AMIANTE' ? 'AMIANTE' : null,
+      contexte: ['APPLICATION_AMIANTE', 'CONTROLE', 'INVENTAIRE_DESTRUCTIF', 'TRAITEMENT'].includes(s.type) ? 'AMIANTE' : null,
       // Provenance : le demandeur n'est pas le rédacteur (celui qui saisit). Sa référence est un
       // identifiant externe à l'import (système du demandeur, type REF_DEMANDEUR, valeur).
       provenance: { demandeur: s.demandeur || '', referenceDemandeur: s.referenceDemandeur || '' },

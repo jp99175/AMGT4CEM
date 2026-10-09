@@ -27,26 +27,25 @@ déplaçable est posé et le formulaire s'ouvre.
 | Description | texte libre |
 | Photos | une ou plusieurs ; réduites à 1600 px (JPEG), empreinte SHA-256 de l'original conservée |
 
-Arborescence (vocabulaire version 2, `data/signalements/vocabulaire.json`) : le domaine technique ne se renseigne pas
+Arborescence (vocabulaire version 3, `data/signalements/vocabulaire.json`) : le domaine technique ne se renseigne pas
 toujours, chaque type liste les domaines qu'il accepte.
 
 | Nature | Type | Domaines proposés |
 |---|---|---|
 | Signalement | Avarie | gros œuvre, parachèvement, drainage-égouttage-évacuation (un choix obligatoire) |
 | Signalement | Infiltration / écoulement | aucun |
-| Signalement | Application amiante (flux amiante) | aucun |
+| Signalement | Application amiante | aucun |
 | Demande | Modification | les trois ci-dessus, plus documentaire (plan / fond de plan) |
 | Demande | Renouvellement | gros œuvre, parachèvement, drainage-égouttage-évacuation |
-| Demande (flux amiante) | Contrôle, inventaire destructif, traitement | les trois, facultatifs (inchangé) |
 
-« Mise à jour des plans » est abandonnée (remplacée par Modification > documentaire) : le code reste dans le vocabulaire,
-marqué `obsolete`, pour que les entrées déjà saisies restent lisibles et modifiables.
+« Mise à jour des plans » (remplacée par Modification > documentaire) et les anciennes demandes amiante (contrôle, inventaire
+destructif, traitement) sont abandonnées : leurs codes restent dans le vocabulaire, marqués `obsolete`, pour que les entrées déjà saisies restent lisibles et modifiables.
 
-## Flux amiante, séparé
+## Un seul formulaire
 
-Criticité oblige, le flux `AMIANTE` ne partage rien avec les autres signalements : stockage distinct,
-couche et case propres, marqueur rouge en losange, bandeau d'avertissement, archive de dépôt à part. L'amiante
-est un **contexte**, pas un domaine technique : le domaine y est facultatif.
+Tous les signalements et demandes passent par le même formulaire et le même stockage. Le champ « Domaine technique »
+reste affiché ; il est grisé (« Sans objet pour ce type ») quand le type n'en accepte pas (infiltration, application
+amiante). L'application amiante est un simple type ; son marqueur sur la carte est un losange rouge.
 
 ## Référence
 

@@ -112,7 +112,7 @@ SIG.MapPicker = {
     const crs = AMGT4CEM_CRS;
     for (const e of await SIG.Entries.all()) {
       if (e.statut === SIG.STATUT.ENVOYE) continue;
-      const amiante = e.flux === 'AMIANTE';
+      const amiante = e.type === 'APPLICATION_AMIANTE';
       const box = h('div', { class: 'sig4cem-popup' },
         h('strong', { text: e.label || 'Entrée' }),
         h('p', { text: STATUT_TEXTE[e.statut] || e.statut }),

@@ -153,7 +153,7 @@ SIG.List = {
         : entry.statut === S.ENVOYE
           ? h('span', { class: 'sig4cem-row__status sig4cem-row__status--ok', text: `Référence ${entry.reference} · envoyée le ${fmtDate(entry.envoyeLe)}` })
           : null;
-    const title = `${entry.flux === 'AMIANTE' ? '⚠ ' : ''}${entry.label || 'Entrée'}`;
+    const title = entry.label || 'Entrée';
     const body = h('div', { class: 'sig4cem-row__body' },
       h('strong', { text: title }), h('span', { class: 'sig4cem-row__meta', text: meta }), status);
     const li = h('li', { class: 'sig4cem-listrow' });

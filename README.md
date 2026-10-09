@@ -901,7 +901,7 @@ data/plans-patrimoine/       référentiel des planches, étiquettes (écrites v
 data/urbis-topo/             réglages du service UrbIS Topo, sélection par défaut partagée
 data/fonds-de-plan/          services externes : services.json + un fichier par service
 data/points-metier/          (réservé : structure des points métier, phase B)
-data/signalements/           vocabulaire.json : natures, types, domaines techniques, flux (public)
+data/signalements/           vocabulaire.json : natures, types, domaines techniques (public)
 data/suivi/                  famille 3 (suivi) : HORS DÉPÔT (.gitignore), phase B
 depot-signalements/          serveur de dépôt des signalements (Cloudflare Worker + R2) : référence AAAA-NNNN ; distinct de relay/
 tools/                       migrer-donnees.py (unique), verifier-donnees.py (après chaque export AutoCAD), rapport-migration.md
@@ -1027,8 +1027,7 @@ désactivé (`enabled: false`), absent ou en erreur ne gêne pas le reste. Le pl
 démarrage.
 
 **Signalements** (`src/signalements/`, voir son README) : saisie des signalements et demandes avec
-domaine technique, photos, demandeur et référence chez le demandeur ; flux **amiante** séparé (stockage,
-couche, marqueurs et dépôt distincts) ; enregistrés d'abord sur l'appareil, puis **envoyés au serveur de dépôt**
+domaine technique, photos, demandeur et référence chez le demandeur , même formulaire pour tous les types (amiante compris) ; enregistrés d'abord sur l'appareil, puis **envoyés au serveur de dépôt**
 (`depot-signalements/`, Cloudflare Worker + R2) qui leur attribue la référence `AAAA-NNNN` ; export d'un dépôt ZIP
 à la main possible. Ils n'utilisent pas le
 stockage des points métier du cœur (`amgt4cem.signalements.v1`, `amgt4cem.signalements.amiante.v1`) et ne

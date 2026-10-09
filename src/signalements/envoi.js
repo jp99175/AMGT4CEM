@@ -73,7 +73,7 @@ NS.Envoi = {
       headers: {
         'X-Depot-Code': code,
         'X-Signalement-Id': s.id,
-        'X-Flux': s.flux,
+        'X-Flux': 'STANDARD', // plus de flux séparé : le serveur accepte encore AMIANTE mais on ne l'utilise plus
         'X-Fichier': NS.Depot.depotFileName(s),
         'Content-Type': 'application/zip',
       },
