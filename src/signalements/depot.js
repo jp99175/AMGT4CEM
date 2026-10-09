@@ -103,7 +103,7 @@ NS.Depot = {
       description: s.description || '',
       lieu: s.lieu || '',
       dateObservation: s.dateObservation,
-      localisation: { x: s.x, y: s.y, crs: 'EPSG:31370' },
+      localisation: s.x == null ? null : { x: s.x, y: s.y, crs: 'EPSG:31370' }, // facultative
       redacteur: null, // renseigné quand le référentiel des intervenants existera
       creeLe: s.creeLe,
       pieces: (s.pieces || []).map((meta, i) => ({

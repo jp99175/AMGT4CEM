@@ -148,7 +148,8 @@ html[data-app="signal"] body {
   background: #fff;
 }
 .sig4cem-row--pos { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
-.sig4cem-form__pos { font-size: 13px; color: #52606d; font-variant-numeric: tabular-nums; }
+.sig4cem-posfield { display: flex; gap: 6px; align-items: center; }
+.sig4cem-form__pos { flex: 1; cursor: pointer; font-variant-numeric: tabular-nums; }
 .sig4cem-photo-buttons { display: flex; gap: 8px; align-items: center; }
 .sig4cem-link { padding: 8px 0; background: none; border: none; color: #1565c0; font-size: 16px; text-decoration: underline; cursor: pointer; }
 .sig4cem-btn--icon { padding: 4px; font-size: 18px; line-height: 1; background: transparent; border: none; cursor: pointer; }

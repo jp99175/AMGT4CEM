@@ -34,14 +34,15 @@ SIG.Form = {
     if (this.el) return;
     const f = this.f;
     const D = NS.Depot;
-    f.pos = h('span', { class: 'sig4cem-form__pos' });
-    f.changePos = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: 'Modifier la position' });
+    // Champ de localisation : un clic ouvre la carte pour pointer le lieu (facultatif, fortement conseillé).
+    f.pos = h('input', { type: 'text', id: 'sig4cem-f-pos', readonly: '', class: 'sig4cem-form__pos', autocomplete: 'off' });
+    f.clearPos = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', title: 'Retirer la position', 'aria-label': 'Retirer la position', text: '✕' });
     f.type = h('select', { id: 'sig4cem-f-type' });
     f.domaineLabel = h('label', { for: 'sig4cem-f-domaine', text: 'Domaine technique' });
     f.domaine = h('select', { id: 'sig4cem-f-domaine' });
     f.domaineRow = h('div', { class: 'sig4cem-row' }, f.domaineLabel, f.domaine);
     f.date = h('input', { type: 'date', id: 'sig4cem-f-date' });
-    f.lieu = h('input', { type: 'text', id: 'sig4cem-f-lieu', maxlength: '200', placeholder: 'station, niveau, local, PK…' });
+    f.lieu = h('input', { type: 'text', id: 'sig4cem-f-lieu', maxlength: '200', placeholder: 'texte libre' });
     f.demandeur = h('input', { type: 'text', id: 'sig4cem-f-demandeur', maxlength: '200', placeholder: 'qui a demandé ou signalé (service, entreprise, agent…)' });
     f.refDemandeur = h('input', { type: 'text', id: 'sig4cem-f-refdem', maxlength: '100', placeholder: "son numéro de ticket ou de dossier, s'il en a un" });
     f.description = h('textarea', { id: 'sig4cem-f-description', rows: '4', maxlength: '2000' });
@@ -54,7 +55,7 @@ SIG.Form = {
       this._row('Type', f.type, 'sig4cem-f-type'),
       f.domaineRow,
       this._row("Date d'observation", f.date, 'sig4cem-f-date'),
-      this._row('Localisation précisée', f.lieu, 'sig4cem-f-lieu'),
+      this._row('Précision du lieu (station, niveau, local, PK…)', f.lieu, 'sig4cem-f-lieu'),
       this._row('Demandeur', f.demandeur, 'sig4cem-f-demandeur'),
       this._row('Référence chez le demandeur', f.refDemandeur, 'sig4cem-f-refdem'),
       this._row('Description', f.description, 'sig4cem-f-description'),
@@ -66,7 +67,7 @@ SIG.Form = {
     f.title = h('h2', { text: 'Nouvelle entrée' });
     this.el = h('section', { class: 'sig4cem-screen sig4cem-screen--form sig4cem-hidden' },
       f.title,
-      h('div', { class: 'sig4cem-row sig4cem-row--pos' }, f.pos, f.changePos),
+      this._row('Localisation sur la carte (facultatif, fortement conseillé)', h('div', { class: 'sig4cem-posfield' }, f.pos, f.clearPos), 'sig4cem-f-pos'),
       f.fields,
       h('div', { class: 'sig4cem-actions' }, f.btnLocal, f.btnSend, f.btnCancel));
     document.getElementById('sig4cem-root').append(this.el);
@@ -147,7 +148,10 @@ SIG.Form = {
   },
 
   _showPosition() {
-    this.f.pos.textContent = `Position : X ${AMGT4CEM_CRS.formatCoord(this.position.x)} · Y ${AMGT4CEM_CRS.formatCoord(this.position.y)}`;
+    const p = this.position;
+    this.f.pos.value = p ? `X ${AMGT4CEM_CRS.formatCoord(p.x)} · Y ${AMGT4CEM_CRS.formatCoord(p.y)}` : '';
+    this.f.pos.placeholder = '📍 Toucher ici pour pointer sur la carte';
+    this.f.clearPos.classList.toggle('sig4cem-hidden', !p);
   },
 
   /** Données du formulaire, ou null (message à l'écran) si un champ obligatoire manque. */
@@ -158,6 +162,7 @@ SIG.Form = {
     if (!type) { alert('Merci de choisir le type.'); return null; }
     if (type.domaineObligatoire && NS.Depot.domainesFor(type.code).length && !f.domaine.value) { alert('Merci de choisir le domaine technique.'); return null; }
     if (!f.date.value) { alert("Merci de renseigner la date d'observation."); return null; }
+    if (!this.position && !confirm("Aucune position n'est pointée sur la carte. C'est facultatif mais fortement conseillé : enregistrer quand même ?")) return null;
     return {
       id: this.entryId,
       flux: 'STANDARD', // plus de flux séparé : champ conservé pour le schéma d'échange et le serveur de dépôt
@@ -165,8 +170,8 @@ SIG.Form = {
       type: type.code,
       domaine: f.domaine.value || null,
       label: D.buildLabel(type.code, f.domaine.value),
-      x: this.position.x,
-      y: this.position.y,
+      x: this.position ? this.position.x : null,
+      y: this.position ? this.position.y : null,
       dateObservation: f.date.value,
       lieu: f.lieu.value.trim(),
       demandeur: f.demandeur.value.trim(),
@@ -211,7 +216,8 @@ SIG.Form = {
     this.position = position;
     this._showPosition();
     this.el.classList.remove('sig4cem-hidden');
-    f.changePos.onclick = () => onChangePosition();
+    f.pos.onclick = () => onChangePosition();
+    f.clearPos.onclick = () => { this.position = null; this._showPosition(); };
     f.btnCancel.onclick = async () => {
       if (this.editing) {
         // Entrée déjà enregistrée : annuler ne supprime rien de ce qui existait ; seules les photos ajoutées pendant cette modification partent.

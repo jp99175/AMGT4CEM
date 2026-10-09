@@ -83,26 +83,22 @@ async function openList(kind, message) {
 
 /** Rouvre un brouillon ou un envoi en attente dans le formulaire. */
 function startEdit(entry) {
-  openForm(entry.id, { x: entry.x, y: entry.y }, false, entry);
+  openForm(entry.id, entry.x == null ? null : { x: entry.x, y: entry.y }, false, entry);
 }
 
 // ------------------------------------------------------------------ nouvelle entrée
 function startNewEntry() {
   origin = null;
-  const entryId = newId();
-  pickPosition(entryId, null, false);
+  openForm(newId(), null, false); // formulaire complet tout de suite ; la position se pointe depuis son champ
 }
 
 /** Écran carte, tout de suite ; la validation ouvre (ou rouvre) le formulaire. */
-function pickPosition(entryId, position, reuse) {
+function pickPosition(entryId, position) {
   showScreen('map');
   SIG.MapPicker.open({
     position,
-    onValidate: (pos) => openForm(entryId, pos, reuse),
-    onCancel: async () => {
-      if (reuse) openForm(entryId, position, true);
-      else await backToOrigin();
-    },
+    onValidate: (pos) => openForm(entryId, pos, true),
+    onCancel: () => openForm(entryId, position, true),
   });
 }
 
@@ -113,7 +109,7 @@ function openForm(entryId, position, reuse, entry) {
     position,
     reuse,
     entry,
-    onChangePosition: () => pickPosition(entryId, position, true),
+    onChangePosition: () => pickPosition(entryId, SIG.Form.position),
     onCancel: backToOrigin,
     onSave: (data, { send }) => saveEntry(data, send),
   });

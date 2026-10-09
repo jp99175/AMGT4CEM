@@ -6,11 +6,12 @@ Elle embarque son propre écran de carte, juste pour choisir le point. Chargée 
 
 ## Parcours « Nouvelle entrée »
 
-1. **Carte, tout de suite.** Fond UrbIS (même socle que la carte : `crs.js`, `services.js`, `basemap.js`). Un toucher pose
-   un marqueur déplaçable (la position GPS de l'appareil est en suspens, retirée de la carte) ; **Valider la position** ouvre le formulaire.
-2. **Formulaire.** Type > domaine technique, date d'observation, localisation précisée, demandeur (et sa référence),
-   description, photos (prise directe ou fichiers ; réduites à 2000 px, JPEG 85). **Modifier la position** revient à la carte
-   sans effacer la saisie ; **Annuler** supprime l'entrée et ses photos.
+1. **Formulaire, tout de suite.** « Nouvelle entrée » ouvre directement le formulaire complet : type > domaine technique,
+   **localisation sur la carte**, date d'observation, précision du lieu (texte libre), demandeur (et sa référence),
+   description, photos (prise directe ou fichiers ; réduites à 2000 px, JPEG 85). **Annuler** supprime l'entrée et ses photos.
+2. **Localisation.** Facultative mais fortement conseillée (une confirmation est demandée si elle manque). Un toucher dans
+   le champ ouvre la carte (fond UrbIS, même socle que la carte : `crs.js`, `services.js`, `basemap.js`) ; un toucher pose un
+   marqueur déplaçable, **Valider la position** revient au formulaire sans effacer la saisie. ✕ retire la position.
 3. **Deux enregistrements.** **Enregistrer en local** : brouillon (`draft`). **Enregistrer et envoyer** : envoi demandé (`file`),
    puis `envoye` (référence attribuée par le serveur) ou `erreur`. Sans serveur configuré
    (`plugins` > `signalements` > `options.serverUrl`), l'entrée reste `file` et attend.
