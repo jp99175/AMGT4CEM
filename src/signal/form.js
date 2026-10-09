@@ -41,7 +41,7 @@ SIG.Form = {
     f.domaineLabel = h('label', { for: 'sig4cem-f-domaine', text: 'Domaine technique' });
     f.domaine = h('select', { id: 'sig4cem-f-domaine' });
     f.domaineRow = h('div', { class: 'sig4cem-row' }, f.domaineLabel, f.domaine);
-    f.titre = h('input', { type: 'text', id: 'sig4cem-f-titre', maxlength: '120', placeholder: 'en quelques mots (120 caractères au plus)' });
+    f.titre = h('input', { type: 'text', id: 'sig4cem-f-titre', maxlength: '120', placeholder: 'Titre court', 'aria-label': 'Titre' });
     f.date = h('input', { type: 'date', id: 'sig4cem-f-date' });
     f.lieu = h('input', { type: 'text', id: 'sig4cem-f-lieu', maxlength: '200', placeholder: 'texte libre' });
     f.demandeur = h('input', { type: 'text', id: 'sig4cem-f-demandeur', maxlength: '200', placeholder: 'qui a demandé ou signalé (service, entreprise, agent…)' });
@@ -53,7 +53,7 @@ SIG.Form = {
     f.btnFiles = h('button', { type: 'button', class: 'sig4cem-link', text: 'Joindre des fichiers' });
     f.photoList = h('div', { class: 'sig4cem-photos' });
     f.fields = h('div', { class: 'sig4cem-hidden' },
-      h('div', { class: 'sig4cem-row sig4cem-row--titre' }, h('label', { for: 'sig4cem-f-titre', text: 'Titre' }), f.titre),
+      h('div', { class: 'sig4cem-row sig4cem-row--titre' }, f.titre),
       this._row('Type', f.type, 'sig4cem-f-type'),
       f.domaineRow,
       this._row("Date d'observation", f.date, 'sig4cem-f-date'),
