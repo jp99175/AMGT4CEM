@@ -134,17 +134,6 @@ html[data-app="signal"] body {
 .sig4cem-map__actions { display: flex; gap: 8px; padding: 8px 12px; background: #fff; border-top: 1px solid #cbd2d9; }
 .sig4cem-map__actions .sig4cem-btn--primary { flex: 1; }
 
-/* Bandeau de demande d'autorisation de position */
-.sig4cem-gpsmsg { display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: #fff4d6; border-bottom: 1px solid #e6c15a; font-size: 14px; line-height: 1.35; }
-.sig4cem-gpsmsg__text { flex: 1; }
-
-/* Bouton GPS (cible) : bas droite de la carte, au-dessus du crédit */
-.sig4cem-gps { position: absolute; right: 10px; bottom: 28px; z-index: 1000; width: 46px; height: 46px; padding: 0; display: flex;
-  align-items: center; justify-content: center; background: #fff; color: #111; border: 1px solid #cbd2d9; border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); cursor: pointer; }
-.sig4cem-gps:active { background: #e4e7eb; }
-.sig4cem-gps--off { color: #9aa5b1; background: #eceff2; box-shadow: none; }
-
 /* Formulaire */
 .sig4cem-screen--form h2 { margin: 8px 0 12px; font-size: 20px; }
 .sig4cem-row { display: flex; flex-direction: column; gap: 4px; margin: 0 0 12px; }
