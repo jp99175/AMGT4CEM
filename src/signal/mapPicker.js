@@ -161,18 +161,41 @@ SIG.MapPicker = {
     this.btnOk.disabled = false;
   },
 
+  /**
+   * Veille du signal GPS tant que l'écran est ouvert : l'icône est grisée sans signal (non pris en charge, refusé,
+   * indisponible, pas encore de position) et normale dès qu'une position est reçue. Arrêtée à la fermeture.
+   */
+  _setGps(ok, why) {
+    this.gpsOk = ok;
+    this.btnLocate.classList.toggle('sig4cem-gps--off', !ok);
+    this.btnLocate.setAttribute('aria-disabled', ok ? 'false' : 'true');
+    this.btnLocate.title = ok ? 'Ma position' : `Position GPS indisponible${why ? ` (${why})` : ''}`;
+  },
+
+  _watchGps() {
+    this._unwatchGps();
+    if (!navigator.geolocation) { this._setGps(false, 'non pris en charge'); return; }
+    this._setGps(false, 'recherche du signal');
+    this._gpsWatch = navigator.geolocation.watchPosition(
+      (pos) => { this.lastFix = pos; this._setGps(true); },
+      (err) => { this.lastFix = null; this._setGps(false, err && err.code === 1 ? 'accès refusé' : 'pas de signal'); },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 });
+  },
+
+  _unwatchGps() {
+    if (this._gpsWatch != null && navigator.geolocation) navigator.geolocation.clearWatch(this._gpsWatch);
+    this._gpsWatch = null;
+  },
+
   _locate() {
-    if (!navigator.geolocation) { this.hint.textContent = 'Position GPS indisponible sur cet appareil.'; return; }
-    this.hint.textContent = 'Recherche de la position…';
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
-        this._moved = true;
-        this.map.setView(latlng, Math.max(this.map.getZoom(), 18));
-        this._place(latlng);
-      },
-      () => { this.hint.textContent = 'Position GPS refusée ou indisponible : touchez la carte.'; },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 });
+    if (!this.gpsOk || !this.lastFix) {
+      this.hint.textContent = 'Position GPS indisponible : touchez la carte pour placer le point.';
+      return;
+    }
+    const latlng = L.latLng(this.lastFix.coords.latitude, this.lastFix.coords.longitude);
+    this._moved = true;
+    this.map.setView(latlng, Math.max(this.map.getZoom(), 18));
+    this._place(latlng);
   },
 
   /** Ouvre l'écran, tout de suite ; `position` ({x, y} en Lambert 72) replace un point déjà choisi. */
@@ -182,6 +205,7 @@ SIG.MapPicker = {
     this.el.classList.remove('sig4cem-hidden');
     this.btnOk.onclick = () => { if (this.lambert) onValidate({ ...this.lambert }); };
     this.btnCancel.onclick = () => onCancel();
+    this._watchGps();
     this.btnOk.disabled = true;
     this.lambert = null;
     this.coords.textContent = '';
@@ -207,6 +231,7 @@ SIG.MapPicker = {
 
   close() {
     this.isOpen = false;
+    this._unwatchGps();
     if (this.el) this.el.classList.add('sig4cem-hidden');
   },
 };

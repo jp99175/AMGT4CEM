@@ -139,6 +139,7 @@ html[data-app="signal"] body {
   align-items: center; justify-content: center; background: #fff; color: #111; border: 1px solid #cbd2d9; border-radius: 50%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); cursor: pointer; }
 .sig4cem-gps:active { background: #e4e7eb; }
+.sig4cem-gps--off { color: #9aa5b1; background: #eceff2; box-shadow: none; }
 
 /* Formulaire */
 .sig4cem-screen--form h2 { margin: 8px 0 12px; font-size: 20px; }
