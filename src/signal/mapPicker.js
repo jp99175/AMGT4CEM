@@ -189,8 +189,12 @@ SIG.MapPicker = {
     if (!navigator.geolocation) kind = 'unsupported';
     else if (!this.gpsOk && (this._denied || perm === 'denied')) kind = 'denied';
     else if (!this.gpsOk && perm === 'prompt') kind = 'prompt';
+    // iPhone : un navigateur intégré à une autre appli (messagerie, mail, appli Claude…) n'a ni cadenas ni « aA »
+    // et bloque en général la position ; son identifiant n'a pas « Safari/ » (ni CriOS, FxiOS, EdgiOS).
+    const ua = navigator.userAgent || '';
+    const inApp = /iPhone|iPad|iPod/.test(ua) && !/Safari\//.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
     const T = {
-      denied: ['\u{1F4CD} La position est bloquée pour ce site. Appuyez sur le cadenas (ou « aA » sur iPhone) à côté de l\'adresse, ouvrez les réglages du site, mettez « Position » sur « Autoriser », puis rechargez la page.', 'Réessayer'],
+      denied: inApp ? ['\u{1F4CD} Cette page est ouverte dans une autre application, qui bloque la position. Ouvrez-la dans Safari : copiez l\'adresse (ou appuyez sur l\'icône boussole « Ouvrir dans Safari » si elle existe), collez-la dans Safari, puis autorisez la position.', 'Réessayer'] : ['\u{1F4CD} La position est bloquée pour ce site. Appuyez sur le cadenas (ou « aA » sur iPhone) à côté de l\'adresse, ouvrez les réglages du site, mettez « Position » sur « Autoriser », puis rechargez la page.', 'Réessayer'],
       prompt: ['\u{1F4CD} Autorisez l\'accès à la position quand le navigateur vous le demande.', 'Activer la position'],
       unsupported: ['\u{1F4CD} Ce navigateur ne permet pas la position GPS : touchez la carte pour placer le point.', ''],
     };
