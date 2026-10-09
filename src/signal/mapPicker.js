@@ -58,12 +58,18 @@ SIG.MapPicker = {
     svg.innerHTML = '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.8"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></g>';
     this.btnLocate = h('button', { type: 'button', class: 'sig4cem-gps', title: 'Ma position', 'aria-label': 'Ma position (GPS)' }, svg);
     const body = h('div', { class: 'sig4cem-map__body' }, this.canvas, searchBox, this.btnLocate);
+    // Bandeau de demande d'autorisation de position : affiché quand le GPS est bloqué ou pas encore autorisé.
+    this.gpsMsgText = h('span', { class: 'sig4cem-gpsmsg__text' });
+    this.gpsMsgBtn = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small' });
+    this.gpsMsg = h('div', { class: 'sig4cem-gpsmsg sig4cem-hidden', role: 'alert' }, this.gpsMsgText, this.gpsMsgBtn);
     this.el = h('section', { class: 'sig4cem-screen sig4cem-screen--map sig4cem-hidden' },
       h('div', { class: 'sig4cem-map__top' }, this.hint, this.coords),
+      this.gpsMsg,
       body,
       h('div', { class: 'sig4cem-map__actions' }, this.btnCancel, this.btnOk));
     document.getElementById('sig4cem-root').append(this.el);
     this.btnLocate.addEventListener('click', () => this._locate());
+    this.gpsMsgBtn.addEventListener('click', () => this._locate());
   },
 
   /** Monte la carte et ses couches, comme src/app.js mais sans menu, recherche ni outils. */
@@ -171,18 +177,53 @@ SIG.MapPicker = {
     this.gpsOk = ok;
     this.btnLocate.classList.toggle('sig4cem-gps--off', !ok);
     this.btnLocate.title = ok ? 'Ma position' : `Position GPS indisponible${why ? ` (${why})` : ''} : appuyer pour réessayer`;
+    if (ok) this._denied = false;
+    this._refreshGpsMsg();
+  },
+
+  /** Bandeau visible : autorisation bloquée (avec la marche à suivre), pas encore demandée, ou GPS non pris en charge. */
+  _refreshGpsMsg() {
+    if (!this.gpsMsg) return;
+    const perm = this._perm && this._perm.state;
+    let kind = null;
+    if (!navigator.geolocation) kind = 'unsupported';
+    else if (!this.gpsOk && (this._denied || perm === 'denied')) kind = 'denied';
+    else if (!this.gpsOk && perm === 'prompt') kind = 'prompt';
+    const T = {
+      denied: ['\u{1F4CD} La position est bloquée pour ce site. Appuyez sur le cadenas (ou « aA » sur iPhone) à côté de l\'adresse, ouvrez les réglages du site, mettez « Position » sur « Autoriser », puis rechargez la page.', 'Réessayer'],
+      prompt: ['\u{1F4CD} Autorisez l\'accès à la position quand le navigateur vous le demande.', 'Activer la position'],
+      unsupported: ['\u{1F4CD} Ce navigateur ne permet pas la position GPS : touchez la carte pour placer le point.', ''],
+    };
+    this.gpsMsg.classList.toggle('sig4cem-hidden', !kind);
+    if (!kind) return;
+    this.gpsMsgText.textContent = T[kind][0];
+    this.gpsMsgBtn.textContent = T[kind][1];
+    this.gpsMsgBtn.classList.toggle('sig4cem-hidden', !T[kind][1]);
   },
 
   _watchGps() {
     this._unwatchGps();
     if (!navigator.geolocation) { this._setGps(false, 'non pris en charge'); return; }
     this._setGps(false, 'recherche du signal');
+    // État de l'autorisation (si le navigateur l'indique) : le bandeau suit les changements faits dans les réglages.
+    if (navigator.permissions && navigator.permissions.query && !this._permAsked) {
+      this._permAsked = true;
+      navigator.permissions.query({ name: 'geolocation' }).then((st) => {
+        this._perm = st;
+        this._refreshGpsMsg();
+        st.onchange = () => {
+          if (st.state === 'granted') this._denied = false;
+          this._refreshGpsMsg();
+          if (st.state === 'granted' && this.isOpen) this._watchGps();
+        };
+      }).catch(() => {});
+    }
     // Précision standard (réseau + GPS) : répond vite, y compris à l'intérieur ; la haute précision est demandée à l'appui.
     this._gpsWatch = navigator.geolocation.watchPosition(
       (pos) => { this.lastFix = pos; this._setGps(true); },
       (err) => {
         this.lastFix = null;
-        if (err && err.code === 1) { this._setGps(false, 'accès refusé'); return; }
+        if (err && err.code === 1) { this._denied = true; this._setGps(false, 'accès refusé'); return; }
         this._setGps(false, 'pas de signal');
         // Délai dépassé ou position momentanément introuvable : certains navigateurs arrêtent la veille, on la relance.
         clearTimeout(this._gpsRetry);
@@ -214,6 +255,7 @@ SIG.MapPicker = {
       (err) => {
         if (this.lastFix) { this._goTo(this.lastFix); return; } // dernière position connue de la veille
         const why = err && err.code === 1 ? 'accès à la position refusé (autorisation du site dans le navigateur)' : 'pas de signal';
+        if (err && err.code === 1) this._denied = true;
         this._setGps(false, err && err.code === 1 ? 'accès refusé' : 'pas de signal');
         this.hint.textContent = `Position GPS indisponible, ${why} : touchez la carte pour placer le point.`;
       },
