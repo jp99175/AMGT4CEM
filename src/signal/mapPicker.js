@@ -163,39 +163,61 @@ SIG.MapPicker = {
 
   /**
    * Veille du signal GPS tant que l'écran est ouvert : l'icône est grisée sans signal (non pris en charge, refusé,
-   * indisponible, pas encore de position) et normale dès qu'une position est reçue. Arrêtée à la fermeture.
+   * pas de position) et normale dès qu'une position est reçue. Grisée ne veut pas dire inerte : un appui relance
+   * une demande de position (et, si besoin, la demande d'autorisation du navigateur, qui exige un geste).
+   * Arrêtée à la fermeture de l'écran.
    */
   _setGps(ok, why) {
     this.gpsOk = ok;
     this.btnLocate.classList.toggle('sig4cem-gps--off', !ok);
-    this.btnLocate.setAttribute('aria-disabled', ok ? 'false' : 'true');
-    this.btnLocate.title = ok ? 'Ma position' : `Position GPS indisponible${why ? ` (${why})` : ''}`;
+    this.btnLocate.title = ok ? 'Ma position' : `Position GPS indisponible${why ? ` (${why})` : ''} : appuyer pour réessayer`;
   },
 
   _watchGps() {
     this._unwatchGps();
     if (!navigator.geolocation) { this._setGps(false, 'non pris en charge'); return; }
     this._setGps(false, 'recherche du signal');
+    // Précision standard (réseau + GPS) : répond vite, y compris à l'intérieur ; la haute précision est demandée à l'appui.
     this._gpsWatch = navigator.geolocation.watchPosition(
       (pos) => { this.lastFix = pos; this._setGps(true); },
-      (err) => { this.lastFix = null; this._setGps(false, err && err.code === 1 ? 'accès refusé' : 'pas de signal'); },
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 });
+      (err) => {
+        this.lastFix = null;
+        if (err && err.code === 1) { this._setGps(false, 'accès refusé'); return; }
+        this._setGps(false, 'pas de signal');
+        // Délai dépassé ou position momentanément introuvable : certains navigateurs arrêtent la veille, on la relance.
+        clearTimeout(this._gpsRetry);
+        this._gpsRetry = setTimeout(() => { if (this.isOpen) this._watchGps(); }, 5000);
+      },
+      { enableHighAccuracy: false, timeout: 30000, maximumAge: 30000 });
   },
 
   _unwatchGps() {
+    clearTimeout(this._gpsRetry);
     if (this._gpsWatch != null && navigator.geolocation) navigator.geolocation.clearWatch(this._gpsWatch);
     this._gpsWatch = null;
   },
 
-  _locate() {
-    if (!this.gpsOk || !this.lastFix) {
-      this.hint.textContent = 'Position GPS indisponible : touchez la carte pour placer le point.';
-      return;
-    }
-    const latlng = L.latLng(this.lastFix.coords.latitude, this.lastFix.coords.longitude);
+  _goTo(pos) {
+    this.lastFix = pos;
+    this._setGps(true);
+    const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
     this._moved = true;
     this.map.setView(latlng, Math.max(this.map.getZoom(), 18));
     this._place(latlng);
+  },
+
+  _locate() {
+    if (!navigator.geolocation) { this.hint.textContent = 'Position GPS non prise en charge : touchez la carte pour placer le point.'; return; }
+    this.hint.textContent = 'Recherche de la position…';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => this._goTo(pos),
+      (err) => {
+        if (this.lastFix) { this._goTo(this.lastFix); return; } // dernière position connue de la veille
+        const why = err && err.code === 1 ? 'accès à la position refusé (autorisation du site dans le navigateur)' : 'pas de signal';
+        this._setGps(false, err && err.code === 1 ? 'accès refusé' : 'pas de signal');
+        this.hint.textContent = `Position GPS indisponible, ${why} : touchez la carte pour placer le point.`;
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
   },
 
   /** Ouvre l'écran, tout de suite ; `position` ({x, y} en Lambert 72) replace un point déjà choisi. */
