@@ -135,7 +135,7 @@ const AMGT4CEM_CONFIG = {
       options: {
         // Adresse du serveur de dépôt (depot-signalements/, Cloudflare Worker) qui attribue la référence
         // AAAA-NNNN. '' = pas de serveur : les signalements restent sur l'appareil (export ZIP à la main).
-        serverUrl: '',
+        serverUrl: 'https://amgt4cem-depot-signalements.jp99175.workers.dev',
       },
     },
   ],
