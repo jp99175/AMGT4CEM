@@ -41,6 +41,7 @@ SIG.Form = {
     f.domaineLabel = h('label', { for: 'sig4cem-f-domaine', text: 'Domaine technique' });
     f.domaine = h('select', { id: 'sig4cem-f-domaine' });
     f.domaineRow = h('div', { class: 'sig4cem-row' }, f.domaineLabel, f.domaine);
+    f.titre = h('input', { type: 'text', id: 'sig4cem-f-titre', maxlength: '120', placeholder: 'en quelques mots (120 caractères au plus)' });
     f.date = h('input', { type: 'date', id: 'sig4cem-f-date' });
     f.lieu = h('input', { type: 'text', id: 'sig4cem-f-lieu', maxlength: '200', placeholder: 'texte libre' });
     f.demandeur = h('input', { type: 'text', id: 'sig4cem-f-demandeur', maxlength: '200', placeholder: 'qui a demandé ou signalé (service, entreprise, agent…)' });
@@ -54,6 +55,7 @@ SIG.Form = {
     f.fields = h('div', { class: 'sig4cem-hidden' },
       this._row('Type', f.type, 'sig4cem-f-type'),
       f.domaineRow,
+      this._row('Titre', f.titre, 'sig4cem-f-titre'),
       this._row("Date d'observation", f.date, 'sig4cem-f-date'),
       this._row('Localisation', h('div', { class: 'sig4cem-posfield' }, f.pos, f.clearPos), 'sig4cem-f-pos'),
       this._row('Précision du lieu (station, niveau, local, PK…)', f.lieu, 'sig4cem-f-lieu'),
@@ -161,6 +163,7 @@ SIG.Form = {
     const type = D.type(f.type.value);
     if (!type) { alert('Merci de choisir le type.'); return null; }
     if (type.domaineObligatoire && NS.Depot.domainesFor(type.code).length && !f.domaine.value) { alert('Merci de choisir le domaine technique.'); return null; }
+    if (!f.titre.value.trim()) { alert('Merci de donner un titre.'); return null; }
     if (!f.date.value) { alert("Merci de renseigner la date d'observation."); return null; }
     if (!this.position && !confirm("Aucune position n'est pointée sur la carte. C'est facultatif mais fortement conseillé : enregistrer quand même ?")) return null;
     return {
@@ -169,6 +172,7 @@ SIG.Form = {
       nature: type.nature,
       type: type.code,
       domaine: f.domaine.value || null,
+      titre: f.titre.value.trim(),
       label: D.buildLabel(type.code, f.domaine.value),
       x: this.position ? this.position.x : null,
       y: this.position ? this.position.y : null,
@@ -207,8 +211,8 @@ SIG.Form = {
         f.domaine.value = entry.domaine || '';
       }
       f.date.value = entry ? entry.dateObservation : NS.Depot.today();
-      for (const k of ['lieu', 'demandeur', 'refDemandeur', 'description']) {
-        const keys = { lieu: 'lieu', demandeur: 'demandeur', refDemandeur: 'referenceDemandeur', description: 'description' };
+      for (const k of ['titre', 'lieu', 'demandeur', 'refDemandeur', 'description']) {
+        const keys = { titre: 'titre', lieu: 'lieu', demandeur: 'demandeur', refDemandeur: 'referenceDemandeur', description: 'description' };
         f[k].value = entry ? (entry[keys[k]] || '') : '';
       }
       this._renderPhotos();

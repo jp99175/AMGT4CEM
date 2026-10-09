@@ -96,6 +96,7 @@ NS.Depot = {
       nature: s.nature,
       type: s.type,
       domaine: s.domaine || null,
+      titre: s.titre || '',
       contexte: ['APPLICATION_AMIANTE', 'CONTROLE', 'INVENTAIRE_DESTRUCTIF', 'TRAITEMENT'].includes(s.type) ? 'AMIANTE' : null,
       // Provenance : le demandeur n'est pas le rédacteur (celui qui saisit). Sa référence est un
       // identifiant externe à l'import (système du demandeur, type REF_DEMANDEUR, valeur).

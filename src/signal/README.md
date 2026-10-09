@@ -7,7 +7,7 @@ Elle embarque son propre écran de carte, juste pour choisir le point. Chargée 
 ## Parcours « Nouvelle entrée »
 
 1. **Formulaire, tout de suite.** « Nouvelle entrée » ouvre directement le formulaire complet : type > domaine technique,
-   date d'observation, **localisation**, précision du lieu (texte libre), demandeur (et sa référence),
+   **titre** (obligatoire), date d'observation, **localisation**, précision du lieu (texte libre), demandeur (et sa référence),
    description, photos (prise directe ou fichiers ; réduites à 2000 px, JPEG 85). **Annuler** supprime l'entrée et ses photos.
 2. **Localisation.** Facultative mais fortement conseillée (une confirmation est demandée si elle manque). Un toucher dans
    le champ ouvre la carte (fond UrbIS, même socle que la carte : `crs.js`, `services.js`, `basemap.js`) ; un toucher pose un

@@ -117,7 +117,7 @@ SIG.MapPicker = {
       if (e.statut === SIG.STATUT.ENVOYE || e.x == null) continue;
       const amiante = e.type === 'APPLICATION_AMIANTE';
       const box = h('div', { class: 'sig4cem-popup' },
-        h('strong', { text: e.label || 'Entrée' }),
+        h('strong', { text: e.titre || e.label || 'Entrée' }),
         h('p', { text: STATUT_TEXTE[e.statut] || e.statut }),
         h('p', { text: `Observée le ${e.dateObservation || '?'}` }));
       const erreur = e.statut === SIG.STATUT.ERREUR ? ' sig4cem-entry-marker--erreur' : '';
