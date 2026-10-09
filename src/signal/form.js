@@ -23,6 +23,8 @@ SIG.Form = {
   entryId: null,
   position: null,
   photos: [],
+  editing: null, // entrée rouverte depuis une liste (null : nouvelle entrée)
+  removed: [], // photos retirées pendant la modification d'une entrée : supprimées seulement à l'enregistrement
 
   _row(label, control, id) {
     return h('div', { class: 'sig4cem-row' }, h('label', { for: id, text: label }), control);
@@ -64,8 +66,9 @@ SIG.Form = {
     f.btnCancel = h('button', { type: 'button', class: 'sig4cem-btn', text: 'Annuler' });
     f.btnLocal = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--primary', text: 'Enregistrer en local' });
     f.btnSend = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--primary', text: 'Enregistrer et envoyer' });
+    f.title = h('h2', { text: 'Nouvelle entrée' });
     this.el = h('section', { class: 'sig4cem-screen sig4cem-screen--form sig4cem-hidden' },
-      h('h2', { text: 'Nouvelle entrée' }),
+      f.title,
       h('div', { class: 'sig4cem-row sig4cem-row--pos' }, f.pos, f.changePos),
       this._row('Nature', f.nature, 'sig4cem-f-nature'),
       f.fields,
@@ -127,7 +130,7 @@ SIG.Form = {
       const rm = h('button', { type: 'button', class: 'sig4cem-photo__rm', title: 'Retirer cette photo', 'aria-label': 'Retirer cette photo', text: '✕' });
       rm.addEventListener('click', async () => {
         this.photos.splice(i, 1);
-        await NS.Pieces.remove(meta.id);
+        if (this.editing) this.removed.push(meta.id); else await NS.Pieces.remove(meta.id);
         await this._renderPhotos();
       });
       // La photo d'origine ; les annotations sont un calque transparent superposé, jamais fondu dans la photo.
@@ -177,20 +180,31 @@ SIG.Form = {
       referenceDemandeur: f.refDemandeur.value.trim(),
       description: f.description.value.trim(),
       pieces: this.photos.map((m) => ({ ...m, commentaire: (m.commentaire || '').trim() })),
+      ...(this.editing ? { creeLe: this.editing.creeLe } : {}),
     };
   },
 
-  /** Ouvre le formulaire pour une nouvelle entrée (`reuse` : revenir du choix de position sans tout effacer). */
-  open({ entryId, position, reuse, onSave, onChangePosition, onCancel }) {
+  /**
+   * Ouvre le formulaire pour une nouvelle entrée (`reuse` : revenir du choix de position sans tout effacer),
+   * ou pour une entrée déjà enregistrée (`entry` : brouillon ou envoi en attente rouvert depuis une liste).
+   */
+  open({ entryId, position, reuse, entry, onSave, onChangePosition, onCancel }) {
     this._build();
     const f = this.f;
     if (!reuse) {
-      this.entryId = entryId;
-      this.photos = [];
-      f.nature.value = '';
+      this.editing = entry || null;
+      this.removed = [];
+      this.entryId = entry ? entry.id : entryId;
+      this.photos = entry ? (entry.pieces || []).map((m) => ({ ...m })) : [];
+      f.title.textContent = entry ? "Modifier l'entrée" : 'Nouvelle entrée';
+      f.nature.value = entry ? entry.nature : '';
       this._onNature();
-      f.date.value = NS.Depot.today();
-      for (const k of ['lieu', 'demandeur', 'refDemandeur', 'description']) f[k].value = '';
+      if (entry) { f.type.value = entry.type; this._onType(); f.domaine.value = entry.domaine || ''; }
+      f.date.value = entry ? entry.dateObservation : NS.Depot.today();
+      for (const k of ['lieu', 'demandeur', 'refDemandeur', 'description']) {
+        const keys = { lieu: 'lieu', demandeur: 'demandeur', refDemandeur: 'referenceDemandeur', description: 'description' };
+        f[k].value = entry ? (entry[keys[k]] || '') : '';
+      }
       this._renderPhotos();
     }
     this.position = position;
@@ -198,6 +212,13 @@ SIG.Form = {
     this.el.classList.remove('sig4cem-hidden');
     f.changePos.onclick = () => onChangePosition();
     f.btnCancel.onclick = async () => {
+      if (this.editing) {
+        // Entrée déjà enregistrée : annuler ne supprime rien de ce qui existait ; seules les photos ajoutées pendant cette modification partent.
+        const kept = new Set((this.editing.pieces || []).map((m) => m.id));
+        for (const m of this.photos) if (!kept.has(m.id)) { try { await NS.Pieces.remove(m.id); } catch (err) { console.warn('[SIG4CEM] Photo non supprimée :', err); } }
+        onCancel();
+        return;
+      }
       if (this.photos.length && !confirm('Abandonner cette entrée et ses photos ?')) return;
       try { await NS.Pieces.removeForPoint(this.entryId); } catch (err) { console.warn('[SIG4CEM] Photos non supprimées :', err); }
       onCancel();
@@ -206,7 +227,12 @@ SIG.Form = {
       const data = this._collect();
       if (!data) return;
       f.btnLocal.disabled = f.btnSend.disabled = true;
-      try { await onSave(data, { send }); } finally { f.btnLocal.disabled = f.btnSend.disabled = false; }
+      try {
+        const saved = await onSave(data, { send });
+        if (saved === false) return; // enregistrement refusé : rien n'est supprimé
+        for (const id of this.removed) { try { await NS.Pieces.remove(id); } catch (err) { console.warn('[SIG4CEM] Photo non supprimée :', err); } }
+        this.removed = [];
+      } finally { f.btnLocal.disabled = f.btnSend.disabled = false; }
     };
     f.btnLocal.onclick = save(false);
     f.btnSend.onclick = save(true);

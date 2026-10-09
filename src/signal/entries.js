@@ -108,6 +108,29 @@ SIG.Entries = {
     return c;
   },
 
+  /**
+   * Reprend une seule fois les signalements saisis avec l'ancien plugin de la carte (localStorage,
+   * clés amgt4cem.signalements.v1 et amgt4cem.signalements.amiante.v1) : ils deviennent des brouillons (ou des
+   * entrées envoyées s'ils ont une référence). Leurs photos sont déjà dans le même stockage de photos.
+   * Les données d'origine ne sont ni modifiées ni supprimées. @returns {Promise<number>} nombre d'entrées reprises
+   */
+  async migrateLegacy() {
+    const FLAG = 'amgt4cem.signal.legacy-migrated.v1';
+    try { if (localStorage.getItem(FLAG)) return 0; } catch (err) { return 0; }
+    let n = 0;
+    for (const key of ['amgt4cem.signalements.v1', 'amgt4cem.signalements.amiante.v1']) {
+      let items = [];
+      try { items = JSON.parse(localStorage.getItem(key) || '[]'); } catch (err) { console.warn('[SIG4CEM] Anciens signalements illisibles :', key, err); }
+      for (const item of items) {
+        if (!item || !item.id || await this.get(item.id)) continue;
+        await this.add({ ...item, statut: item.reference ? SIG.STATUT.ENVOYE : SIG.STATUT.DRAFT });
+        n += 1;
+      }
+    }
+    try { localStorage.setItem(FLAG, new Date().toISOString()); } catch (err) { /* repris à la prochaine ouverture */ }
+    return n;
+  },
+
   /** Quand plus rien n'attend (file ou erreur), l'envoi en cours est terminé : le compteur x/y repart à zéro. */
   async closeLotIfDone() {
     const all = await this.all();

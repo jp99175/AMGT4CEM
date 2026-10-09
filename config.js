@@ -240,6 +240,7 @@ const AMGT4CEM_CONFIG = {
         './src/signal/mapPicker.js',
         './src/signal/photoEditor.js',
         './src/signal/form.js',
+        './src/signal/list.js',
         './src/signal/signal.js',
       ],
     },

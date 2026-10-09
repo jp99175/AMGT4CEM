@@ -19,6 +19,7 @@ const S = SIG.STATUT;
 const root = document.getElementById('sig4cem-root');
 const screens = {};
 let notice = ''; // message affiché une fois dans le menu (résultat du dernier enregistrement)
+let origin = null; // liste d'où vient l'entrée en cours de modification (on y revient après), ou null : menu
 
 function newId() {
   return crypto.randomUUID ? crypto.randomUUID() : `sg-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -28,6 +29,7 @@ function showScreen(name) {
   screens.menu.classList.toggle('sig4cem-hidden', name !== 'menu');
   if (name !== 'map') SIG.MapPicker.close();
   if (name !== 'form') SIG.Form.close();
+  if (name !== 'list') SIG.List.close();
 }
 
 // ------------------------------------------------------------------ menu
@@ -47,13 +49,12 @@ async function renderMenu() {
     h('h2', { text: 'SIGNALEMENTS ET DEMANDES' }),
     item('Nouvelle entrée', { text: `(${c.draft} en local)` }, startNewEntry),
     h('h3', { text: 'Mes entrées' }),
-    item('Draft', { text: `(${c.draft} en local)`, sub: true }),
-    item('Téléversement en cours', { text: `(${enFile}/${c.lot})`, sub: true }),
-    item('Mes dernières entrées', { text: `(${c.envoye})`, sub: true }));
+    item('Draft', { text: `(${c.draft} en local)`, sub: true }, () => openList('draft')),
+    item('Téléversement en cours', { text: `(${enFile}/${c.lot})`, sub: true }, () => openList('file')),
+    item('Mes dernières entrées', { text: `(${c.envoye})`, sub: true }, () => openList('envoye')));
   const parts = [nav];
   if (c.erreur) parts.unshift(h('p', { class: 'sig4cem-badge', text: `${c.erreur} entrée(s) en erreur d'envoi` }));
   if (notice) { parts.unshift(h('p', { class: 'sig4cem-notice', text: notice })); notice = ''; }
-  parts.push(h('p', { class: 'sig4cem-note', text: 'Brouillons, envois en cours et dernières entrées : listes à venir.' }));
   screens.menu.textContent = '';
   screens.menu.append(
     h('header', { class: 'sig4cem-header' }, h('h1', { text: 'SIG4CEM' }), h('p', { text: 'Signalements et demandes' })),
@@ -62,12 +63,32 @@ async function renderMenu() {
 }
 
 async function backToMenu() {
+  origin = null;
   showScreen('menu');
   await renderMenu();
 }
 
+/** Retour à la liste d'où l'on vient (après modification d'une entrée), sinon au menu. */
+async function backToOrigin() {
+  if (origin) await openList(origin);
+  else await backToMenu();
+}
+
+// ------------------------------------------------------------------ listes « Mes entrées »
+async function openList(kind, message) {
+  origin = kind;
+  showScreen('list');
+  await SIG.List.open({ kind, notice: message || '', back: backToMenu, edit: startEdit, send: sendEntry });
+}
+
+/** Rouvre un brouillon ou un envoi en attente dans le formulaire. */
+function startEdit(entry) {
+  openForm(entry.id, { x: entry.x, y: entry.y }, false, entry);
+}
+
 // ------------------------------------------------------------------ nouvelle entrée
 function startNewEntry() {
+  origin = null;
   const entryId = newId();
   pickPosition(entryId, null, false);
 }
@@ -80,19 +101,20 @@ function pickPosition(entryId, position, reuse) {
     onValidate: (pos) => openForm(entryId, pos, reuse),
     onCancel: async () => {
       if (reuse) openForm(entryId, position, true);
-      else await backToMenu();
+      else await backToOrigin();
     },
   });
 }
 
-function openForm(entryId, position, reuse) {
+function openForm(entryId, position, reuse, entry) {
   showScreen('form');
   SIG.Form.open({
     entryId,
     position,
     reuse,
+    entry,
     onChangePosition: () => pickPosition(entryId, position, true),
-    onCancel: backToMenu,
+    onCancel: backToOrigin,
     onSave: (data, { send }) => saveEntry(data, send),
   });
 }
@@ -103,11 +125,18 @@ async function saveEntry(data, send) {
   } catch (err) {
     console.error('[SIG4CEM] Enregistrement impossible :', err);
     alert(`Impossible d'enregistrer cette entrée : ${err.message}`);
-    return;
+    return false;
   }
   notice = send ? "Entrée enregistrée, envoi demandé." : 'Entrée enregistrée en local (brouillon).';
   if (send) notice = await sendEntry(data.id);
-  await backToMenu();
+  if (origin) {
+    const message = notice;
+    notice = '';
+    await openList(origin, message);
+  } else {
+    await backToMenu();
+  }
+  return true;
 }
 
 /** Envoie une entrée ; met à jour son statut et renvoie le message à afficher. */
@@ -135,6 +164,12 @@ async function sendEntry(id) {
   const plugin = (AMGT4CEM_CONFIG.plugins || []).find((p) => p.id === 'signalements') || {};
   NS.Envoi.init(plugin.options || {});
   await NS.Depot.load(); // vocabulaire (natures, types, domaines)
+  try {
+    const n = await SIG.Entries.migrateLegacy();
+    if (n) notice = `${n} signalement(s) saisi(s) avec l'ancien outil de la carte repris dans « Draft » ou « Mes dernières entrées ».`;
+  } catch (err) {
+    console.error('[SIG4CEM] Reprise des anciens signalements impossible :', err);
+  }
   await renderMenu();
 })();
 })();

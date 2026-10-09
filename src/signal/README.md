@@ -20,6 +20,16 @@ Elle embarque son propre écran de carte, juste pour choisir le point. Chargée 
 `draft` → `file` → `envoye` (ou `erreur`, à relancer). L'identifiant (UUID) est créé sur l'appareil ; la référence publique
 `AAAA-NNNN` vient du serveur. Stockage : IndexedDB (`amgt4cem-signal`), photos dans `amgt4cem-pieces`.
 
+## Listes « Mes entrées »
+
+Les trois lignes du menu ouvrent une liste (`list.js`) :
+
+- **Draft** : brouillons locaux, avec cases à cocher (et « tout sélectionner »). **Envoyer la sélection**, **Supprimer**. Un toucher sur une entrée la rouvre dans le formulaire (même écran que « Nouvelle entrée », titre « Modifier l'entrée ») : « Annuler » ne supprime rien de ce qui était déjà enregistré.
+- **Téléversement en cours** : envois demandés mais pas reçus (en attente, ou en erreur avec le message exact). **Relancer l'envoi**, **Repasser en brouillon**, **Supprimer**.
+- **Mes dernières entrées** : entrées reçues par le serveur, avec leur référence ; filtre 7 jours, 1 mois ou entre deux dates (date d'envoi). Lecture seule.
+
+Au premier lancement, les signalements saisis avec l'ancien outil de la carte (localStorage) sont repris dans Draft ou, s'ils ont une référence, dans les dernières entrées ; les données d'origine ne sont pas touchées.
+
 ## Menu
 
 Compteurs réels : Nouvelle entrée et Draft = brouillons en local ; Téléversement en cours = (encore en local / déjà sur le
@@ -43,8 +53,7 @@ Reste à faire : recadrage.
 
 ## À faire
 
-Listes « Draft », « Téléversement en cours » (interrompre, reprendre, repasser en brouillon), « Mes dernières entrées »
-(filtre 7 jours / 1 mois / période) ; édition d'une entrée et révisions ; recadrage des photos ; identité des
+Interruption d'un envoi en cours ; révisions d'une entrée déjà envoyée ; recadrage des photos ; identité des
 utilisateurs ; fond de carte hors connexion.
 
 ## Fichiers
@@ -54,7 +63,8 @@ utilisateurs ; fond de carte hors connexion.
 | `signal.js` | écrans, menu, enregistrement et envoi |
 | `entries.js` | stockage IndexedDB, statuts, compteurs ; constructeur DOM `SIG4CEM.h` |
 | `mapPicker.js` | écran carte : choix du point |
-| `form.js` | formulaire et photos |
+| `form.js` | formulaire et photos (nouvelle entrée ou modification) |
+| `list.js` | listes « Mes entrées » : brouillons, envois en cours, dernières entrées |
 | `signal.css` | styles (pensés pour le téléphone) |
 | `../signalements/` | modules repris du plugin : vocabulaire et archive (`depot.js`), photos (`pieces-store.js`), envoi (`envoi.js`) |
 tools/stamp-build.sh : horodatage du build, lancé par le hook git pre-commit (.git/hooks, non versionné : à recréer sur un autre clone).
