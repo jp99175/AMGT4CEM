@@ -53,9 +53,9 @@ SIG.Form = {
     f.btnFiles = h('button', { type: 'button', class: 'sig4cem-link', text: 'Joindre des fichiers' });
     f.photoList = h('div', { class: 'sig4cem-photos' });
     f.fields = h('div', { class: 'sig4cem-hidden' },
+      h('div', { class: 'sig4cem-row sig4cem-row--titre' }, h('label', { for: 'sig4cem-f-titre', text: 'Titre' }), f.titre),
       this._row('Type', f.type, 'sig4cem-f-type'),
       f.domaineRow,
-      this._row('Titre', f.titre, 'sig4cem-f-titre'),
       this._row("Date d'observation", f.date, 'sig4cem-f-date'),
       this._row('Localisation', h('div', { class: 'sig4cem-posfield' }, f.pos, f.clearPos), 'sig4cem-f-pos'),
       this._row('Précision du lieu (station, niveau, local, PK…)', f.lieu, 'sig4cem-f-lieu'),

@@ -212,3 +212,7 @@ html[data-app="signal"] body {
 .sig4cem-dl { margin: 8px 0 0; font-size: 14px; }
 .sig4cem-dl dt { margin-top: 6px; font-weight: 600; color: #52606d; }
 .sig4cem-dl dd { margin: 0; }
+
+/* Titre : en tête du formulaire, plus grand et en gras que les autres champs */
+.sig4cem-row--titre label { font-size: 17px; font-weight: 700; }
+.sig4cem-row.sig4cem-row--titre input[type="text"] { font-size: 20px; font-weight: 700; padding: 10px; }
