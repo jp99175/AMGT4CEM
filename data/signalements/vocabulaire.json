@@ -1,27 +1,29 @@
 {
-  "version": 1,
-  "description": "Vocabulaire des signalements et demandes (points métier). Public : ne contient aucune donnée de suivi. Les codes ne sont jamais supprimés ni réaffectés. Libellés NL à ajouter et à faire valider par un néerlandophone.",
+  "version": 2,
+  "description": "Vocabulaire des signalements et demandes (points métier). Public : ne contient aucune donnée de suivi. Les codes ne sont jamais supprimés ni réaffectés : un code abandonné est marqué `obsolete` (plus proposé à la saisie, toujours lisible). Chaque type liste les domaines techniques qu'il accepte (`domaines`, vide : aucun domaine à renseigner) ; `domaineObligatoire` dit si le choix est exigé. Libellés NL à ajouter et à faire valider par un néerlandophone.",
   "flux": [
-    { "code": "STANDARD", "fr": "Standard", "nl": null },
-    { "code": "AMIANTE", "fr": "Amiante", "nl": null, "note": "Flux séparé : stockage, couche, marqueurs et dépôts distincts, en raison de la criticité du sujet." }
+    {"code": "STANDARD", "fr": "Standard", "nl": null},
+    {"code": "AMIANTE", "fr": "Amiante", "nl": null, "note": "Flux séparé : stockage, couche, marqueurs et dépôts distincts, en raison de la criticité du sujet."}
   ],
   "natures": [
-    { "code": "SIGNALEMENT", "fr": "Signalement", "nl": null },
-    { "code": "DEMANDE", "fr": "Demande", "nl": null }
+    {"code": "SIGNALEMENT", "fr": "Signalement", "nl": null},
+    {"code": "DEMANDE", "fr": "Demande", "nl": null}
   ],
   "domaines": [
-    { "code": "GROS_OEUVRE", "fr": "Gros œuvre", "nl": null, "court": "GO" },
-    { "code": "PARACHEVEMENT", "fr": "Parachèvement", "nl": null, "court": "PAR" },
-    { "code": "DRAINAGE", "fr": "Drainage, égouttage, évacuation", "nl": null, "court": "DRA" }
+    {"code": "GROS_OEUVRE", "fr": "Gros œuvre", "nl": null, "court": "GO"},
+    {"code": "PARACHEVEMENT", "fr": "Parachèvement", "nl": null, "court": "PAR"},
+    {"code": "DRAINAGE", "fr": "Drainage, égouttage, évacuation", "nl": null, "court": "DRA"},
+    {"code": "DOCUMENTAIRE", "fr": "Documentaire (plan / fond de plan)", "nl": null, "court": "DOC"}
   ],
   "types": [
-    { "code": "AVARIE", "nature": "SIGNALEMENT", "flux": "STANDARD", "fr": "Avarie", "nl": null, "court": "AVA", "domaineObligatoire": true },
-    { "code": "INFILTRATION", "nature": "SIGNALEMENT", "flux": "STANDARD", "fr": "Infiltration", "nl": null, "court": "INF", "domaineObligatoire": true },
-    { "code": "MODIFICATION", "nature": "DEMANDE", "flux": "STANDARD", "fr": "Modification", "nl": null, "court": "MOD", "domaineObligatoire": true },
-    { "code": "RENOUVELLEMENT", "nature": "DEMANDE", "flux": "STANDARD", "fr": "Renouvellement", "nl": null, "court": "REN", "domaineObligatoire": true },
-    { "code": "MISE_A_JOUR_PLANS", "nature": "DEMANDE", "flux": "STANDARD", "fr": "Mise à jour des plans", "nl": null, "court": "MAJP", "domaineObligatoire": true },
-    { "code": "CONTROLE", "nature": "DEMANDE", "flux": "AMIANTE", "fr": "Contrôle", "nl": null, "court": "CTR", "domaineObligatoire": false },
-    { "code": "INVENTAIRE_DESTRUCTIF", "nature": "DEMANDE", "flux": "AMIANTE", "fr": "Inventaire destructif", "nl": null, "court": "IDE", "domaineObligatoire": false },
-    { "code": "TRAITEMENT", "nature": "DEMANDE", "flux": "AMIANTE", "fr": "Traitement", "nl": null, "court": "TRA", "domaineObligatoire": false }
+    {"code": "AVARIE", "nature": "SIGNALEMENT", "flux": "STANDARD", "fr": "Avarie", "nl": null, "court": "AVA", "domaineObligatoire": true, "domaines": ["GROS_OEUVRE", "PARACHEVEMENT", "DRAINAGE"]},
+    {"code": "INFILTRATION", "nature": "SIGNALEMENT", "flux": "STANDARD", "fr": "Infiltration / écoulement", "nl": null, "court": "INF", "domaineObligatoire": false, "domaines": []},
+    {"code": "APPLICATION_AMIANTE", "nature": "SIGNALEMENT", "flux": "AMIANTE", "fr": "Application amiante", "nl": null, "court": "AMI", "domaineObligatoire": false, "domaines": []},
+    {"code": "MODIFICATION", "nature": "DEMANDE", "flux": "STANDARD", "fr": "Modification", "nl": null, "court": "MOD", "domaineObligatoire": true, "domaines": ["GROS_OEUVRE", "PARACHEVEMENT", "DRAINAGE", "DOCUMENTAIRE"]},
+    {"code": "RENOUVELLEMENT", "nature": "DEMANDE", "flux": "STANDARD", "fr": "Renouvellement", "nl": null, "court": "REN", "domaineObligatoire": true, "domaines": ["GROS_OEUVRE", "PARACHEVEMENT", "DRAINAGE"]},
+    {"code": "MISE_A_JOUR_PLANS", "nature": "DEMANDE", "flux": "STANDARD", "fr": "Mise à jour des plans", "nl": null, "court": "MAJP", "domaineObligatoire": true, "domaines": ["GROS_OEUVRE", "PARACHEVEMENT", "DRAINAGE"], "obsolete": true},
+    {"code": "CONTROLE", "nature": "DEMANDE", "flux": "AMIANTE", "fr": "Contrôle", "nl": null, "court": "CTR", "domaineObligatoire": false, "domaines": ["GROS_OEUVRE", "PARACHEVEMENT", "DRAINAGE"]},
+    {"code": "INVENTAIRE_DESTRUCTIF", "nature": "DEMANDE", "flux": "AMIANTE", "fr": "Inventaire destructif", "nl": null, "court": "IDE", "domaineObligatoire": false, "domaines": ["GROS_OEUVRE", "PARACHEVEMENT", "DRAINAGE"]},
+    {"code": "TRAITEMENT", "nature": "DEMANDE", "flux": "AMIANTE", "fr": "Traitement", "nl": null, "court": "TRA", "domaineObligatoire": false, "domaines": ["GROS_OEUVRE", "PARACHEVEMENT", "DRAINAGE"]}
   ]
 }

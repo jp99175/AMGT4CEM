@@ -19,7 +19,7 @@ déplaçable est posé et le formulaire s'ouvre.
 |---|---|
 | Nature | signalement ou demande |
 | Type | selon la nature (voir `data/signalements/vocabulaire.json`) |
-| Domaine technique | obligatoire, sauf pour les demandes du flux amiante |
+| Domaine technique | selon le type : obligatoire, facultatif ou absent (voir l'arborescence ci-dessous) |
 | Date d'observation | aujourd'hui par défaut |
 | Localisation précisée | texte libre (station, niveau, local, PK…) en plus de la position |
 | Demandeur | qui a signalé ou demandé : à ne pas confondre avec le rédacteur (celui qui saisit) |
@@ -27,9 +27,20 @@ déplaçable est posé et le formulaire s'ouvre.
 | Description | texte libre |
 | Photos | une ou plusieurs ; réduites à 1600 px (JPEG), empreinte SHA-256 de l'original conservée |
 
-Types : `AVARIE`, `INFILTRATION` (signalements) ; `MODIFICATION`, `RENOUVELLEMENT`,
-`MISE_A_JOUR_PLANS` (demandes), chacun avec l'un des trois domaines (gros œuvre, parachèvement,
-drainage-égouttage-évacuation) ; `CONTROLE`, `INVENTAIRE_DESTRUCTIF`, `TRAITEMENT` (demandes du flux amiante).
+Arborescence (vocabulaire version 2, `data/signalements/vocabulaire.json`) : le domaine technique ne se renseigne pas
+toujours, chaque type liste les domaines qu'il accepte.
+
+| Nature | Type | Domaines proposés |
+|---|---|---|
+| Signalement | Avarie | gros œuvre, parachèvement, drainage-égouttage-évacuation (un choix obligatoire) |
+| Signalement | Infiltration / écoulement | aucun |
+| Signalement | Application amiante (flux amiante) | aucun |
+| Demande | Modification | les trois ci-dessus, plus documentaire (plan / fond de plan) |
+| Demande | Renouvellement | gros œuvre, parachèvement, drainage-égouttage-évacuation |
+| Demande (flux amiante) | Contrôle, inventaire destructif, traitement | les trois, facultatifs (inchangé) |
+
+« Mise à jour des plans » est abandonnée (remplacée par Modification > documentaire) : le code reste dans le vocabulaire,
+marqué `obsolete`, pour que les entrées déjà saisies restent lisibles et modifiables.
 
 ## Flux amiante, séparé
 

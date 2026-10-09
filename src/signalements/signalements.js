@@ -101,6 +101,7 @@ const UI = {
     f.amiante = h('p', { class: 'amgt-sig-amiante-banner amgt-hidden', text: '⚠ Flux amiante : enregistré et exporté séparément des autres signalements.' });
     f.domaine = h('select', { id: 'amgt-sig-domaine' });
     f.domaineLabel = h('label', { for: 'amgt-sig-domaine', text: 'Domaine technique' });
+    f.domaineRow = h('div', { class: 'amgt-form-row' }, f.domaineLabel, f.domaine);
     f.date = h('input', { type: 'date', id: 'amgt-sig-date' });
     f.lieu = h('input', { type: 'text', id: 'amgt-sig-lieu', maxlength: '200', placeholder: 'station, niveau, local, PK…' });
     f.demandeur = h('input', { type: 'text', id: 'amgt-sig-demandeur', maxlength: '200', placeholder: 'qui a demandé ou signalé (service, entreprise, agent…)' });
@@ -113,7 +114,7 @@ const UI = {
     f.fields = h('div', { class: 'amgt-hidden' },
       row('Type', f.type, 'amgt-sig-type'),
       f.amiante,
-      h('div', { class: 'amgt-form-row' }, f.domaineLabel, f.domaine),
+      f.domaineRow,
       row("Date d'observation", f.date, 'amgt-sig-date'),
       row('Localisation précisée', f.lieu, 'amgt-sig-lieu'),
       row('Demandeur', f.demandeur, 'amgt-sig-demandeur'),
@@ -150,7 +151,7 @@ const UI = {
     this.f.type.innerHTML = '';
     if (nature) {
       this.f.type.add(new Option('— choisir —', ''));
-      for (const t of NS.Depot.typesFor(nature)) this.f.type.add(new Option(t.flux === 'AMIANTE' ? `${t.fr} (amiante)` : t.fr, t.code));
+      for (const t of NS.Depot.typesFor(nature)) this.f.type.add(new Option(t.flux === 'AMIANTE' && !/amiante/i.test(t.fr) ? `${t.fr} (amiante)` : t.fr, t.code));
     }
     this._onTypeChange();
   },
@@ -159,7 +160,9 @@ const UI = {
     const type = NS.Depot.type(this.f.type.value);
     this.f.domaine.innerHTML = '';
     this.f.domaine.add(new Option(type && !type.domaineObligatoire ? 'Non précisé' : '— choisir —', ''));
-    for (const d of NS.Depot.vocab.domaines) this.f.domaine.add(new Option(d.fr, d.code));
+    const domaines = type ? NS.Depot.domainesFor(type.code) : [];
+    this.f.domaineRow.classList.toggle('amgt-hidden', !domaines.length);
+    for (const d of domaines) this.f.domaine.add(new Option(d.fr, d.code));
     this.f.domaineLabel.textContent = type && !type.domaineObligatoire ? 'Domaine technique (facultatif)' : 'Domaine technique';
     this.f.amiante.classList.toggle('amgt-hidden', !(type && type.flux === 'AMIANTE'));
   },
@@ -242,7 +245,7 @@ const UI = {
     const type = D.type(f.type.value);
     if (!nature) return alert('Merci de choisir la nature.');
     if (!type) return alert('Merci de choisir le type.');
-    if (type.domaineObligatoire && !f.domaine.value) return alert('Merci de choisir le domaine technique.');
+    if (type.domaineObligatoire && NS.Depot.domainesFor(type.code).length && !f.domaine.value) return alert('Merci de choisir le domaine technique.');
     if (!f.date.value) return alert("Merci de renseigner la date d'observation.");
     if (!this.pendingLambert) return;
 

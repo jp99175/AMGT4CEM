@@ -42,6 +42,7 @@ SIG.Form = {
     f.amiante = h('p', { class: 'sig4cem-amiante sig4cem-hidden', text: '⚠ Flux amiante : enregistré et envoyé séparément des autres entrées.' });
     f.domaineLabel = h('label', { for: 'sig4cem-f-domaine', text: 'Domaine technique' });
     f.domaine = h('select', { id: 'sig4cem-f-domaine' });
+    f.domaineRow = h('div', { class: 'sig4cem-row' }, f.domaineLabel, f.domaine);
     f.date = h('input', { type: 'date', id: 'sig4cem-f-date' });
     f.lieu = h('input', { type: 'text', id: 'sig4cem-f-lieu', maxlength: '200', placeholder: 'station, niveau, local, PK…' });
     f.demandeur = h('input', { type: 'text', id: 'sig4cem-f-demandeur', maxlength: '200', placeholder: 'qui a demandé ou signalé (service, entreprise, agent…)' });
@@ -55,7 +56,7 @@ SIG.Form = {
     f.fields = h('div', { class: 'sig4cem-hidden' },
       this._row('Type', f.type, 'sig4cem-f-type'),
       f.amiante,
-      h('div', { class: 'sig4cem-row' }, f.domaineLabel, f.domaine),
+      f.domaineRow,
       this._row("Date d'observation", f.date, 'sig4cem-f-date'),
       this._row('Localisation précisée', f.lieu, 'sig4cem-f-lieu'),
       this._row('Demandeur', f.demandeur, 'sig4cem-f-demandeur'),
@@ -95,7 +96,7 @@ SIG.Form = {
     f.type.textContent = '';
     if (nature) {
       f.type.add(new Option('— choisir —', ''));
-      for (const t of NS.Depot.typesFor(nature)) f.type.add(new Option(t.flux === 'AMIANTE' ? `${t.fr} (amiante)` : t.fr, t.code));
+      for (const t of NS.Depot.typesFor(nature)) f.type.add(new Option(t.flux === 'AMIANTE' && !/amiante/i.test(t.fr) ? `${t.fr} (amiante)` : t.fr, t.code));
     }
     this._onType();
   },
@@ -104,8 +105,10 @@ SIG.Form = {
     const f = this.f;
     const type = NS.Depot.type(f.type.value);
     f.domaine.textContent = '';
+    const domaines = type ? NS.Depot.domainesFor(type.code) : [];
+    f.domaineRow.classList.toggle('sig4cem-hidden', !domaines.length); // pas de domaine à renseigner pour ce type
     f.domaine.add(new Option(type && !type.domaineObligatoire ? 'Non précisé' : '— choisir —', ''));
-    for (const d of NS.Depot.vocab.domaines) f.domaine.add(new Option(d.fr, d.code));
+    for (const d of domaines) f.domaine.add(new Option(d.fr, d.code));
     f.domaineLabel.textContent = type && !type.domaineObligatoire ? 'Domaine technique (facultatif)' : 'Domaine technique';
     f.amiante.classList.toggle('sig4cem-hidden', !(type && type.flux === 'AMIANTE'));
   },
@@ -163,7 +166,7 @@ SIG.Form = {
     const type = D.type(f.type.value);
     if (!f.nature.value) { alert('Merci de choisir la nature.'); return null; }
     if (!type) { alert('Merci de choisir le type.'); return null; }
-    if (type.domaineObligatoire && !f.domaine.value) { alert('Merci de choisir le domaine technique.'); return null; }
+    if (type.domaineObligatoire && NS.Depot.domainesFor(type.code).length && !f.domaine.value) { alert('Merci de choisir le domaine technique.'); return null; }
     if (!f.date.value) { alert("Merci de renseigner la date d'observation."); return null; }
     return {
       id: this.entryId,
@@ -199,7 +202,15 @@ SIG.Form = {
       f.title.textContent = entry ? "Modifier l'entrée" : 'Nouvelle entrée';
       f.nature.value = entry ? entry.nature : '';
       this._onNature();
-      if (entry) { f.type.value = entry.type; this._onType(); f.domaine.value = entry.domaine || ''; }
+      if (entry) {
+        // Un type abandonné (vocabulaire) n'est plus proposé, mais une entrée qui le porte doit rester modifiable.
+        if (!Array.from(f.type.options).some((o) => o.value === entry.type) && NS.Depot.type(entry.type)) {
+          f.type.add(new Option(`${NS.Depot.type(entry.type).fr} (ancien)`, entry.type));
+        }
+        f.type.value = entry.type;
+        this._onType();
+        f.domaine.value = entry.domaine || '';
+      }
       f.date.value = entry ? entry.dateObservation : NS.Depot.today();
       for (const k of ['lieu', 'demandeur', 'refDemandeur', 'description']) {
         const keys = { lieu: 'lieu', demandeur: 'demandeur', refDemandeur: 'referenceDemandeur', description: 'description' };

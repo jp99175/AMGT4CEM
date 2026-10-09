@@ -35,7 +35,14 @@ NS.Depot = {
   },
 
   natures() { return this.vocab.natures; },
-  typesFor(nature) { return this.vocab.types.filter((t) => t.nature === nature); },
+  /** Types proposés à la saisie (les types abandonnés restent lisibles via type(code) mais ne sont plus proposés). */
+  typesFor(nature) { return this.vocab.types.filter((t) => t.nature === nature && !t.obsolete); },
+  /** Domaines techniques que le type accepte (liste vide : aucun domaine à renseigner). Sans liste, tous. */
+  domainesFor(typeCode) {
+    const t = this.type(typeCode);
+    if (!t) return [];
+    return t.domaines ? t.domaines.map((c) => this.domaine(c)).filter(Boolean) : this.vocab.domaines;
+  },
   type(code) { return this.vocab.types.find((t) => t.code === code) || null; },
   domaine(code) { return this.vocab.domaines.find((d) => d.code === code) || null; },
   nature(code) { return this.vocab.natures.find((n) => n.code === code) || null; },
