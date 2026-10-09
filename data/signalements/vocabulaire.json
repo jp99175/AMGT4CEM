@@ -63,15 +63,6 @@
       "domaines": []
     },
     {
-      "code": "APPLICATION_AMIANTE",
-      "nature": "SIGNALEMENT",
-      "fr": "Application amiante",
-      "nl": null,
-      "court": "AMI",
-      "domaineObligatoire": false,
-      "domaines": []
-    },
-    {
       "code": "DEMANDE_MODIF_RENOUV",
       "nature": "DEMANDE",
       "fr": "Demande de modification / renouvellement",
@@ -83,6 +74,15 @@
         "PARACHEVEMENT",
         "DRAINAGE"
       ]
+    },
+    {
+      "code": "APPLICATION_AMIANTE",
+      "nature": "SIGNALEMENT",
+      "fr": "Application amiante",
+      "nl": null,
+      "court": "AMI",
+      "domaineObligatoire": false,
+      "domaines": []
     },
     {
       "code": "MODIFICATION",
