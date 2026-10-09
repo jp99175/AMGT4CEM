@@ -8,7 +8,7 @@ Elle embarque son propre écran de carte, juste pour choisir le point. Chargée 
 
 1. **Carte, tout de suite.** Fond UrbIS (même socle que la carte : `crs.js`, `services.js`, `basemap.js`). Un toucher pose
    un marqueur déplaçable (la position GPS de l'appareil est en suspens, retirée de la carte) ; **Valider la position** ouvre le formulaire.
-2. **Formulaire.** Nature > type > domaine technique, date d'observation, localisation précisée, demandeur (et sa référence),
+2. **Formulaire.** Type > domaine technique, date d'observation, localisation précisée, demandeur (et sa référence),
    description, photos (prise directe ou fichiers ; réduites à 2000 px, JPEG 85). **Modifier la position** revient à la carte
    sans effacer la saisie ; **Annuler** supprime l'entrée et ses photos.
 3. **Deux enregistrements.** **Enregistrer en local** : brouillon (`draft`). **Enregistrer et envoyer** : envoi demandé (`file`),
