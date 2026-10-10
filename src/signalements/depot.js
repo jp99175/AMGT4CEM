@@ -107,6 +107,8 @@ NS.Depot = {
       localisation: s.x == null ? null : { x: s.x, y: s.y, crs: 'EPSG:31370' }, // facultative
       redacteur: null, // renseigné quand le référentiel des intervenants existera
       creeLe: s.creeLe,
+      version: s.version || 1, // v0.nn : incrémentée à chaque modification enregistrée sur l'appareil
+      modifieLe: s.modifieLe || s.creeLe || null,
       pieces: (s.pieces || []).map((meta, i) => ({
         nom: this.pieceFileName(s, i),
         type: 'image/jpeg',

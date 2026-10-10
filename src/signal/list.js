@@ -23,6 +23,21 @@ const VIDES = {
   envoye: 'Aucune entrée envoyée sur cette période.',
 };
 
+/** « 10.10.2026 » */
+function fmtDay(iso) {
+  const d = new Date(iso);
+  if (!iso || Number.isNaN(d.getTime())) return '';
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+
+/** « 2026-0122 v0.06 du 10.10.2026 » (la référence n'apparaît qu'une fois attribuée par le serveur). */
+function idLine(entry) {
+  const v = `v0.${String(entry.version || 1).padStart(2, '0')}`;
+  const day = fmtDay(entry.modifieLe || entry.envoyeLe || entry.creeLe);
+  return [entry.reference, v, day ? `du ${day}` : ''].filter(Boolean).join(' ');
+}
+
 function fmtDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -150,9 +165,8 @@ SIG.List = {
       ? h('span', { class: 'sig4cem-row__status sig4cem-row__status--erreur', text: `Envoi en erreur : ${entry.erreur || 'cause inconnue'}` })
       : entry.statut === S.FILE
         ? h('span', { class: 'sig4cem-row__status', text: "Envoi demandé, en attente" })
-        : entry.statut === S.ENVOYE
-          ? h('span', { class: 'sig4cem-row__status sig4cem-row__status--ok', text: `Référence ${entry.reference} · envoyée le ${fmtDate(entry.envoyeLe)}` })
-          : null;
+        : null;
+    const ident = h('span', { class: `sig4cem-row__status${entry.statut === S.ENVOYE ? ' sig4cem-row__status--ok' : ''}`, text: idLine(entry) });
     const title = entry.titre || entry.label || 'Entrée'; // anciennes entrées : pas de titre, le type et le domaine en tiennent lieu
     // 2e ligne : NATURE – DOMAINE TECHNIQUE, en gras et majuscules (le domaine manque pour certains types).
     const D0 = NS.Depot;
@@ -163,7 +177,7 @@ SIG.List = {
     const titleEl = h('strong', { class: 'sig4cem-row__title', text: title });
     const rest = h('div', { class: 'sig4cem-row__rest' },
       nd ? h('span', { class: 'sig4cem-row__nd', text: nd }) : null,
-      h('span', { class: 'sig4cem-row__meta', text: meta }), status);
+      h('span', { class: 'sig4cem-row__meta', text: meta }), ident, status);
     const body = h('div', { class: 'sig4cem-row__body' }, titleEl, rest);
     const li = h('li', { class: 'sig4cem-listrow' });
     if (selectable) {
@@ -182,13 +196,29 @@ SIG.List = {
       const dl = h('dl', { class: 'sig4cem-dl' });
       const add = (k, v) => { if (v) dl.append(h('dt', { text: k }), h('dd', { text: v })); };
       const D = NS.Depot;
-      add('Nature', (D.nature(entry.nature) || {}).fr);
-      add('Type', (D.type(entry.type) || {}).fr);
-      add('Domaine technique', entry.domaine ? (D.domaine(entry.domaine) || {}).fr : '');
+      add('Envoyée le', fmtDate(entry.envoyeLe));
       add('Demandeur', entry.demandeur);
       add('Référence du demandeur', entry.referenceDemandeur);
       add('Description', entry.description);
       details.append(dl);
+      // Photos et commentaires : chargés à la première ouverture.
+      const gallery = h('div', { class: 'sig4cem-gallery' });
+      details.append(gallery);
+      let loaded = false;
+      details.addEventListener('toggle', async () => {
+        if (!details.open || loaded || !(entry.pieces || []).length) return;
+        loaded = true;
+        for (const [i, meta] of entry.pieces.entries()) {
+          try {
+            const rec = await NS.Pieces.get(meta.id);
+            if (!rec) continue;
+            const thumb = h('span', { class: 'sig4cem-photo' }, h('img', { src: URL.createObjectURL(rec.blob), alt: `Photo ${i + 1}` }));
+            if (rec.annot) thumb.append(h('img', { class: 'sig4cem-photo__overlay', src: URL.createObjectURL(rec.annot), alt: '' }));
+            gallery.append(h('div', { class: 'sig4cem-photo-card' }, thumb,
+              h('div', { class: 'sig4cem-photo-card__side' }, h('p', { class: 'sig4cem-photo__text', text: meta.commentaire || '' }))));
+          } catch (err) { console.warn('[SIG4CEM] Photo non affichée :', err); }
+        }
+      });
       li.append(details);
     }
     return li;

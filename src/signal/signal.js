@@ -117,7 +117,10 @@ function openForm(entryId, position, reuse, entry) {
 
 async function saveEntry(data, send) {
   try {
-    await SIG.Entries.add({ ...data, statut: send ? S.FILE : S.DRAFT, lotOuvert: !!send });
+    // Version : v0.01 à la première saisie, +1 à chaque enregistrement d'une modification (même règle que les documents : v0.nn avant diffusion).
+    const prev = await SIG.Entries.get(data.id);
+    const version = prev ? (prev.version || 1) + 1 : 1;
+    await SIG.Entries.add({ ...data, version, modifieLe: new Date().toISOString(), statut: send ? S.FILE : S.DRAFT, lotOuvert: !!send });
   } catch (err) {
     console.error('[SIG4CEM] Enregistrement impossible :', err);
     alert(`Impossible d'enregistrer cette entrée : ${err.message}`);
