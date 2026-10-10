@@ -228,6 +228,6 @@ html[data-app="signal"] body {
 .sig4cem-pe__text--on .sig4cem-pe__text-move, .sig4cem-pe__text--on .sig4cem-pe__text-del { display: block; }
 .sig4cem-pe__text--low .sig4cem-pe__text-move, .sig4cem-pe__text--low .sig4cem-pe__text-del { top: auto; bottom: -30px; }
 
-/* Lignes de liste : 2e ligne « NATURE – DOMAINE » en gras majuscules, de la taille du reste du cadre */
+/* Lignes de liste : 2e ligne « NATURE – DOMAINE » en gras majuscules et gris, de la taille du reste du cadre */
 .sig4cem-row__rest { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; }
-.sig4cem-row__nd { font-size: 13px; font-weight: 700; color: #000; letter-spacing: .01em; }
+.sig4cem-row__nd { font-size: 13px; font-weight: 700; color: #52606d; letter-spacing: .01em; }
