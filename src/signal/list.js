@@ -145,7 +145,7 @@ SIG.List = {
 
   _row(entry, selectable) {
     const photos = (entry.pieces || []).length;
-    const meta = [entry.titre ? entry.label : '', entry.dateObservation, entry.lieu, photos ? `${photos} photo${photos > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
+    const meta = [entry.titre ? ((NS.Depot.type(entry.type) || {}).fr || entry.label) : '', entry.dateObservation, entry.lieu, photos ? `${photos} photo${photos > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
     const status = entry.statut === S.ERREUR
       ? h('span', { class: 'sig4cem-row__status sig4cem-row__status--erreur', text: `Envoi en erreur : ${entry.erreur || 'cause inconnue'}` })
       : entry.statut === S.FILE
@@ -154,8 +154,17 @@ SIG.List = {
           ? h('span', { class: 'sig4cem-row__status sig4cem-row__status--ok', text: `Référence ${entry.reference} · envoyée le ${fmtDate(entry.envoyeLe)}` })
           : null;
     const title = entry.titre || entry.label || 'Entrée'; // anciennes entrées : pas de titre, le type et le domaine en tiennent lieu
-    const body = h('div', { class: 'sig4cem-row__body' },
-      h('strong', { text: title }), h('span', { class: 'sig4cem-row__meta', text: meta }), status);
+    // 2e ligne : NATURE – DOMAINE TECHNIQUE, en gras et majuscules (le domaine manque pour certains types).
+    const D0 = NS.Depot;
+    const typeDef = D0.type(entry.type);
+    const natureFr = (D0.nature(entry.nature || (typeDef && typeDef.nature)) || {}).fr;
+    const domaineFr = entry.domaine ? (D0.domaine(entry.domaine) || {}).fr : '';
+    const nd = [natureFr, domaineFr].filter(Boolean).join(' – ').toLocaleUpperCase('fr-BE');
+    const titleEl = h('strong', { class: 'sig4cem-row__title', text: title });
+    const rest = h('div', { class: 'sig4cem-row__rest' },
+      nd ? h('span', { class: 'sig4cem-row__nd', text: nd }) : null,
+      h('span', { class: 'sig4cem-row__meta', text: meta }), status);
+    const body = h('div', { class: 'sig4cem-row__body' }, titleEl, rest);
     const li = h('li', { class: 'sig4cem-listrow' });
     if (selectable) {
       const cb = h('input', { type: 'checkbox', 'aria-label': `Sélectionner ${title}` });
@@ -168,7 +177,8 @@ SIG.List = {
       open.addEventListener('click', () => this.ctx.edit(entry));
       li.append(cb, open);
     } else {
-      const details = h('details', { class: 'sig4cem-listrow__details' }, h('summary', {}, body));
+      // Entrée envoyée : le titre est sur la ligne du triangle, le reste en dessous.
+      const details = h('details', { class: 'sig4cem-listrow__details' }, h('summary', {}, titleEl, rest));
       const dl = h('dl', { class: 'sig4cem-dl' });
       const add = (k, v) => { if (v) dl.append(h('dt', { text: k }), h('dd', { text: v })); };
       const D = NS.Depot;
