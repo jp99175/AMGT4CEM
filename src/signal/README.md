@@ -46,7 +46,7 @@ d'interstation. Pas de points métier. Seuls points affichés : les entrées loc
 ## Photos : commentaire et annotations
 
 Chaque photo (réduite à 2000 px, JPEG 85) a un commentaire texte et, au choix, des annotations (crayon, flèche, cercle,
-texte) saisies dans `photoEditor.js`. La photo n'est jamais modifiée : les annotations sont enregistrées à part, sur un
+texte en zone transparente, modifiable, déplaçable, de taille et couleur réglables) saisies dans `photoEditor.js`. La photo n'est jamais modifiée : les annotations sont enregistrées à part, sur un
 calque PNG transparent (grand côté 1000 px) superposé à l'affichage, avec les traits (coordonnées relatives) pour les
 reprendre. Dans l'archive de dépôt : `IMG_…_MX.jpg` (photo), `IMG_…_MX_ANNOT.png` (calque) et, dans `signalement.json`,
 `pieces[i].commentaire` et `pieces[i].annotations` (nom, taille, SHA-256), champs facultatifs (schéma version 1).
