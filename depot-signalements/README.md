@@ -5,18 +5,33 @@ Reçoit les signalements envoyés par le plugin `src/signalements/`, leur **attr
 l'archive dans R2. **Distinct de `relay/`** : le relais écrit dans le dépôt GitHub (public) ; ce serveur n'y écrit
 jamais, car le suivi n'entre pas dans le dépôt.
 
-| Route | Rôle |
-|---|---|
-| `POST /depot` | corps = archive ZIP de dépôt ; en-têtes `X-Depot-Code`, `X-Signalement-Id`, `X-Flux` (`STANDARD` ; `AMIANTE` reste accepté pour d'anciens clients) ; répond `{ reference, deja, recuLe }` |
-| `GET /sante` | vérifie l'adresse et le code d'accès |
+| Route | Accès | Rôle |
+|---|---|---|
+| `POST /auth/login` | public | `{ matricule, motdepasse }` → jeton (30 jours) + identité |
+| `POST /auth/activer` | public | `{ matricule, code, motdepasse }` : première connexion avec le code reçu par email |
+| `GET /auth/moi` · `POST /auth/motdepasse` | jeton | identité courante · changement de mot de passe |
+| `POST /depot` | jeton | corps = archive ZIP ; en-têtes `Authorization: Bearer …`, `X-Signalement-Id`, `X-Flux` (`STANDARD`), `X-Fichier` ; répond `{ reference, deja, recuLe }` ; le matricule du rédacteur est noté dans `recu.json` |
+| `GET /sante` | jeton | vérifie l'adresse et la connexion |
+| `GET` · `POST /admin/intervenants` | jeton admin | liste · création/modification d'une fiche (la création génère le code d'activation) |
+| `POST /admin/activation` | jeton admin | nouveau code d'activation pour un matricule |
+| `POST /admin/amorcer` | secret d'amorçage | crée le **premier** administrateur, une seule fois (référentiel vide) |
 
 - **Idempotent** : renvoyer le même signalement (même `X-Signalement-Id`) redonne la même référence, sans doublon
   ni numéro perdu ; un envoi interrompu se refait sans risque.
 - **Rangement R2** : `standard/` (et `amiante/` pour d'anciens dépôts) · année · référence · `depot.zip` (l'archive reçue) et `recu.json`
-  (référence, identifiant, nom de fichier, taille, date de réception).
-- **Contrôles** : origine autorisée (`ALLOWED_ORIGINS`), code d'accès (`DEPOT_CODE`), flux valide, archive ZIP de 30 Mo au plus.
-- **Le code d'accès est commun** : il montre l'appartenance au service, pas la personne. L'identification des
-  rédacteurs (référentiel des intervenants, matricule) se branchera plus tard sur le même point d'entrée.
+  (référence, identifiant, nom de fichier, taille, date de réception, `redacteur`).
+- **Référentiel des intervenants** : un seul objet R2, `referentiel/intervenants.json` (jamais dans le dépôt GitHub).
+  Clé = matricule ; prénom, nom, GSM (`+32…`), email, organisation, division, département, service, droit admin, actif.
+  Mot de passe : jamais conservé, seulement une empreinte PBKDF2-SHA256 salée. Code d'activation : `XXXXX-XXXXX`,
+  à usage unique, 7 jours, seule l'empreinte est conservée. Écritures conditionnelles (ETag) : pas d'écrasement concurrent.
+- **Sécurité** : 5 échecs de connexion → blocage 15 min ; jeton signé (HMAC) re-vérifié à chaque appel (un compte désactivé
+  ou privé du droit admin est refusé aussitôt) ; un administrateur ne peut pas se retirer son droit ni se désactiver, et il
+  reste toujours au moins un administrateur actif.
+- **Transition** : tant qu'aucun compte n'est activé, l'ancien code partagé (`X-Depot-Code`, secret `DEPOT_CODE`) reste accepté
+  pour `/depot` et `/sante`. Dès le premier compte activé, il ne sert plus.
+- **Contrôles** : origine autorisée (`ALLOWED_ORIGINS`), flux valide, archive ZIP de 30 Mo au plus.
+- **Données personnelles** : matricule, nom, GSM et email sont des données personnelles. Tant que l'accord de l'IT / du DPO
+  n'est pas donné, ne créer que des agents fictifs.
 
 ## Déploiement (une seule fois)
 
@@ -27,18 +42,26 @@ Prérequis : compte Cloudflare (gratuit, R2 demande d'activer l'offre gratuite),
    ```
    npx wrangler login
    npx wrangler r2 bucket create amgt4cem-depots
-   npx wrangler secret put DEPOT_CODE      # choisir le code d'accès (long) : à donner aux agents
+   npx wrangler secret put SESSION_SECRET        # longue chaîne aléatoire : signe les jetons de connexion
+   npx wrangler secret put ADMIN_BOOTSTRAP_CODE  # code temporaire pour créer le premier administrateur
    npx wrangler deploy
    ```
 3. Noter l'adresse affichée (`https://amgt4cem-depot-signalements.<compte>.workers.dev`) et la mettre dans
    `config.js`, `plugins` > `signalements` > `options.serverUrl`.
 
+4. **Premier administrateur** : ouvrir `home.html?app=admin`, déplier « Première installation », saisir le code
+   d'amorçage et sa propre fiche ; la page affiche le lien d'activation (à ouvrir pour choisir son mot de passe).
+   Ensuite, supprimer le secret `ADMIN_BOOTSTRAP_CODE` (la route ne fonctionne de toute façon qu'une fois).
+   Les secrets peuvent aussi se définir dans le tableau de bord Cloudflare (Workers > le Worker > Settings > Variables).
+   Variable optionnelle `PBKDF2_ITER` (100000 par défaut, maximum accepté par Cloudflare) : la baisser si le forfait
+   gratuit renvoie l'erreur 1102 (temps CPU dépassé) à la connexion.
+
 Tant que `serverUrl` est vide, le plugin fonctionne comme avant : signalements sur l'appareil, export ZIP à la main.
 
 ## Tester en local
 
-`npx wrangler dev --local` (avec un fichier `.dev.vars` contenant `DEPOT_CODE=...` et `ALLOWED_ORIGINS` du site de test)
-simule R2 et le compteur. Vérifié ainsi : référence attribuée, renvoi idempotent, ancien flux amiante, code refusé, archive invalide.
+`npx wrangler dev --local` (avec un fichier `.dev.vars` contenant `SESSION_SECRET`, `ADMIN_BOOTSTRAP_CODE`, `DEPOT_CODE` éventuel, et `--var ALLOWED_ORIGINS:…` du site de test)
+simule R2 et le compteur. Vérifié ainsi : amorçage, activation, connexion, blocage après échecs, dépôt authentifié (matricule noté), repli sur l'ancien code puis refus après activation, référence attribuée, renvoi idempotent, archive invalide.
 
 ## Relire les dépôts
 

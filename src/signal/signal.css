@@ -235,3 +235,5 @@ html[data-app="signal"] body {
 /* Entrée développée : photos et commentaires */
 .sig4cem-gallery { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .sig4cem-photo__text { margin: 0; font-size: 14px; white-space: pre-wrap; }
+
+.sig4cem-identity { margin: 0 0 6px; font-size: 13px; color: #52606d; }

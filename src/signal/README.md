@@ -54,8 +54,13 @@ Reste à faire : recadrage.
 
 ## À faire
 
-Interruption d'un envoi en cours ; révisions d'une entrée déjà envoyée ; recadrage des photos ; identité des
-utilisateurs ; fond de carte hors connexion.
+Interruption d'un envoi en cours ; révisions d'une entrée déjà envoyée ; recadrage des photos ; fond de carte hors connexion.
+
+## Identification
+
+Le pied du menu indique « Connecté : Prénom Nom (matricule) » ou « Non connecté ». L'envoi redemande la connexion si besoin ;
+les brouillons et les entrées restent sur l'appareil sans connexion. Première connexion : lien reçu par email
+(`?app=signal&m=matricule&code=…`) qui ouvre l'écran d'activation (choix du mot de passe). Modules : `src/auth/`.
 
 ## Fichiers
 
@@ -67,5 +72,6 @@ utilisateurs ; fond de carte hors connexion.
 | `form.js` | formulaire et photos (nouvelle entrée ou modification) |
 | `list.js` | listes « Mes entrées » : brouillons, envois en cours, dernières entrées |
 | `signal.css` | styles (pensés pour le téléphone) |
+| `../auth/` | session et écran de connexion / première connexion (communs avec la page admin) |
 | `../signalements/` | modules repris du plugin : vocabulaire et archive (`depot.js`), photos (`pieces-store.js`), envoi (`envoi.js`) |
 tools/stamp-build.sh : horodatage du build, lancé par le hook git pre-commit (.git/hooks, non versionné : à recréer sur un autre clone).

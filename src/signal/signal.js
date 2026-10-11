@@ -59,7 +59,21 @@ async function renderMenu() {
   screens.menu.append(
     h('header', { class: 'sig4cem-header' }, h('h1', { text: 'SIG4CEM' }), h('p', { text: 'Signalements et demandes' })),
     ...parts,
-    h('footer', { class: 'sig4cem-footer' }, h('span', { class: 'sig4cem-build', text: `BUILD ${AMGT4CEM_BUILD_TIMESTAMP}` })));
+    h('footer', { class: 'sig4cem-footer' }, identityLine(), h('span', { class: 'sig4cem-build', text: `BUILD ${AMGT4CEM_BUILD_TIMESTAMP}` })));
+}
+
+/** « Connecté : Prénom Nom (matricule) · Se déconnecter » ou « Non connecté · Se connecter ». */
+function identityLine() {
+  const s = AMGT4CEM_Auth.session();
+  const btn = h('button', { type: 'button', class: 'sig4cem-link', text: s ? 'Se déconnecter' : 'Se connecter' });
+  btn.addEventListener('click', async () => {
+    if (s) { AMGT4CEM_Auth.logout(); notice = 'Déconnecté.'; } else {
+      const ok = await AMGT4CEM_Auth.ensure({});
+      if (ok) notice = `Connecté : ${AMGT4CEM_Auth.label(ok)}.`;
+    }
+    await renderMenu();
+  });
+  return h('p', { class: 'sig4cem-identity' }, s ? `Connecté : ${AMGT4CEM_Auth.label(s)} · ` : 'Non connecté · ', btn);
 }
 
 async function backToMenu() {
@@ -170,6 +184,14 @@ async function sendEntry(id) {
     console.error('[SIG4CEM] Reprise des anciens signalements impossible :', err);
   }
   await renderMenu();
+  // Lien reçu par email : première connexion (matricule et code déjà remplis).
+  const pm = AMGT4CEM_Router.params.get('m');
+  const pc = AMGT4CEM_Router.params.get('code');
+  if (pm && pc) {
+    history.replaceState(null, '', AMGT4CEM_Router.url('signal')); // le code ne reste pas dans l'adresse
+    const s = await AMGT4CEM_Auth.ensure({ onglet: 'activation', matricule: pm, code: pc, message: 'Bienvenue. Choisissez votre mot de passe pour activer votre compte.' });
+    if (s) { notice = `Compte activé. Connecté : ${AMGT4CEM_Auth.label(s)}.`; await renderMenu(); }
+  }
   // Arrivée depuis « Ajouter un point » de la carte : formulaire tout de suite, position pré-remplie.
   const px = Number(AMGT4CEM_Router.params.get('x'));
   const py = Number(AMGT4CEM_Router.params.get('y'));

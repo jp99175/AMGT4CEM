@@ -1,24 +1,48 @@
 /**
  * Serveur de dépôt des signalements (Cloudflare Worker + R2 + Durable Object).
  *
- * Reçoit l'archive ZIP d'un signalement envoyée par le plugin src/signalements/, lui attribue
- * sa référence officielle AAAA-NNNN et la range dans R2. DISTINCT de relay/ : le relais écrit dans
- * le dépôt GitHub (public), ce serveur-ci ne touche jamais au dépôt — le suivi n'y entre pas.
+ * Reçoit l'archive ZIP d'un signalement envoyée par SIG4CEM (src/signal/), lui attribue sa référence
+ * officielle AAAA-NNNN et la range dans R2. Gère aussi les intervenants : référentiel (R2, jamais dans le dépôt
+ * public), connexion, première connexion (code d'activation), administration. DISTINCT de relay/ : le relais
+ * écrit dans le dépôt GitHub (public), ce serveur-ci ne touche jamais au dépôt.
  *
- *   POST /depot   corps = archive ZIP ; en-têtes X-Depot-Code, X-Signalement-Id, X-Flux (STANDARD|AMIANTE)
- *                 -> 200 { reference, deja, recuLe }
- *   GET  /sante   vérifie l'adresse et le code (bouton de test) -> 200 { ok: true }
+ * Routes (JSON ; sauf /depot : corps ZIP) :
+ *   POST /auth/login          { matricule, motdepasse }                    -> { jeton, expire, utilisateur }
+ *   POST /auth/activer        { matricule, code, motdepasse }              -> idem (première connexion)
+ *   GET  /auth/moi            (jeton)                                      -> { utilisateur }
+ *   POST /auth/motdepasse     (jeton) { ancien, nouveau }                  -> { ok: true }
+ *   GET  /sante               (jeton)                                      -> { ok: true, utilisateur }
+ *   POST /depot               (jeton) corps ZIP ; X-Signalement-Id, X-Flux, X-Fichier
+ *                                                                          -> { reference, deja, recuLe }
+ *   GET  /admin/intervenants  (jeton admin)                                -> { intervenants: [...] }
+ *   POST /admin/intervenants  (jeton admin) { fiche }                      -> { intervenant, codeActivation? }
+ *   POST /admin/activation    (jeton admin) { matricule }                  -> { intervenant, codeActivation }
+ *   POST /admin/amorcer       { code, intervenant }  premier compte admin, une seule fois (secret ADMIN_BOOTSTRAP_CODE)
  *
- * Référence : année de Bruxelles + compteur incrémenté, un seul pour les deux flux (la référence est la
- * clé primaire de la fiche : elle doit être unique partout). Idempotent : renvoyer le même signalement
- * (même X-Signalement-Id) redonne la même référence, sans doublon ni numéro perdu.
+ * Jeton : « Authorization: Bearer … », signé (HMAC, secret SESSION_SECRET), valable 30 jours ; l'existence, l'état
+ * actif et le droit admin de l'intervenant sont revérifiés dans le référentiel à chaque appel (désactiver un agent
+ * coupe son accès tout de suite).
  *
- * Rangement R2 : <flux>/<année>/<référence>/depot.zip et recu.json (flux = standard | amiante).
- * Le code d'accès (secret DEPOT_CODE) est commun : il identifie l'appartenance au service, pas la personne
- * (l'identification des rédacteurs viendra avec le référentiel des intervenants).
+ * Référentiel : R2 `referentiel/intervenants.json`. Le mot de passe n'y est jamais en clair : PBKDF2-SHA-256 avec un
+ * sel propre à chaque intervenant. L'administrateur ne le connaît jamais : il génère un code d'activation (valable
+ * 7 jours, stocké haché), l'agent choisit son mot de passe en l'utilisant.
+ *
+ * Référence : année de Bruxelles + compteur incrémenté. Idempotent : renvoyer le même signalement (même
+ * X-Signalement-Id) redonne la même référence, sans doublon ni numéro perdu.
+ * Rangement R2 : <flux>/<année>/<référence>/depot.zip et recu.json (le rédacteur authentifié y est inscrit).
+ *
+ * Transition : tant qu'aucun intervenant n'a activé son compte, l'ancien code partagé (secret DEPOT_CODE, en-tête
+ * X-Depot-Code) reste accepté pour /depot et /sante. Dès le premier compte activé, il ne sert plus.
  */
 
 const MAX_BYTES = 30 * 1024 * 1024;
+const REF_KEY = 'referentiel/intervenants.json';
+const TOKEN_TTL_S = 30 * 24 * 3600;
+const ACTIVATION_TTL_MS = 7 * 24 * 3600 * 1000;
+const MAX_ECHECS = 5;
+const BLOCAGE_MS = 15 * 60 * 1000;
+const MDP_MIN = 8;
+const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans I, O, 0, 1 : lisible au téléphone
 
 export class Compteur {
   constructor(state) {
@@ -36,12 +60,13 @@ export class Compteur {
   }
 }
 
+// ------------------------------------------------------------------ réponses et CORS
 function corsHeaders(request, env) {
   const allowed = (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
   const origin = request.headers.get('Origin');
   const headers = {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'X-Depot-Code, X-Signalement-Id, X-Flux, X-Fichier, Content-Type',
+    'Access-Control-Allow-Headers': 'Authorization, X-Depot-Code, X-Signalement-Id, X-Flux, X-Fichier, Content-Type',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
   };
@@ -52,22 +77,418 @@ function corsHeaders(request, env) {
 function reply(request, env, status, body) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders(request, env) },
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...corsHeaders(request, env) },
   });
 }
 
-async function sameSecret(a, b) {
-  const enc = new TextEncoder();
-  const [ha, hb] = await Promise.all([crypto.subtle.digest('SHA-256', enc.encode(a)), crypto.subtle.digest('SHA-256', enc.encode(b))]);
-  const va = new Uint8Array(ha);
-  const vb = new Uint8Array(hb);
+class HttpError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+
+// ------------------------------------------------------------------ cryptographie
+const enc = new TextEncoder();
+
+function b64u(bytes) {
+  let s = '';
+  for (const b of new Uint8Array(bytes)) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function unb64u(text) {
+  const s = text.replace(/-/g, '+').replace(/_/g, '/');
+  const bin = atob(s + '='.repeat((4 - (s.length % 4)) % 4));
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+}
+
+function sameBytes(a, b) {
+  if (a.length !== b.length) return false;
   let diff = 0;
-  for (let i = 0; i < va.length; i++) diff |= va[i] ^ vb[i];
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
   return diff === 0;
+}
+
+async function sameSecret(a, b) {
+  const [ha, hb] = await Promise.all([crypto.subtle.digest('SHA-256', enc.encode(a)), crypto.subtle.digest('SHA-256', enc.encode(b))]);
+  return sameBytes(new Uint8Array(ha), new Uint8Array(hb));
+}
+
+function iterations(env) {
+  const n = Number(env.PBKDF2_ITER);
+  return Number.isFinite(n) && n >= 1000 && n <= 100000 ? Math.floor(n) : 100000; // 100 000 : maximum accepté par Workers
+}
+
+async function pbkdf2(secret, saltBytes, iter) {
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), 'PBKDF2', false, ['deriveBits']);
+  return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: saltBytes, iterations: iter }, key, 256));
+}
+
+/** { s: sel, i: itérations, h: empreinte } */
+async function hacher(secret, env) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iter = iterations(env);
+  return { s: b64u(salt), i: iter, h: b64u(await pbkdf2(secret, salt, iter)) };
+}
+
+async function verifierHash(secret, rec) {
+  if (!rec || !rec.h) return false;
+  return sameBytes(await pbkdf2(secret, unb64u(rec.s), rec.i), unb64u(rec.h));
+}
+
+function codeActivation() {
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  const chars = Array.from(bytes, (b) => ALPHABET[b % ALPHABET.length]).join('');
+  return `${chars.slice(0, 5)}-${chars.slice(5)}`;
+}
+
+function normCode(code) {
+  return String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+async function hmac(env, data) {
+  if (!env.SESSION_SECRET) throw new HttpError(500, "SESSION_SECRET n'est pas défini sur le serveur (Worker > Settings > Variables and Secrets).");
+  const key = await crypto.subtle.importKey('raw', enc.encode(env.SESSION_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(data)));
+}
+
+async function creerJeton(env, matricule) {
+  const e = Math.floor(Date.now() / 1000) + TOKEN_TTL_S;
+  const payload = b64u(enc.encode(JSON.stringify({ m: matricule, e })));
+  return { jeton: `${payload}.${b64u(await hmac(env, payload))}`, expire: new Date(e * 1000).toISOString() };
+}
+
+async function lireJeton(env, header) {
+  const m = /^Bearer\s+(\S+)$/.exec(header || '');
+  if (!m) return null;
+  const [payload, sig] = m[1].split('.');
+  if (!payload || !sig) return null;
+  if (!sameBytes(await hmac(env, payload), unb64u(sig))) return null;
+  let data;
+  try { data = JSON.parse(new TextDecoder().decode(unb64u(payload))); } catch (err) { return null; }
+  if (!data || !data.m || !(data.e > Date.now() / 1000)) return null;
+  return data.m;
+}
+
+// ------------------------------------------------------------------ référentiel des intervenants (R2)
+function referentielVide() {
+  return { version: 1, date: new Date().toISOString(), intervenants: [] };
+}
+
+async function chargerRef(env) {
+  const obj = await env.DEPOTS.get(REF_KEY);
+  if (!obj) return { ref: referentielVide(), etag: null };
+  return { ref: await obj.json(), etag: obj.etag };
+}
+
+/** Lecture, modification, écriture conditionnelle (ETag) : deux écritures simultanées ne s'écrasent pas. */
+async function modifierRef(env, mutation) {
+  for (let essai = 0; essai < 5; essai++) {
+    const { ref, etag } = await chargerRef(env);
+    const resultat = await mutation(ref);
+    ref.date = new Date().toISOString();
+    const onlyIf = etag ? { etagMatches: etag } : { etagDoesNotMatch: '*' };
+    const ecrit = await env.DEPOTS.put(REF_KEY, JSON.stringify(ref, null, 2), { onlyIf, httpMetadata: { contentType: 'application/json' } });
+    if (ecrit) return resultat;
+  }
+  throw new HttpError(503, 'Référentiel occupé, réessayez.');
+}
+
+function normMatricule(m) {
+  const v = String(m || '').trim().toUpperCase();
+  if (!/^[A-Z0-9_-]{2,20}$/.test(v)) throw new HttpError(400, 'Matricule invalide (2 à 20 caractères : lettres, chiffres, - ou _).');
+  return v;
+}
+
+function normGsm(g) {
+  const brut = String(g || '').replace(/[\s.\-/()]/g, '');
+  if (!brut) return '';
+  let n = brut;
+  if (n.startsWith('00')) n = `+${n.slice(2)}`;
+  else if (n.startsWith('0')) n = `+32${n.slice(1)}`;
+  if (!/^\+32\d{8,9}$/.test(n)) throw new HttpError(400, 'GSM invalide : format attendu +32xxxxxxxxx.');
+  return n;
+}
+
+function texte(v, max, nom, obligatoire) {
+  const s = String(v == null ? '' : v).trim();
+  if (obligatoire && !s) throw new HttpError(400, `Champ obligatoire : ${nom}.`);
+  if (s.length > max) throw new HttpError(400, `Champ trop long : ${nom}.`);
+  return s;
+}
+
+/** Fiche reçue de la page admin -> champs validés (jamais le hash, ni l'activation). */
+function validerFiche(f) {
+  if (!f || typeof f !== 'object') throw new HttpError(400, 'Fiche manquante.');
+  const email = texte(f.email, 120, 'email', true).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpError(400, 'Email invalide.');
+  return {
+    matricule: normMatricule(f.matricule),
+    prenom: texte(f.prenom, 60, 'prénom', true),
+    nom: texte(f.nom, 60, 'nom', true),
+    gsm: normGsm(f.gsm),
+    email,
+    organisation: texte(f.organisation, 60, 'organisation', false),
+    division: texte(f.division, 60, 'division', false),
+    departement: texte(f.departement, 60, 'département', false),
+    service: texte(f.service, 60, 'service', false),
+    admin: f.admin === true,
+    actif: f.actif !== false,
+  };
+}
+
+/** Ce qui sort du serveur : jamais le hash ni le code d'activation. */
+function vue(u) {
+  return {
+    matricule: u.matricule, prenom: u.prenom, nom: u.nom, gsm: u.gsm, email: u.email,
+    organisation: u.organisation, division: u.division, departement: u.departement, service: u.service,
+    admin: !!u.admin, actif: u.actif !== false,
+    motDePasseDefini: !!u.hash,
+    activationExpire: u.activation ? u.activation.expire : null,
+    creeLe: u.creeLe, modifieLe: u.modifieLe,
+  };
+}
+
+async function nouvelleActivation(env) {
+  const code = codeActivation();
+  const h = await hacher(normCode(code), env);
+  return { code, activation: { ...h, expire: new Date(Date.now() + ACTIVATION_TTL_MS).toISOString() } };
+}
+
+function mdpValide(mdp, matricule) {
+  if (typeof mdp !== 'string' || mdp.length < MDP_MIN) throw new HttpError(400, `Mot de passe trop court (${MDP_MIN} caractères au moins).`);
+  if (mdp.length > 200) throw new HttpError(400, 'Mot de passe trop long.');
+  if (mdp.toUpperCase() === matricule) throw new HttpError(400, 'Le mot de passe ne peut pas être le matricule.');
+}
+
+const ECHEC = 'Matricule ou mot de passe incorrect.';
+
+/** Décompte des échecs ; blocage temporaire après MAX_ECHECS. À appeler dans modifierRef. */
+function noterEchec(u) {
+  u.echecs = (u.echecs || 0) + 1;
+  if (u.echecs >= MAX_ECHECS) { u.bloqueJusqua = new Date(Date.now() + BLOCAGE_MS).toISOString(); u.echecs = 0; }
+}
+
+function verifierBlocage(u) {
+  if (u.bloqueJusqua && new Date(u.bloqueJusqua).getTime() > Date.now()) {
+    throw new HttpError(429, 'Trop d’essais. Réessayez dans quelques minutes.');
+  }
+}
+
+// ------------------------------------------------------------------ authentification des appels
+/** @returns {Promise<object>} l'intervenant (fiche complète) ; lève 401 sinon. */
+async function intervenantCourant(request, env) {
+  const matricule = await lireJeton(env, request.headers.get('Authorization'));
+  if (!matricule) throw new HttpError(401, 'Connexion requise.');
+  const { ref } = await chargerRef(env);
+  const u = ref.intervenants.find((x) => x.matricule === matricule);
+  if (!u || u.actif === false || !u.hash) throw new HttpError(401, 'Compte inactif ou inconnu.');
+  return u;
+}
+
+async function exigerAdmin(request, env) {
+  const u = await intervenantCourant(request, env);
+  if (!u.admin) throw new HttpError(403, 'Droit administrateur requis.');
+  return u;
+}
+
+/** Repli transitoire : ancien code partagé, accepté tant qu'aucun compte n'est activé. */
+async function repliCodePartage(request, env) {
+  const code = request.headers.get('X-Depot-Code') || '';
+  if (!env.DEPOT_CODE || !code) return false;
+  const { ref } = await chargerRef(env);
+  if (ref.intervenants.some((u) => u.hash)) return false;
+  return sameSecret(code, env.DEPOT_CODE);
+}
+
+/** Au moins un administrateur actif doit rester (compte activé, ou activation en attente). */
+function verifierAdminRestant(ref) {
+  if (!ref.intervenants.some((u) => u.admin && u.actif !== false && (u.hash || u.activation))) {
+    throw new HttpError(409, 'Il doit rester au moins un administrateur actif.');
+  }
+}
+
+// ------------------------------------------------------------------ routes
+async function lireJson(request) {
+  try { return await request.json(); } catch (err) { throw new HttpError(400, 'Corps JSON invalide.'); }
+}
+
+async function routeAuth(request, env, url) {
+  const p = url.pathname;
+  if (request.method === 'POST' && p === '/auth/login') {
+    const { matricule: mRaw, motdepasse } = await lireJson(request);
+    const matricule = normMatricule(mRaw);
+    const mdp = String(motdepasse || '');
+    const { ref } = await chargerRef(env);
+    const u = ref.intervenants.find((x) => x.matricule === matricule);
+    if (!u || u.actif === false || !u.hash) {
+      await pbkdf2(mdp, new Uint8Array(16), iterations(env)); // même durée qu'un vrai essai : ne révèle pas si le matricule existe
+      throw new HttpError(401, ECHEC);
+    }
+    verifierBlocage(u);
+    if (!(await verifierHash(mdp, u.hash))) {
+      await modifierRef(env, async (r) => { const c = r.intervenants.find((x) => x.matricule === matricule); if (c) noterEchec(c); });
+      throw new HttpError(401, ECHEC);
+    }
+    if (u.echecs || u.bloqueJusqua) {
+      await modifierRef(env, async (r) => { const c = r.intervenants.find((x) => x.matricule === matricule); if (c) { c.echecs = 0; c.bloqueJusqua = null; } });
+    }
+    return { status: 200, body: { ...(await creerJeton(env, u.matricule)), utilisateur: vue(u) } };
+  }
+
+  if (request.method === 'POST' && p === '/auth/activer') {
+    const { matricule: mRaw, code, motdepasse } = await lireJson(request);
+    const matricule = normMatricule(mRaw);
+    mdpValide(motdepasse, matricule);
+    const MAUVAIS = "Matricule ou code d'activation incorrect.";
+    const { ref } = await chargerRef(env);
+    const u0 = ref.intervenants.find((x) => x.matricule === matricule);
+    if (!u0 || u0.actif === false || !u0.activation) {
+      await pbkdf2(String(code || ''), new Uint8Array(16), iterations(env));
+      throw new HttpError(401, MAUVAIS);
+    }
+    verifierBlocage(u0);
+    if (new Date(u0.activation.expire).getTime() < Date.now()) throw new HttpError(401, "Code d'activation expiré : demandez-en un nouveau à l'administrateur.");
+    if (!(await verifierHash(normCode(code), u0.activation))) {
+      await modifierRef(env, async (r) => { const c = r.intervenants.find((x) => x.matricule === matricule); if (c) noterEchec(c); });
+      throw new HttpError(401, MAUVAIS);
+    }
+    const hash = await hacher(motdepasse, env);
+    const u = await modifierRef(env, async (r) => {
+      const c = r.intervenants.find((x) => x.matricule === matricule);
+      if (!c || !c.activation) throw new HttpError(409, "Ce code d'activation vient d'être utilisé ou remplacé.");
+      c.hash = hash;
+      c.activation = null;
+      c.echecs = 0;
+      c.bloqueJusqua = null;
+      c.modifieLe = new Date().toISOString();
+      return c;
+    });
+    return { status: 200, body: { ...(await creerJeton(env, u.matricule)), utilisateur: vue(u) } };
+  }
+
+  if (request.method === 'GET' && p === '/auth/moi') {
+    return { status: 200, body: { utilisateur: vue(await intervenantCourant(request, env)) } };
+  }
+
+  if (request.method === 'POST' && p === '/auth/motdepasse') {
+    const courant = await intervenantCourant(request, env);
+    const { ancien, nouveau } = await lireJson(request);
+    mdpValide(nouveau, courant.matricule);
+    if (!(await verifierHash(String(ancien || ''), courant.hash))) throw new HttpError(401, 'Mot de passe actuel incorrect.');
+    const hash = await hacher(nouveau, env);
+    await modifierRef(env, async (ref) => {
+      const u = ref.intervenants.find((x) => x.matricule === courant.matricule);
+      if (u) { u.hash = hash; u.modifieLe = new Date().toISOString(); }
+    });
+    return { status: 200, body: { ok: true } };
+  }
+  return null;
+}
+
+async function routeAdmin(request, env, url) {
+  const p = url.pathname;
+
+  if (request.method === 'POST' && p === '/admin/amorcer') {
+    const { code, intervenant } = await lireJson(request);
+    if (!env.ADMIN_BOOTSTRAP_CODE || !code || !(await sameSecret(String(code), env.ADMIN_BOOTSTRAP_CODE))) throw new HttpError(401, "Code d'amorçage refusé.");
+    const fiche = validerFiche({ ...intervenant, admin: true, actif: true });
+    const act = await nouvelleActivation(env);
+    await modifierRef(env, async (ref) => {
+      if (ref.intervenants.length) throw new HttpError(409, 'Le référentiel existe déjà : amorçage impossible.');
+      const now = new Date().toISOString();
+      ref.intervenants.push({ ...fiche, hash: null, activation: act.activation, creeLe: now, modifieLe: now });
+    });
+    return { status: 200, body: { codeActivation: act.code, expire: act.activation.expire } };
+  }
+
+  if (request.method === 'GET' && p === '/admin/intervenants') {
+    await exigerAdmin(request, env);
+    const { ref } = await chargerRef(env);
+    return { status: 200, body: { date: ref.date, intervenants: ref.intervenants.map(vue) } };
+  }
+
+  if (request.method === 'POST' && p === '/admin/intervenants') {
+    const moi = await exigerAdmin(request, env);
+    const { fiche: brute } = await lireJson(request);
+    const fiche = validerFiche(brute);
+    if (fiche.matricule === moi.matricule && (!fiche.admin || !fiche.actif)) throw new HttpError(409, 'Vous ne pouvez pas retirer votre propre droit administrateur ni vous désactiver.');
+    const resultat = await modifierRef(env, async (ref) => {
+      const now = new Date().toISOString();
+      const existant = ref.intervenants.find((x) => x.matricule === fiche.matricule);
+      if (existant) {
+        Object.assign(existant, fiche, { modifieLe: now });
+        verifierAdminRestant(ref);
+        return { u: existant };
+      }
+      const act = await nouvelleActivation(env);
+      const u = { ...fiche, hash: null, activation: act.activation, creeLe: now, modifieLe: now };
+      ref.intervenants.push(u);
+      return { u, code: act.code };
+    });
+    return { status: 200, body: { intervenant: vue(resultat.u), ...(resultat.code ? { codeActivation: resultat.code } : {}) } };
+  }
+
+  if (request.method === 'POST' && p === '/admin/activation') {
+    await exigerAdmin(request, env);
+    const matricule = normMatricule((await lireJson(request)).matricule);
+    const act = await nouvelleActivation(env);
+    const u = await modifierRef(env, async (ref) => {
+      const cible = ref.intervenants.find((x) => x.matricule === matricule);
+      if (!cible) throw new HttpError(404, 'Intervenant inconnu.');
+      cible.activation = act.activation; // le mot de passe actuel, s'il existe, reste valable jusqu'à l'activation
+      cible.echecs = 0;
+      cible.bloqueJusqua = null;
+      cible.modifieLe = new Date().toISOString();
+      return cible;
+    });
+    return { status: 200, body: { intervenant: vue(u), codeActivation: act.code } };
+  }
+  return null;
 }
 
 function anneeBruxelles() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels', year: 'numeric' }).format(new Date());
+}
+
+async function routeDepot(request, env, url) {
+  if (request.method === 'GET' && url.pathname === '/sante') {
+    if (await repliCodePartage(request, env)) return { status: 200, body: { ok: true, transitoire: true } };
+    return { status: 200, body: { ok: true, utilisateur: vue(await intervenantCourant(request, env)) } };
+  }
+  if (request.method !== 'POST' || url.pathname !== '/depot') return null;
+
+  let redacteur;
+  if (await repliCodePartage(request, env)) redacteur = null;
+  else redacteur = (await intervenantCourant(request, env)).matricule;
+
+  const id = request.headers.get('X-Signalement-Id') || '';
+  const flux = request.headers.get('X-Flux') || '';
+  if (!/^[A-Za-z0-9-]{8,64}$/.test(id)) throw new HttpError(400, 'Identifiant de signalement invalide.');
+  if (flux !== 'STANDARD' && flux !== 'AMIANTE') throw new HttpError(400, 'Flux invalide.');
+  if (Number(request.headers.get('Content-Length') || 0) > MAX_BYTES) throw new HttpError(413, 'Archive trop volumineuse (30 Mo au plus).');
+
+  const body = await request.arrayBuffer();
+  if (body.byteLength > MAX_BYTES) throw new HttpError(413, 'Archive trop volumineuse (30 Mo au plus).');
+  const magic = new Uint8Array(body.slice(0, 4));
+  if (!(magic[0] === 0x50 && magic[1] === 0x4b && magic[2] === 0x03 && magic[3] === 0x04)) throw new HttpError(400, "Ce n'est pas une archive ZIP.");
+
+  const stub = env.COMPTEUR.get(env.COMPTEUR.idFromName('references'));
+  const attribution = await (await stub.fetch('https://compteur/', { method: 'POST', body: JSON.stringify({ id, annee: anneeBruxelles() }) })).json();
+  const { reference, deja } = attribution;
+
+  const dossier = `${flux === 'AMIANTE' ? 'amiante' : 'standard'}/${reference.slice(0, 4)}/${reference}`;
+  const recuLe = new Date().toISOString();
+  const fichier = (request.headers.get('X-Fichier') || '').replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 120);
+  // Écriture à chaque envoi (même si deja) : une écriture ratée au premier essai se rattrape au suivant.
+  await env.DEPOTS.put(`${dossier}/depot.zip`, body, { httpMetadata: { contentType: 'application/zip' } });
+  await env.DEPOTS.put(
+    `${dossier}/recu.json`,
+    JSON.stringify({ reference, id, flux, fichier, taille: body.byteLength, recuLe, redacteur }, null, 2),
+    { httpMetadata: { contentType: 'application/json' } },
+  );
+  return { status: 200, body: { reference, deja, recuLe } };
 }
 
 export default {
@@ -79,41 +500,16 @@ export default {
     const allowed = (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
     if (origin && !allowed.includes(origin)) return reply(request, env, 403, { erreur: 'Origine non autorisée.' });
 
-    const code = request.headers.get('X-Depot-Code') || '';
-    if (!env.DEPOT_CODE || !code || !(await sameSecret(code, env.DEPOT_CODE))) {
-      return reply(request, env, 401, { erreur: "Code d'accès refusé." });
+    try {
+      const out = (url.pathname.startsWith('/auth/') && (await routeAuth(request, env, url)))
+        || (url.pathname.startsWith('/admin/') && (await routeAdmin(request, env, url)))
+        || (await routeDepot(request, env, url));
+      if (!out) return reply(request, env, 404, { erreur: 'Route inconnue.' });
+      return reply(request, env, out.status, out.body);
+    } catch (err) {
+      if (err instanceof HttpError) return reply(request, env, err.status, { erreur: err.message });
+      console.error(err);
+      return reply(request, env, 500, { erreur: 'Erreur interne du serveur.' });
     }
-
-    if (request.method === 'GET' && url.pathname === '/sante') return reply(request, env, 200, { ok: true });
-    if (request.method !== 'POST' || url.pathname !== '/depot') return reply(request, env, 404, { erreur: 'Route inconnue.' });
-
-    const id = request.headers.get('X-Signalement-Id') || '';
-    const flux = request.headers.get('X-Flux') || '';
-    if (!/^[A-Za-z0-9-]{8,64}$/.test(id)) return reply(request, env, 400, { erreur: 'Identifiant de signalement invalide.' });
-    if (flux !== 'STANDARD' && flux !== 'AMIANTE') return reply(request, env, 400, { erreur: 'Flux invalide.' });
-    if (Number(request.headers.get('Content-Length') || 0) > MAX_BYTES) return reply(request, env, 413, { erreur: 'Archive trop volumineuse (30 Mo au plus).' });
-
-    const body = await request.arrayBuffer();
-    if (body.byteLength > MAX_BYTES) return reply(request, env, 413, { erreur: 'Archive trop volumineuse (30 Mo au plus).' });
-    const magic = new Uint8Array(body.slice(0, 4));
-    if (!(magic[0] === 0x50 && magic[1] === 0x4b && magic[2] === 0x03 && magic[3] === 0x04)) {
-      return reply(request, env, 400, { erreur: "Ce n'est pas une archive ZIP." });
-    }
-
-    const stub = env.COMPTEUR.get(env.COMPTEUR.idFromName('references'));
-    const attribution = await (await stub.fetch('https://compteur/', { method: 'POST', body: JSON.stringify({ id, annee: anneeBruxelles() }) })).json();
-    const { reference, deja } = attribution;
-
-    const dossier = `${flux === 'AMIANTE' ? 'amiante' : 'standard'}/${reference.slice(0, 4)}/${reference}`;
-    const recuLe = new Date().toISOString();
-    const fichier = (request.headers.get('X-Fichier') || '').replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 120);
-    // Écriture à chaque envoi (même si deja) : une écriture ratée au premier essai se rattrape au suivant.
-    await env.DEPOTS.put(`${dossier}/depot.zip`, body, { httpMetadata: { contentType: 'application/zip' } });
-    await env.DEPOTS.put(
-      `${dossier}/recu.json`,
-      JSON.stringify({ reference, id, flux, fichier, taille: body.byteLength, recuLe }, null, 2),
-      { httpMetadata: { contentType: 'application/json' } },
-    );
-    return reply(request, env, 200, { reference, deja, recuLe });
   },
 };

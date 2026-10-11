@@ -6,79 +6,48 @@
  * revient ici et est inscrite sur le signalement local, qui devient « référencé ». Renvoyer un signalement
  * déjà reçu redonne la même référence (le serveur est idempotent) : un envoi interrompu se refait sans risque.
  *
- * Le code d'accès est demandé une fois et gardé le temps de l'onglet (sessionStorage), jamais dans
- * localStorage ni dans le code. Il identifie l'appartenance au service, pas la personne.
+ * L'agent s'identifie par sa connexion (src/auth/ : matricule + mot de passe, jeton gardé 30 jours sur l'appareil) ;
+ * le serveur inscrit son matricule comme rédacteur du dépôt.
  */
 (function () {
 const NS = (window.AMGT4CEM_Signalements = window.AMGT4CEM_Signalements || {});
-const CODE_KEY = 'amgt4cem.signalements.code';
 
 NS.Envoi = {
   serverUrl: '',
 
   init(options) {
     this.serverUrl = String((options && options.serverUrl) || '').replace(/\/+$/, '');
+    if (typeof AMGT4CEM_Auth !== 'undefined') AMGT4CEM_Auth.init({ serverUrl: this.serverUrl });
   },
 
   configured() {
     return !!this.serverUrl;
   },
 
-  getCode() {
-    try { return sessionStorage.getItem(CODE_KEY) || ''; } catch (err) { return ''; }
-  },
-
-  setCode(code) {
-    try { if (code) sessionStorage.setItem(CODE_KEY, code); else sessionStorage.removeItem(CODE_KEY); } catch (err) { /* sans mémoire d'onglet : redemandé */ }
-  },
-
-  /** Code gardé, sinon demandé à l'agent. @returns {string} '' si l'agent annule. */
-  ensureCode() {
-    let code = this.getCode();
-    if (!code) {
-      code = (window.prompt("Code d'accès au serveur de dépôt des signalements :") || '').trim();
-      if (code) this.setCode(code);
-    }
-    return code;
-  },
-
-  async _call(path, options) {
-    let response;
-    try {
-      response = await fetch(this.serverUrl + path, options);
-    } catch (err) {
-      throw new Error("Serveur de dépôt injoignable (réseau, ou adresse non autorisée). Le signalement reste sur cet appareil.");
-    }
-    let body = {};
-    try { body = await response.json(); } catch (err) { /* corps vide */ }
-    if (response.status === 401) {
-      this.setCode(''); // un code refusé ne reste pas en mémoire
-      throw new Error("Code d'accès refusé.");
-    }
-    if (!response.ok) throw new Error(body.erreur || `Erreur du serveur (HTTP ${response.status}).`);
-    return body;
-  },
-
   /**
    * Envoie un signalement. @returns {Promise<{reference: string, recuLe: string}>}
-   * @throws si le serveur n'est pas configuré, si le code manque ou est refusé, ou en cas d'échec.
+   * @throws si le serveur n'est pas configuré, si l'agent ne se connecte pas, ou en cas d'échec.
    */
   async send(s) {
     if (!this.configured()) throw new Error("Aucun serveur de dépôt n'est configuré (options.serverUrl dans config.js).");
-    const code = this.ensureCode();
-    if (!code) throw new Error('Envoi annulé : pas de code d’accès.');
     const { blob } = await NS.Depot.buildArchive(s);
-    return this._call('/depot', {
-      method: 'POST',
-      headers: {
-        'X-Depot-Code': code,
-        'X-Signalement-Id': s.id,
-        'X-Flux': 'STANDARD', // plus de flux séparé : le serveur accepte encore AMIANTE mais on ne l'utilise plus
-        'X-Fichier': NS.Depot.depotFileName(s),
-        'Content-Type': 'application/zip',
-      },
-      body: blob,
-    });
+    const headers = {
+      'X-Signalement-Id': s.id,
+      'X-Flux': 'STANDARD', // plus de flux séparé : le serveur accepte encore AMIANTE mais on ne l'utilise plus
+      'X-Fichier': NS.Depot.depotFileName(s),
+      'Content-Type': 'application/zip',
+    };
+    // Connexion demandée si besoin ; un jeton refusé (compte désactivé, expiré) redemande une fois la connexion.
+    for (let essai = 0; essai < 2; essai++) {
+      const session = await AMGT4CEM_Auth.ensure({ message: essai ? 'Votre connexion a expiré ou a été refusée : reconnectez-vous.' : 'Connectez-vous pour envoyer au serveur. Vos entrées restent sur cet appareil tant que vous ne l\'avez pas fait.' });
+      if (!session) throw new Error('Envoi annulé : connexion requise. L\'entrée reste sur cet appareil.');
+      try {
+        return await AMGT4CEM_Auth.call('/depot', { method: 'POST', headers, body: blob, raw: true });
+      } catch (err) {
+        if (err.status === 401 && essai === 0) continue;
+        throw err;
+      }
+    }
   },
 };
 })();

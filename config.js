@@ -147,7 +147,8 @@ const AMGT4CEM_CONFIG = {
   // de home.html), charge les `styles` puis les `scripts` dans l'ordre, sans jamais charger une
   // autre interface. config.js, lui, est commun (chargé par home.html avant le routeur).
   //  - carto  : AMGT4CEM, visualisation de toutes les données sur la carte (interface par défaut) ;
-  //  - signal : SIG4CEM, saisie des signalements et demandes (menu, brouillons, envois).
+  //  - signal : SIG4CEM, saisie des signalements et demandes (menu, brouillons, envois) ;
+  //  - admin  : administration des intervenants (référentiel sur le serveur de dépôt, droit administrateur requis).
   defaultApp: 'carto',
   apps: {
     carto: {
@@ -201,7 +202,7 @@ const AMGT4CEM_CONFIG = {
     signal: {
       title: 'SIG4CEM – Signalements et demandes',
       template: 'amgt-tpl-signal',
-      styles: ['./src/signal/signal.css'],
+      styles: ['./src/signal/signal.css', './src/auth/auth.css'],
       // Socle commun avec la carte AMGT4CEM, pour que la carte de choix du point affiche ce que ta sélection
       // locale affiche dans la carte (réseau, UrbIS Topo, Plans patrimoine ; jamais les points métier) :
       // mêmes modules, même ordre. Sans les menus, la recherche, les outils (mesure, ajout de point) ni les
@@ -237,6 +238,8 @@ const AMGT4CEM_CONFIG = {
         './src/signalements/pieces-store.js',
         './src/signalements/zip-writer.js',
         './src/signalements/depot.js',
+        './src/auth/auth.js',
+        './src/auth/authUi.js',
         './src/signalements/envoi.js',
         './src/signal/entries.js',
         './src/signal/mapPicker.js',
@@ -244,6 +247,17 @@ const AMGT4CEM_CONFIG = {
         './src/signal/form.js',
         './src/signal/list.js',
         './src/signal/signal.js',
+      ],
+    },
+    admin: {
+      title: 'AMGT4CEM – Administration des intervenants',
+      template: 'amgt-tpl-admin',
+      styles: ['./src/auth/auth.css', './src/admin/admin.css'],
+      scripts: [
+        './src/buildInfo.js',
+        './src/auth/auth.js',
+        './src/auth/authUi.js',
+        './src/admin/admin.js',
       ],
     },
   },
