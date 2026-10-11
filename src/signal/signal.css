@@ -202,7 +202,8 @@ html[data-app="signal"] body {
 .sig4cem-listrow__open { flex: 1; min-width: 0; padding: 0; text-align: left; font: inherit; background: none; border: none; cursor: pointer; }
 .sig4cem-listrow__details { flex: 1; min-width: 0; }
 .sig4cem-listrow__details summary { cursor: pointer; }
-.sig4cem-trash { flex: none; align-self: flex-start; margin-left: auto; padding: 2px 6px; font-size: 18px; line-height: 1; background: none; border: none; cursor: pointer; }
+.sig4cem-row__actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; }
+.sig4cem-trash { flex: none; margin-left: auto; padding: 2px 6px; font-size: 18px; line-height: 1; background: none; border: none; cursor: pointer; }
 .sig4cem-trash:disabled { opacity: 0.4; }
 .sig4cem-row__body { display: flex; flex-direction: column; gap: 2px; }
 .sig4cem-row__meta { font-size: 13px; color: #52606d; }

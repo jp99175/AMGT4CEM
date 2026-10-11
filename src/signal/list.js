@@ -203,10 +203,16 @@ SIG.List = {
       add('Rédacteur', entry.redacteur);
       add('Contributeurs', (entry.contributeurs || []).join(', '));
       details.append(dl);
+      // Actions sous le cadre : « Modifier » à gauche, corbeille à droite (ajoutées après les photos, plus bas).
+      const actions = h('div', { class: 'sig4cem-row__actions' });
       if (entry.reference && this.ctx.revise) {
         const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: '✎ Modifier (nouvelle version)' });
         edit.addEventListener('click', () => this.ctx.revise(entry.reference));
-        details.append(edit);
+        actions.append(edit);
+      }
+      // Corbeille : supprime l'entrée du système (serveur) puis la copie de cet appareil.
+      if (entry.reference && SIG.All.canDelete(entry.redacteur)) {
+        actions.append(SIG.All.trashButton(entry.reference, entry.titre || entry.label || 'Entrée', async () => { await SIG.Entries.remove(entry.id); await this.render(); }));
       }
       // Photos et commentaires : chargés à la première ouverture.
       const gallery = h('div', { class: 'sig4cem-gallery' });
@@ -226,11 +232,8 @@ SIG.List = {
           } catch (err) { console.warn('[SIG4CEM] Photo non affichée :', err); }
         }
       });
+      if (actions.childNodes.length) details.append(actions);
       li.append(details);
-      // Corbeille : supprime l'entrée du système (serveur) puis la copie de cet appareil.
-      if (entry.reference && SIG.All.canDelete(entry.redacteur)) {
-        li.append(SIG.All.trashButton(entry.reference, title, async () => { await SIG.Entries.remove(entry.id); await this.render(); }));
-      }
     }
     return li;
   },

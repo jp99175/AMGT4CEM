@@ -109,10 +109,10 @@ SIG.All = {
       h('span', { class: 'sig4cem-row__status sig4cem-row__status--ok', text: ident }));
     const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: '✎ Modifier (nouvelle version)' });
     edit.addEventListener('click', () => ctx.revise(e.reference));
-    const details = h('details', { class: 'sig4cem-listrow__details' }, h('summary', {}, h('strong', { class: 'sig4cem-row__title', text: title }), rest), dl, edit);
-    const li = h('li', { class: 'sig4cem-listrow' }, details);
-    if (this.canDelete(e.redacteur)) li.append(this.trashButton(e.reference, title, () => this.open(ctx)));
-    return li;
+    const actions = h('div', { class: 'sig4cem-row__actions' }, edit);
+    if (this.canDelete(e.redacteur)) actions.append(this.trashButton(e.reference, title, () => this.open(ctx)));
+    const details = h('details', { class: 'sig4cem-listrow__details' }, h('summary', {}, h('strong', { class: 'sig4cem-row__title', text: title }), rest), dl, actions);
+    return h('li', { class: 'sig4cem-listrow' }, details);
   },
 };
 })();

@@ -467,6 +467,11 @@ async function routeAdmin(request, env, url) {
 
 const INDEX_KEY = 'index/signalements.json';
 
+/** Entrée sortie du système (statut « supprime » ; `supprimeLe` pour les entrées supprimées avant l'ajout du statut). */
+function estSupprime(e) {
+  return !!e && (e.statut === 'supprime' || !!e.supprimeLe);
+}
+
 /** Lit un fichier d'une archive ZIP (méthodes « stored » et « deflate ») ; null si absent. */
 async function lireZip(buffer, nom) {
   const dv = new DataView(buffer);
@@ -523,6 +528,7 @@ function entreeIndex(sig, reference, recuLe, deposePar) {
     contributeurs: Array.isArray(sig.contributeurs) ? sig.contributeurs.slice(0, 20) : [],
     nbPieces: Array.isArray(sig.pieces) ? sig.pieces.length : 0,
     deposePar: deposePar || null,
+    statut: 'actif', // actif | supprime ; les statuts de traitement viendront s'ajouter
   };
 }
 
@@ -559,7 +565,7 @@ async function listerSignalements(env) {
   };
   return {
     date: idx.date || null,
-    signalements: idx.signalements.filter((e) => !e.supprimeLe).map((e) => ({ ...e, redacteurNom: e.redacteur ? nom(e.redacteur) : null, contributeursNoms: (e.contributeurs || []).map(nom) })),
+    signalements: idx.signalements.filter((e) => !estSupprime(e)).map((e) => ({ ...e, redacteurNom: e.redacteur ? nom(e.redacteur) : null, contributeursNoms: (e.contributeurs || []).map(nom) })),
   };
 }
 
@@ -576,7 +582,7 @@ async function routeDepot(request, env, url) {
   if (request.method === 'GET' && mArchive) {
     await intervenantCourant(request, env);
     const ix = await env.DEPOTS.get(INDEX_KEY);
-    if (ix && (await ix.json()).signalements.some((x) => x.reference === mArchive[1] && x.supprimeLe)) throw new HttpError(410, 'Entrée supprimée.');
+    if (ix && (await ix.json()).signalements.some((x) => x.reference === mArchive[1] && estSupprime(x))) throw new HttpError(410, 'Entrée supprimée.');
     for (const flux of ['standard', 'amiante']) {
       const o = await env.DEPOTS.get(`${flux}/${mArchive[1].slice(0, 4)}/${mArchive[1]}/depot.zip`);
       if (o) return { status: 200, raw: o.body, type: 'application/zip' };
@@ -592,9 +598,10 @@ async function routeDepot(request, env, url) {
       const obj = await env.DEPOTS.get(INDEX_KEY);
       if (!obj) throw new HttpError(404, 'Entrée inconnue.');
       const idx = await obj.json();
-      const e = idx.signalements.find((x) => x.reference === mSup[1] && !x.supprimeLe);
+      const e = idx.signalements.find((x) => x.reference === mSup[1] && !estSupprime(x));
       if (!e) throw new HttpError(404, 'Entrée inconnue ou déjà supprimée.');
       if (!moi.admin && e.redacteur !== moi.matricule) throw new HttpError(403, "Seuls le rédacteur de l'entrée et les administrateurs peuvent la supprimer.");
+      e.statut = 'supprime';
       e.supprimeLe = new Date().toISOString();
       e.supprimePar = moi.matricule;
       idx.date = new Date().toISOString();
@@ -640,7 +647,7 @@ async function routeDepot(request, env, url) {
   if (deja) {
     const idx = await env.DEPOTS.get(INDEX_KEY);
     precedent = idx ? (await idx.json()).signalements.find((x) => x.reference === reference) || null : null;
-    if (precedent && precedent.supprimeLe) throw new HttpError(410, 'Cette entrée a été supprimée du système : elle ne peut plus être envoyée.');
+    if (precedent && estSupprime(precedent)) throw new HttpError(410, 'Cette entrée a été supprimée du système : elle ne peut plus être envoyée.');
     if (precedent && entree && entree.version < precedent.version) {
       throw new HttpError(409, `Une version plus récente (v0.${String(precedent.version).padStart(2, '0')}) existe déjà sur le serveur : rouvrez l'entrée pour partir de celle-ci.`);
     }

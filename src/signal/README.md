@@ -67,9 +67,9 @@ sous la même référence, l'ancienne est gardée côté serveur (`historique/`)
 
 ## Supprimer une entrée du système
 
-Icône 🗑 alignée à droite du cadre (« Mes dernières entrées », « Toutes les entrées ») et de la bulle de la carte. Visible pour le rédacteur de
+Icône 🗑 sous le cadre dépliée, à droite, sur la ligne de « Modifier » (« Mes dernières entrées », « Toutes les entrées »), et dans la bulle de la carte. Visible pour le rédacteur de
 l'entrée et pour les administrateurs ; le serveur le revérifie. La suppression retire l'entrée de la carte et des listes de tous les agents
-(confirmation demandée) ; l'archive reste dans R2, sans être relisible depuis l'application. Les brouillons locaux se suppriment comme avant
+(confirmation demandée) ; le serveur passe l'entrée au statut `supprime` (champ `statut` de l'index : `actif` par défaut ; les statuts de traitement restent à définir) ; l'archive reste dans R2, sans être relisible depuis l'application. Les brouillons locaux se suppriment comme avant
 (cases à cocher de « Draft »).
 
 ## Identification
