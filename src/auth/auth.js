@@ -81,6 +81,6 @@ const AMGT4CEM_Auth = {
   /** « Prénom Nom (matricule) » */
   label(s) {
     const u = (s || this.session() || {}).utilisateur;
-    return u ? `${u.prenom} ${u.nom} (${u.matricule})` : '';
+    return u ? `${`${u.prenom} ${u.nom}`.trim() || "Compte"} (${u.matricule})` : "";
   },
 };

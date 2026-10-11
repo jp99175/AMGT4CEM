@@ -343,6 +343,18 @@ async function routeAuth(request, env, url) {
     mdpValide(motdepasse, matricule);
     const MAUVAIS = "Matricule ou code d'activation incorrect.";
     const { ref } = await chargerRef(env);
+    // Tout premier compte : référentiel vide + secret d'amorçage utilisé comme code d'activation -> administrateur.
+    if (!ref.intervenants.length && env.ADMIN_BOOTSTRAP_CODE && code && (await sameSecret(String(code), env.ADMIN_BOOTSTRAP_CODE))) {
+      const hash0 = await hacher(motdepasse, env);
+      const u = await modifierRef(env, async (r) => {
+        if (r.intervenants.length) throw new HttpError(409, 'Le référentiel existe déjà : amorçage impossible.');
+        const now = new Date().toISOString();
+        const c = { matricule, prenom: '', nom: '', gsm: '', email: '', organisation: 'BM', division: 'DITP', departement: 'AMGT', service: 'CEM', admin: true, actif: true, hash: hash0, activation: null, creeLe: now, modifieLe: now };
+        r.intervenants.push(c);
+        return c;
+      });
+      return { status: 200, body: { ...(await creerJeton(env, u.matricule)), utilisateur: vue(u) } };
+    }
     const u0 = ref.intervenants.find((x) => x.matricule === matricule);
     if (!u0 || u0.actif === false || !u0.activation) {
       await pbkdf2(String(code || ''), new Uint8Array(16), iterations(env));

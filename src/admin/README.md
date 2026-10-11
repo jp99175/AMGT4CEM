@@ -10,5 +10,5 @@ conservé sur le serveur de dépôt (R2, voir `depot-signalements/README.md`) ; 
   l'email d'accueil (lien d'activation + code), l'ouvre dans la messagerie (`mailto:`) ou le copie. « Nouveau code
   d'activation + email » en refabrique un si le premier est perdu.
 - **Mots de passe** : l'administrateur ne les connaît jamais.
-- **Première installation** : bloc « créer le premier administrateur » (code d'amorçage défini côté serveur), utilisable une seule fois.
+- **Premier administrateur** : il se crée par l'écran « Première connexion » (matricule + code d'amorçage du serveur), puis complète sa fiche ici.
 - Fichiers : `admin.js`, `admin.css` ; session et écran de connexion dans `../auth/`.

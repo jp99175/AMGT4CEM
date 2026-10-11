@@ -203,46 +203,6 @@ function panneauAccueil() {
     h('div', { class: 'adm-actions' }, fermer, copier, envoyer));
 }
 
-/** Première installation seulement : crée le tout premier administrateur (secret ADMIN_BOOTSTRAP_CODE du serveur). */
-function blocAmorcage() {
-  const champs = {
-    code: champ('adm-b-code', "Code d'amorçage (secret ADMIN_BOOTSTRAP_CODE du serveur)", '', { autocomplete: 'off' }),
-    matricule: champ('adm-b-matricule', 'Votre matricule', '', { autocapitalize: 'characters' }),
-    prenom: champ('adm-b-prenom', 'Prénom', ''),
-    nom: champ('adm-b-nom', 'Nom', ''),
-    gsm: champ('adm-b-gsm', 'GSM', '', { inputmode: 'tel' }),
-    email: champ('adm-b-email', 'Email', '', { inputmode: 'email', autocapitalize: 'none' }),
-  };
-  const msg = h('p', { class: 'adm-msg', role: 'alert' });
-  const out = h('div', { class: 'adm-amorcage-out' });
-  const go = h('button', { type: 'button', class: 'adm-btn', text: 'Créer le premier administrateur' });
-  go.addEventListener('click', async () => {
-    msg.textContent = ''; go.disabled = true;
-    try {
-      const r = await AMGT4CEM_Auth.call('/admin/amorcer', { method: 'POST', auth: false, body: {
-        code: champs.code.input.value.trim(),
-        intervenant: {
-          matricule: champs.matricule.input.value.trim(), prenom: champs.prenom.input.value.trim(), nom: champs.nom.input.value.trim(),
-          gsm: gsmNormalise(champs.gsm.input.value), email: champs.email.input.value.trim(),
-          organisation: 'BM', division: 'DITP', departement: 'AMGT', service: 'CEM',
-        },
-      } });
-      const m = encodeURIComponent(champs.matricule.input.value.trim().toUpperCase());
-      const lien = new URL(`home.html?app=signal&m=${m}&code=${encodeURIComponent(r.codeActivation)}`, location.href).href;
-      out.textContent = '';
-      out.append(
-        h('p', { class: 'adm-notice', text: `Compte créé. Code d'activation : ${r.codeActivation} (valable jusqu'au ${new Date(r.expire).toLocaleDateString('fr-BE')}, affiché une seule fois).` }),
-        h('p', { class: 'adm-note', text: "Ouvrez ce lien pour choisir votre mot de passe :" }),
-        h('a', { href: lien, text: lien, class: 'adm-lien' }));
-    } catch (err) { msg.textContent = err.message; }
-    go.disabled = false;
-  });
-  const d = h('details', { class: 'adm-amorcage' }, h('summary', { text: 'Première installation : créer le premier administrateur' }));
-  d.append(h('p', { class: 'adm-note', text: "Possible une seule fois, tant que le référentiel est vide. Le code d'amorçage est défini dans le tableau de bord Cloudflare du serveur de dépôt." }),
-    ...Object.values(champs).map((c) => c.row), msg, go, out);
-  return d;
-}
-
 function render() {
   root.textContent = '';
   const s = AMGT4CEM_Auth.session();
@@ -250,7 +210,7 @@ function render() {
   if (!s || !s.utilisateur.admin) {
     const b = h('button', { type: 'button', class: 'adm-btn adm-btn--primary', text: 'Se connecter' });
     b.addEventListener('click', demarrer);
-    root.append(entete, h('p', { class: 'adm-note', text: 'Cette page est réservée aux administrateurs. Connexion requise.' }), b, blocAmorcage());
+    root.append(entete, h('p', { class: 'adm-note', text: 'Cette page est réservée aux administrateurs. Connexion requise.' }), b);
     return;
   }
   const sortir = h('button', { type: 'button', class: 'adm-link', text: 'Se déconnecter' });

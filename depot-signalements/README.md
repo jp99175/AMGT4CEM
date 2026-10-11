@@ -8,13 +8,12 @@ jamais, car le suivi n'entre pas dans le dépôt.
 | Route | Accès | Rôle |
 |---|---|---|
 | `POST /auth/login` | public | `{ matricule, motdepasse }` → jeton (30 jours) + identité |
-| `POST /auth/activer` | public | `{ matricule, code, motdepasse }` : première connexion avec le code reçu par email |
+| `POST /auth/activer` | public | `{ matricule, code, motdepasse }` : première connexion avec le code reçu par email. Référentiel vide : le code d'amorçage `ADMIN_BOOTSTRAP_CODE` crée ce matricule comme premier administrateur |
 | `GET /auth/moi` · `POST /auth/motdepasse` | jeton | identité courante · changement de mot de passe |
 | `POST /depot` | jeton | corps = archive ZIP ; en-têtes `Authorization: Bearer …`, `X-Signalement-Id`, `X-Flux` (`STANDARD`), `X-Fichier` ; répond `{ reference, deja, recuLe }` ; le matricule du rédacteur est noté dans `recu.json` |
 | `GET /sante` | jeton | vérifie l'adresse et la connexion |
 | `GET` · `POST /admin/intervenants` | jeton admin | liste · création/modification d'une fiche (la création génère le code d'activation) |
 | `POST /admin/activation` | jeton admin | nouveau code d'activation pour un matricule |
-| `POST /admin/amorcer` | secret d'amorçage | crée le **premier** administrateur, une seule fois (référentiel vide) |
 
 - **Idempotent** : renvoyer le même signalement (même `X-Signalement-Id`) redonne la même référence, sans doublon
   ni numéro perdu ; un envoi interrompu se refait sans risque.
@@ -49,9 +48,10 @@ Prérequis : compte Cloudflare (gratuit, R2 demande d'activer l'offre gratuite),
 3. Noter l'adresse affichée (`https://amgt4cem-depot-signalements.<compte>.workers.dev`) et la mettre dans
    `config.js`, `plugins` > `signalements` > `options.serverUrl`.
 
-4. **Premier administrateur** : ouvrir `home.html?app=admin`, déplier « Première installation », saisir le code
-   d'amorçage et sa propre fiche ; la page affiche le lien d'activation (à ouvrir pour choisir son mot de passe).
-   Ensuite, supprimer le secret `ADMIN_BOOTSTRAP_CODE` (la route ne fonctionne de toute façon qu'une fois).
+4. **Premier administrateur** : ouvrir `home.html?app=signal`, « Se connecter », onglet **Première connexion** : saisir son
+   matricule, le code d'amorçage (`ADMIN_BOOTSTRAP_CODE`) comme code, et choisir son mot de passe. Le compte est créé administrateur
+   (possible une seule fois, tant que le référentiel est vide). Compléter ensuite sa fiche dans `home.html?app=admin`, puis
+   supprimer le secret `ADMIN_BOOTSTRAP_CODE`.
    Les secrets peuvent aussi se définir dans le tableau de bord Cloudflare (Workers > le Worker > Settings > Variables).
    Variable optionnelle `PBKDF2_ITER` (100000 par défaut, maximum accepté par Cloudflare) : la baisser si le forfait
    gratuit renvoie l'erreur 1102 (temps CPU dépassé) à la connexion.
@@ -61,7 +61,7 @@ Tant que `serverUrl` est vide, le plugin fonctionne comme avant : signalements s
 ## Tester en local
 
 `npx wrangler dev --local` (avec un fichier `.dev.vars` contenant `SESSION_SECRET`, `ADMIN_BOOTSTRAP_CODE`, `DEPOT_CODE` éventuel, et `--var ALLOWED_ORIGINS:…` du site de test)
-simule R2 et le compteur. Vérifié ainsi : amorçage, activation, connexion, blocage après échecs, dépôt authentifié (matricule noté), repli sur l'ancien code puis refus après activation, référence attribuée, renvoi idempotent, archive invalide.
+simule R2 et le compteur. Vérifié ainsi : amorçage par première connexion, activation, connexion, blocage après échecs, dépôt authentifié (matricule noté), repli sur l'ancien code puis refus après activation, référence attribuée, renvoi idempotent, archive invalide.
 
 ## Relire les dépôts
 

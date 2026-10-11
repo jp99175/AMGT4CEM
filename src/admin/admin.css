@@ -38,4 +38,3 @@ html[data-app="admin"] body { background: #f4f6f8; color: #1f2933; font-family: 
 .adm-to { margin: 2px 0; font-size: 14px; }
 .adm-mail { white-space: pre-wrap; word-break: break-word; background: #f4f6f8; border: 1px solid #cbd2d9; border-radius: 6px; padding: 10px; font: 13px/1.4 system-ui, sans-serif; margin: 10px 0; }
 .adm-build { font-size: 11px; color: #9aa5b1; text-align: right; }
-.adm-amorcage{margin-top:24px;border-top:1px solid #d0d5dc;padding-top:12px}.adm-amorcage summary{cursor:pointer;color:#475569;font-size:.9rem}.adm-lien{word-break:break-all}
