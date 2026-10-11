@@ -13,6 +13,7 @@ jamais, car le suivi n'entre pas dans le dépôt.
 | `POST /depot` | jeton | corps = archive ZIP ; en-têtes `Authorization: Bearer …`, `X-Signalement-Id`, `X-Flux` (`STANDARD`), `X-Fichier` ; répond `{ reference, deja, recuLe }` ; le matricule du rédacteur est noté dans `recu.json` |
 | `GET /signalements` | jeton | index des entrées envoyées (référence, type, titre, position Lambert 72, version, rédacteur et contributeurs avec leurs noms) : lu par la couche « Signalements et demandes » de la carte |
 | `GET /signalements/AAAA-NNNN/archive` | jeton | archive ZIP de la dernière version d'une entrée (pour la rouvrir et la réviser) |
+| `POST /signalements/AAAA-NNNN/supprimer` | jeton | supprime l'entrée du système (rédacteur ou administrateur) : retirée de l'index, donc de la carte et des listes ; l'archive et son historique restent dans R2 ; un renvoi de cette entrée est refusé (410) |
 | `GET /sante` | jeton | vérifie l'adresse et la connexion |
 | `GET` · `POST /admin/intervenants` | jeton admin | liste · création/modification d'une fiche (la création génère le code d'activation) |
 | `POST /admin/activation` | jeton admin | nouveau code d'activation pour un matricule |

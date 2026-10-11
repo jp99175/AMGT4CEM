@@ -32,6 +32,29 @@ SIG.All = {
     }
   },
 
+  /** Le rédacteur de l'entrée et les administrateurs peuvent la supprimer (le serveur le vérifie aussi). */
+  canDelete(redacteur) {
+    const s = AMGT4CEM_Auth.session();
+    return !!s && (s.utilisateur.admin || (!!redacteur && s.utilisateur.matricule === redacteur));
+  },
+
+  /** Icône corbeille alignée à droite du cadre ; `onDone()` après une suppression réussie. */
+  trashButton(reference, titre, onDone) {
+    const b = h('button', { type: 'button', class: 'sig4cem-trash', title: 'Supprimer cette entrée', 'aria-label': 'Supprimer cette entrée', text: '🗑' });
+    b.addEventListener('click', async () => {
+      if (!confirm(`Supprimer l'entrée ${reference} « ${titre} » du système ? Elle disparaît de la carte et des listes de tous les agents.`)) return;
+      b.disabled = true;
+      try {
+        await AMGT4CEM_Auth.call(`/signalements/${encodeURIComponent(reference)}/supprimer`, { method: 'POST', body: {} });
+        await onDone();
+      } catch (err) {
+        alert(`Suppression impossible : ${err.message}`);
+        b.disabled = false;
+      }
+    });
+    return b;
+  },
+
   async count() {
     const rows = await this.fetch();
     return rows ? rows.length : null;
@@ -87,7 +110,9 @@ SIG.All = {
     const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: '✎ Modifier (nouvelle version)' });
     edit.addEventListener('click', () => ctx.revise(e.reference));
     const details = h('details', { class: 'sig4cem-listrow__details' }, h('summary', {}, h('strong', { class: 'sig4cem-row__title', text: title }), rest), dl, edit);
-    return h('li', { class: 'sig4cem-listrow' }, details);
+    const li = h('li', { class: 'sig4cem-listrow' }, details);
+    if (this.canDelete(e.redacteur)) li.append(this.trashButton(e.reference, title, () => this.open(ctx)));
+    return li;
   },
 };
 })();

@@ -218,11 +218,37 @@ const AMGT4CEM_SignalementsLayer = {
     if (s.redacteurNom) box.append(p(`Rédacteur : ${s.redacteurNom}`));
     const autres = (s.contributeursNoms || []).filter((n) => n !== s.redacteurNom);
     if (autres.length) box.append(p(`Contributeurs : ${autres.join(', ')}`));
+    const actions = document.createElement('div');
+    actions.className = 'amgt-sig-popup__actions';
     const edit = document.createElement('a');
     edit.href = AMGT4CEM_Router.url('signal', { edit: s.reference });
     edit.className = 'amgt-sig-popup__edit';
     edit.textContent = '✎ Modifier cette entrée';
-    box.append(edit);
+    actions.append(edit);
+    // Corbeille alignée à droite : rédacteur de l'entrée ou administrateur (le serveur le vérifie aussi).
+    const me = AMGT4CEM_Auth.session();
+    if (me && (me.utilisateur.admin || (s.redacteur && s.redacteur === me.utilisateur.matricule))) {
+      const trash = document.createElement('button');
+      trash.type = 'button';
+      trash.className = 'amgt-sig-popup__trash';
+      trash.title = 'Supprimer cette entrée';
+      trash.setAttribute('aria-label', 'Supprimer cette entrée');
+      trash.textContent = '🗑';
+      trash.addEventListener('click', async () => {
+        if (!confirm(`Supprimer l'entrée ${s.reference} « ${s.titre || ''} » du système ? Elle disparaît de la carte et des listes de tous les agents.`)) return;
+        trash.disabled = true;
+        try {
+          await AMGT4CEM_Auth.call(`/signalements/${encodeURIComponent(s.reference)}/supprimer`, { method: 'POST', body: {} });
+          this._map.closePopup();
+          await this.refresh();
+        } catch (err) {
+          alert(`Suppression impossible : ${err.message}`);
+          trash.disabled = false;
+        }
+      });
+      actions.append(trash);
+    }
+    box.append(actions);
     return box;
   },
 };

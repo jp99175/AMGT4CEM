@@ -65,6 +65,13 @@ seul le calque d'annotations peut être remplacé. Une révision ouverte puis ab
 Enregistrer une modification donne la version suivante (v0.NN+1) et ajoute le compte aux contributeurs ; l'envoi dépose la nouvelle version
 sous la même référence, l'ancienne est gardée côté serveur (`historique/`).
 
+## Supprimer une entrée du système
+
+Icône 🗑 alignée à droite du cadre (« Mes dernières entrées », « Toutes les entrées ») et de la bulle de la carte. Visible pour le rédacteur de
+l'entrée et pour les administrateurs ; le serveur le revérifie. La suppression retire l'entrée de la carte et des listes de tous les agents
+(confirmation demandée) ; l'archive reste dans R2, sans être relisible depuis l'application. Les brouillons locaux se suppriment comme avant
+(cases à cocher de « Draft »).
+
 ## Identification
 
 Le menu a trois rubriques : **Nouvelle entrée** (un sous-élément par formulaire ; pour l'instant Signalement/demande), **Mes entrées** (Draft, Téléversement en cours, Mes dernières entrées) et **Toutes les entrées** (une ligne par formulaire, avec le nombre d'entrées actives du système ; connexion requise).

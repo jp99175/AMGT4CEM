@@ -227,6 +227,10 @@ SIG.List = {
         }
       });
       li.append(details);
+      // Corbeille : supprime l'entrée du système (serveur) puis la copie de cet appareil.
+      if (entry.reference && SIG.All.canDelete(entry.redacteur)) {
+        li.append(SIG.All.trashButton(entry.reference, title, async () => { await SIG.Entries.remove(entry.id); await this.render(); }));
+      }
     }
     return li;
   },

@@ -12,6 +12,7 @@
  *   GET  /auth/moi            (jeton)                                      -> { utilisateur }
  *   POST /auth/motdepasse     (jeton) { ancien, nouveau }                  -> { ok: true }
  *   GET  /signalements       (jeton)  -> { date, signalements:[…] } index lu par la carte
+ *   POST /signalements/AAAA-NNNN/supprimer (jeton ; rédacteur ou admin) retire l'entrée de l'index (archive conservée)
  *   GET  /sante               (jeton)                                      -> { ok: true, utilisateur }
  *   POST /depot               (jeton) corps ZIP ; X-Signalement-Id, X-Flux, X-Fichier
  *                                                                          -> { reference, deja, recuLe }
@@ -558,7 +559,7 @@ async function listerSignalements(env) {
   };
   return {
     date: idx.date || null,
-    signalements: idx.signalements.map((e) => ({ ...e, redacteurNom: e.redacteur ? nom(e.redacteur) : null, contributeursNoms: (e.contributeurs || []).map(nom) })),
+    signalements: idx.signalements.filter((e) => !e.supprimeLe).map((e) => ({ ...e, redacteurNom: e.redacteur ? nom(e.redacteur) : null, contributeursNoms: (e.contributeurs || []).map(nom) })),
   };
 }
 
@@ -574,11 +575,34 @@ async function routeDepot(request, env, url) {
   const mArchive = /^\/signalements\/(\d{4}-\d{4})\/archive$/.exec(url.pathname);
   if (request.method === 'GET' && mArchive) {
     await intervenantCourant(request, env);
+    const ix = await env.DEPOTS.get(INDEX_KEY);
+    if (ix && (await ix.json()).signalements.some((x) => x.reference === mArchive[1] && x.supprimeLe)) throw new HttpError(410, 'Entrée supprimée.');
     for (const flux of ['standard', 'amiante']) {
       const o = await env.DEPOTS.get(`${flux}/${mArchive[1].slice(0, 4)}/${mArchive[1]}/depot.zip`);
       if (o) return { status: 200, raw: o.body, type: 'application/zip' };
     }
     throw new HttpError(404, 'Entrée inconnue.');
+  }
+  const mSup = /^\/signalements\/(\d{4}-\d{4})\/supprimer$/.exec(url.pathname);
+  if (request.method === 'POST' && mSup) {
+    // Suppression « douce » : l'entrée sort de l'index (carte, listes, comptes) ; l'archive et son historique restent dans R2.
+    // Réservée au rédacteur de l'entrée et aux administrateurs. Une entrée supprimée ne peut plus être renvoyée (410).
+    const moi = await intervenantCourant(request, env);
+    for (let essai = 0; essai < 5; essai++) {
+      const obj = await env.DEPOTS.get(INDEX_KEY);
+      if (!obj) throw new HttpError(404, 'Entrée inconnue.');
+      const idx = await obj.json();
+      const e = idx.signalements.find((x) => x.reference === mSup[1] && !x.supprimeLe);
+      if (!e) throw new HttpError(404, 'Entrée inconnue ou déjà supprimée.');
+      if (!moi.admin && e.redacteur !== moi.matricule) throw new HttpError(403, "Seuls le rédacteur de l'entrée et les administrateurs peuvent la supprimer.");
+      e.supprimeLe = new Date().toISOString();
+      e.supprimePar = moi.matricule;
+      idx.date = new Date().toISOString();
+      if (await env.DEPOTS.put(INDEX_KEY, JSON.stringify(idx), { onlyIf: { etagMatches: obj.etag }, httpMetadata: { contentType: 'application/json' } })) {
+        return { status: 200, body: { ok: true, reference: e.reference } };
+      }
+    }
+    throw new HttpError(503, 'Index occupé, réessayez.');
   }
   if (request.method === 'GET' && url.pathname === '/signalements') {
     await intervenantCourant(request, env); // tout compte actif peut lire ; pas de lecture anonyme
@@ -616,6 +640,7 @@ async function routeDepot(request, env, url) {
   if (deja) {
     const idx = await env.DEPOTS.get(INDEX_KEY);
     precedent = idx ? (await idx.json()).signalements.find((x) => x.reference === reference) || null : null;
+    if (precedent && precedent.supprimeLe) throw new HttpError(410, 'Cette entrée a été supprimée du système : elle ne peut plus être envoyée.');
     if (precedent && entree && entree.version < precedent.version) {
       throw new HttpError(409, `Une version plus récente (v0.${String(precedent.version).padStart(2, '0')}) existe déjà sur le serveur : rouvrez l'entrée pour partir de celle-ci.`);
     }
