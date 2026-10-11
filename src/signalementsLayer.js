@@ -218,6 +218,11 @@ const AMGT4CEM_SignalementsLayer = {
     if (s.redacteurNom) box.append(p(`Rédacteur : ${s.redacteurNom}`));
     const autres = (s.contributeursNoms || []).filter((n) => n !== s.redacteurNom);
     if (autres.length) box.append(p(`Contributeurs : ${autres.join(', ')}`));
+    const edit = document.createElement('a');
+    edit.href = AMGT4CEM_Router.url('signal', { edit: s.reference });
+    edit.className = 'amgt-sig-popup__edit';
+    edit.textContent = '✎ Modifier cette entrée';
+    box.append(edit);
     return box;
   },
 };

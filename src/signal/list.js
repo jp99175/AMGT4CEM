@@ -203,6 +203,11 @@ SIG.List = {
       add('Rédacteur', entry.redacteur);
       add('Contributeurs', (entry.contributeurs || []).join(', '));
       details.append(dl);
+      if (entry.reference && this.ctx.revise) {
+        const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: '✎ Modifier (nouvelle version)' });
+        edit.addEventListener('click', () => this.ctx.revise(entry.reference));
+        details.append(edit);
+      }
       // Photos et commentaires : chargés à la première ouverture.
       const gallery = h('div', { class: 'sig4cem-gallery' });
       details.append(gallery);

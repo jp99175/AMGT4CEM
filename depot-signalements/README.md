@@ -12,6 +12,7 @@ jamais, car le suivi n'entre pas dans le dépôt.
 | `GET /auth/moi` · `POST /auth/motdepasse` | jeton | identité courante · changement de mot de passe |
 | `POST /depot` | jeton | corps = archive ZIP ; en-têtes `Authorization: Bearer …`, `X-Signalement-Id`, `X-Flux` (`STANDARD`), `X-Fichier` ; répond `{ reference, deja, recuLe }` ; le matricule du rédacteur est noté dans `recu.json` |
 | `GET /signalements` | jeton | index des entrées envoyées (référence, type, titre, position Lambert 72, version, rédacteur et contributeurs avec leurs noms) : lu par la couche « Signalements et demandes » de la carte |
+| `GET /signalements/AAAA-NNNN/archive` | jeton | archive ZIP de la dernière version d'une entrée (pour la rouvrir et la réviser) |
 | `GET /sante` | jeton | vérifie l'adresse et la connexion |
 | `GET` · `POST /admin/intervenants` | jeton admin | liste · création/modification d'une fiche (la création génère le code d'activation) |
 | `POST /admin/activation` | jeton admin | nouveau code d'activation pour un matricule |
@@ -20,6 +21,9 @@ jamais, car le suivi n'entre pas dans le dépôt.
   ni numéro perdu ; un envoi interrompu se refait sans risque.
 - **Rangement R2** : `standard/` (et `amiante/` pour d'anciens dépôts) · année · référence · `depot.zip` (l'archive reçue) et `recu.json`
   (référence, identifiant, nom de fichier, taille, date de réception, `deposePar` = matricule du compte qui a déposé ; le rédacteur et les contributeurs de la fiche sont dans `signalement.json` de l'archive).
+- **Révisions** : renvoyer une archive avec le même `X-Signalement-Id` et une version plus récente (v0.NN) est une révision de la
+  même référence. La version précédente est conservée dans `historique/vNNN_<date>.zip` ; `recu.json` liste les révisions
+  (version, date, compte déposant). Une version plus ancienne que celle du serveur est refusée (409) : quelqu'un a révisé entre-temps.
 - **Index** : à chaque dépôt, le serveur lit `signalement.json` dans l'archive et met à jour `index/signalements.json` (R2). La carte ne lit que cet index, jamais les archives ni les photos.
 - **Référentiel des intervenants** : un seul objet R2, `referentiel/intervenants.json` (jamais dans le dépôt GitHub).
   Clé = matricule ; prénom, nom, GSM (`+32…`), email, organisation, division, département, service, droit admin, actif.

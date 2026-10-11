@@ -129,10 +129,17 @@ NS.Depot = {
   async buildArchive(s) {
     const enc = new TextEncoder();
     const depot = this.buildDepot(s);
-    const entries = [{ name: 'signalement.json', data: enc.encode(JSON.stringify(depot, null, 2)) }];
+    const records = [];
     for (let i = 0; i < (s.pieces || []).length; i++) {
       const record = await NS.Pieces.get(s.pieces[i].id);
       if (!record) throw new Error(`Photo ${i + 1} introuvable dans cet appareil.`);
+      records.push(record);
+      // Les traits accompagnent le calque : une révision (sur n'importe quel appareil) peut reprendre les annotations.
+      if (depot.pieces[i].annotations && record.traits) depot.pieces[i].annotations.traits = record.traits;
+    }
+    const entries = [{ name: 'signalement.json', data: enc.encode(JSON.stringify(depot, null, 2)) }];
+    for (let i = 0; i < (s.pieces || []).length; i++) {
+      const record = records[i];
       entries.push({ name: depot.pieces[i].nom, data: new Uint8Array(await record.blob.arrayBuffer()) });
       if (depot.pieces[i].annotations) {
         if (!record.annot) throw new Error(`Annotations de la photo ${i + 1} introuvables dans cet appareil.`);

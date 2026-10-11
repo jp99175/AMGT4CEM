@@ -57,7 +57,7 @@ SIG.All = {
     if (!rows.length) this.el.append(h('p', { class: 'sig4cem-note', text: 'Aucune entrée dans le système.' }));
     const list = h('ul', { class: 'sig4cem-list' });
     const stamp = (e) => e.modifieLe || e.recuLe || '';
-    for (const e of [...rows].sort((a, b) => stamp(b).localeCompare(stamp(a)))) list.append(this._row(e));
+    for (const e of [...rows].sort((a, b) => stamp(b).localeCompare(stamp(a)))) list.append(this._row(e, ctx));
     this.el.append(list);
   },
 
@@ -65,7 +65,7 @@ SIG.All = {
     if (this.el) this.el.classList.add('sig4cem-hidden');
   },
 
-  _row(e) {
+  _row(e, ctx) {
     const D = NS.Depot;
     const typeDef = D.type(e.type);
     const natureFr = (D.nature(e.nature || (typeDef && typeDef.nature)) || {}).fr;
@@ -84,7 +84,9 @@ SIG.All = {
       nd ? h('span', { class: 'sig4cem-row__nd', text: nd }) : null,
       h('span', { class: 'sig4cem-row__meta', text: meta }),
       h('span', { class: 'sig4cem-row__status sig4cem-row__status--ok', text: ident }));
-    const details = h('details', { class: 'sig4cem-listrow__details' }, h('summary', {}, h('strong', { class: 'sig4cem-row__title', text: title }), rest), dl);
+    const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: '✎ Modifier (nouvelle version)' });
+    edit.addEventListener('click', () => ctx.revise(e.reference));
+    const details = h('details', { class: 'sig4cem-listrow__details' }, h('summary', {}, h('strong', { class: 'sig4cem-row__title', text: title }), rest), dl, edit);
     return h('li', { class: 'sig4cem-listrow' }, details);
   },
 };

@@ -38,7 +38,7 @@ const AMGT4CEM_Auth = {
     this._store(null);
   },
 
-  async call(path, { method = 'GET', body, auth = true, headers = {}, raw } = {}) {
+  async call(path, { method = 'GET', body, auth = true, headers = {}, raw, blob } = {}) {
     if (!this.configured()) throw new Error("Aucun serveur n'est configuré (options.serverUrl dans config.js).");
     const h = { ...headers };
     if (body !== undefined && !raw) h['Content-Type'] = 'application/json';
@@ -50,6 +50,7 @@ const AMGT4CEM_Auth = {
     } catch (err) {
       throw new Error('Serveur injoignable (réseau, ou adresse non autorisée).');
     }
+    if (blob && response.ok) return response.blob();
     let data = {};
     try { data = await response.json(); } catch (err) { /* corps vide */ }
     if (response.status === 401 && auth && s) this.logout(); // jeton refusé : on ne le garde pas

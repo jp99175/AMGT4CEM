@@ -54,7 +54,16 @@ Reste à faire : recadrage.
 
 ## À faire
 
-Interruption d'un envoi en cours ; révisions d'une entrée déjà envoyée ; recadrage des photos ; fond de carte hors connexion.
+Interruption d'un envoi en cours ; verrouillage d'une entrée après traitement ; motif de révision ; recadrage des photos ; fond de carte hors connexion.
+
+## Réviser une entrée envoyée
+
+Lien **✎ Modifier (nouvelle version)** dans « Mes dernières entrées » et « Toutes les entrées », et **✎ Modifier cette entrée** dans la bulle de la
+carte (`?app=signal&edit=AAAA-NNNN`). Tout agent connecté peut réviser. L'archive de la dernière version est téléchargée du serveur et
+reconstituée sur l'appareil (champs, photos, calques et traits d'annotations) ; l'entrée garde son identifiant. Les photos ne changent pas :
+seul le calque d'annotations peut être remplacé. Une révision ouverte puis abandonnée, ou enregistrée sans changement, ne laisse rien.
+Enregistrer une modification donne la version suivante (v0.NN+1) et ajoute le compte aux contributeurs ; l'envoi dépose la nouvelle version
+sous la même référence, l'ancienne est gardée côté serveur (`historique/`).
 
 ## Identification
 

@@ -951,3 +951,4 @@ html, body {
 .amgt-sig-popup p { margin: 4px 0 0; font-size: 13px; }
 .amgt-sig-popup__ref { color: #52606d; }
 .amgt-sig-popup__kind { font-weight: 700; color: #52606d; }
+.amgt-sig-popup__edit { display: inline-block; margin-top: 8px; color: #1565c0; font-size: 13px; }

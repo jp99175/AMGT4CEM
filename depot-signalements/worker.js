@@ -571,6 +571,15 @@ async function routeDepot(request, env, url) {
     if (await repliCodePartage(request, env)) return { status: 200, body: { ok: true, transitoire: true } };
     return { status: 200, body: { ok: true, utilisateur: vue(await intervenantCourant(request, env)) } };
   }
+  const mArchive = /^\/signalements\/(\d{4}-\d{4})\/archive$/.exec(url.pathname);
+  if (request.method === 'GET' && mArchive) {
+    await intervenantCourant(request, env);
+    for (const flux of ['standard', 'amiante']) {
+      const o = await env.DEPOTS.get(`${flux}/${mArchive[1].slice(0, 4)}/${mArchive[1]}/depot.zip`);
+      if (o) return { status: 200, raw: o.body, type: 'application/zip' };
+    }
+    throw new HttpError(404, 'Entrée inconnue.');
+  }
   if (request.method === 'GET' && url.pathname === '/signalements') {
     await intervenantCourant(request, env); // tout compte actif peut lire ; pas de lecture anonyme
     return { status: 200, body: await listerSignalements(env) };
@@ -599,18 +608,40 @@ async function routeDepot(request, env, url) {
   const dossier = `${flux === 'AMIANTE' ? 'amiante' : 'standard'}/${reference.slice(0, 4)}/${reference}`;
   const recuLe = new Date().toISOString();
   const fichier = (request.headers.get('X-Fichier') || '').replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 120);
+  const entree = await entreeDepuisArchive(body, reference, recuLe, deposePar);
+
+  // Révision d'une entrée déjà reçue : même identifiant, version plus récente. Une version plus ancienne que celle du
+  // serveur est refusée (quelqu'un d'autre a révisé entre-temps) ; l'ancienne version est gardée dans historique/.
+  let precedent = null;
+  if (deja) {
+    const idx = await env.DEPOTS.get(INDEX_KEY);
+    precedent = idx ? (await idx.json()).signalements.find((x) => x.reference === reference) || null : null;
+    if (precedent && entree && entree.version < precedent.version) {
+      throw new HttpError(409, `Une version plus récente (v0.${String(precedent.version).padStart(2, '0')}) existe déjà sur le serveur : rouvrez l'entrée pour partir de celle-ci.`);
+    }
+    if (precedent && entree && entree.version > precedent.version) {
+      const ancien = await env.DEPOTS.get(`${dossier}/depot.zip`);
+      if (ancien) {
+        const tag = String(precedent.recuLe || 'sans-date').replace(/[^0-9TZ]/g, '');
+        await env.DEPOTS.put(`${dossier}/historique/v${String(precedent.version).padStart(3, '0')}_${tag}.zip`, ancien.body, { httpMetadata: { contentType: 'application/zip' } });
+      }
+    }
+  }
+  let revisions = [];
+  if (deja) {
+    const r0 = await env.DEPOTS.get(`${dossier}/recu.json`);
+    if (r0) { try { revisions = (await r0.json()).revisions || []; } catch (err) { revisions = []; } }
+  }
+  if (entree && !revisions.some((r) => r.version === entree.version)) revisions.push({ version: entree.version, recuLe, deposePar });
   // Écriture à chaque envoi (même si deja) : une écriture ratée au premier essai se rattrape au suivant.
   await env.DEPOTS.put(`${dossier}/depot.zip`, body, { httpMetadata: { contentType: 'application/zip' } });
   await env.DEPOTS.put(
     `${dossier}/recu.json`,
-    JSON.stringify({ reference, id, flux, fichier, taille: body.byteLength, recuLe, deposePar }, null, 2),
+    JSON.stringify({ reference, id, flux, fichier, taille: body.byteLength, recuLe, deposePar, revisions }, null, 2),
     { httpMetadata: { contentType: 'application/json' } },
   );
   // Index lu par la carte. Un échec ici ne doit pas perdre le dépôt.
-  try {
-    const e = await entreeDepuisArchive(body, reference, recuLe, deposePar);
-    if (e) await majIndex(env, [e]);
-  } catch (err) { console.error('index', err); }
+  try { if (entree) await majIndex(env, [entree]); } catch (err) { console.error('index', err); }
   return { status: 200, body: { reference, deja, recuLe } };
 }
 
@@ -628,6 +659,7 @@ export default {
         || (url.pathname.startsWith('/admin/') && (await routeAdmin(request, env, url)))
         || (await routeDepot(request, env, url));
       if (!out) return reply(request, env, 404, { erreur: 'Route inconnue.' });
+      if (out.raw) return new Response(out.raw, { status: out.status, headers: { 'Content-Type': out.type, 'Cache-Control': 'no-store', ...corsHeaders(request, env) } });
       return reply(request, env, out.status, out.body);
     } catch (err) {
       if (err instanceof HttpError) return reply(request, env, err.status, { erreur: err.message });

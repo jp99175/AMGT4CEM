@@ -96,6 +96,32 @@ async function backToOrigin() {
   else await backToMenu();
 }
 
+// ------------------------------------------------------------------ révision d'une entrée déjà envoyée
+/** Rouvre une entrée du serveur (par sa référence) dans le formulaire : nouvelle version à enregistrer puis à envoyer. */
+async function startRevision(reference) {
+  const s = AMGT4CEM_Auth.session() || await AMGT4CEM_Auth.ensure({ message: 'Connectez-vous pour modifier une entrée.' });
+  if (!s) return;
+  // Une révision déjà en cours sur cet appareil (brouillon ou envoi en attente) : on la reprend telle quelle.
+  const local = (await SIG.Entries.all()).find((e) => e.reference === reference && e.statut !== S.ENVOYE);
+  if (local) { origin = null; startEdit(local); return; }
+  showScreen('menu');
+  notice = `Chargement de ${reference}…`;
+  await renderMenu();
+  try {
+    const entry = await NS.Importer.fromServer(reference);
+    const old = await SIG.Entries.get(entry.id);
+    if (old) await SIG.Entries.remove(entry.id); // copie locale envoyée : remplacée par la version du serveur
+    const saved = await SIG.Entries.add({ ...entry, statut: S.DRAFT, importe: true, lotOuvert: false });
+    notice = '';
+    origin = null;
+    openForm(saved.id, saved.x == null ? null : { x: saved.x, y: saved.y }, false, saved);
+  } catch (err) {
+    console.error('[SIG4CEM] Entrée non rouverte :', err);
+    notice = `Impossible de rouvrir ${reference} : ${err.message}`;
+    await renderMenu();
+  }
+}
+
 // ------------------------------------------------------------------ « Toutes les entrées »
 async function openAll() {
   if (!AMGT4CEM_Auth.session()) {
@@ -104,14 +130,14 @@ async function openAll() {
   }
   origin = null;
   showScreen('all');
-  await SIG.All.open({ back: backToMenu });
+  await SIG.All.open({ back: backToMenu, revise: startRevision });
 }
 
 // ------------------------------------------------------------------ listes « Mes entrées »
 async function openList(kind, message) {
   origin = kind;
   showScreen('list');
-  await SIG.List.open({ kind, notice: message || '', back: backToMenu, edit: startEdit, send: sendEntry });
+  await SIG.List.open({ kind, notice: message || '', back: backToMenu, edit: startEdit, send: sendEntry, revise: startRevision });
 }
 
 /** Rouvre un brouillon ou un envoi en attente dans le formulaire. */
@@ -143,7 +169,12 @@ function openForm(entryId, position, reuse, entry) {
     reuse,
     entry,
     onChangePosition: () => pickPosition(entryId, SIG.Form.position),
-    onCancel: backToOrigin,
+    onCancel: async () => {
+      // Révision ouverte puis abandonnée sans rien enregistrer : la copie de travail n'a plus lieu d'être (la version du serveur reste).
+      const e = await SIG.Entries.get(entryId);
+      if (e && e.importe) await SIG.Entries.remove(entryId);
+      await backToOrigin();
+    },
     onSave: (data, { send }) => saveEntry(data, send),
   });
 }
@@ -155,12 +186,19 @@ async function saveEntry(data, send) {
     // Une révision sans changement de contenu n'est pas une modification : ni nouvelle version, ni nouveau contributeur.
     const changed = !prev || Object.keys(data).some((k) => JSON.stringify(data[k]) !== JSON.stringify(prev[k]));
     const version = prev ? (changed ? (prev.version || 1) + 1 : (prev.version || 1)) : 1;
+    if (prev && prev.importe && !changed) {
+      // Révision sans aucune modification : rien à enregistrer ni à envoyer.
+      await SIG.Entries.remove(data.id);
+      notice = 'Aucune modification : la version du serveur reste inchangée.';
+      if (origin) await openList(origin, notice); else await backToMenu();
+      return true;
+    }
     // Rédacteur = créateur, contributeurs = ceux qui ajoutent ou révisent : tirés de la session connectée, pas du formulaire.
     const me = AMGT4CEM_Auth.session();
     const matricule = me ? me.utilisateur.matricule : null;
     const redacteur = (prev && prev.redacteur) || matricule || null;
     const contributeurs = [...new Set([...((prev && prev.contributeurs) || []), ...(matricule && changed ? [matricule] : [])])];
-    await SIG.Entries.add({ ...data, redacteur, contributeurs, version, modifieLe: changed || !prev ? new Date().toISOString() : (prev.modifieLe || new Date().toISOString()), statut: send ? S.FILE : S.DRAFT, lotOuvert: !!send });
+    await SIG.Entries.add({ ...data, reference: (prev && prev.reference) || null, envoyeLe: prev ? prev.envoyeLe : undefined, redacteur, contributeurs, version, modifieLe: changed || !prev ? new Date().toISOString() : (prev.modifieLe || new Date().toISOString()), statut: send ? S.FILE : S.DRAFT, lotOuvert: !!send });
   } catch (err) {
     console.error('[SIG4CEM] Enregistrement impossible :', err);
     alert(`Impossible d'enregistrer cette entrée : ${err.message}`);
@@ -217,6 +255,13 @@ async function sendEntry(id) {
     history.replaceState(null, '', AMGT4CEM_Router.url('signal')); // le code ne reste pas dans l'adresse
     const s = await AMGT4CEM_Auth.ensure({ onglet: 'activation', matricule: pm, code: pc, message: 'Bienvenue. Choisissez votre mot de passe pour activer votre compte.' });
     if (s) { notice = `Compte activé. Connecté : ${AMGT4CEM_Auth.label(s)}.`; await renderMenu(); }
+  }
+  // Lien « Modifier » de la bulle de la carte : ?app=signal&edit=AAAA-NNNN
+  const pe = AMGT4CEM_Router.params.get('edit');
+  if (pe && /^\d{4}-\d{4}$/.test(pe)) {
+    history.replaceState(null, '', AMGT4CEM_Router.url('signal'));
+    await startRevision(pe);
+    return;
   }
   // Arrivée depuis « Ajouter un point » de la carte : formulaire tout de suite, position pré-remplie.
   const px = Number(AMGT4CEM_Router.params.get('x'));
