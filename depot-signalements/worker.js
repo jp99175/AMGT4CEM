@@ -12,7 +12,6 @@
  *   GET  /auth/moi            (jeton)                                      -> { utilisateur }
  *   POST /auth/motdepasse     (jeton) { ancien, nouveau }                  -> { ok: true }
  *   GET  /signalements       (jeton)  -> { date, signalements:[…] } index lu par la carte
- *   POST /admin/reindexer     (jeton admin) reconstruit l'index depuis les dépôts existants
  *   GET  /sante               (jeton)                                      -> { ok: true, utilisateur }
  *   POST /depot               (jeton) corps ZIP ; X-Signalement-Id, X-Flux, X-Fichier
  *                                                                          -> { reference, deja, recuLe }
@@ -444,11 +443,6 @@ async function routeAdmin(request, env, url) {
     return { status: 200, body: { intervenant: vue(resultat.u), ...(resultat.code ? { codeActivation: resultat.code } : {}) } };
   }
 
-  if (request.method === 'POST' && p === '/admin/reindexer') {
-    await exigerAdmin(request, env);
-    return { status: 200, body: await reindexer(env) };
-  }
-
   if (request.method === 'POST' && p === '/admin/activation') {
     await exigerAdmin(request, env);
     const matricule = normMatricule((await lireJson(request)).matricule);
@@ -568,32 +562,6 @@ async function listerSignalements(env) {
   };
 }
 
-/** Reconstruit l'index à partir des dépôts déjà présents (au plus 40 manquants par appel : limite de sous-requêtes). */
-async function reindexer(env) {
-  const obj = await env.DEPOTS.get(INDEX_KEY);
-  const connus = new Set(obj ? (await obj.json()).signalements.map((e) => e.reference) : []);
-  const nouvelles = [];
-  let manquants = 0;
-  for (const prefixe of ['standard/', 'amiante/']) {
-    let cursor;
-    do {
-      const l = await env.DEPOTS.list({ prefix: prefixe, cursor });
-      for (const o of l.objects) {
-        const m = /^(standard|amiante)\/\d{4}\/(\d{4}-\d{4})\/depot\.zip$/.exec(o.key);
-        if (!m || connus.has(m[2])) continue;
-        if (nouvelles.length >= 40) { manquants++; continue; }
-        const [zip, recu] = await Promise.all([env.DEPOTS.get(o.key), env.DEPOTS.get(o.key.replace('depot.zip', 'recu.json'))]);
-        const r = recu ? await recu.json() : {};
-        const e = zip ? await entreeDepuisArchive(await zip.arrayBuffer(), m[2], r.recuLe || null, r.deposePar || null) : null;
-        if (e) nouvelles.push(e);
-      }
-      cursor = l.truncated ? l.cursor : undefined;
-    } while (cursor);
-  }
-  if (nouvelles.length) await majIndex(env, nouvelles);
-  return { ajoutes: nouvelles.length, restants: manquants };
-}
-
 function anneeBruxelles() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels', year: 'numeric' }).format(new Date());
 }
@@ -638,7 +606,7 @@ async function routeDepot(request, env, url) {
     JSON.stringify({ reference, id, flux, fichier, taille: body.byteLength, recuLe, deposePar }, null, 2),
     { httpMetadata: { contentType: 'application/json' } },
   );
-  // Index lu par la carte. Un échec ici ne doit pas perdre le dépôt (rattrapé par /admin/reindexer).
+  // Index lu par la carte. Un échec ici ne doit pas perdre le dépôt.
   try {
     const e = await entreeDepuisArchive(body, reference, recuLe, deposePar);
     if (e) await majIndex(env, [e]);

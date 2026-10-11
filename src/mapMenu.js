@@ -41,6 +41,11 @@ const AMGT4CEM_MapMenu = {
       AMGT4CEM_PatrimoinePicker.open();
     });
 
+    document.getElementById('amgt-signalements-edit-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      AMGT4CEM_SignalementsLayer.openPicker();
+    });
+
     document.getElementById('amgt-reset-view-btn').addEventListener('click', () => {
       // Revient également au fond de référence UrbIS grisé, pas seulement à
       // l'emprise géographique.

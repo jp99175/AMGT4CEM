@@ -15,11 +15,16 @@ const AMGT4CEM_SignalementsLayer = {
   _amiante: [],
   _vocab: null,
   _statusEl: null,
+  _data: [], // entrées du serveur (toutes), filtrées à l'affichage par type
+  _hidden: new Set(), // types masqués sur cet appareil (tout est affiché par défaut)
+  _storeKey: 'amgt4cem.signalements-types.v1',
 
   init(map) {
     this._map = map;
     this._group = L.layerGroup().addTo(map);
     this._statusEl = document.getElementById('amgt-signalements-status');
+    try { this._hidden = new Set(JSON.parse(localStorage.getItem(this._storeKey) || '[]')); } catch (err) { this._hidden = new Set(); }
+    document.getElementById('amgt-signalements-picker-close').addEventListener('click', () => this.closePicker());
     const plugin = (AMGT4CEM_CONFIG.plugins || []).find((p) => p.id === 'signalements') || {};
     this._options = plugin.options || {};
     AMGT4CEM_Auth.init(this._options);
@@ -68,31 +73,90 @@ const AMGT4CEM_SignalementsLayer = {
   },
 
   async refresh() {
-    this._group.clearLayers();
-    this._amiante = [];
-    if (!AMGT4CEM_Auth.configured()) { this._status('Aucun serveur de dépôt configuré.'); return; }
+    if (!AMGT4CEM_Auth.configured()) { this._data = []; this._draw(); this._status('Aucun serveur de dépôt configuré.'); return; }
     if (!AMGT4CEM_Auth.session()) {
+      this._data = [];
+      this._draw();
       this._status('Connexion requise.', { label: '(se connecter)', run: () => this.connectAndRefresh() });
       return;
     }
-    let data;
     try {
-      data = await AMGT4CEM_Auth.call('/signalements');
+      this._data = (await AMGT4CEM_Auth.call('/signalements')).signalements || [];
     } catch (err) {
       console.error('[AMGT4CEM] Signalements illisibles :', err);
+      this._data = [];
+      this._draw();
       if (err.status === 401) this._status('Connexion requise.', { label: '(se connecter)', run: () => this.connectAndRefresh() });
       else this._status(`Lecture impossible : ${err.message}`, { label: '(réessayer)', run: () => this.refresh() });
       return;
     }
+    this._status('');
+    await this._draw();
+  },
+
+  /** Dessine les entrées positionnées dont le type n'est pas masqué. */
+  async _draw() {
+    this._group.clearLayers();
+    this._amiante = [];
     const vocab = await this._vocabulary();
-    let sansPosition = 0;
-    for (const s of data.signalements || []) {
-      if (s.x == null || s.y == null) { sansPosition++; continue; }
+    for (const s of this._data) {
+      if (s.x == null || s.y == null || this._hidden.has(s.type)) continue;
       this._addMarker(s, vocab);
     }
-    const n = (data.signalements || []).length - sansPosition;
-    this._status(`${n} sur la carte${sansPosition ? `, ${sansPosition} sans position` : ''}.`, { label: '(actualiser)', run: () => this.refresh() });
     this._updateAmianteIcons();
+  },
+
+  // ---------------------------------------------------------------- sélection des types affichés
+
+  /** Types proposés : ceux du vocabulaire encore actifs, plus les anciens types dont des entrées existent. */
+  async _pickerTypes() {
+    const vocab = await this._vocabulary();
+    const presents = new Set(this._data.map((s) => s.type));
+    return (vocab.types || []).filter((t) => !t.obsolete || presents.has(t.code));
+  },
+
+  async openPicker() {
+    this._renderPicker();
+    document.getElementById('amgt-signalements-picker').classList.remove('amgt-hidden');
+  },
+
+  closePicker() {
+    document.getElementById('amgt-signalements-picker').classList.add('amgt-hidden');
+  },
+
+  _setHidden(codes, hide) {
+    for (const c of codes) { if (hide) this._hidden.add(c); else this._hidden.delete(c); }
+    try { localStorage.setItem(this._storeKey, JSON.stringify([...this._hidden])); } catch (err) { /* stockage indisponible : choix valable pour la session */ }
+    this._draw();
+    this._renderPicker();
+  },
+
+  async _renderPicker() {
+    const content = document.getElementById('amgt-signalements-picker-content');
+    const types = await this._pickerTypes();
+    const codes = types.map((t) => t.code);
+    content.textContent = '';
+    const all = document.createElement('label');
+    all.className = 'amgt-checkbox-row amgt-topo-global-toggle';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    const shown = codes.filter((c) => !this._hidden.has(c)).length;
+    cb.checked = shown === codes.length;
+    cb.indeterminate = shown > 0 && shown < codes.length;
+    cb.addEventListener('change', () => this._setHidden(codes, !cb.checked));
+    all.append(cb, document.createTextNode(' Tout (dé)sélectionner'));
+    content.append(all);
+    for (const t of types) {
+      const row = document.createElement('label');
+      row.className = 'amgt-checkbox-row';
+      const c = document.createElement('input');
+      c.type = 'checkbox';
+      c.checked = !this._hidden.has(t.code);
+      c.addEventListener('change', () => this._setHidden([t.code], !c.checked));
+      const n = this._data.filter((s) => s.type === t.code).length;
+      row.append(c, document.createTextNode(` ${t.fr}${t.obsolete ? ' (ancien type)' : ''}${n ? ` (${n})` : ''}`));
+      content.append(row);
+    }
   },
 
   _pictoZoomMin() {

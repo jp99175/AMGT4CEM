@@ -52,9 +52,9 @@ bouton de secours : les données ne sont pas chargées).
    service répond sont proposées, réglée sur la plus récente accessible par
    défaut ; le bouton **⏭** y ramène directement). **Couches** : cases à
    cocher pour Métro (Stations et Tunnels), UrbIS Topo (voir section 3bis)
-   et Plans patrimoine (section 3ter). **Signalements et demandes** : case à
+   et Plans patrimoine (section 3ter). **Points métier** (ligne « Signalements et demandes ») : case à
    cocher pour les entrées envoyées au serveur de dépôt, visibles par tous les agents connectés (connexion demandée à
-   l'activation de la couche ; lecture seule ; clic sur un point : titre, référence, version, rédacteur, contributeurs).
+   l'activation de la couche ; lecture seule ; clic sur un point : titre, référence, version, rédacteur, contributeurs). L'icône curseurs de la ligne donne l'opacité et « (modifier la sélection) » ouvre la liste des types à afficher (mémorisée sur l'appareil).
    L'icône **☰ curseurs** à côté de chaque couche, dans les trois
    catégories, ouvre un sous-volet de réglage d'opacité individuel (comme
    dans MobiGIS), mémorisé par appareil — un clic ailleurs (sur un autre

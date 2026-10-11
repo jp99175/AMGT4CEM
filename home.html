@@ -121,7 +121,7 @@
       </p>
     </div>
 
-    <h3>Signalements et demandes</h3>
+    <h3>Points métier</h3>
 
     <div class="amgt-layer-row">
       <label class="amgt-checkbox-row">
@@ -141,6 +141,9 @@
     <p class="amgt-topo-edit-hint" id="amgt-signalements-status"></p>
     <div class="amgt-opacity-slider-row amgt-hidden" data-layer="points">
       <input type="range" min="0" max="100" value="100" class="amgt-opacity-slider" />
+      <p class="amgt-topo-edit-hint">
+        <a href="#" id="amgt-signalements-edit-link">(modifier la sélection)</a>
+      </p>
     </div>
 
     <button id="amgt-reset-view-btn" class="amgt-link-btn" title="Revenir à l'emprise générale du réseau">
@@ -314,6 +317,17 @@
     />
     <div id="amgt-topo-picker-content" class="amgt-fs-picker-content"></div>
     <div id="amgt-topo-picker-default-bar"></div>
+  </div>
+
+  <!-- Sélecteur plein écran des types de signalements et demandes à afficher (mêmes classes que les autres sélecteurs) -->
+  <div id="amgt-signalements-picker" class="amgt-hidden amgt-fs-picker">
+    <div class="amgt-fs-picker-header">
+      <h2>Signalements et demandes à afficher</h2>
+      <div class="amgt-fs-picker-header-actions">
+        <button id="amgt-signalements-picker-close" class="amgt-btn" title="Retour à la carte">✕ Fermer</button>
+      </div>
+    </div>
+    <div id="amgt-signalements-picker-content" class="amgt-fs-picker-content"></div>
   </div>
 
   <!-- Sélecteur plein écran des couches "Plans patrimoine" (mêmes classes que
