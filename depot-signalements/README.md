@@ -11,6 +11,8 @@ jamais, car le suivi n'entre pas dans le dépôt.
 | `POST /auth/activer` | public | `{ matricule, code, motdepasse }` : première connexion avec le code reçu par email. Référentiel vide : le code d'amorçage `ADMIN_BOOTSTRAP_CODE` crée ce matricule comme premier administrateur |
 | `GET /auth/moi` · `POST /auth/motdepasse` | jeton | identité courante · changement de mot de passe |
 | `POST /depot` | jeton | corps = archive ZIP ; en-têtes `Authorization: Bearer …`, `X-Signalement-Id`, `X-Flux` (`STANDARD`), `X-Fichier` ; répond `{ reference, deja, recuLe }` ; le matricule du rédacteur est noté dans `recu.json` |
+| `GET /signalements` | jeton | index des entrées envoyées (référence, type, titre, position Lambert 72, version, rédacteur et contributeurs avec leurs noms) : lu par la couche « Signalements et demandes » de la carte |
+| `POST /admin/reindexer` | jeton admin | reconstruit l'index à partir des dépôts déjà présents (40 au plus par appel ; relancer s'il en reste) |
 | `GET /sante` | jeton | vérifie l'adresse et la connexion |
 | `GET` · `POST /admin/intervenants` | jeton admin | liste · création/modification d'une fiche (la création génère le code d'activation) |
 | `POST /admin/activation` | jeton admin | nouveau code d'activation pour un matricule |
@@ -19,6 +21,7 @@ jamais, car le suivi n'entre pas dans le dépôt.
   ni numéro perdu ; un envoi interrompu se refait sans risque.
 - **Rangement R2** : `standard/` (et `amiante/` pour d'anciens dépôts) · année · référence · `depot.zip` (l'archive reçue) et `recu.json`
   (référence, identifiant, nom de fichier, taille, date de réception, `deposePar` = matricule du compte qui a déposé ; le rédacteur et les contributeurs de la fiche sont dans `signalement.json` de l'archive).
+- **Index** : à chaque dépôt, le serveur lit `signalement.json` dans l'archive et met à jour `index/signalements.json` (R2). La carte ne lit que cet index, jamais les archives ni les photos.
 - **Référentiel des intervenants** : un seul objet R2, `referentiel/intervenants.json` (jamais dans le dépôt GitHub).
   Clé = matricule ; prénom, nom, GSM (`+32…`), email, organisation, division, département, service, droit admin, actif.
   Mot de passe : jamais conservé, seulement une empreinte PBKDF2-SHA256 salée. Code d'activation : `XXXXX-XXXXX`,

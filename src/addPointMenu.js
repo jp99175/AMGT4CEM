@@ -54,7 +54,7 @@ const AMGT4CEM_AddPointMenu = {
   },
 
   _open() {
-    const items = [{ order: 20, label: '✚ Point métier', title: 'Poser un point métier sur la carte', onSelect: () => this._corePoint() }, ...this._entries]
+    const items = [{ order: 20, label: '✚ Signalement ou demande', title: 'Poser un point sur la carte et saisir un signalement ou une demande', onSelect: () => this._corePoint() }, ...this._entries]
       .sort((a, b) => a.order - b.order);
     this._menu.textContent = '';
     for (const item of items) {

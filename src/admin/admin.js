@@ -203,6 +203,21 @@ function panneauAccueil() {
     h('div', { class: 'adm-actions' }, fermer, copier, envoyer));
 }
 
+/** Index des signalements lu par la carte : se tient à jour à chaque dépôt ; ce bouton rattrape les dépôts plus anciens. */
+function blocIndex() {
+  const msg = h('p', { class: 'adm-note' });
+  const b = h('button', { type: 'button', class: 'adm-btn', text: "Reconstruire l'index des signalements" });
+  b.addEventListener('click', async () => {
+    b.disabled = true; msg.textContent = 'Indexation…';
+    try {
+      const r = await AMGT4CEM_Auth.call('/admin/reindexer', { method: 'POST', body: {} });
+      msg.textContent = `${r.ajoutes} dépôt(s) ajouté(s) à l'index${r.restants ? `, ${r.restants} restant(s) : relancer` : ''}.`;
+    } catch (err) { msg.textContent = err.message; }
+    b.disabled = false;
+  });
+  return h('div', { class: 'adm-index' }, b, msg);
+}
+
 function render() {
   root.textContent = '';
   const s = AMGT4CEM_Auth.session();
@@ -235,6 +250,7 @@ function render() {
   chercher.addEventListener('input', () => { filtre = chercher.value; montrer(); });
   root.append(h('div', { class: 'adm-bar' }, chercher, nouveau), zone,
     h('p', { class: 'adm-note', text: `${liste.length} intervenant(s) · les mots de passe ne sont jamais visibles, ni ici ni sur le serveur (seule une empreinte est conservée).` }),
+    blocIndex(),
     h('p', { class: 'adm-build', text: `BUILD ${AMGT4CEM_BUILD_TIMESTAMP}` }));
   montrer();
 }

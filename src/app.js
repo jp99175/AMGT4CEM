@@ -1,6 +1,6 @@
 /**
  * Point d'entrée de l'application : assemble les modules (fond de plan,
- * couche Metro, points métier, outils de navigation et de création).
+ * couche Metro, signalements et demandes, outils de navigation et de création).
  */
 (async function () {
   // Configuration des services externes et adresse du serveur d'enregistrement
@@ -59,7 +59,7 @@
   AMGT4CEM_ScaleControl.init(map);
   AMGT4CEM_CreditsLayout.init(map); // après l'échelle et les crédits : mesure leur largeur
   AMGT4CEM_ScaledText.initMap(map);
-  const pointsGroup = AMGT4CEM_PointsLayer.init(map);
+  const pointsGroup = AMGT4CEM_SignalementsLayer.init(map); // signalements et demandes (ex-« points métier »)
   AMGT4CEM_UrbisTopoLayer.init(map);
   AMGT4CEM_UrbisTopoPicker.init();
   AMGT4CEM_Interstation.init(); // charge les numéros d'interstation (associés aux tunnels dans AMGT4CEM_Network.build)
@@ -77,7 +77,7 @@
 
   AMGT4CEM_AddPointTool.init(map, {
     onPointCreated() {
-      AMGT4CEM_PointsLayer.refresh();
+      AMGT4CEM_SignalementsLayer.refresh();
     },
   });
   AMGT4CEM_MeasureTool.init(map);

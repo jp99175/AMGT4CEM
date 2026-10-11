@@ -154,7 +154,7 @@ const AMGT4CEM_CONFIG = {
     carto: {
       title: 'AMGT4CEM – Carte du réseau métro',
       template: 'amgt-tpl-carto',
-      styles: [],
+      styles: ['./src/auth/auth.css'],
       scripts: [
         './vendor/leaflet/leaflet.js',
         './vendor/proj4/proj4.js',
@@ -175,7 +175,9 @@ const AMGT4CEM_CONFIG = {
         './src/metroLayer.js',
         './src/network.js',
         './src/pointsStore.js',
-        './src/pointsLayer.js',
+        './src/auth/auth.js',
+        './src/auth/authUi.js',
+        './src/signalementsLayer.js',
         './src/selectionStore.js',
         './src/pickerDefaultBar.js',
         './src/urbisTopoSelectionStore.js',

@@ -935,3 +935,19 @@ html, body {
   margin-bottom: 8px;
   border-bottom: 1px solid #ddd;
 }
+
+/* --- Couche « Signalements et demandes » (lecture seule, depuis le serveur de dépôt) --- */
+.amgt-sig-marker__dot {
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  background: #1565c0;
+  border: 2px solid #fff;
+  border-radius: 3px;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+}
+.amgt-sig-marker--amiante .amgt-sig-marker__dot { background: #c62828; transform: rotate(45deg); }
+.amgt-sig-marker--picto img { display: block; filter: drop-shadow(0 0 1px #fff); }
+.amgt-sig-popup p { margin: 4px 0 0; font-size: 13px; }
+.amgt-sig-popup__ref { color: #52606d; }
+.amgt-sig-popup__kind { font-weight: 700; color: #52606d; }

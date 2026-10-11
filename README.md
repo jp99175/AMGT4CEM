@@ -52,9 +52,9 @@ bouton de secours : les données ne sont pas chargées).
    service répond sont proposées, réglée sur la plus récente accessible par
    défaut ; le bouton **⏭** y ramène directement). **Couches** : cases à
    cocher pour Métro (Stations et Tunnels), UrbIS Topo (voir section 3bis)
-   et Plans patrimoine (section 3ter). **Points métier** : case à cocher
-   pour vos points métier (section 6) — cette catégorie est amenée à
-   s'enrichir (constats/signalements...).
+   et Plans patrimoine (section 3ter). **Signalements et demandes** : case à
+   cocher pour les entrées envoyées au serveur de dépôt, visibles par tous les agents connectés (connexion demandée à
+   l'activation de la couche ; lecture seule ; clic sur un point : titre, référence, version, rédacteur, contributeurs).
    L'icône **☰ curseurs** à côté de chaque couche, dans les trois
    catégories, ouvre un sous-volet de réglage d'opacité individuel (comme
    dans MobiGIS), mémorisé par appareil — un clic ailleurs (sur un autre
@@ -90,11 +90,9 @@ bouton de secours : les données ne sont pas chargées).
 9. Choisissez le **type de données à saisir** (pour l'instant : *Signalements
    et demandes*), cliquez **Enregistrer** : l'interface de saisie SIG4CEM s'ouvre
    sur son formulaire, la position pointée déjà renseignée.
-10. Les points métier déjà enregistrés restent affichés : le point est toujours là après rechargement. Cliquez dessus pour
-    consulter ses informations. Vous pouvez le glisser-déposer pour le
-    repositionner : les coordonnées Lambert sont recalculées et enregistrées
-    automatiquement. Le bouton **🗑 Supprimer ce point** dans la popup
-    l'efface définitivement (demande confirmation).
+10. Les entrées envoyées s'affichent dans la couche **Signalements et demandes** (case du menu **☰ Carte**, connexion
+    demandée). Cliquez sur un point pour consulter sa fiche. La couche est en lecture seule ; l'ancienne couche
+    « Points métier » (micro-base locale, points glissables) n'est plus affichée.
 11. Icône **⚙** en haut à droite du menu **☰ Carte** : ouvre la fenêtre de paramètres, à trois
     onglets — **Sources** (corriger l'URL d'un service externe — fond UrbIS,
     orthophotos, géocodeur — si celui-ci change d'adresse, sans modifier le
@@ -922,7 +920,7 @@ src/pointsStore.js           micro-base de données (localStorage, schéma ouver
 src/plugins.js               chargeur de plugins (applications séparées branchées sur la carte)
 src/addPointMenu.js          menu du bouton « ✚ Ajouter un point » : Point métier + entrées ajoutées par les plugins
 src/signalements/            plugin « Signalements » (voir son README.md)
-src/pointsLayer.js           affichage/déplacement des points métier
+src/signalementsLayer.js      couche « Signalements et demandes » (lecture seule, GET /signalements du serveur de dépôt) ; remplace pointsLayer.js, retiré du chargement
 src/addPointTool.js          « Ajouter un point » : pointe la position, choix du type de données, ouvre l'interface de saisie
 src/measureTool.js           outil "📏 Mesurer" (segment + cote + cercle, 4s puis disparition)
 src/screenshotTool.js        capture PNG auto au 2e relâchement (mémoire uniquement) + enregistrement ("💾")

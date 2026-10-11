@@ -206,7 +206,7 @@ const AMGT4CEM_MapMenu = {
 
     document.getElementById('amgt-layer-points').addEventListener('change', (e) => {
       AMGT4CEM_ScreenshotTool.invalidateBackground();
-      if (e.target.checked) pointsGroup.addTo(map);
+      if (e.target.checked) { pointsGroup.addTo(map); AMGT4CEM_SignalementsLayer.connectAndRefresh(); }
       else map.removeLayer(pointsGroup);
     });
 
@@ -227,7 +227,7 @@ const AMGT4CEM_MapMenu = {
 
   /**
    * Icône curseurs (☰ Carte, section Couches) : ouvre/ferme un sous-volet
-   * par couche (Métro, Points métier, UrbIS Topo, Plans patrimoine)
+   * par couche (Métro, Signalements et demandes, UrbIS Topo, Plans patrimoine)
    * regroupant le curseur d'opacité et, pour les deux derniers, le lien
    * "(modifier la sélection)" — comme dans MobiGIS. Réglage d'opacité
    * persistant par appareil (voir layerOpacityStore.js). Un clic en dehors
@@ -237,7 +237,7 @@ const AMGT4CEM_MapMenu = {
   _initOpacityControls() {
     const layers = [
       { key: 'metro', apply: (factor) => this._applyMetroOpacity(factor) },
-      { key: 'points', apply: (factor) => AMGT4CEM_PointsLayer.setOpacity(factor) },
+      { key: 'points', apply: (factor) => AMGT4CEM_SignalementsLayer.setOpacity(factor) },
       { key: 'urbistopo', apply: (factor) => AMGT4CEM_UrbisTopoLayer.setOpacity(factor) },
       { key: 'patrimoine', apply: (factor) => AMGT4CEM_PatrimoineLayer.setOpacity(factor) },
     ];

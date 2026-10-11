@@ -11,6 +11,8 @@
  *   POST /auth/activer        { matricule, code, motdepasse }              -> idem (première connexion)
  *   GET  /auth/moi            (jeton)                                      -> { utilisateur }
  *   POST /auth/motdepasse     (jeton) { ancien, nouveau }                  -> { ok: true }
+ *   GET  /signalements       (jeton)  -> { date, signalements:[…] } index lu par la carte
+ *   POST /admin/reindexer     (jeton admin) reconstruit l'index depuis les dépôts existants
  *   GET  /sante               (jeton)                                      -> { ok: true, utilisateur }
  *   POST /depot               (jeton) corps ZIP ; X-Signalement-Id, X-Flux, X-Fichier
  *                                                                          -> { reference, deja, recuLe }
@@ -442,6 +444,11 @@ async function routeAdmin(request, env, url) {
     return { status: 200, body: { intervenant: vue(resultat.u), ...(resultat.code ? { codeActivation: resultat.code } : {}) } };
   }
 
+  if (request.method === 'POST' && p === '/admin/reindexer') {
+    await exigerAdmin(request, env);
+    return { status: 200, body: await reindexer(env) };
+  }
+
   if (request.method === 'POST' && p === '/admin/activation') {
     await exigerAdmin(request, env);
     const matricule = normMatricule((await lireJson(request)).matricule);
@@ -460,6 +467,133 @@ async function routeAdmin(request, env, url) {
   return null;
 }
 
+
+// ------------------------------------------------------------------ index des signalements (lecture par la carte)
+
+const INDEX_KEY = 'index/signalements.json';
+
+/** Lit un fichier d'une archive ZIP (méthodes « stored » et « deflate ») ; null si absent. */
+async function lireZip(buffer, nom) {
+  const dv = new DataView(buffer);
+  const u8 = new Uint8Array(buffer);
+  let eocd = -1;
+  for (let i = buffer.byteLength - 22; i >= Math.max(0, buffer.byteLength - 65557); i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) return null;
+  const n = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  const dec = new TextDecoder();
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) return null;
+    const methode = dv.getUint16(p + 10, true);
+    const taille = dv.getUint32(p + 20, true);
+    const lN = dv.getUint16(p + 28, true);
+    const lE = dv.getUint16(p + 30, true);
+    const lC = dv.getUint16(p + 32, true);
+    const local = dv.getUint32(p + 42, true);
+    const name = dec.decode(u8.subarray(p + 46, p + 46 + lN));
+    if (name === nom) {
+      const debut = local + 30 + dv.getUint16(local + 26, true) + dv.getUint16(local + 28, true);
+      const brut = u8.subarray(debut, debut + taille);
+      if (methode === 0) return brut;
+      if (methode === 8) return new Uint8Array(await new Response(new Blob([brut]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+      return null;
+    }
+    p += 46 + lN + lE + lC;
+  }
+  return null;
+}
+
+/** Ce que la carte a besoin de savoir d'un signalement (jamais les pièces ni le détail). */
+function entreeIndex(sig, reference, recuLe, deposePar) {
+  const loc = sig.localisation && Number.isFinite(sig.localisation.x) && Number.isFinite(sig.localisation.y) ? sig.localisation : null;
+  return {
+    reference,
+    id: sig.id,
+    nature: sig.nature || null,
+    type: sig.type || null,
+    domaine: sig.domaine || null,
+    titre: String(sig.titre || '').slice(0, 120),
+    description: String(sig.description || '').slice(0, 300),
+    lieu: String(sig.lieu || '').slice(0, 200),
+    dateObservation: sig.dateObservation || null,
+    x: loc ? loc.x : null,
+    y: loc ? loc.y : null,
+    version: sig.version || 1,
+    creeLe: sig.creeLe || null,
+    modifieLe: sig.modifieLe || null,
+    recuLe,
+    redacteur: sig.redacteur || null,
+    contributeurs: Array.isArray(sig.contributeurs) ? sig.contributeurs.slice(0, 20) : [],
+    nbPieces: Array.isArray(sig.pieces) ? sig.pieces.length : 0,
+    deposePar: deposePar || null,
+  };
+}
+
+async function entreeDepuisArchive(buffer, reference, recuLe, deposePar) {
+  const octets = await lireZip(buffer, 'signalement.json');
+  if (!octets) return null;
+  try { return entreeIndex(JSON.parse(new TextDecoder().decode(octets)), reference, recuLe, deposePar); } catch (err) { return null; }
+}
+
+/** Ajoute ou remplace une entrée de l'index (écriture conditionnelle, comme le référentiel). */
+async function majIndex(env, entrees) {
+  for (let essai = 0; essai < 5; essai++) {
+    const obj = await env.DEPOTS.get(INDEX_KEY);
+    const idx = obj ? await obj.json() : { signalements: [] };
+    for (const e of entrees) {
+      const i = idx.signalements.findIndex((x) => x.reference === e.reference);
+      if (i >= 0) idx.signalements[i] = e; else idx.signalements.push(e);
+    }
+    idx.date = new Date().toISOString();
+    const onlyIf = obj ? { etagMatches: obj.etag } : { etagDoesNotMatch: '*' };
+    if (await env.DEPOTS.put(INDEX_KEY, JSON.stringify(idx), { onlyIf, httpMetadata: { contentType: 'application/json' } })) return;
+  }
+  throw new HttpError(503, 'Index occupé, réessayez.');
+}
+
+/** Liste pour la carte : l'index, avec les noms des intervenants à la place des seuls matricules. */
+async function listerSignalements(env) {
+  const obj = await env.DEPOTS.get(INDEX_KEY);
+  const idx = obj ? await obj.json() : { signalements: [] };
+  const { ref } = await chargerRef(env);
+  const nom = (m) => {
+    const u = ref.intervenants.find((x) => x.matricule === m);
+    return u && (u.prenom || u.nom) ? `${u.prenom} ${u.nom}`.trim() : m;
+  };
+  return {
+    date: idx.date || null,
+    signalements: idx.signalements.map((e) => ({ ...e, redacteurNom: e.redacteur ? nom(e.redacteur) : null, contributeursNoms: (e.contributeurs || []).map(nom) })),
+  };
+}
+
+/** Reconstruit l'index à partir des dépôts déjà présents (au plus 40 manquants par appel : limite de sous-requêtes). */
+async function reindexer(env) {
+  const obj = await env.DEPOTS.get(INDEX_KEY);
+  const connus = new Set(obj ? (await obj.json()).signalements.map((e) => e.reference) : []);
+  const nouvelles = [];
+  let manquants = 0;
+  for (const prefixe of ['standard/', 'amiante/']) {
+    let cursor;
+    do {
+      const l = await env.DEPOTS.list({ prefix: prefixe, cursor });
+      for (const o of l.objects) {
+        const m = /^(standard|amiante)\/\d{4}\/(\d{4}-\d{4})\/depot\.zip$/.exec(o.key);
+        if (!m || connus.has(m[2])) continue;
+        if (nouvelles.length >= 40) { manquants++; continue; }
+        const [zip, recu] = await Promise.all([env.DEPOTS.get(o.key), env.DEPOTS.get(o.key.replace('depot.zip', 'recu.json'))]);
+        const r = recu ? await recu.json() : {};
+        const e = zip ? await entreeDepuisArchive(await zip.arrayBuffer(), m[2], r.recuLe || null, r.deposePar || null) : null;
+        if (e) nouvelles.push(e);
+      }
+      cursor = l.truncated ? l.cursor : undefined;
+    } while (cursor);
+  }
+  if (nouvelles.length) await majIndex(env, nouvelles);
+  return { ajoutes: nouvelles.length, restants: manquants };
+}
+
 function anneeBruxelles() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels', year: 'numeric' }).format(new Date());
 }
@@ -468,6 +602,10 @@ async function routeDepot(request, env, url) {
   if (request.method === 'GET' && url.pathname === '/sante') {
     if (await repliCodePartage(request, env)) return { status: 200, body: { ok: true, transitoire: true } };
     return { status: 200, body: { ok: true, utilisateur: vue(await intervenantCourant(request, env)) } };
+  }
+  if (request.method === 'GET' && url.pathname === '/signalements') {
+    await intervenantCourant(request, env); // tout compte actif peut lire ; pas de lecture anonyme
+    return { status: 200, body: await listerSignalements(env) };
   }
   if (request.method !== 'POST' || url.pathname !== '/depot') return null;
 
@@ -500,6 +638,11 @@ async function routeDepot(request, env, url) {
     JSON.stringify({ reference, id, flux, fichier, taille: body.byteLength, recuLe, deposePar }, null, 2),
     { httpMetadata: { contentType: 'application/json' } },
   );
+  // Index lu par la carte. Un échec ici ne doit pas perdre le dépôt (rattrapé par /admin/reindexer).
+  try {
+    const e = await entreeDepuisArchive(body, reference, recuLe, deposePar);
+    if (e) await majIndex(env, [e]);
+  } catch (err) { console.error('index', err); }
   return { status: 200, body: { reference, deja, recuLe } };
 }
 
