@@ -200,6 +200,8 @@ SIG.List = {
       add('Demandeur', entry.demandeur);
       add('Référence du demandeur', entry.referenceDemandeur);
       add('Description', entry.description);
+      add('Rédacteur', entry.redacteur);
+      add('Contributeurs', (entry.contributeurs || []).join(', '));
       details.append(dl);
       // Photos et commentaires : chargés à la première ouverture.
       const gallery = h('div', { class: 'sig4cem-gallery' });

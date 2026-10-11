@@ -30,19 +30,32 @@ NS.Envoi = {
    */
   async send(s) {
     if (!this.configured()) throw new Error("Aucun serveur de dépôt n'est configuré (options.serverUrl dans config.js).");
-    const { blob } = await NS.Depot.buildArchive(s);
-    const headers = {
-      'X-Signalement-Id': s.id,
-      'X-Flux': 'STANDARD', // plus de flux séparé : le serveur accepte encore AMIANTE mais on ne l'utilise plus
-      'X-Fichier': NS.Depot.depotFileName(s),
-      'Content-Type': 'application/zip',
+    // Connexion d'abord : la fiche doit porter le matricule du rédacteur / contributeur avant d'être archivée.
+    let session = null;
+    let stamped = s;
+    let blob = null;
+    let headers = null;
+    const preparer = async () => {
+      const m = session.utilisateur.matricule;
+      const redacteur = s.redacteur || m;
+      const contributeurs = (s.contributeurs && s.contributeurs.length) ? s.contributeurs : [m]; // sans historique : l'expéditeur est l'auteur
+      stamped = { ...s, redacteur, contributeurs };
+      blob = (await NS.Depot.buildArchive(stamped)).blob;
+      headers = {
+        'X-Signalement-Id': s.id,
+        'X-Flux': 'STANDARD', // plus de flux séparé : le serveur accepte encore AMIANTE mais on ne l'utilise plus
+        'X-Fichier': NS.Depot.depotFileName(stamped),
+        'Content-Type': 'application/zip',
+      };
     };
     // Connexion demandée si besoin ; un jeton refusé (compte désactivé, expiré) redemande une fois la connexion.
     for (let essai = 0; essai < 2; essai++) {
-      const session = await AMGT4CEM_Auth.ensure({ message: essai ? 'Votre connexion a expiré ou a été refusée : reconnectez-vous.' : 'Connectez-vous pour envoyer au serveur. Vos entrées restent sur cet appareil tant que vous ne l\'avez pas fait.' });
+      session = await AMGT4CEM_Auth.ensure({ message: essai ? 'Votre connexion a expiré ou a été refusée : reconnectez-vous.' : 'Connectez-vous pour envoyer au serveur. Vos entrées restent sur cet appareil tant que vous ne l\'avez pas fait.' });
       if (!session) throw new Error('Envoi annulé : connexion requise. L\'entrée reste sur cet appareil.');
+      await preparer();
       try {
-        return await AMGT4CEM_Auth.call('/depot', { method: 'POST', headers, body: blob, raw: true });
+        const r = await AMGT4CEM_Auth.call('/depot', { method: 'POST', headers, body: blob, raw: true });
+        return { ...r, redacteur: stamped.redacteur, contributeurs: stamped.contributeurs };
       } catch (err) {
         if (err.status === 401 && essai === 0) continue;
         throw err;

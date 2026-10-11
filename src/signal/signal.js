@@ -134,7 +134,12 @@ async function saveEntry(data, send) {
     // Version : v0.01 à la première saisie, +1 à chaque enregistrement d'une modification (même règle que les documents : v0.nn avant diffusion).
     const prev = await SIG.Entries.get(data.id);
     const version = prev ? (prev.version || 1) + 1 : 1;
-    await SIG.Entries.add({ ...data, version, modifieLe: new Date().toISOString(), statut: send ? S.FILE : S.DRAFT, lotOuvert: !!send });
+    // Rédacteur = créateur, contributeurs = ceux qui ajoutent ou révisent : tirés de la session connectée, pas du formulaire.
+    const me = AMGT4CEM_Auth.session();
+    const matricule = me ? me.utilisateur.matricule : null;
+    const redacteur = (prev && prev.redacteur) || matricule || null;
+    const contributeurs = [...new Set([...((prev && prev.contributeurs) || []), ...(matricule ? [matricule] : [])])];
+    await SIG.Entries.add({ ...data, redacteur, contributeurs, version, modifieLe: new Date().toISOString(), statut: send ? S.FILE : S.DRAFT, lotOuvert: !!send });
   } catch (err) {
     console.error('[SIG4CEM] Enregistrement impossible :', err);
     alert(`Impossible d'enregistrer cette entrée : ${err.message}`);
@@ -161,7 +166,7 @@ async function sendEntry(id) {
   }
   try {
     const result = await NS.Envoi.send(entry);
-    await SIG.Entries.update(id, { statut: S.ENVOYE, reference: result.reference, envoyeLe: result.recuLe, erreur: null });
+    await SIG.Entries.update(id, { statut: S.ENVOYE, reference: result.reference, envoyeLe: result.recuLe, erreur: null, redacteur: result.redacteur, contributeurs: result.contributeurs });
     await SIG.Entries.closeLotIfDone();
     return `Entrée envoyée : référence ${result.reference}.`;
   } catch (err) {

@@ -18,7 +18,7 @@ jamais, car le suivi n'entre pas dans le dépôt.
 - **Idempotent** : renvoyer le même signalement (même `X-Signalement-Id`) redonne la même référence, sans doublon
   ni numéro perdu ; un envoi interrompu se refait sans risque.
 - **Rangement R2** : `standard/` (et `amiante/` pour d'anciens dépôts) · année · référence · `depot.zip` (l'archive reçue) et `recu.json`
-  (référence, identifiant, nom de fichier, taille, date de réception, `redacteur`).
+  (référence, identifiant, nom de fichier, taille, date de réception, `deposePar` = matricule du compte qui a déposé ; le rédacteur et les contributeurs de la fiche sont dans `signalement.json` de l'archive).
 - **Référentiel des intervenants** : un seul objet R2, `referentiel/intervenants.json` (jamais dans le dépôt GitHub).
   Clé = matricule ; prénom, nom, GSM (`+32…`), email, organisation, division, département, service, droit admin, actif.
   Mot de passe : jamais conservé, seulement une empreinte PBKDF2-SHA256 salée. Code d'activation : `XXXXX-XXXXX`,

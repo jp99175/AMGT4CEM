@@ -471,9 +471,9 @@ async function routeDepot(request, env, url) {
   }
   if (request.method !== 'POST' || url.pathname !== '/depot') return null;
 
-  let redacteur;
-  if (await repliCodePartage(request, env)) redacteur = null;
-  else redacteur = (await intervenantCourant(request, env)).matricule;
+  let deposePar;
+  if (await repliCodePartage(request, env)) deposePar = null;
+  else deposePar = (await intervenantCourant(request, env)).matricule;
 
   const id = request.headers.get('X-Signalement-Id') || '';
   const flux = request.headers.get('X-Flux') || '';
@@ -497,7 +497,7 @@ async function routeDepot(request, env, url) {
   await env.DEPOTS.put(`${dossier}/depot.zip`, body, { httpMetadata: { contentType: 'application/zip' } });
   await env.DEPOTS.put(
     `${dossier}/recu.json`,
-    JSON.stringify({ reference, id, flux, fichier, taille: body.byteLength, recuLe, redacteur }, null, 2),
+    JSON.stringify({ reference, id, flux, fichier, taille: body.byteLength, recuLe, deposePar }, null, 2),
     { httpMetadata: { contentType: 'application/json' } },
   );
   return { status: 200, body: { reference, deja, recuLe } };

@@ -105,7 +105,8 @@ NS.Depot = {
       lieu: s.lieu || '',
       dateObservation: s.dateObservation,
       localisation: s.x == null ? null : { x: s.x, y: s.y, crs: 'EPSG:31370' }, // facultative
-      redacteur: null, // renseigné quand le référentiel des intervenants existera
+      redacteur: s.redacteur || null, // matricule du créateur (session connectée, jamais saisi dans le formulaire)
+      contributeurs: Array.isArray(s.contributeurs) ? s.contributeurs : [], // matricules de ceux qui ont ajouté ou révisé la fiche
       creeLe: s.creeLe,
       version: s.version || 1, // v0.nn : incrémentée à chaque modification enregistrée sur l'appareil
       modifieLe: s.modifieLe || s.creeLe || null,
