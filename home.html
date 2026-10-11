@@ -282,18 +282,10 @@
   <div id="amgt-point-form" class="amgt-hidden">
     <h3>Nouveau point</h3>
     <div class="amgt-form-row">
-      <span>X Lambert :</span> <span id="amgt-form-x">-</span>
-    </div>
-    <div class="amgt-form-row">
-      <span>Y Lambert :</span> <span id="amgt-form-y">-</span>
-    </div>
-    <div class="amgt-form-row">
-      <label for="amgt-form-type">Type</label>
-      <input type="text" id="amgt-form-type" placeholder="ex : ouvrage, défaut, capteur..." />
-    </div>
-    <div class="amgt-form-row">
-      <label for="amgt-form-label">Libellé</label>
-      <input type="text" id="amgt-form-label" placeholder="Nom / description courte" />
+      <label for="amgt-form-type">Type de données à saisir</label>
+      <select id="amgt-form-type">
+        <option value="signal">Signalements et demandes</option>
+      </select>
     </div>
     <div class="amgt-form-actions">
       <button id="amgt-form-cancel" class="amgt-btn">Annuler</button>

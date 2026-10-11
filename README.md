@@ -84,12 +84,11 @@ bouton de secours : les données ne sont pas chargées).
    poussé).
 8. Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
    carte (vous pouvez continuer à naviguer avant de cliquer) : un marqueur
-   provisoire apparaît, les coordonnées X/Y Lambert sont calculées
-   automatiquement et affichées dans le petit formulaire.
-9. Complétez *Type* et *Libellé*, cliquez **Enregistrer**. Le point devient
-   permanent et est sauvegardé dans la micro-base (`localStorage` du
-   navigateur, propre à cet appareil — voir section 6).
-10. Rechargez la page : le point est toujours là. Cliquez dessus pour
+   déplaçable apparaît (les coordonnées ne sont pas affichées).
+9. Choisissez le **type de données à saisir** (pour l'instant : *Signalements
+   et demandes*), cliquez **Enregistrer** : l'interface de saisie SIG4CEM s'ouvre
+   sur son formulaire, la position pointée déjà renseignée.
+10. Les points métier déjà enregistrés restent affichés : le point est toujours là après rechargement. Cliquez dessus pour
     consulter ses informations. Vous pouvez le glisser-déposer pour le
     repositionner : les coordonnées Lambert sont recalculées et enregistrées
     automatiquement. Le bouton **🗑 Supprimer ce point** dans la popup
@@ -921,7 +920,7 @@ src/plugins.js               chargeur de plugins (applications séparées branch
 src/addPointMenu.js          menu du bouton « ✚ Ajouter un point » : Point métier + entrées ajoutées par les plugins
 src/signalements/            plugin « Signalements » (voir son README.md)
 src/pointsLayer.js           affichage/déplacement des points métier
-src/addPointTool.js          workflow "Ajouter un point"
+src/addPointTool.js          « Ajouter un point » : pointe la position, choix du type de données, ouvre l'interface de saisie
 src/measureTool.js           outil "📏 Mesurer" (segment + cote + cercle, 4s puis disparition)
 src/screenshotTool.js        capture PNG auto au 2e relâchement (mémoire uniquement) + enregistrement ("💾")
 src/scaleControl.js          réglette graduée (bas gauche), alterne au clic avec les coordonnées Lambert
@@ -1084,8 +1083,9 @@ la carte n'embarque pas le code de la saisie et la saisie n'embarque pas la cart
 lus par l'interface cible dans `AMGT4CEM_Router.params`). Interface inconnue : message avec des liens
 vers les interfaces existantes.
 
-Dans la carte, « ✚ Ajouter un point » est revenu à son rôle d'origine (poser un point métier : type et
-libellé). Le plugin `signalements` y est désactivé (`enabled: false` dans `config.js`) : son formulaire,
+Dans la carte, « ✚ Ajouter un point » pose un point, propose le type de données à saisir (un seul pour l'instant :
+signalements et demandes) et ouvre SIG4CEM (`home.html?app=signal&x=…&y=…`, Lambert 72) sur son formulaire, position
+pré-remplie. Le plugin `signalements` y est désactivé (`enabled: false` dans `config.js`) : son formulaire,
 son menu et ses couches n'y apparaissent plus. Son code reste dans `src/signalements/`, en attendant d'être
 repris par l'interface de saisie ; une couche en lecture seule des signalements du serveur reviendra
 dans la carte une fois le serveur de dépôt branché.

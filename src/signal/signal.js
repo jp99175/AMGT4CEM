@@ -170,5 +170,13 @@ async function sendEntry(id) {
     console.error('[SIG4CEM] Reprise des anciens signalements impossible :', err);
   }
   await renderMenu();
+  // Arrivée depuis « Ajouter un point » de la carte : formulaire tout de suite, position pré-remplie.
+  const px = Number(AMGT4CEM_Router.params.get('x'));
+  const py = Number(AMGT4CEM_Router.params.get('y'));
+  if (AMGT4CEM_Router.params.has('x') && Number.isFinite(px) && Number.isFinite(py) && px > 0 && py > 0 && px < 400000 && py < 400000) {
+    history.replaceState(null, '', AMGT4CEM_Router.url('signal')); // un rechargement ne rouvre pas un nouveau formulaire
+    origin = null;
+    openForm(newId(), { x: px, y: py }, false);
+  }
 })();
 })();

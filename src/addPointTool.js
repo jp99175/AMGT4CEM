@@ -1,6 +1,6 @@
 /**
- * Outil "Ajouter un point" : workflow de création d'un objet métier
- * directement en pointant sa position sur la carte (section 9).
+ * Outil "Ajouter un point" : on pointe une position sur la carte, on choisit le type de données à saisir,
+ * puis « Enregistrer » ouvre l'interface de saisie correspondante, position déjà renseignée.
  *
  * Pendant le mode placement, l'utilisateur continue de naviguer normalement
  * (drag/zoom Leaflet ne sont jamais désactivés) ; seul le prochain clic sur
@@ -97,11 +97,9 @@ const AMGT4CEM_AddPointTool = {
     }
   },
 
+  /** Position retenue, en Lambert 72 (non affichée : le formulaire de saisie la reprend). */
   _updateCoordPreview() {
-    const { x, y } = AMGT4CEM_CRS.latLngToLambert(this._pendingLatLng);
-    document.getElementById('amgt-form-x').textContent = AMGT4CEM_CRS.formatCoord(x);
-    document.getElementById('amgt-form-y').textContent = AMGT4CEM_CRS.formatCoord(y);
-    this._pendingLambert = { x, y };
+    this._pendingLambert = AMGT4CEM_CRS.latLngToLambert(this._pendingLatLng);
   },
 
   _showForm() {
@@ -110,8 +108,6 @@ const AMGT4CEM_AddPointTool = {
 
   _hideForm() {
     document.getElementById('amgt-point-form').classList.add('amgt-hidden');
-    document.getElementById('amgt-form-type').value = '';
-    document.getElementById('amgt-form-label').value = '';
   },
 
   _removeTempMarker() {
@@ -121,32 +117,16 @@ const AMGT4CEM_AddPointTool = {
     }
   },
 
-  async confirm() {
-    const type = document.getElementById('amgt-form-type').value.trim();
-    const label = document.getElementById('amgt-form-label').value.trim();
-    if (!type || !label || !this._pendingLambert) {
-      alert('Merci de renseigner au minimum un type et un libellé.');
-      return;
-    }
-
-    const confirmBtn = document.getElementById('amgt-form-confirm');
-    confirmBtn.disabled = true;
-    confirmBtn.textContent = 'Enregistrement…';
-    try {
-      const point = await AMGT4CEM_PointsStore.add({
-        type,
-        label,
-        x: this._pendingLambert.x,
-        y: this._pendingLambert.y,
-      });
-      this._onPointCreated(point);
-      this.deactivate();
-    } catch (err) {
-      console.error('[AMGT4CEM] Enregistrement du point impossible :', err);
-      alert('Impossible d\'enregistrer ce point : ' + err.message);
-    } finally {
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = 'Enregistrer';
+  /**
+   * « Enregistrer » : ouvre l'interface de saisie du type choisi, formulaire déjà rempli de la position pointée.
+   * Un seul type pour l'instant : « Signalements et demandes » (SIG4CEM, home.html?app=signal).
+   */
+  confirm() {
+    const type = document.getElementById('amgt-form-type').value;
+    if (!this._pendingLambert) return;
+    if (type === 'signal') {
+      const { x, y } = this._pendingLambert;
+      location.href = AMGT4CEM_Router.url('signal', { x: x.toFixed(2), y: y.toFixed(2) });
     }
   },
 

@@ -648,7 +648,8 @@ html, body {
   font-size: 13px;
 }
 
-.amgt-form-row input {
+.amgt-form-row input,
+.amgt-form-row select {
   padding: 5px;
   font-size: 13px;
   border: 1px solid #ccc;
