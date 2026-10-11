@@ -73,7 +73,8 @@ Le bouton **⬇ Exporter le dépôt (.zip)** du popup produit la même archive e
 
 - `signalement.json` : schéma `amgt4cem-depot-signalement` (version 1), positions en Lambert 72 ; bloc
   `provenance` (demandeur et sa référence : identifiant externe, type `REF_DEMANDEUR`) ; `reference`
-  et `redacteur` vides (référence attribuée par le serveur ; référentiel des intervenants à venir) ;
+  vide (attribuée par le serveur) ; `redacteur` (matricule du créateur) et `contributeurs` (matricules de ceux qui ont
+  ajouté ou révisé la fiche) viennent de la session connectée, jamais du formulaire ;
 - les photos `IMG_<réf. courte>-<type>-<domaine>-<n°>_<AAAAMMJJ>_MX.jpg`.
 
 Les noms suivent la convention de nommage de l'organisation `TYPE_Titre_date_LANGUE` : `IMG` (images) et
