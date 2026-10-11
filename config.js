@@ -248,6 +248,7 @@ const AMGT4CEM_CONFIG = {
         './src/signal/photoEditor.js',
         './src/signal/form.js',
         './src/signal/list.js',
+        './src/signal/all.js',
         './src/signal/signal.js',
       ],
     },

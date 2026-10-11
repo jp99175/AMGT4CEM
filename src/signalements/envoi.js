@@ -37,8 +37,9 @@ NS.Envoi = {
     let headers = null;
     const preparer = async () => {
       const m = session.utilisateur.matricule;
+      // Envoyer n'est pas contribuer : on ne complète que si personne n'était identifié à la saisie (entrée écrite hors connexion).
       const redacteur = s.redacteur || m;
-      const contributeurs = (s.contributeurs && s.contributeurs.length) ? s.contributeurs : [m]; // sans historique : l'expéditeur est l'auteur
+      const contributeurs = s.redacteur ? (s.contributeurs || []) : [m];
       stamped = { ...s, redacteur, contributeurs };
       blob = (await NS.Depot.buildArchive(stamped)).blob;
       headers = {

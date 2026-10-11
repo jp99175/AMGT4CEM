@@ -30,6 +30,7 @@ function showScreen(name) {
   if (name !== 'map') SIG.MapPicker.close();
   if (name !== 'form') SIG.Form.close();
   if (name !== 'list') SIG.List.close();
+  if (name !== 'all') SIG.All.close();
 }
 
 // ------------------------------------------------------------------ menu
@@ -45,13 +46,20 @@ function item(label, counter, onClick) {
 async function renderMenu() {
   const c = await SIG.Entries.counts();
   const enFile = c.file + c.erreur;
+  // Toutes les entrées : compte du serveur (actives dans le système), demandé en arrière-plan pour ne pas retarder le menu.
+  const allCounter = h('span', { class: 'sig4cem-item__counter', text: AMGT4CEM_Auth.session() ? '(…)' : '(connexion requise)' });
+  const allItem = h('button', { type: 'button', class: 'sig4cem-item sig4cem-item--sub' }, h('span', { class: 'sig4cem-item__label', text: 'Signalement/demande' }), allCounter);
+  allItem.addEventListener('click', () => openAll());
+  if (AMGT4CEM_Auth.session()) SIG.All.count().then((n) => { allCounter.textContent = n == null ? '(indisponible)' : `(${n})`; });
   const nav = h('nav', { class: 'sig4cem-menu', 'aria-label': 'Signalements et demandes' },
-    h('h2', { text: 'SIGNALEMENTS ET DEMANDES' }),
-    item('Nouvelle entrée', { text: `(${c.draft} en local)` }, startNewEntry),
+    h('h2', { text: 'NOUVELLE ENTRÉE' }),
+    item('Signalement/demande', { text: `(${c.draft} en local)`, sub: true }, startNewEntry),
     h('h3', { text: 'Mes entrées' }),
     item('Draft', { text: `(${c.draft} en local)`, sub: true }, () => openList('draft')),
     item('Téléversement en cours', { text: `(${enFile}/${c.lot})`, sub: true }, () => openList('file')),
-    item('Mes dernières entrées', { text: `(${c.envoye})`, sub: true }, () => openList('envoye')));
+    item('Mes dernières entrées', { text: `(${c.envoye})`, sub: true }, () => openList('envoye')),
+    h('h3', { text: 'Toutes les entrées' }),
+    allItem);
   const parts = [nav];
   if (c.erreur) parts.unshift(h('p', { class: 'sig4cem-badge', text: `${c.erreur} entrée(s) en erreur d'envoi` }));
   if (notice) { parts.unshift(h('p', { class: 'sig4cem-notice', text: notice })); notice = ''; }
@@ -86,6 +94,17 @@ async function backToMenu() {
 async function backToOrigin() {
   if (origin) await openList(origin);
   else await backToMenu();
+}
+
+// ------------------------------------------------------------------ « Toutes les entrées »
+async function openAll() {
+  if (!AMGT4CEM_Auth.session()) {
+    const ok = await AMGT4CEM_Auth.ensure({ message: 'Connectez-vous pour voir les entrées du système.' });
+    if (!ok) return;
+  }
+  origin = null;
+  showScreen('all');
+  await SIG.All.open({ back: backToMenu });
 }
 
 // ------------------------------------------------------------------ listes « Mes entrées »
@@ -133,13 +152,15 @@ async function saveEntry(data, send) {
   try {
     // Version : v0.01 à la première saisie, +1 à chaque enregistrement d'une modification (même règle que les documents : v0.nn avant diffusion).
     const prev = await SIG.Entries.get(data.id);
-    const version = prev ? (prev.version || 1) + 1 : 1;
+    // Une révision sans changement de contenu n'est pas une modification : ni nouvelle version, ni nouveau contributeur.
+    const changed = !prev || Object.keys(data).some((k) => JSON.stringify(data[k]) !== JSON.stringify(prev[k]));
+    const version = prev ? (changed ? (prev.version || 1) + 1 : (prev.version || 1)) : 1;
     // Rédacteur = créateur, contributeurs = ceux qui ajoutent ou révisent : tirés de la session connectée, pas du formulaire.
     const me = AMGT4CEM_Auth.session();
     const matricule = me ? me.utilisateur.matricule : null;
     const redacteur = (prev && prev.redacteur) || matricule || null;
-    const contributeurs = [...new Set([...((prev && prev.contributeurs) || []), ...(matricule ? [matricule] : [])])];
-    await SIG.Entries.add({ ...data, redacteur, contributeurs, version, modifieLe: new Date().toISOString(), statut: send ? S.FILE : S.DRAFT, lotOuvert: !!send });
+    const contributeurs = [...new Set([...((prev && prev.contributeurs) || []), ...(matricule && changed ? [matricule] : [])])];
+    await SIG.Entries.add({ ...data, redacteur, contributeurs, version, modifieLe: changed || !prev ? new Date().toISOString() : (prev.modifieLe || new Date().toISOString()), statut: send ? S.FILE : S.DRAFT, lotOuvert: !!send });
   } catch (err) {
     console.error('[SIG4CEM] Enregistrement impossible :', err);
     alert(`Impossible d'enregistrer cette entrée : ${err.message}`);

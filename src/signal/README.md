@@ -58,7 +58,9 @@ Interruption d'un envoi en cours ; révisions d'une entrée déjà envoyée ; re
 
 ## Identification
 
-Chaque entrée porte un **rédacteur** (le créateur, matricule) et des **contributeurs** (matricules de ceux qui l'ont ajoutée ou révisée). Ces informations ne figurent pas dans le formulaire : elles viennent de la session connectée au moment de l'enregistrement (ou, à défaut, de l'envoi) et partent dans `signalement.json` (`redacteur`, `contributeurs`). Elles apparaissent dans la fiche dépliée d'une entrée envoyée.
+Le menu a trois rubriques : **Nouvelle entrée** (un sous-élément par formulaire ; pour l'instant Signalement/demande), **Mes entrées** (Draft, Téléversement en cours, Mes dernières entrées) et **Toutes les entrées** (une ligne par formulaire, avec le nombre d'entrées actives du système ; connexion requise).
+
+Chaque entrée porte un **rédacteur** (le créateur, matricule) et des **contributeurs** (matricules de ceux qui l'ont modifiée : enregistrer sans rien changer, ou envoyer, n'ajoute personne). Ces informations ne figurent pas dans le formulaire : elles viennent de la session connectée au moment de l'enregistrement (ou, à défaut, de l'envoi) et partent dans `signalement.json` (`redacteur`, `contributeurs`). Elles apparaissent dans la fiche dépliée d'une entrée envoyée.
 
 Le pied du menu indique « Connecté : Prénom Nom (matricule) » ou « Non connecté ». L'envoi redemande la connexion si besoin ;
 les brouillons et les entrées restent sur l'appareil sans connexion. Première connexion : lien reçu par email
@@ -72,6 +74,7 @@ les brouillons et les entrées restent sur l'appareil sans connexion. Première 
 | `entries.js` | stockage IndexedDB, statuts, compteurs ; constructeur DOM `SIG4CEM.h` |
 | `mapPicker.js` | écran carte : choix du point |
 | `form.js` | formulaire et photos (nouvelle entrée ou modification) |
+| `all.js` | « Toutes les entrées » : les entrées actives du système (index du serveur), lecture seule, par formulaire |
 | `list.js` | listes « Mes entrées » : brouillons, envois en cours, dernières entrées |
 | `signal.css` | styles (pensés pour le téléphone) |
 | `../auth/` | session et écran de connexion / première connexion (communs avec la page admin) |
