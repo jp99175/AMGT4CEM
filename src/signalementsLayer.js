@@ -223,7 +223,7 @@ const AMGT4CEM_SignalementsLayer = {
     const edit = document.createElement('a');
     edit.href = AMGT4CEM_Router.url('signal', { edit: s.reference });
     edit.className = 'amgt-sig-popup__edit';
-    edit.textContent = '✎ Modifier cette entrée';
+    edit.textContent = '✎ Modifier (révision)';
     actions.append(edit);
     // Corbeille alignée à droite : rédacteur de l'entrée ou administrateur (le serveur le vérifie aussi).
     const me = AMGT4CEM_Auth.session();

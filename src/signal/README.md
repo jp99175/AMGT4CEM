@@ -58,7 +58,7 @@ Interruption d'un envoi en cours ; verrouillage d'une entrée après traitement 
 
 ## Réviser une entrée envoyée
 
-Lien **✎ Modifier (révision)** dans « Mes dernières entrées » et « Toutes les entrées », et **✎ Modifier cette entrée** dans la bulle de la
+Lien **✎ Modifier (révision)** dans « Mes dernières entrées » et « Toutes les entrées », et **✎ Modifier (révision)** dans la bulle de la
 carte (`?app=signal&edit=AAAA-NNNN`). Tout agent connecté peut réviser. L'archive de la dernière version est téléchargée du serveur et
 reconstituée sur l'appareil (champs, photos, calques et traits d'annotations) ; l'entrée garde son identifiant. Les photos ne changent pas :
 seul le calque d'annotations peut être remplacé. Une révision ouverte puis abandonnée, ou enregistrée sans changement, ne laisse rien.
