@@ -931,7 +931,7 @@ src/buildInfoControl.js      affiche "BUILD ..." en bas à droite, au-dessus de 
 src/app.js                   assemblage de l'application
 vendor/leaflet, vendor/proj4,
 vendor/proj4leaflet,
-vendor/html2canvas           bibliothèques embarquées localement
+vendor/html2canvas, vendor/jspdf  bibliothèques embarquées localement
 ```
 
 Les géométries et les référentiels (`data/shapefile/`, `data/metro/`, `data/plans-patrimoine/`) et la

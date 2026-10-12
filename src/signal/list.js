@@ -206,7 +206,7 @@ SIG.List = {
       // Actions sous le cadre : « Modifier » à gauche, corbeille à droite (ajoutées après les photos, plus bas).
       const actions = h('div', { class: 'sig4cem-row__actions' });
       if (entry.reference && this.ctx.revise) {
-        const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: '✎ Modifier (nouvelle version)' });
+        const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: '✎ Modifier (révision)' });
         edit.addEventListener('click', () => this.ctx.revise(entry.reference));
         actions.append(edit);
       }

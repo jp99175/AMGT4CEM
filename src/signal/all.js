@@ -107,7 +107,7 @@ SIG.All = {
       nd ? h('span', { class: 'sig4cem-row__nd', text: nd }) : null,
       h('span', { class: 'sig4cem-row__meta', text: meta }),
       h('span', { class: 'sig4cem-row__status sig4cem-row__status--ok', text: ident }));
-    const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: '✎ Modifier (nouvelle version)' });
+    const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: '✎ Modifier (révision)' });
     edit.addEventListener('click', () => ctx.revise(e.reference));
     const actions = h('div', { class: 'sig4cem-row__actions' }, edit);
     if (this.canDelete(e.redacteur)) actions.append(this.trashButton(e.reference, title, () => this.open(ctx)));

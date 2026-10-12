@@ -243,6 +243,8 @@ const AMGT4CEM_CONFIG = {
         './src/auth/auth.js',
         './src/auth/authUi.js',
         './src/signalements/envoi.js',
+        './vendor/jspdf/jspdf.umd.min.js',
+        './src/signalements/pdf.js',
         './src/signalements/zip-reader.js',
         './src/signalements/importer.js',
         './src/signal/entries.js',

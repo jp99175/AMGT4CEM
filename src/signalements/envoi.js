@@ -41,7 +41,12 @@ NS.Envoi = {
       const redacteur = s.redacteur || m;
       const contributeurs = s.redacteur ? (s.contributeurs || []) : [m];
       stamped = { ...s, redacteur, contributeurs };
-      blob = (await NS.Depot.buildArchive(stamped)).blob;
+      // Export PDF de cette révision, joint à l'archive (le serveur le range dans revisions/). Sans lui, l'envoi continue.
+      const extra = [];
+      try {
+        if (NS.Pdf && window.jspdf) extra.push({ name: 'revision.pdf', data: new Uint8Array(await (await NS.Pdf.build(stamped)).arrayBuffer()) });
+      } catch (err) { console.warn('[SIG4CEM] Export PDF impossible, envoi sans PDF :', err); }
+      blob = (await NS.Depot.buildArchive(stamped, extra)).blob;
       headers = {
         'X-Signalement-Id': s.id,
         'X-Flux': 'STANDARD', // plus de flux séparé : le serveur accepte encore AMIANTE mais on ne l'utilise plus

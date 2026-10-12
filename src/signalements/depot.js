@@ -126,7 +126,7 @@ NS.Depot = {
   },
 
   /** Construit l'archive de dépôt d'un signalement (signalement.json + photos). */
-  async buildArchive(s) {
+  async buildArchive(s, extra) {
     const enc = new TextEncoder();
     const depot = this.buildDepot(s);
     const records = [];
@@ -146,6 +146,7 @@ NS.Depot = {
         entries.push({ name: depot.pieces[i].annotations.nom, data: new Uint8Array(await record.annot.arrayBuffer()) });
       }
     }
+    for (const e of extra || []) entries.push(e); // ex. revision.pdf (export de cette révision)
     return { blob: NS.Zip.build(entries), depot };
   },
 

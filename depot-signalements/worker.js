@@ -465,7 +465,12 @@ async function routeAdmin(request, env, url) {
 
 // ------------------------------------------------------------------ index des signalements (lecture par la carte)
 
-const INDEX_KEY = 'index/signalements.json';
+// Arborescence R2 des entrées : un dossier par formulaire (« signalement-demande »), avec son index JSON, puis un
+// sous-dossier par entrée : fiche.json (dernière version), depot.zip (archive de la dernière version), pieces/ (photos et
+// calques), revisions/ (un PDF par révision), historique/ (archives des versions précédentes), recu.json (réception).
+const FORMULAIRE = 'signalement-demande';
+const BASE = `signalements/${FORMULAIRE}`;
+const INDEX_KEY = `${BASE}/index.json`;
 
 /** Entrée sortie du système (statut « supprime » ; `supprimeLe` pour les entrées supprimées avant l'ajout du statut). */
 function estSupprime(e) {
@@ -503,6 +508,37 @@ async function lireZip(buffer, nom) {
     p += 46 + lN + lE + lC;
   }
   return null;
+}
+
+/** Tous les fichiers d'une archive ZIP : Map nom -> octets. */
+async function lireToutZip(buffer) {
+  const dv = new DataView(buffer);
+  const u8 = new Uint8Array(buffer);
+  const out = new Map();
+  let eocd = -1;
+  for (let i = buffer.byteLength - 22; i >= Math.max(0, buffer.byteLength - 65557); i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) return out;
+  const n = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  const dec = new TextDecoder();
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const methode = dv.getUint16(p + 10, true);
+    const taille = dv.getUint32(p + 20, true);
+    const lN = dv.getUint16(p + 28, true);
+    const lE = dv.getUint16(p + 30, true);
+    const lC = dv.getUint16(p + 32, true);
+    const local = dv.getUint32(p + 42, true);
+    const name = dec.decode(u8.subarray(p + 46, p + 46 + lN));
+    const debut = local + 30 + dv.getUint16(local + 26, true) + dv.getUint16(local + 28, true);
+    const brut = u8.subarray(debut, debut + taille);
+    if (methode === 0) out.set(name, brut);
+    else if (methode === 8) out.set(name, new Uint8Array(await new Response(new Blob([brut]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()));
+    p += 46 + lN + lE + lC;
+  }
+  return out;
 }
 
 /** Ce que la carte a besoin de savoir d'un signalement (jamais les pièces ni le détail). */
@@ -583,10 +619,8 @@ async function routeDepot(request, env, url) {
     await intervenantCourant(request, env);
     const ix = await env.DEPOTS.get(INDEX_KEY);
     if (ix && (await ix.json()).signalements.some((x) => x.reference === mArchive[1] && estSupprime(x))) throw new HttpError(410, 'Entrée supprimée.');
-    for (const flux of ['standard', 'amiante']) {
-      const o = await env.DEPOTS.get(`${flux}/${mArchive[1].slice(0, 4)}/${mArchive[1]}/depot.zip`);
-      if (o) return { status: 200, raw: o.body, type: 'application/zip' };
-    }
+    const o = await env.DEPOTS.get(`${BASE}/${mArchive[1]}/depot.zip`);
+    if (o) return { status: 200, raw: o.body, type: 'application/zip' };
     throw new HttpError(404, 'Entrée inconnue.');
   }
   const mSup = /^\/signalements\/(\d{4}-\d{4})\/supprimer$/.exec(url.pathname);
@@ -636,7 +670,7 @@ async function routeDepot(request, env, url) {
   const attribution = await (await stub.fetch('https://compteur/', { method: 'POST', body: JSON.stringify({ id, annee: anneeBruxelles() }) })).json();
   const { reference, deja } = attribution;
 
-  const dossier = `${flux === 'AMIANTE' ? 'amiante' : 'standard'}/${reference.slice(0, 4)}/${reference}`;
+  const dossier = `${BASE}/${reference}`;
   const recuLe = new Date().toISOString();
   const fichier = (request.headers.get('X-Fichier') || '').replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 120);
   const entree = await entreeDepuisArchive(body, reference, recuLe, deposePar);
@@ -672,6 +706,21 @@ async function routeDepot(request, env, url) {
     JSON.stringify({ reference, id, flux, fichier, taille: body.byteLength, recuLe, deposePar, revisions }, null, 2),
     { httpMetadata: { contentType: 'application/json' } },
   );
+  // Déballage pour la consultation : fiche.json, pieces/ (photos et calques, mêmes noms que dans l'archive) et revisions/ (PDF de cette
+  // version). Un échec ici ne perd pas le dépôt : l'archive complète est déjà rangée.
+  try {
+    const fichiers = await lireToutZip(body);
+    const types = { json: 'application/json', pdf: 'application/pdf', jpg: 'image/jpeg', png: 'image/png' };
+    for (const [nom, octets] of fichiers) {
+      if (!/^[A-Za-z0-9._-]{1,150}$/.test(nom)) continue;
+      const ext = (nom.split('.').pop() || '').toLowerCase();
+      let cle = null;
+      if (nom === 'signalement.json') cle = `${dossier}/fiche.json`;
+      else if (nom === 'revision.pdf') cle = entree ? `${dossier}/revisions/v0.${String(entree.version).padStart(2, '0')}.pdf` : null;
+      else if (ext === 'jpg' || ext === 'png') cle = `${dossier}/pieces/${nom}`;
+      if (cle) await env.DEPOTS.put(cle, octets, { httpMetadata: { contentType: types[ext] || 'application/octet-stream' } });
+    }
+  } catch (err) { console.error('déballage', err); }
   // Index lu par la carte. Un échec ici ne doit pas perdre le dépôt.
   try { if (entree) await majIndex(env, [entree]); } catch (err) { console.error('index', err); }
   return { status: 200, body: { reference, deja, recuLe } };

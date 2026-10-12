@@ -20,7 +20,7 @@ jamais, car le suivi n'entre pas dans le dépôt.
 
 - **Idempotent** : renvoyer le même signalement (même `X-Signalement-Id`) redonne la même référence, sans doublon
   ni numéro perdu ; un envoi interrompu se refait sans risque.
-- **Rangement R2** : `standard/` (et `amiante/` pour d'anciens dépôts) · année · référence · `depot.zip` (l'archive reçue) et `recu.json`
+- **Rangement R2** : `signalements/signalement-demande/` (un dossier par type de formulaire) contient `index.json` (index lu par la carte) et un sous-dossier par entrée (`AAAA-NNNN/`) : `depot.zip` (dernière archive), `fiche.json`, `pieces/` (photos et calques d'annotation), `revisions/vN.NN.pdf` (un PDF par révision, généré par l'application), `historique/` (archives des versions précédentes) et `recu.json`. L'ancien rangement `standard/AAAA/…` est abandonné ; les entrées de test d'avant ne sont pas migrées.
   (référence, identifiant, nom de fichier, taille, date de réception, `deposePar` = matricule du compte qui a déposé ; le rédacteur et les contributeurs de la fiche sont dans `signalement.json` de l'archive).
 - **Révisions** : renvoyer une archive avec le même `X-Signalement-Id` et une version plus récente (v0.NN) est une révision de la
   même référence. La version précédente est conservée dans `historique/vNNN_<date>.zip` ; `recu.json` liste les révisions
@@ -72,4 +72,4 @@ simule R2 et le compteur. Vérifié ainsi : amorçage par première connexion, a
 
 ## Relire les dépôts
 
-Tableau de bord Cloudflare > R2 > `amgt4cem-depots`, ou `npx wrangler r2 object get amgt4cem-depots/standard/2026/2026-0001/depot.zip`.
+Tableau de bord Cloudflare > R2 > `amgt4cem-depots`, ou `npx wrangler r2 object get amgt4cem-depots/signalements/signalement-demande/2026-0001/depot.zip`.
