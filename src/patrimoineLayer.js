@@ -5,7 +5,7 @@
  * chacun est chargé une seule fois (mis en cache), sans filtre d'emprise ni
  * de zoom (volumes très modestes : quelques centaines d'entités au plus).
  *
- * Géométrie rencontrée dans ces fichiers : uniquement des Point avec un
+ * Géométrie rencontrée dans ces fichiers : des Point avec un
  * attribut "text" ou "numero" — une étiquette de texte (nom de station,
  * numéro d'interstation...) affichée comme telle, pas comme un simple
  * point coloré, pour rester lisible.
@@ -167,6 +167,7 @@ const AMGT4CEM_PatrimoineLayer = {
 
   _buildLeafletLayer(feature, color) {
     const geom = feature.geometry;
+    if (geom && geom.type === 'Polygon') return this._buildPolygonLayer(feature, color);
     if (!geom || geom.type !== 'Point') return null;
     const props = feature.properties || {};
 
@@ -190,6 +191,30 @@ const AMGT4CEM_PatrimoineLayer = {
     });
     marker.bindPopup(this._buildLabelPopup(text, geom.coordinates));
     return marker;
+  },
+
+  /** Polygone (coordonnées Lambert 72) : seule la couche temporaire temp_DELTA_mod en contient pour l'instant. */
+  _buildPolygonLayer(feature, color) {
+    const props = feature.properties || {};
+    const rings = feature.geometry.coordinates.map((ring) => ring.map((pt) => AMGT4CEM_CRS.lambertToLatLng(pt)));
+    const layer = L.polygon(rings, {
+      color,
+      weight: 2,
+      opacity: this._opacityFactor,
+      fillColor: color,
+      fillOpacity: 0.25,
+    });
+    const text = props.name_fr || props.genre || 'Polygone';
+    layer.bindPopup(this._buildLabelPopup(text + (props.copie_de ? ` (copie de ${props.copie_de})` : ''), this._lambertCenter(feature)));
+    return layer;
+  },
+
+  /** Centre de l'emprise englobante du premier anneau, en Lambert 72 (pour la fenêtre d'information). */
+  _lambertCenter(feature) {
+    const ring = feature.geometry.coordinates[0];
+    const xs = ring.map((p) => p[0]);
+    const ys = ring.map((p) => p[1]);
+    return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
   },
 
   _buildLabelPopup(text, [x, y]) {
