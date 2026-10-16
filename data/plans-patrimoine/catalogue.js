@@ -33,7 +33,7 @@ const AMGT4CEM_PATRIMOINE_CATALOG = [
   {
     id: 'temp_DELTA_mod',
     label: 'temp_DELTA_mod (emprise DELTA recalée, provisoire)',
-    // Couche TEMPORAIRE : copie translatée de G000150 (data/plans-patrimoine/temp-delta-mod.json,
+    // Couche TEMPORAIRE : copie translatée de P000150 (data/plans-patrimoine/temp-delta-mod.json,
     // Lambert 72), affichée en polygone de la couleur choisie dans le sélecteur. N'entre ni dans
     // polygones.shp ni dans le référentiel ; à retirer une fois l'emprise corrigée reportée dans AutoCAD.
     file: './data/plans-patrimoine/temp-delta-mod.json',

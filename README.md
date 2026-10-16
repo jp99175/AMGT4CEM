@@ -612,8 +612,8 @@ data/
    (`localStorage`, section 6) fonctionne comme avant ; `data/points-metier/` est
    réservé à leur structure (champs, listes de types) quand elle sera définie.
 
-**Règle de l'identifiant.** Chaîne opaque sans signification métier : « G » + 6
-chiffres (ex. `G000123`), attribuée une fois, **jamais réutilisée**, **unique sur
+**Règle de l'identifiant.** Chaîne opaque sans signification métier : une lettre + 6
+chiffres au moins (ex. `P000123`) ; la lettre désigne le fichier d'origine : **P** `polygones.shp`, **L** `lignes.shp`, **G** géométries créées dans l'application (les anciens `G000001–G000192` ont été renommés `P…` en octobre 2026 et ne sont jamais réutilisés), attribuée une fois, **jamais réutilisée**, **unique sur
 les deux fichiers à la fois**. Le prochain à attribuer est `prochain_id`, **compteur
 unique** des deux fichiers, dans `data/shapefile/identifiants.json` (avec la règle). Un
 code de station ou un numéro de tronçon est un **attribut du référentiel**, jamais un
@@ -647,7 +647,7 @@ identifiant. Les anciens identifiants (`ogc_fid`, `id_objet` comme
 - `tools/` : `migrer-donnees.py` (migration unique, déjà exécutée),
   `verifier-donnees.py` (contrôle, voir plus bas), `rapport-migration.md`.
 
-**Contenu actuel de `polygones.shp`** (192 entités, `G000001` à `G000192`) :
+**Contenu actuel de `polygones.shp`** (192 entités, `P000001` à `P000192`) :
 69 stations, 87 tunnels, 36 planches au 1/500. Voir `tools/rapport-migration.md`
 pour les anomalies et ce qui n'a pas pu être migré (notamment : aucun nom de
 station rattaché, la source ayant été retirée).

@@ -4,7 +4,7 @@
  *
  * SOURCE UNIQUE : data/plans-patrimoine/etiquettes-troncons.json, liste COMPLÈTE des étiquettes
  * { "numéro#rang": { x, y, tunnel } } — position du texte (Lambert 72, mètres) et identifiant
- * stable `id` du tunnel (référentiel, ex. « G000002 »). Créer ou supprimer une étiquette = ajouter ou retirer une entrée
+ * stable `id` du tunnel (référentiel, ex. « P000002 »). Créer ou supprimer une étiquette = ajouter ou retirer une entrée
  * (plugin pe-label-editor). Le fichier d'origine data/plans-patrimoine/numeros-interstation.legacy.json n'est
  * plus lu : archive (amorçage initial du JSON), à retirer quand lignes.shp existera.
  *

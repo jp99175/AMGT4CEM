@@ -198,7 +198,7 @@ def main():
     shutil.copyfile(chemin("Metro_export_SHP", "Metro.prj"), chemin("data", "shapefile", "polygones.prj"))
     with open(chemin("data", "shapefile", "polygones.cpg"), "w", newline="") as f:
         f.write("UTF-8")
-    note("Sorties", f"data/shapefile/polygones.shp : {len(entites)} polygones, champ unique `id` (G000001 à G{len(entites):06d}) ; .prj copié de Metro.prj.")
+    note("Sorties", f"data/shapefile/polygones.shp : {len(entites)} polygones, champ unique `id` (P000001 à P{len(entites):06d} après le renommage G→P) ; .prj copié de Metro.prj.")
 
     # ---------- 4. Référentiel, réparti par domaine métier --------------------------------------------
     # prochain_id : compteur UNIQUE, commun à polygones.shp et lignes.shp, dans shapefile/identifiants.json.

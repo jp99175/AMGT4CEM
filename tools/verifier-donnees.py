@@ -44,7 +44,7 @@ RACINE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)
 GEO = os.path.join(RACINE, "data", "shapefile")
 DATA = os.path.join(RACINE, "data")
 DOMAINES = ["metro", "plans-patrimoine"]  # dossiers portant un référentiel (polygones.json, lignes.json, vocabulaires.json)
-FORMAT_ID = re.compile(r"^G\d{6}$")
+FORMAT_ID = re.compile(r"^[PLG]\d{6,}$")
 CONTROLE = re.compile("[\x00-\x1f\x7f-\x9f]")
 FOND = os.path.join(RACINE, "data", "plans-patrimoine")
 

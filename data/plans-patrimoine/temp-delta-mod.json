@@ -1,8 +1,8 @@
 {
  "type": "FeatureCollection",
  "crs": "EPSG:31370",
- "note": "Couche TEMPORAIRE de travail : copie de G000150 (emprise de la station DELTA) translatée pour caler l'emprise sur les orthophotos. Aucun identifiant G… consommé, polygones.shp inchangé.",
- "source": "G000150",
+ "note": "Couche TEMPORAIRE de travail : copie de P000150 (emprise de la station DELTA) translatée pour caler l'emprise sur les orthophotos. Aucun identifiant G… consommé, polygones.shp inchangé.",
+ "source": "P000150",
  "translation_lambert72": {
   "dx": -16.9,
   "dy": -30.0,
@@ -13,7 +13,7 @@
    "type": "Feature",
    "properties": {
     "genre": "temp_DELTA_mod",
-    "copie_de": "G000150",
+    "copie_de": "P000150",
     "name_fr": "Delta (emprise recalée, provisoire)"
    },
    "geometry": {

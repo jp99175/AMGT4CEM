@@ -2,5 +2,5 @@
   "version": 3,
   "date": "2026-10-07",
   "prochain_id": 193,
-  "regle_id": "Chaîne opaque « G » + 6 chiffres, attribuée une fois, jamais réutilisée, unique sur polygones.shp ET lignes.shp. Aucune signification métier. Le prochain à attribuer est prochain_id (compteur unique pour les deux fichiers), à incrémenter à chaque attribution."
+  "regle_id": "Chaîne opaque : une lettre (P polygones.shp, L lignes.shp, G géométries créées dans l'application) + 6 chiffres au moins, attribuée une fois, jamais réutilisée. Les anciens G000001–G000192 sont devenus P000001–P000192 (octobre 2026). Aucune signification métier. Le prochain à attribuer est prochain_id (compteur unique pour les deux fichiers), à incrémenter à chaque attribution."
 }
