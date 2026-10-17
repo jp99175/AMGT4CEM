@@ -1,0 +1,33 @@
+# Publie la micro-application « Dés » (dossier dice/) sur GitHub Pages.
+# Réglage requis une fois : Settings > Pages > Source = « GitHub Actions ».
+name: Pages Dés
+
+on:
+  push:
+    branches: [claude/amgt4cem-mapping-app-fy2zdt]
+    paths: ['dice/**', '.github/workflows/pages-dice.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dice
+      - id: deployment
+        uses: actions/deploy-pages@v4
