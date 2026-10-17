@@ -22,6 +22,7 @@ Puis ouvrez l'une des deux interfaces de la page unique `home.html` :
 
 - http://localhost:8000/home.html?app=carto : **AMGT4CEM**, visualisation de toutes les données sur la carte
   (interface par défaut, aussi atteinte par `index.html` et par `home.html` sans paramètre) ;
+- http://localhost:8000/home.html?app=dice : **Dés**, simulateur de jets (D100 = 2 × D10, afficheur à lames rotatives ; voir `src/dice/README.md`) ;
 - http://localhost:8000/home.html?app=signal : **SIG4CEM**, saisie des signalements et demandes
   (menu, nouvelle entrée avec choix du point sur sa propre carte, enregistrement local ou envoi : voir `src/signal/README.md`) ;
 - http://localhost:8000/home.html?app=admin : **administration des intervenants** (référentiel, codes de première connexion,
