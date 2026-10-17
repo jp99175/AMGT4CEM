@@ -1,48 +1,42 @@
 import { rollD100, rollDice } from './rng.js';
 import { Board, sound, unlockAudio } from './flap.js';
-import { DualKnob } from './knob.js';
-import { Led } from './led.js';
+import { Dial } from './knob.js';
 
 const $ = (id) => document.getElementById(id);
-const history = $('history');
-const rollBtn = $('roll');
+const historyEl = $('history');
+const launchBtn = $('pb-launch');
 let rollNo = 0;
 let busy = false;
 
 const totalBoard = new Board($('total'), 3);
-const countLed = new Led($('led-count'), 2);
-const kindLed = new Led($('led-kind'), 4);
 
-// Couronne = type de dé ; bouton central = nombre de dés.
-const knob = new DualKnob($('knob'), {
-  outer: {
-    options: [
-      { value: 'd100', text: 'D100 (2 × D10)' },
-      ...[4, 6, 8, 10, 12, 20].map((f) => ({ value: f, text: 'D' + f })),
-    ],
-    onChange: () => updateSelection(),
-  },
-  inner: {
-    options: Array.from({ length: 10 }, (_, i) => ({ value: i + 1, text: `${i + 1} dé${i ? 's' : ''}` })),
-    onChange: () => updateSelection(),
-  },
+// Nombre de dés (1 à 10) et type de dé (le D100 = 2 × D10, choisi au départ).
+const countDial = new Dial($('dial-count'), {
+  title: 'NOMBRE',
+  options: Array.from({ length: 10 }, (_, i) => ({ value: i + 1, label: String(i + 1), text: `${i + 1} dé${i ? 's' : ''}` })),
+  onChange: () => updateSelection(),
+});
+const kindDial = new Dial($('dial-kind'), {
+  title: 'DÉ',
+  options: [
+    ...[4, 6, 8, 10, 12, 20].map((f) => ({ value: f, label: String(f), text: 'D' + f })),
+    { value: 'd100', label: '100', text: 'D100 (2 × D10)' },
+  ],
+  index: 6,
+  onChange: () => updateSelection(),
 });
 
 // Le dé ou la combinaison choisie : « D100 », « D6 », « 3D6 »…
 function selection() {
-  const isPct = knob.outer.value === 'd100';
-  const n = isPct ? 2 : knob.inner.value;
-  const faces = isPct ? 10 : knob.outer.value;
+  const isPct = kindDial.value === 'd100';
+  const n = isPct ? 2 : countDial.value;
+  const faces = isPct ? 10 : kindDial.value;
   const name = isPct ? 'D100' : n === 1 ? `D${faces}` : `${n}D${faces}`;
   return { isPct, n, faces, name };
 }
 
 function updateSelection() {
-  const s = selection();
-  knob.inner.setDisabled(s.isPct); // le D100 est toujours 2 × D10
-  countLed.set(s.isPct ? '--' : s.n);
-  countLed.dim(s.isPct);
-  kindLed.set(s.isPct ? 'd100' : 'd' + s.faces);
+  countDial.setDisabled(selection().isPct); // le D100 est toujours 2 × D10
 }
 
 // Cellule de tableau d'affichage : une tuile par caractère, qui bascule à l'arrivée de la ligne.
@@ -69,8 +63,8 @@ function addHistory(name, total) {
     li.appendChild(cell);
   }
   li.setAttribute('aria-label', `${time}, ${name}, résultat ${total}`);
-  history.prepend(li);
-  while (history.children.length > 200) history.lastChild.remove();
+  historyEl.prepend(li);
+  while (historyEl.children.length > 200) historyEl.lastChild.remove();
   $('empty').hidden = true;
   rollNo++;
 }
@@ -78,7 +72,8 @@ function addHistory(name, total) {
 async function roll() {
   if (busy) return;
   busy = true;
-  rollBtn.disabled = true;
+  $('led-run').classList.add('lit');
+  launchBtn.setAttribute('aria-busy', 'true');
   unlockAudio();
 
   const s = selection();
@@ -87,19 +82,31 @@ async function roll() {
 
   addHistory(s.name, r.total);
   busy = false;
-  rollBtn.disabled = false;
+  $('led-run').classList.remove('lit');
+  launchBtn.removeAttribute('aria-busy');
 }
 
-rollBtn.addEventListener('click', roll);
+launchBtn.addEventListener('click', roll);
 $('clear').addEventListener('click', () => {
-  history.replaceChildren();
+  historyEl.replaceChildren();
   rollNo = 0;
   $('empty').hidden = false;
 });
-$('sound').addEventListener('click', (e) => {
+
+// SOUND : coupe ou rétablit le clac ; le voyant MUTE est rouge quand il n'y a pas de son.
+$('pb-sound').addEventListener('click', (e) => {
   sound.on = !sound.on;
-  e.currentTarget.textContent = sound.on ? '🔊' : '🔇';
+  $('led-mute').classList.toggle('lit', !sound.on);
   e.currentTarget.setAttribute('aria-pressed', String(!sound.on));
+});
+
+// EXIT : ferme l'onglet s'il a été ouvert par un script ; sinon retour à la page précédente, ou à la carte.
+$('pb-exit').addEventListener('click', () => {
+  window.close();
+  setTimeout(() => {
+    if (window.history.length > 1) window.history.back();
+    else location.href = 'home.html?app=carto';
+  }, 150);
 });
 
 updateSelection();
