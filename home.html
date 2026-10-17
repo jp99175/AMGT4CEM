@@ -352,34 +352,37 @@
 <template id="amgt-tpl-dice">
   <header class="titlebar">
     <h1>Jet de dés</h1>
-    <button id="sound" type="button" class="icon" title="Son" aria-label="Son">🔊</button>
   </header>
 
   <main class="stage">
-    <div class="panel">
-      <i class="screw s1"></i><i class="screw s2"></i><i class="screw s3"></i><i class="screw s4"></i><i class="screw s5"></i>
-      <div class="side" aria-hidden="true">DÉS</div>
-      <div class="p-label l-count">Nombre</div>
-      <div class="p-label l-kind">Dé</div>
-      <div id="led-count" class="led" role="status"></div>
-      <div id="led-kind" class="led" role="status"></div>
-      <div class="p-launch">
-        <div class="bracket"><span>Lancer</span></div>
-        <button id="roll" class="roll" type="button" aria-label="Lancer les dés"></button>
-      </div>
-      <div id="knob"></div>
-    </div>
     <div id="total" class="total" role="status" aria-label="Total"></div>
+    <section class="history" aria-label="Historique des jets">
+      <div class="board-head">
+        <span>Heure</span><span>Dés</span><span>Résultat</span>
+        <button id="clear" type="button" class="link">Effacer</button>
+      </div>
+      <ol id="history"></ol>
+      <p id="empty" class="empty">Aucun jet pour l'instant.</p>
+    </section>
   </main>
 
-  <section class="history" aria-label="Historique des jets">
-    <div class="board-head">
-      <span>Heure</span><span>Dés</span><span>Résultat</span>
-      <button id="clear" type="button" class="link">Effacer</button>
+  <footer class="strip">
+    <div class="plate">
+      <i class="hole h1"></i><i class="hole h2"></i><i class="hole h3"></i><i class="hole h4"></i>
+      <svg id="dial-count" class="dial d-count" viewBox="0 0 200 160"></svg>
+      <i class="sep s-a"></i>
+      <svg id="dial-kind" class="dial d-kind" viewBox="0 0 200 160"></svg>
+      <i class="sep s-b"></i>
+      <div class="pbs">
+        <button class="pb" id="pb-sound" type="button" aria-label="Sound" aria-pressed="false">
+          <span class="lens face">Sound</span><span class="lens led red" id="led-mute">Mute</span></button>
+        <button class="pb" id="pb-launch" type="button" aria-label="Launch">
+          <span class="lens face">Launch</span><span class="lens led green" id="led-run">Running</span></button>
+        <button class="pb" id="pb-exit" type="button" aria-label="Exit">
+          <span class="lens face">Exit</span><span class="lens led red lit">Program</span></button>
+      </div>
     </div>
-    <ol id="history"></ol>
-    <p id="empty" class="empty">Aucun jet pour l'instant.</p>
-  </section>
+  </footer>
 </template>
 
 <template id="amgt-tpl-admin">

@@ -3,8 +3,8 @@
 Interface `home.html?app=dice` : micro-application autonome (HTML/CSS/JS, sans dépendance) : simulateur de jets de dés.
 
 - Par défaut **D100 = 2 × D10** (dizaines 0-9 + unités 0-9, « 00 » = 100).
-- Autres dés au choix par le bouton rotatif : D4, D6, D8, D10, D12, D20 (1 à 10 dés, total = somme).
-- Façon **panneau radio d'avion** : afficheurs LED orange (nombre, dé), bouton noir « LANCER », bouton rotatif double (couronne = type de dé, bouton central = nombre de dés ; souris, molette ou flèches). Total en grand sur afficheur à lames rotatives, avec petit clac sonore (bouton 🔊 pour couper). Historique en tableau des départs (heure, dés, résultat) en bas.
+- Autres dés : D4, D6, D8, D10, D12, D20 (1 à 10 dés, total = somme) ; le D100 (2 × D10) est le choix de départ.
+- Écran : titre, total en grand sur afficheur à lames rotatives, historique en tableau des départs (heure, dés, résultat), puis bandeau de commande en bas : deux boutons rotatifs sur plaque gravée (**NOMBRE** de dés 1 à 10, **DÉ** 4/6/8/10/12/20/100 ; souris, doigt, molette ou flèches) et trois boutons poussoirs à voyant : **SOUND** (voyant MUTE rouge quand le son est coupé), **LAUNCH** (voyant RUNNING vert pendant que les lames tournent), **EXIT** (voyant PROGRAM rouge ; ferme l'onglet, sinon retour à la page précédente ou à la carte).
 - Tirage **non biaisé** : `crypto.getRandomValues` + rejet des valeurs excédentaires (pas de modulo biaisé).
 
 Lancer : `python3 -m http.server 8000` puis http://localhost:8000/home.html?app=dice
