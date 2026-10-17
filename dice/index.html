@@ -10,7 +10,7 @@
 <body>
 <main class="layout">
   <section class="stage">
-    <h1>Simulateur de dés</h1>
+    <h1>Jet de dés</h1>
 
     <div class="options">
       <label>Dé
@@ -27,10 +27,11 @@
       <label id="count-label" hidden>Nombre
         <input id="count" type="number" min="1" max="10" value="1" />
       </label>
+      <button id="sound" type="button" class="icon" title="Son" aria-label="Son">🔊</button>
     </div>
 
-    <div id="dice" class="dice" aria-live="polite"></div>
-    <div id="total" class="total" aria-live="polite">—</div>
+    <div id="dice" class="dice"></div>
+    <div id="total" class="total" role="status" aria-label="Total"></div>
 
     <button id="roll" class="roll" type="button">Lancer les dés</button>
   </section>
