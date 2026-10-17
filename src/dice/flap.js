@@ -1,5 +1,6 @@
 // Afficheur à lames rotatives : chaque caractère est une lame qui bascule d'une valeur à la suivante.
 const CHARSET = ' 0123456789';
+export const LABEL_CHARSET = ' D0123456789';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -46,6 +47,7 @@ export class Flap {
     this.bottom = half('bottom');
     this.leafTop = half('top leaf');
     this.leafBottom = half('bottom leaf');
+    this.queue = Promise.resolve();
     this.el.append(this.top, this.bottom, this.leafTop, this.leafBottom);
     this.show(this.value);
   }
@@ -73,7 +75,13 @@ export class Flap {
 
   // Tourne de lame en lame (cycle du jeu de caractères) jusqu'à `target`, après `delay` pas,
   // en faisant au moins `extra` pas.
-  async spinTo(target, { extra = 0, delay = 0, ms = 55 } = {}) {
+  // Les demandes sont mises en file : une lame ne tourne jamais pour deux cibles à la fois.
+  spinTo(target, opts) {
+    this.queue = this.queue.then(() => this._spin(target, opts));
+    return this.queue;
+  }
+
+  async _spin(target, { extra = 0, delay = 0, ms = 55 } = {}) {
     if (reduced.matches) { this.show(target); return; }
     const n = this.charset.length;
     const from = this.charset.indexOf(this.value);
@@ -87,13 +95,13 @@ export class Flap {
 
 // Rangée de lames affichant `text` (largeur fixe `width`, complétée par des blancs à gauche).
 export class Board {
-  constructor(container, width) {
-    this.flaps = Array.from({ length: width }, () => new Flap());
+  constructor(container, width, charset = CHARSET) {
+    this.flaps = Array.from({ length: width }, () => new Flap(charset));
     container.replaceChildren(...this.flaps.map((f) => f.el));
   }
 
-  async set(value, { extra = 8, delay = 0 } = {}) {
-    const text = String(value).padStart(this.flaps.length, ' ');
+  async set(value, { extra = 8, delay = 0, align = 'end' } = {}) {
+    const text = align === 'end' ? String(value).padStart(this.flaps.length, ' ') : String(value).padEnd(this.flaps.length, ' ');
     await Promise.all(this.flaps.map((f, i) => f.spinTo(text[i], { extra: extra + i * 3, delay: delay + i * 2 })));
   }
 }
