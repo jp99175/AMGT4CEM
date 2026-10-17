@@ -47,21 +47,21 @@ async function roll() {
   const name = isPct ? 'D100' : `${n}D${faces}`;
   const r = isPct ? rollD100() : rollDice(n, faces);
 
-  layoutDice(n, String(isPct ? 9 : faces).length);
-  $('dice').classList.toggle('pct', isPct);
-  const labels = isPct ? ['dizaines', 'unités'] : [];
-  [...$('dice').children].forEach((c, i) => { c.dataset.label = labels[i] || ''; });
+  // Seul le résultat est affiché ; le détail des dés n'apporte rien pour le D100 ni pour un dé seul.
+  const showDice = !isPct && n > 1;
+  $('dice').hidden = !showDice;
+  if (showDice) layoutDice(n, String(faces).length);
 
   await Promise.all([
-    ...diceBoards.map((b, i) => b.set(r.dice[i], { extra: 14, delay: i * 4 })),
-    totalBoard.set(r.total, { extra: 22, delay: n * 4 }),
+    ...(showDice ? diceBoards.map((b, i) => b.set(r.dice[i], { extra: 14, delay: i * 4 })) : []),
+    totalBoard.set(r.total, { extra: 22, delay: showDice ? n * 4 : 0 }),
   ]);
 
   const li = document.createElement('li');
   li.dataset.n = ++rollNo;
   li.innerHTML = '<span class="h-kind"></span><span class="h-dice"></span><strong class="h-total"></strong>';
   li.querySelector('.h-kind').textContent = name;
-  li.querySelector('.h-dice').textContent = r.dice.join(' · ');
+  li.querySelector('.h-dice').textContent = showDice ? r.dice.join(' · ') : '';
   li.querySelector('.h-total').textContent = r.total;
   history.prepend(li);
   $('empty').hidden = true;
