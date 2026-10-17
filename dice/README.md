@@ -1,0 +1,11 @@
+# Dés
+
+Micro-application autonome (HTML/CSS/JS, sans dépendance) : simulateur de jets de dés.
+
+- Par défaut **D100 = 2 × D10** (dizaines 0-9 + unités 0-9, « 00 » = 100).
+- Autres dés au choix : D4, D6, D8, D10, D12, D20 (1 à 10 dés, total = somme).
+- Historique des jets dans la colonne de droite.
+- Tirage **non biaisé** : `crypto.getRandomValues` + rejet des valeurs excédentaires (pas de modulo biaisé).
+
+Lancer : `python3 -m http.server 8000` puis http://localhost:8000/dice/
+Test d'uniformité (khi² sur 1 M de jets) : `node dice/test/rng.test.mjs`

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="data:," />
+<title>Dés</title>
+<link rel="stylesheet" href="./dice.css" />
+</head>
+<body>
+<main class="layout">
+  <section class="stage">
+    <h1>Simulateur de dés</h1>
+
+    <div class="options">
+      <label>Dé
+        <select id="kind">
+          <option value="d100" selected>D100 (2 × D10)</option>
+          <option value="4">D4</option>
+          <option value="6">D6</option>
+          <option value="8">D8</option>
+          <option value="10">D10</option>
+          <option value="12">D12</option>
+          <option value="20">D20</option>
+        </select>
+      </label>
+      <label id="count-label" hidden>Nombre
+        <input id="count" type="number" min="1" max="10" value="1" />
+      </label>
+    </div>
+
+    <div id="dice" class="dice" aria-live="polite"></div>
+    <div id="total" class="total" aria-live="polite">—</div>
+
+    <button id="roll" class="roll" type="button">Lancer les dés</button>
+  </section>
+
+  <aside class="history">
+    <header>
+      <h2>Historique</h2>
+      <button id="clear" type="button" class="link">Effacer</button>
+    </header>
+    <ol id="history"></ol>
+    <p id="empty" class="empty">Aucun jet pour l'instant.</p>
+  </aside>
+</main>
+<script type="module" src="./dice.js"></script>
+</body>
+</html>
