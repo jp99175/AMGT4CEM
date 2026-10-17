@@ -3,6 +3,7 @@
  *
  *   home.html?app=carto    AMGT4CEM : visualisation de toutes les données sur la carte (défaut)
  *   home.html?app=signal   SIG4CEM  : saisie des signalements et demandes
+ *   home.html?app=dice     Dés      : simulateur de jets de dés (modules ES : `modules` dans config.js)
  *
  * Les interfaces sont déclarées dans `apps` de config.js (gabarit, styles, scripts). Le routeur copie
  * le gabarit choisi dans la page, charge les styles puis les scripts DANS L'ORDRE (un script dépend des
@@ -63,6 +64,7 @@ const AMGT4CEM_Router = {
     }
     try {
       await this._loadScripts(app.scripts);
+      await Promise.all((app.modules || []).map((m) => import(new URL(m, document.baseURI).href)));
     } catch (err) {
       console.error(`[AMGT4CEM] Interface « ${id} » non chargée :`, err);
       this._showError(`L'interface « ${id} » n'a pas pu être chargée : ${err.message}`, id);
