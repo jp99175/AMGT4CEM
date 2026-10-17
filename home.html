@@ -356,13 +356,20 @@
   </header>
 
   <main class="stage">
-    <div class="selector">
-      <div id="selection" class="selection" role="status" aria-label="Dés choisis"></div>
-      <div id="knob-kind"></div>
-      <div id="knob-count"></div>
+    <div class="panel">
+      <i class="screw s1"></i><i class="screw s2"></i><i class="screw s3"></i><i class="screw s4"></i><i class="screw s5"></i>
+      <div class="side" aria-hidden="true">DÉS</div>
+      <div class="p-label l-count">Nombre</div>
+      <div class="p-label l-kind">Dé</div>
+      <div id="led-count" class="led" role="status"></div>
+      <div id="led-kind" class="led" role="status"></div>
+      <div class="p-launch">
+        <div class="bracket"><span>Lancer</span></div>
+        <button id="roll" class="roll" type="button" aria-label="Lancer les dés"></button>
+      </div>
+      <div id="knob"></div>
     </div>
     <div id="total" class="total" role="status" aria-label="Total"></div>
-    <button id="roll" class="roll" type="button">Lancer les dés</button>
   </main>
 
   <section class="history" aria-label="Historique des jets">
