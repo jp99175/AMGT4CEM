@@ -350,43 +350,29 @@
 
 <!-- ========== Interface « signal » : SIG4CEM (saisie) ========== -->
 <template id="amgt-tpl-dice">
-  <main class="layout">
-    <section class="stage">
-      <h1>Jet de dés</h1>
+  <header class="titlebar">
+    <h1>Jet de dés</h1>
+    <button id="sound" type="button" class="icon" title="Son" aria-label="Son">🔊</button>
+  </header>
 
-      <div class="options">
-        <label>Dé
-          <select id="kind">
-            <option value="d100" selected>D100 (2 × D10)</option>
-            <option value="4">D4</option>
-            <option value="6">D6</option>
-            <option value="8">D8</option>
-            <option value="10">D10</option>
-            <option value="12">D12</option>
-            <option value="20">D20</option>
-          </select>
-        </label>
-        <label id="count-label" hidden>Nombre
-          <input id="count" type="number" min="1" max="10" value="1" />
-        </label>
-        <button id="sound" type="button" class="icon" title="Son" aria-label="Son">🔊</button>
-      </div>
-
-      <div id="dice" class="dice"></div>
-      <div id="total" class="total" role="status" aria-label="Total"></div>
-
-      <button id="roll" class="roll" type="button">Lancer les dés</button>
-    </section>
-
-    <aside class="history">
-      <header>
-        <h2>Historique</h2>
-        <button id="clear" type="button" class="link">Effacer</button>
-      </header>
-      <ol id="history"></ol>
-      <p id="empty" class="empty">Aucun jet pour l'instant.</p>
-    </aside>
+  <main class="stage">
+    <div class="selector">
+      <div id="selection" class="selection" role="status" aria-label="Dés choisis"></div>
+      <div id="knob-kind"></div>
+      <div id="knob-count"></div>
+    </div>
+    <div id="total" class="total" role="status" aria-label="Total"></div>
+    <button id="roll" class="roll" type="button">Lancer les dés</button>
   </main>
+
+  <section class="history" aria-label="Historique des jets">
+    <div class="board-head">
+      <span>Heure</span><span>Dés</span><span>Résultat</span>
+      <button id="clear" type="button" class="link">Effacer</button>
+    </div>
+    <ol id="history"></ol>
+    <p id="empty" class="empty">Aucun jet pour l'instant.</p>
+  </section>
 </template>
 
 <template id="amgt-tpl-admin">
