@@ -1,6 +1,7 @@
 import { rollD100, rollDice } from './rng.js';
-import { Board, LABEL_CHARSET, sound, unlockAudio } from './flap.js';
-import { Knob } from './knob.js';
+import { Board, sound, unlockAudio } from './flap.js';
+import { DualKnob } from './knob.js';
+import { Led } from './led.js';
 
 const $ = (id) => document.getElementById(id);
 const history = $('history');
@@ -9,35 +10,39 @@ let rollNo = 0;
 let busy = false;
 
 const totalBoard = new Board($('total'), 3);
-const labelBoard = new Board($('selection'), 5, LABEL_CHARSET);
+const countLed = new Led($('led-count'), 2);
+const kindLed = new Led($('led-kind'), 4);
 
-const kindKnob = new Knob($('knob-kind'), {
-  title: 'Dé',
-  options: [
-    { value: 'd100', label: '100', text: 'D100 (2 × D10)' },
-    ...[4, 6, 8, 10, 12, 20].map((f) => ({ value: f, label: String(f), text: 'D' + f })),
-  ],
-  onChange: () => updateSelection(),
-});
-const countKnob = new Knob($('knob-count'), {
-  title: 'Nombre',
-  options: Array.from({ length: 10 }, (_, i) => ({ value: i + 1, label: String(i + 1) })),
-  onChange: () => updateSelection(),
+// Couronne = type de dé ; bouton central = nombre de dés.
+const knob = new DualKnob($('knob'), {
+  outer: {
+    options: [
+      { value: 'd100', text: 'D100 (2 × D10)' },
+      ...[4, 6, 8, 10, 12, 20].map((f) => ({ value: f, text: 'D' + f })),
+    ],
+    onChange: () => updateSelection(),
+  },
+  inner: {
+    options: Array.from({ length: 10 }, (_, i) => ({ value: i + 1, text: `${i + 1} dé${i ? 's' : ''}` })),
+    onChange: () => updateSelection(),
+  },
 });
 
 // Le dé ou la combinaison choisie : « D100 », « D6 », « 3D6 »…
 function selection() {
-  const isPct = kindKnob.value === 'd100';
-  const n = isPct ? 2 : countKnob.value;
-  const faces = isPct ? 10 : kindKnob.value;
+  const isPct = knob.outer.value === 'd100';
+  const n = isPct ? 2 : knob.inner.value;
+  const faces = isPct ? 10 : knob.outer.value;
   const name = isPct ? 'D100' : n === 1 ? `D${faces}` : `${n}D${faces}`;
   return { isPct, n, faces, name };
 }
 
 function updateSelection() {
   const s = selection();
-  countKnob.setDisabled(s.isPct); // le D100 est toujours 2 × D10
-  labelBoard.set(s.name, { extra: 5, align: 'start' });
+  knob.inner.setDisabled(s.isPct); // le D100 est toujours 2 × D10
+  countLed.set(s.isPct ? '--' : s.n);
+  countLed.dim(s.isPct);
+  kindLed.set(s.isPct ? 'd100' : 'd' + s.faces);
 }
 
 // Cellule de tableau d'affichage : une tuile par caractère, qui bascule à l'arrivée de la ligne.
