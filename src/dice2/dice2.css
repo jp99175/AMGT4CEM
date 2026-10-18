@@ -84,8 +84,12 @@ body { background: #050607; color: #e9e6dc; font: 16px/1.4 "Helvetica Neue", Ari
 .clr button:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
 
 /* ----- panneau 3 : boutons rotatifs gravés, SOUND et LAUNCH empilés ----- */
-.bot { --k: calc((var(--w) - 7rem) / 2); flex: 1 1 auto; display: flex; align-items: center; justify-content: space-between; gap: .25rem; padding: .7rem 1.1rem .8rem; }
-.sep { align-self: center; width: 1px; height: 6rem; background: #f0f0ec; opacity: .9; }
+/* deux tiers pour les boutons rotatifs (rapprochés), un tiers pour les poussoirs ; le filet de séparation est à 2/3 */
+.bot { --k: calc((var(--w) * 2 / 3 - 1rem) / 1.78); flex: 1 1 auto; display: grid; grid-template-columns: 2fr 1fr; align-items: center; padding: .7rem 0 .8rem; }
+.dials { display: flex; justify-content: center; align-items: center; padding: 0 .5rem; }
+.dials .dial + .dial { margin-left: calc(var(--k) * -.22); }
+.ctrls { position: relative; display: flex; justify-content: center; align-items: center; align-self: stretch; }
+.ctrls::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 6rem; transform: translateY(-50%); background: #f0f0ec; opacity: .9; }
 .dial { width: var(--k); aspect-ratio: 200 / 160; display: block; touch-action: none; cursor: grab; outline: none; transition: opacity .2s; }
 .dial:active { cursor: grabbing; }
 .dial:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 6px; }
