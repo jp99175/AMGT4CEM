@@ -13,7 +13,7 @@ body { background: #0d0b0a; color: #efe6d2; font: 16px/1.4 "Helvetica Neue", Ari
   display: flex; flex-direction: column; align-items: center; }
 
 /* les panneaux sont séparés par des rainures noires (la structure) ; --w = largeur d'un panneau */
-.stack { --frame: .5rem; --w: calc(min(100vw, 26rem) - 2 * var(--frame)); --S: max(12rem, min(calc(var(--w) - 2.8rem), calc(var(--vh) - 29.7rem)));
+.stack { --frame: .5rem; --w: calc(min(100vw, 26rem) - 2 * var(--frame)); --S: max(12rem, min(calc(var(--w) - 4.6rem), calc(var(--vh) - 30.4rem)));
   width: calc(var(--w) + 2 * var(--frame)); height: var(--vh); padding: .5rem var(--frame); gap: .14rem; background: #0d0b0a; display: flex; flex-direction: column; min-height: 0; }
 /* panneau : plaque dont les 4 coins sont en retrait ; une vis est fixée au fond de chaque retrait, sur la structure noire */
 .panel { --n: 1.4rem; --pk: #7a5c4b; position: relative; flex: none; width: 100%; isolation: isolate; filter: drop-shadow(0 1.5px 1.5px rgba(0,0,0,.6)); }
@@ -42,9 +42,25 @@ body { background: #0d0b0a; color: #efe6d2; font: 16px/1.4 "Helvetica Neue", Ari
 .s3 { left: 0; bottom: 0; --r: 92deg; } .s3::after { right: 0; top: 0; background: radial-gradient(circle at 0 100%, transparent .6rem, var(--pk) calc(.6rem + .5px)); }
 .s4 { right: 0; bottom: 0; --r: 80deg; } .s4::after { left: 0; top: 0; background: radial-gradient(circle at 100% 100%, transparent .6rem, var(--pk) calc(.6rem + .5px)); }
 
+/* petites vis à tête bombée en croix, peintes : elles fixent chaque bloc d'instrument au panneau, à ses 4 coins
+   (--ox / --oy : décalage du centre de la vis vers l'extérieur du bloc, défini sur le bloc) */
+.dome { position: absolute; width: .55rem; height: .55rem; border-radius: 50%; z-index: 2;
+  background: radial-gradient(circle at 35% 28%, #c9b5a1, #a58b76 58%, #6c5545); box-shadow: 0 1px 1.5px rgba(0,0,0,.6), 0 0 0 .5px rgba(60,44,34,.6); }
+.dome::before, .dome::after { content: ""; position: absolute; left: 24%; right: 24%; top: calc(50% - .5px); height: 1px; background: #3d2d22; transform: rotate(var(--r, 20deg)); }
+.dome::after { transform: rotate(calc(var(--r, 20deg) + 90deg)); }
+.dome.tl { left: calc(-1 * var(--ox) - .275rem); top: calc(-1 * var(--oy) - .275rem); }
+.dome.tr { right: calc(-1 * var(--ox) - .275rem); top: calc(-1 * var(--oy) - .275rem); --r: -30deg; }
+.dome.bl { left: calc(-1 * var(--ox) - .275rem); bottom: calc(-1 * var(--oy) - .275rem); --r: 35deg; }
+.dome.br { right: calc(-1 * var(--ox) - .275rem); bottom: calc(-1 * var(--oy) - .275rem); --r: -10deg; }
+.grp, .window, .guard, .dialbox { position: relative; }
+.grp { --ox: 0rem; --oy: .8rem; }
+.window { --ox: .6rem; --oy: .65rem; }
+.guard { --ox: .4rem; --oy: .55rem; }
+.dialbox { --ox: 0rem; --oy: 0rem; }
+
 /* ----- panneau 1 : titre, 12 touches HOLD et 12 paires de lames ----- */
 .p-blocks { padding: .7rem 0 3.5rem; }
-.engrave { display: flex; align-items: center; gap: .9rem; width: var(--S); margin: 0 auto .95rem; font-size: .78rem; font-weight: 800; letter-spacing: .45em; text-transform: uppercase; color: var(--cream); }
+.engrave { display: flex; align-items: center; gap: .9rem; width: var(--S); margin: 0 auto 1.3rem; font-size: .78rem; font-weight: 800; letter-spacing: .45em; text-transform: uppercase; color: var(--cream); }
 /* filet blanc imprimé à la suite du titre, comme les intitulés de la photo */
 .engrave::after { content: ""; flex: 1; height: 1px; background: rgba(239,230,210,.7); }
 /* la grille occupe exactement la largeur de l'écran ; l'écart touche-lames vaut la moitié de l'écart entre colonnes */
@@ -74,7 +90,7 @@ body { background: #0d0b0a; color: #efe6d2; font: 16px/1.4 "Helvetica Neue", Ari
 .dsp .line { height: calc(var(--cw) * 1.667); }
 
 /* ----- panneau 2 : écran carré à 16 segments, bouton CLEAR dessous ----- */
-.p-screen { display: flex; align-items: center; justify-content: center; padding: 1.7rem 1.4rem 3.5rem; }
+.p-screen { display: flex; align-items: center; justify-content: center; padding: 1.9rem 1.4rem 3.5rem; }
 .window { --pad: .5rem; width: var(--S); height: var(--S); padding: var(--pad); background: #0a0603; border: 2px solid #1c130a; display: flex; align-items: center; justify-content: center; }
 .lcd { --cw: calc((var(--S) - 2 * var(--pad) - 4px) / 20.4); display: flex; flex-direction: column; gap: calc(var(--cw) * .4); }
 .line { display: flex; height: calc(var(--cw) * 1.667); }
@@ -98,6 +114,11 @@ body { background: #0d0b0a; color: #efe6d2; font: 16px/1.4 "Helvetica Neue", Ari
 .dials { display: flex; justify-content: center; align-items: center; padding: 0 .5rem; }
 .dialbox { width: var(--k); }
 .dials .dialbox + .dialbox { margin-left: calc(var(--k) * -.12); }
+/* bloc d'un bouton rotatif : vis aux coins de son encadrement */
+.dialbox .dome.tl { left: calc(var(--k) * .22 - .275rem); top: calc(var(--k) * .17 - .275rem); }
+.dialbox .dome.tr { left: calc(var(--k) * .9 - .275rem); right: auto; top: calc(var(--k) * .17 - .275rem); }
+.dialbox .dome.bl { left: calc(var(--k) * .22 - .275rem); bottom: auto; top: calc(var(--k) * .81 - .275rem); }
+.dialbox .dome.br { left: calc(var(--k) * .9 - .275rem); right: auto; bottom: auto; top: calc(var(--k) * .81 - .275rem); }
 .ctrls { position: relative; display: flex; justify-content: center; align-items: center; align-self: stretch; }
 .ctrls::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 6rem; transform: translateY(-50%); background: var(--cream); opacity: .9; }
 .dial { width: var(--k); aspect-ratio: 200 / 160; display: block; touch-action: none; cursor: grab; outline: none; transition: opacity .2s; }
