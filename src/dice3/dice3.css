@@ -101,7 +101,7 @@ body { background: #0d0b0a; color: #efe6d2; font: 16px/1.4 "Helvetica Neue", Ari
 .dot { fill: var(--gdim); }
 .dot.on { fill: var(--g); filter: drop-shadow(0 0 3px rgba(255,178,26,.9)); }
 .line.dimline .seg.on { fill: #a86f12; filter: none; }
-.clr { position: absolute; right: calc((var(--w) - var(--S)) / 2); bottom: .85rem; display: flex; align-items: center; gap: .6rem;
+.clr { position: absolute; right: calc((var(--w) - var(--S)) / 2 + 1.3rem); bottom: .85rem; display: flex; align-items: center; gap: .6rem;
   font-weight: 800; font-size: .62rem; letter-spacing: .14em; color: var(--cream); text-transform: uppercase; }
 .clr button { all: unset; cursor: pointer; width: 1.55rem; height: 1.55rem; border-radius: 50%; background: radial-gradient(circle at 38% 30%, #3b3d42, #0d0e10 70%);
   box-shadow: 0 0 0 2px #2a1c12, 0 0 0 3px rgba(239,230,210,.28), 0 3px 5px rgba(0,0,0,.6); }
@@ -115,10 +115,10 @@ body { background: #0d0b0a; color: #efe6d2; font: 16px/1.4 "Helvetica Neue", Ari
 .dialbox { width: var(--k); }
 .dials .dialbox + .dialbox { margin-left: calc(var(--k) * -.12); }
 /* bloc d'un bouton rotatif : vis aux coins de son encadrement */
-.dialbox .dome.tl { left: calc(var(--k) * .22 - .275rem); top: calc(var(--k) * .17 - .275rem); }
-.dialbox .dome.tr { left: calc(var(--k) * .9 - .275rem); right: auto; top: calc(var(--k) * .17 - .275rem); }
-.dialbox .dome.bl { left: calc(var(--k) * .22 - .275rem); bottom: auto; top: calc(var(--k) * .81 - .275rem); }
-.dialbox .dome.br { left: calc(var(--k) * .9 - .275rem); right: auto; bottom: auto; top: calc(var(--k) * .81 - .275rem); }
+.dialbox .dome.tl { left: calc(var(--k) * .22 - .275rem); top: calc(var(--k) * .22 - .275rem); }
+.dialbox .dome.tr { left: calc(var(--k) * .82 - .275rem); right: auto; top: calc(var(--k) * .22 - .275rem); }
+.dialbox .dome.bl { left: calc(var(--k) * .22 - .275rem); bottom: auto; top: calc(var(--k) * .86 - .275rem); }
+.dialbox .dome.br { left: calc(var(--k) * .22 + var(--k) * .6 - .275rem); right: auto; bottom: auto; top: calc(var(--k) * .86 - .275rem); }
 .ctrls { position: relative; display: flex; justify-content: center; align-items: center; align-self: stretch; }
 .ctrls::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 6rem; transform: translateY(-50%); background: var(--cream); opacity: .9; }
 .dial { width: var(--k); aspect-ratio: 200 / 160; display: block; touch-action: none; cursor: grab; outline: none; transition: opacity .2s; }
