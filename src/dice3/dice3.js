@@ -21,7 +21,7 @@ const held = Array(SLOTS).fill(false);
 // ---------- les 12 emplacements : touche HOLD + afficheur 0-100 à 3 caractères, en 3 colonnes de 4 (1-4, 5-8, 9-12)
 const keys = [];
 const displays = [];
-const grid = $('flips');
+const grid = $('flips'); // contient déjà les 2 vis de fixation du module
 for (let c = 0; c < 3; c++) {
   const grp = document.createElement('div');
   grp.className = 'grp';
@@ -64,12 +64,12 @@ function setHold(i, on) {
 
 // ---------- boutons rotatifs : NOMBRE (1 à 12) et DÉ (D100 = 2 × D10 au départ)
 const countDial = new Dial($('dial-count'), {
-  title: 'NOMBRE',
+  title: 'COUNT',
   options: Array.from({ length: SLOTS }, (_, i) => ({ value: i + 1, label: String(i + 1), text: `${i + 1} dé${i ? 's' : ''}` })),
   onChange: () => updateSelection(),
 });
 const kindDial = new Dial($('dial-kind'), {
-  title: 'DÉ',
+  title: 'LIMIT',
   options: [
     ...[4, 6, 8, 10, 12, 20].map((f) => ({ value: f, label: String(f), text: 'D' + f })),
     { value: 'd100', label: '100', text: 'D100 (2 × D10)' },

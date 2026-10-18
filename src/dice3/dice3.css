@@ -22,13 +22,22 @@ body { background: #0d0b0a; color: #efe6d2; font: 16px/1.4 "Helvetica Neue", Ari
 .p-screen::before, .bot::before { left: 14%; }
 .p-screen::after, .bot::after { right: 14%; }
 
-/* vis plates à croix */
-.screw { position: absolute; width: .8rem; height: .8rem; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #e0c88f, #8f7647 70%); border: 1px solid #3d2f1a; box-shadow: 0 1px 1px rgba(0,0,0,.5); }
-.screw::before, .screw::after { content: ""; position: absolute; left: 15%; right: 15%; top: calc(50% - 1px); height: 2px; background: #3a2d18; }
-.screw::before { transform: rotate(var(--r, 35deg)); }
-.screw::after { transform: rotate(calc(var(--r, 35deg) + 90deg)); }
-.s1 { left: .55rem; top: .55rem; --r: 35deg; } .s2 { right: .55rem; top: .55rem; --r: -20deg; }
-.s3 { left: .55rem; bottom: .55rem; --r: 70deg; } .s4 { right: .55rem; bottom: .55rem; --r: 5deg; }
+/* vis des 4 coins du panneau : tête droite à fente, fixée au fond d'un logement */
+.screw { position: absolute; width: .85rem; height: .85rem; border-radius: 50%; background: #1c130b; border: 1px solid #3a2a1a;
+  box-shadow: inset 0 1px 3px #000, 0 1px 0 rgba(255,235,210,.14); }
+.screw::before { content: ""; position: absolute; inset: 2px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #b39a6a, #766040); border: 1px solid #33271a; }
+.screw::after { content: ""; position: absolute; left: 17%; right: 17%; top: calc(50% - 1px); height: 2px; background: #2c2213; transform: rotate(var(--r, 35deg)); }
+.s1 { left: .45rem; top: .45rem; --r: 35deg; } .s2 { right: .45rem; top: .45rem; --r: -20deg; }
+.s3 { left: .45rem; bottom: .45rem; --r: 70deg; } .s4 { right: .45rem; bottom: .45rem; --r: 5deg; }
+
+/* vis à tête bombée en croix : elles fixent un instrument au panneau (à mi-hauteur, de part et d'autre du module) */
+.dome { position: absolute; width: .8rem; height: .8rem; border-radius: 50%; z-index: 2;
+  background: radial-gradient(circle at 35% 28%, #f1e3b8, #a68b55 55%, #5b4727); box-shadow: 0 1px 2px rgba(0,0,0,.65), inset 0 0 0 1px rgba(60,44,22,.5); }
+.dome::before, .dome::after { content: ""; position: absolute; left: 20%; right: 20%; top: calc(50% - .5px); height: 1px; background: #33271a; transform: rotate(var(--r, 20deg)); }
+.dome::after { transform: rotate(calc(var(--r, 20deg) + 90deg)); }
+.dome.l { left: calc((var(--w) - var(--S)) / -4 - .4rem); top: calc(50% - .4rem); }
+.dome.r { right: calc((var(--w) - var(--S)) / -4 - .4rem); top: calc(50% - .4rem); --r: -35deg; }
+.grid3, .window { position: relative; }
 
 /* ----- panneau 1 : titre, 12 touches HOLD et 12 paires de lames ----- */
 .p-blocks { padding: .7rem 0 3.5rem; }
@@ -99,7 +108,7 @@ body { background: #0d0b0a; color: #efe6d2; font: 16px/1.4 "Helvetica Neue", Ari
 .dial .kg { transform-origin: 100px 100px; transition: transform .18s cubic-bezier(.3,1.4,.5,1); }
 
 /* SOUND et LAUNCH dans un cadre à rayures rouges et blanches (cf. boutons L NOZZLE R de la photo) */
-.guard { padding: .3rem; background: repeating-linear-gradient(135deg, #d6262b 0 .38rem, #f6f1e4 .38rem .76rem); border-radius: 2px; box-shadow: 0 0 0 1px #20150c, 0 3px 6px rgba(0,0,0,.45); }
+.guard { position: relative; padding: .3rem; background: repeating-linear-gradient(135deg, #d6262b 0 .38rem, #f6f1e4 .38rem .76rem); border-radius: 2px; box-shadow: 0 0 0 1px #20150c, 0 3px 6px rgba(0,0,0,.45); }
 .pbs { display: flex; flex-direction: column; background: #15110e; padding: 2px; border-radius: 1px; }
 .pb { all: unset; box-sizing: border-box; cursor: pointer; width: 2.4rem; height: 2.4rem; display: flex; flex-direction: column; gap: 2px; padding: 2px; border-radius: 3px;
   background: #1d1814; }
@@ -113,3 +122,6 @@ body { background: #0d0b0a; color: #efe6d2; font: 16px/1.4 "Helvetica Neue", Ari
 .lens.led.green.lit { background: radial-gradient(circle at 50% 35%, #7bf08c, #1fae3b 80%); color: #032a0c; box-shadow: inset 0 0 0 1px rgba(0,0,0,.5), 0 0 14px rgba(60,230,100,.65); }
 
 @media (prefers-reduced-motion: reduce) { .dial .kg { transition: none; } }
+
+/* vis de fixation du cadre SOUND/LAUNCH : de part et d'autre, à mi-hauteur */
+.guard .dome.l { left: -1.1rem; } .guard .dome.r { right: -1.1rem; }
