@@ -3,10 +3,12 @@
 Variante de [dés 2](../dice2/README.md) aux couleurs et fixations d'un panneau supérieur de 777 : `home.html?app=dice3`.
 `dice` et `dice2` restent inchangés.
 
-- **Panneaux** : trois plaques brun-taupe de même largeur, séparées par des rainures noires (la structure). Les 4 coins de
-  chaque plaque sont en retrait ; une vis à tête droite (fente) est fixée au fond de chaque retrait, sur la structure.
-  Chaque bloc d'instrument (colonne touches + afficheurs, écran, chaque bouton rotatif, cadre SOUND/LAUNCH) est fixé au
-  panneau par 4 vis à tête bombée en croix, peintes de la couleur du panneau, à ses coins.
+- **Panneaux** : trois plaques brun-taupe de même largeur, séparées par des rainures noires (la structure), rendues comme de la
+  tôle emboutie et peinte (peinture satinée granuleuse, bords légèrement relevés, ombre portée dans les retraits, repères « + »
+  gravés, filet blanc après le titre). Les 4 coins de chaque plaque sont en retrait ; une vis à tête droite (fente) est fixée au
+  fond de chaque retrait, dans un logement à anneau. Chaque bloc d'instrument (colonne touches + afficheurs, écran sur une bride
+  emboutie, chaque bouton rotatif dans sa découpe ronde, cadre SOUND/LAUNCH) est fixé au panneau par 4 vis à tête bombée en
+  croix, peintes de la couleur du panneau, plus petites que les vis des coins (proportions de la photo).
 - **Panneau du haut** : 12 emplacements, chacun = touche **HOLD** + afficheur **0-100** à segments (3 caractères, ambre),
   numérotés par colonnes (1-4, 5-8, 9-12). HOLD s'éclaire : le dé est conservé au jet suivant. **RELEASE** (bouton rond noir,
   en bas à droite) relâche tous les HOLD. Changer de dé relâche aussi les HOLD.

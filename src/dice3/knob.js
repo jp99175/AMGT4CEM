@@ -66,7 +66,8 @@ export class Dial {
       <radialGradient id="${id}-sk" cx=".38" cy=".3" r=".95"><stop offset="0" stop-color="#d8ccaa"/><stop offset="1" stop-color="#9c8e68"/></radialGradient>
       <radialGradient id="${id}-cr" cx=".38" cy=".3" r=".95"><stop offset="0" stop-color="#f6eed6"/><stop offset="1" stop-color="#d0c299"/></radialGradient>
       <filter id="${id}-bl"><feGaussianBlur stdDeviation="3"/></filter></defs>
-      <circle cx="${C}" cy="${C + 6}" r="${R_FLANGE}" fill="rgba(0,0,0,.55)" filter="url(#${id}-bl)"/>
+      <circle cx="${C}" cy="${C}" r="31.5" fill="#0f0a07" stroke="rgba(255,238,215,.22)" stroke-width="1"/>
+      <circle cx="${C}" cy="${C + 4}" r="${R_FLANGE}" fill="rgba(0,0,0,.55)" filter="url(#${id}-bl)"/>
       <g class="kg">
         <circle cx="${C}" cy="${C}" r="${R_FLANGE - 1}" fill="url(#${id}-sk)" stroke="rgba(0,0,0,.45)" stroke-width="1"/>
         <path d="M100 70 L112.6 83.2 A21 21 0 1 1 87.4 83.2 Z" fill="url(#${id}-cr)" stroke="rgba(0,0,0,.4)" stroke-width=".9" stroke-linejoin="round"/>
