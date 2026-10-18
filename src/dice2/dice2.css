@@ -1,0 +1,118 @@
+/* dice2 : trois panneaux plats de même largeur, 4 vis chacun, instruments et boutons montés directement dessus.
+   Pensé pour smartphone en portrait ; sur un grand écran, la même colonne est simplement centrée. */
+:root {
+  --vh: 100vh;
+  --plate: #50565c; --seam: #1b1d20; --amber: #ffb81c;
+  --g: #3dff6b; --gdim: #0b2312;
+}
+@supports (height: 100dvh) { :root { --vh: 100dvh; } }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body { background: #050607; color: #e9e6dc; font: 16px/1.4 "Helvetica Neue", Arial, sans-serif; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; }
+
+.stack { --w: min(100vw, 26rem); --S: max(12rem, min(calc(var(--w) - 3.6rem), calc(var(--vh) - 28.5rem)));
+  width: var(--w); height: var(--vh); display: flex; flex-direction: column; min-height: 0; }
+.panel { position: relative; flex: none; width: 100%; background: var(--plate); }
+.panel + .panel { border-top: 3px solid var(--seam); }
+
+/* vis plates à croix */
+.screw { position: absolute; width: .8rem; height: .8rem; border-radius: 50%; background: #7f858c; border: 1px solid #3a3e43; }
+.screw::before, .screw::after { content: ""; position: absolute; left: 15%; right: 15%; top: calc(50% - 1px); height: 2px; background: #33373c; }
+.screw::before { transform: rotate(var(--r, 35deg)); }
+.screw::after { transform: rotate(calc(var(--r, 35deg) + 90deg)); }
+.s1 { left: .55rem; top: .55rem; --r: 35deg; } .s2 { right: .55rem; top: .55rem; --r: -20deg; }
+.s3 { left: .55rem; bottom: .55rem; --r: 70deg; } .s4 { right: .55rem; bottom: .55rem; --r: 5deg; }
+
+/* ----- panneau 1 : titre, 12 touches HOLD et 12 paires de lames ----- */
+.p-blocks { padding: .7rem 0 1.1rem; }
+.engrave { width: var(--S); margin: 0 auto .7rem; font-size: .78rem; font-weight: 800; letter-spacing: .45em; text-transform: uppercase; color: #f3f3ef; }
+/* la grille occupe exactement la largeur de l'écran ; l'écart touche-lames vaut la moitié de l'écart entre colonnes */
+.grid3 { --cell: min(2.4rem, calc((var(--S) - 3.5rem) / 6.96)); --pairw: calc(1.32 * (var(--cell) - .56rem) + .72rem);
+  --g1: max(.15rem, calc((var(--S) - 3 * (var(--cell) + var(--pairw))) / 7));
+  width: var(--S); margin: 0 auto; display: flex; gap: calc(2 * var(--g1)); }
+.grp { display: flex; gap: var(--g1); }
+.kcol, .fcol { display: flex; flex-direction: column; }
+.kr { position: relative; }
+.idx { position: absolute; left: -.95rem; top: 50%; transform: translateY(-50%); font-weight: 800; font-size: .55rem; color: #f3f3ef; line-height: 1; }
+
+/* touche HOLD : cabochon noir carré à légende rétro-éclairée (une seule bordure : l'épaisseur du côté) */
+.key { all: unset; box-sizing: border-box; cursor: pointer; display: grid; place-items: center; width: var(--cell); height: var(--cell); flex: none;
+  border-radius: 2px; box-shadow: 0 0 0 1px #050506; }
+.key:active { transform: translateY(1px); }
+.key:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.key .face { width: 100%; height: 100%; display: grid; place-items: center; border-radius: 2px; box-shadow: inset 0 0 0 2px rgba(120,126,138,.16);
+  background: linear-gradient(145deg, #1d1f23, #0b0b0d); font-weight: 700; font-size: .5rem; letter-spacing: .08em; color: #8d8f96; text-transform: uppercase;
+  transition: color .12s, background .12s; }
+.key.lit .face { color: #ffd479; text-shadow: 0 0 6px rgba(255,184,28,.9);
+  background: radial-gradient(circle at 50% 50%, rgba(255,160,30,.3), rgba(255,160,30,0) 70%), linear-gradient(145deg, #1d1f23, #0b0b0d); }
+
+/* paire de lames (dizaines 0-10, unités 0-9) */
+.pair { --fh: calc(var(--cell) - .56rem); --fw: calc(var(--fh) * .66); display: flex; gap: .16rem; height: var(--cell); padding: .28rem; background: #000; border-radius: 2px; }
+.flap { position: relative; width: var(--fw); height: var(--fh); perspective: 700px; font-weight: 800; font-size: calc(var(--fh) * .72); color: #f1efe6; }
+.half { position: absolute; left: 0; width: 100%; height: 50%; overflow: hidden; background: linear-gradient(#1a1c21, #101115); backface-visibility: hidden; }
+.half span { display: block; height: var(--fh); line-height: var(--fh); text-align: center; }
+.half[data-len="2"] span { font-size: .62em; letter-spacing: -.06em; }
+.half.top { top: 0; border-radius: 5px 5px 0 0; transform-origin: bottom; }
+.half.bottom { bottom: 0; border-radius: 0 0 5px 5px; transform-origin: top; background: linear-gradient(#101115, #17191e); }
+.half.bottom span { margin-top: calc(var(--fh) / -2); }
+.half.leaf.bottom { transform: rotateX(90deg); }
+.flap::before { content: ""; position: absolute; left: 0; right: 0; top: calc(50% - 1px); height: 2px; background: #050506; z-index: 5; }
+.flap.go .leaf.top { animation: fall calc(var(--step) * .5) ease-in forwards; z-index: 3; }
+.flap.go .leaf.bottom { animation: rise calc(var(--step) * .5) ease-out calc(var(--step) * .5) both; z-index: 3; }
+@keyframes fall { to { transform: rotateX(-90deg); filter: brightness(.6); } }
+@keyframes rise { from { transform: rotateX(90deg); filter: brightness(.6); } to { transform: rotateX(0); } }
+
+/* ----- panneau 2 : écran carré à 16 segments, bouton CLEAR dessous ----- */
+.p-screen { display: flex; align-items: center; justify-content: center; padding: 1.8rem 1.8rem 3.5rem; }
+.window { --pad: .5rem; width: var(--S); height: var(--S); padding: var(--pad); background: #020403; border: 2px solid #14161a; display: flex; align-items: center; justify-content: center; }
+.lcd { --cw: calc((var(--S) - 2 * var(--pad) - 4px) / 20.4); display: flex; flex-direction: column; gap: calc(var(--cw) * .4); }
+.line { display: flex; height: calc(var(--cw) * 1.667); }
+.ch { width: var(--cw); height: 100%; margin-right: calc(var(--cw) * .12); flex: none; }
+.ch svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.seg { fill: var(--gdim); }
+.seg.on { fill: var(--g); filter: drop-shadow(0 0 calc(var(--cw) * .12) rgba(61,255,107,.85)); }
+.dot { fill: var(--gdim); }
+.dot.on { fill: var(--g); filter: drop-shadow(0 0 3px rgba(61,255,107,.9)); }
+.line.dimline .seg.on { fill: #27a845; filter: none; }
+.clr { position: absolute; right: 1.8rem; bottom: .85rem; display: flex; align-items: center; gap: .6rem;
+  font-weight: 800; font-size: .62rem; letter-spacing: .14em; color: #f3f3ef; text-transform: uppercase; }
+.clr button { all: unset; cursor: pointer; width: 1.55rem; height: 1.55rem; border-radius: 50%; background: radial-gradient(circle at 38% 30%, #3b3d42, #0d0e10 70%);
+  box-shadow: 0 0 0 2px #26292d, 0 0 0 3px rgba(255,255,255,.1), 0 3px 5px rgba(0,0,0,.6); }
+.clr button:active { transform: translateY(1px); }
+.clr button:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+
+/* ----- panneau 3 : boutons rotatifs gravés, SOUND et LAUNCH empilés ----- */
+/* deux tiers pour les boutons rotatifs (rapprochés), un tiers pour les poussoirs ; le filet de séparation est à 2/3 */
+.bot { --k: calc((var(--w) * 2 / 3 - 1rem) / 1.78); flex: 1 1 auto; display: grid; grid-template-columns: 2fr 1fr; align-items: center; padding: .7rem 0 .8rem; }
+.dials { display: flex; justify-content: center; align-items: center; padding: 0 .5rem; }
+.dials .dial + .dial { margin-left: calc(var(--k) * -.22); }
+.ctrls { position: relative; display: flex; justify-content: center; align-items: center; align-self: stretch; }
+.ctrls::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 6rem; transform: translateY(-50%); background: #f0f0ec; opacity: .9; }
+.dial { width: var(--k); aspect-ratio: 200 / 160; display: block; touch-action: none; cursor: grab; outline: none; transition: opacity .2s; }
+.dial:active { cursor: grabbing; }
+.dial:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 6px; }
+.dial.off { opacity: .4; cursor: not-allowed; pointer-events: none; }
+.dial text { font-family: "Helvetica Neue", Arial, sans-serif; font-weight: 600; fill: #f3f3ef; }
+.dial text.lab { cursor: pointer; }
+.dial text.on { fill: #ffd479; }
+.dial line { stroke: #f3f3ef; stroke-width: 1.7; stroke-linecap: butt; }
+.dial line.on { stroke: #ffd479; }
+.dial line.groove { stroke: rgba(0,0,0,.28); stroke-width: 1.1; }
+.dial .pointer { fill: #1f2124; }
+.dial .kg { transform-origin: 100px 100px; transition: transform .18s cubic-bezier(.3,1.4,.5,1); }
+
+.pbs { display: flex; flex-direction: column; }
+.pb { all: unset; box-sizing: border-box; cursor: pointer; width: 2.4rem; height: 2.4rem; display: flex; flex-direction: column; gap: 2px; padding: 2px; border-radius: 3px;
+  background: linear-gradient(#3b3f46, #2b2e33); box-shadow: 0 0 0 1px #15171a, inset 0 1px 0 rgba(255,255,255,.14), 0 5px 8px rgba(0,0,0,.5); }
+.pb:active { transform: translateY(1px); }
+.pb:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.lens { display: grid; place-items: center; border-radius: 2px; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.55), inset 0 2px 4px rgba(0,0,0,.45); }
+.lens.face { flex: 1; background: linear-gradient(#a9b0bf, #8c94a5); color: #0e0f12; font-size: .43rem; box-shadow: inset 0 0 0 1px rgba(0,0,0,.5), inset 0 -3px 6px rgba(0,0,0,.18); }
+.lens.led { height: .8rem; background: linear-gradient(#141518, #1d1f23); color: #2c2f34; font-size: .38rem; transition: background .12s, box-shadow .12s, color .12s; }
+.lens.led.red.lit { background: radial-gradient(circle at 50% 35%, #ff6b5d, #d3281c 80%); color: #2b0603; box-shadow: inset 0 0 0 1px rgba(0,0,0,.5), 0 0 14px rgba(255,60,40,.65); }
+.lens.led.green.lit { background: radial-gradient(circle at 50% 35%, #7bf08c, #1fae3b 80%); color: #032a0c; box-shadow: inset 0 0 0 1px rgba(0,0,0,.5), 0 0 14px rgba(60,230,100,.65); }
+
+@media (prefers-reduced-motion: reduce) { .dial .kg { transition: none; } .flap.go .leaf { animation: none; } }
