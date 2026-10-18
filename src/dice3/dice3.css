@@ -115,10 +115,17 @@ body { background: #0d0b0a; color: #efe6d2; font: 16px/1.4 "Helvetica Neue", Ari
 .dialbox { width: var(--k); }
 .dials .dialbox + .dialbox { margin-left: calc(var(--k) * -.12); }
 /* bloc d'un bouton rotatif : vis aux coins de son encadrement */
-.dialbox .dome.tl { left: calc(var(--k) * .22 - .275rem); top: calc(var(--k) * .22 - .275rem); }
-.dialbox .dome.tr { left: calc(var(--k) * .82 - .275rem); right: auto; top: calc(var(--k) * .22 - .275rem); }
-.dialbox .dome.bl { left: calc(var(--k) * .22 - .275rem); bottom: auto; top: calc(var(--k) * .86 - .275rem); }
-.dialbox .dome.br { left: calc(var(--k) * .22 + var(--k) * .6 - .275rem); right: auto; bottom: auto; top: calc(var(--k) * .86 - .275rem); }
+.dialbox .dome.tl { left: calc(var(--k) * .2 - .275rem); top: calc(var(--k) * .2 - .275rem); }
+.dialbox .dome.tr { left: calc(var(--k) * .8 - .275rem); right: auto; top: calc(var(--k) * .2 - .275rem); }
+.dialbox .dome.bl { left: calc(var(--k) * .2 - .275rem); bottom: auto; top: calc(var(--k) * .8 - .275rem); }
+.dialbox .dome.br { left: calc(var(--k) * .8 - .275rem); right: auto; bottom: auto; top: calc(var(--k) * .8 - .275rem); }
+/* CLEAR / RELEASE : 4 vis en carré autour du bouton (centre du bouton à .775rem du bord droit du bloc) */
+.clr { --bx: .775rem; --h: 1.1rem; }
+.clr .sq { position: absolute; right: 0; top: 50%; width: 0; height: 0; }
+.clr .dome.tl { left: auto; right: calc(var(--bx) + var(--h) - .275rem); top: calc(-1 * var(--h) - .275rem); }
+.clr .dome.tr { right: calc(var(--bx) - var(--h) - .275rem); left: auto; top: calc(-1 * var(--h) - .275rem); }
+.clr .dome.bl { left: auto; bottom: auto; right: calc(var(--bx) + var(--h) - .275rem); top: calc(var(--h) - .275rem); }
+.clr .dome.br { left: auto; bottom: auto; right: calc(var(--bx) - var(--h) - .275rem); top: calc(var(--h) - .275rem); }
 .ctrls { position: relative; display: flex; justify-content: center; align-items: center; align-self: stretch; }
 .ctrls::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 6rem; transform: translateY(-50%); background: var(--cream); opacity: .9; }
 .dial { width: var(--k); aspect-ratio: 200 / 160; display: block; touch-action: none; cursor: grab; outline: none; transition: opacity .2s; }
