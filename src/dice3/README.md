@@ -4,7 +4,8 @@ Variante de [dés 2](../dice2/README.md) aux couleurs et fixations d'un panneau 
 `dice` et `dice2` restent inchangés.
 
 - **Panneaux** : trois plaques brun-taupe de même largeur, séparées par des rainures noires (la structure). Chaque plaque est
-  fixée par 4 vis à tête droite (fente), au fond d'un logement, aux 4 coins ; des fixations à anneau sont à cheval sur les rainures.
+  fixée par 4 vis à tête droite (fente), au fond d'un logement à anneau, placées dans le cadre noir de la structure, à hauteur
+  des coins du panneau (à gauche et à droite).
   Les instruments (grille des dés, écran, cadre SOUND/LAUNCH) sont fixés au panneau par des vis laiton à tête bombée en croix,
   de part et d'autre à mi-hauteur.
 - **Panneau du haut** : 12 emplacements, chacun = touche **HOLD** + afficheur **0-100** à segments (3 caractères, ambre),
