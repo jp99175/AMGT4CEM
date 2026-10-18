@@ -148,6 +148,7 @@ const AMGT4CEM_CONFIG = {
   // autre interface. config.js, lui, est commun (chargé par home.html avant le routeur).
   //  - carto  : AMGT4CEM, visualisation de toutes les données sur la carte (interface par défaut) ;
   //  - signal : SIG4CEM, saisie des signalements et demandes (menu, brouillons, envois) ;
+  //  - dice2  : variante de dice (panneaux de commande, écran à 16 segments, 12 dés conservables) ;
   //  - dice   : micro-application de lancer de dés (D100 = 2 × D10), indépendante de la carte ;
   //  - admin  : administration des intervenants (référentiel sur le serveur de dépôt, droit administrateur requis).
   defaultApp: 'carto',
@@ -264,6 +265,13 @@ const AMGT4CEM_CONFIG = {
       scripts: [],
       // Modules ES (import/export), chargés par import() ; autonomes, aucun lien avec le socle de la carte.
       modules: ['./src/dice/dice.js'],
+    },
+    dice2: {
+      title: 'Dés 2 – Simulateur de jets',
+      template: 'amgt-tpl-dice2',
+      styles: ['./src/dice2/dice2.css'],
+      scripts: [],
+      modules: ['./src/dice2/dice2.js'],
     },
     admin: {
       title: 'AMGT4CEM – Administration des intervenants',
