@@ -13,31 +13,42 @@ body { background: #0d0b0a; color: #efe6d2; font: 16px/1.4 "Helvetica Neue", Ari
   display: flex; flex-direction: column; align-items: center; }
 
 /* les panneaux sont séparés par des rainures noires (la structure) ; --w = largeur d'un panneau */
-.stack { --frame: 1rem; --w: calc(min(100vw, 26rem) - 2 * var(--frame)); --S: max(12rem, min(calc(var(--w) - 2.8rem), calc(var(--vh) - 31.6rem)));
+.stack { --frame: .5rem; --w: calc(min(100vw, 26rem) - 2 * var(--frame)); --S: max(12rem, min(calc(var(--w) - 2.8rem), calc(var(--vh) - 32.6rem)));
   width: calc(var(--w) + 2 * var(--frame)); height: var(--vh); padding: .5rem var(--frame); gap: .5rem; background: #0d0b0a; display: flex; flex-direction: column; min-height: 0; }
-.panel { position: relative; flex: none; width: 100%; border-radius: 6px; background: linear-gradient(#80624f, #775a48); box-shadow: inset 0 0 0 1px rgba(255,235,210,.06); }
-/* vis des 4 coins : tête droite à fente, fixée au fond d'un logement à anneau, dans le cadre noir de la structure,
-   à hauteur des coins de chaque panneau (cf. fixations des petits panneaux et des panneaux « normaux » de la photo) */
-.screw { position: absolute; width: .85rem; height: .85rem; border-radius: 50%;
+/* panneau : plaque dont les 4 coins sont en retrait ; une vis est fixée au fond de chaque retrait, sur la structure noire */
+.panel { --n: 1rem; position: relative; flex: none; width: 100%; isolation: isolate; }
+.panel::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(#80624f, #775a48);
+  clip-path: polygon(var(--n) 0, calc(100% - var(--n)) 0, calc(100% - var(--n)) var(--n), 100% var(--n), 100% calc(100% - var(--n)), calc(100% - var(--n)) calc(100% - var(--n)),
+    calc(100% - var(--n)) 100%, var(--n) 100%, var(--n) calc(100% - var(--n)), 0 calc(100% - var(--n)), 0 var(--n), var(--n) var(--n)); }
+
+/* vis des 4 coins : tête droite à fente, fixée au fond d'un logement à anneau, au centre du retrait du coin */
+.screw { --d: .75rem; position: absolute; width: var(--d); height: var(--d); border-radius: 50%;
   background: radial-gradient(circle, #8d764a 0 38%, #33271a 41% 47%, #14100d 50% 66%, #5d4a3a 69% 80%, #14100d 83%); }
 .screw::after { content: ""; position: absolute; left: 26%; right: 26%; top: calc(50% - 1px); height: 2px; background: #2c2213; transform: rotate(var(--r, 0deg)); }
-.s1 { left: calc(-.5 * var(--frame) - .425rem); top: .55rem; --r: 4deg; }
-.s2 { right: calc(-.5 * var(--frame) - .425rem); top: .55rem; --r: -6deg; }
-.s3 { left: calc(-.5 * var(--frame) - .425rem); bottom: .55rem; --r: -3deg; }
-.s4 { right: calc(-.5 * var(--frame) - .425rem); bottom: .55rem; --r: 8deg; }
+.s1 { left: calc((var(--n) - var(--d)) / 2); top: calc((var(--n) - var(--d)) / 2); --r: 4deg; }
+.s2 { right: calc((var(--n) - var(--d)) / 2); top: calc((var(--n) - var(--d)) / 2); --r: -6deg; }
+.s3 { left: calc((var(--n) - var(--d)) / 2); bottom: calc((var(--n) - var(--d)) / 2); --r: -3deg; }
+.s4 { right: calc((var(--n) - var(--d)) / 2); bottom: calc((var(--n) - var(--d)) / 2); --r: 8deg; }
 
-/* vis à tête bombée en croix : elles fixent un instrument au panneau (à mi-hauteur, de part et d'autre du module) */
-.dome { position: absolute; width: .8rem; height: .8rem; border-radius: 50%; z-index: 2;
-  background: radial-gradient(circle at 35% 28%, #f1e3b8, #a68b55 55%, #5b4727); box-shadow: 0 1px 2px rgba(0,0,0,.65), inset 0 0 0 1px rgba(60,44,22,.5); }
-.dome::before, .dome::after { content: ""; position: absolute; left: 20%; right: 20%; top: calc(50% - .5px); height: 1px; background: #33271a; transform: rotate(var(--r, 20deg)); }
+/* vis à tête bombée en croix, peintes de la couleur du panneau : elles fixent chaque bloc d'instrument au panneau,
+   à ses 4 coins (--ox / --oy : décalage du centre de la vis vers l'extérieur du bloc) */
+.dome { position: absolute; width: .7rem; height: .7rem; border-radius: 50%; z-index: 2;
+  background: radial-gradient(circle at 35% 28%, #a98770, #7a5d4b 55%, #503a2b); box-shadow: 0 1px 2px rgba(0,0,0,.6), inset 0 0 0 1px rgba(40,26,18,.45); }
+.dome::before, .dome::after { content: ""; position: absolute; left: 20%; right: 20%; top: calc(50% - .5px); height: 1px; background: #34241a; transform: rotate(var(--r, 20deg)); }
 .dome::after { transform: rotate(calc(var(--r, 20deg) + 90deg)); }
-.dome.l { left: calc((var(--w) - var(--S)) / -4 - .4rem); top: calc(50% - .4rem); }
-.dome.r { right: calc((var(--w) - var(--S)) / -4 - .4rem); top: calc(50% - .4rem); --r: -35deg; }
-.grid3, .window { position: relative; }
+.dome.tl { left: calc(-1 * var(--ox) - .35rem); top: calc(-1 * var(--oy) - .35rem); }
+.dome.tr { right: calc(-1 * var(--ox) - .35rem); top: calc(-1 * var(--oy) - .35rem); --r: -30deg; }
+.dome.bl { left: calc(-1 * var(--ox) - .35rem); bottom: calc(-1 * var(--oy) - .35rem); --r: 35deg; }
+.dome.br { right: calc(-1 * var(--ox) - .35rem); bottom: calc(-1 * var(--oy) - .35rem); --r: -10deg; }
+.grp, .window, .guard, .dialbox { position: relative; }
+.grp { --ox: 0rem; --oy: .6rem; }
+.window { --ox: .5rem; --oy: .5rem; }
+.guard { --ox: .6rem; --oy: .6rem; }
+.dialbox { --ox: 0rem; --oy: 0rem; width: var(--k); }
 
 /* ----- panneau 1 : titre, 12 touches HOLD et 12 paires de lames ----- */
 .p-blocks { padding: .7rem 0 3.5rem; }
-.engrave { width: var(--S); margin: 0 auto .7rem; font-size: .78rem; font-weight: 800; letter-spacing: .45em; text-transform: uppercase; color: var(--cream); }
+.engrave { width: var(--S); margin: 0 auto 1.05rem; font-size: .78rem; font-weight: 800; letter-spacing: .45em; text-transform: uppercase; color: var(--cream); }
 /* la grille occupe exactement la largeur de l'écran ; l'écart touche-lames vaut la moitié de l'écart entre colonnes */
 .grid3 { --cell: min(2.4rem, calc((var(--S) - 3.5rem) / 6.96)); --pairw: calc(1.32 * (var(--cell) - .56rem) + .72rem);
   --g1: max(.15rem, calc((var(--S) - 3 * (var(--cell) + var(--pairw))) / 7));
@@ -65,7 +76,7 @@ body { background: #0d0b0a; color: #efe6d2; font: 16px/1.4 "Helvetica Neue", Ari
 .dsp .line { height: calc(var(--cw) * 1.667); }
 
 /* ----- panneau 2 : écran carré à 16 segments, bouton CLEAR dessous ----- */
-.p-screen { display: flex; align-items: center; justify-content: center; padding: 1.8rem 1.8rem 3.5rem; }
+.p-screen { display: flex; align-items: center; justify-content: center; padding: 2rem 1.4rem 3.5rem; }
 .window { --pad: .5rem; width: var(--S); height: var(--S); padding: var(--pad); background: #0a0603; border: 2px solid #1c130a; display: flex; align-items: center; justify-content: center; }
 .lcd { --cw: calc((var(--S) - 2 * var(--pad) - 4px) / 20.4); display: flex; flex-direction: column; gap: calc(var(--cw) * .4); }
 .line { display: flex; height: calc(var(--cw) * 1.667); }
@@ -85,9 +96,13 @@ body { background: #0d0b0a; color: #efe6d2; font: 16px/1.4 "Helvetica Neue", Ari
 
 /* ----- panneau 3 : boutons rotatifs gravés, SOUND et LAUNCH empilés ----- */
 /* deux tiers pour les boutons rotatifs (rapprochés), un tiers pour les poussoirs ; le filet de séparation est à 2/3 */
-.bot { --k: calc((var(--w) * 2 / 3 - 1rem) / 1.78); flex: 1 1 auto; display: grid; grid-template-columns: 2fr 1fr; align-items: center; padding: .7rem 0 .8rem; }
+.bot { --k: calc((var(--w) * 2 / 3 - 1rem) / 1.88); flex: 1 1 auto; display: grid; grid-template-columns: 2fr 1fr; align-items: center; padding: .7rem 0 .8rem; }
 .dials { display: flex; justify-content: center; align-items: center; padding: 0 .5rem; }
-.dials .dial + .dial { margin-left: calc(var(--k) * -.22); }
+.dials .dialbox + .dialbox { margin-left: calc(var(--k) * -.12); }
+.dialbox .dome.tl { left: calc(var(--k) * .12 - .35rem); top: calc(var(--k) * -.03 - .35rem); }
+.dialbox .dome.tr { left: calc(var(--k) * .88 - .35rem); right: auto; top: calc(var(--k) * -.03 - .35rem); }
+.dialbox .dome.bl { left: calc(var(--k) * .12 - .35rem); bottom: auto; top: calc(var(--k) * .79 - .35rem); }
+.dialbox .dome.br { left: calc(var(--k) * .88 - .35rem); right: auto; bottom: auto; top: calc(var(--k) * .79 - .35rem); }
 .ctrls { position: relative; display: flex; justify-content: center; align-items: center; align-self: stretch; }
 .ctrls::before { content: ""; position: absolute; left: 0; top: 50%; width: 1px; height: 6rem; transform: translateY(-50%); background: var(--cream); opacity: .9; }
 .dial { width: var(--k); aspect-ratio: 200 / 160; display: block; touch-action: none; cursor: grab; outline: none; transition: opacity .2s; }
@@ -119,5 +134,3 @@ body { background: #0d0b0a; color: #efe6d2; font: 16px/1.4 "Helvetica Neue", Ari
 
 @media (prefers-reduced-motion: reduce) { .dial .kg { transition: none; } }
 
-/* vis de fixation du cadre SOUND/LAUNCH : de part et d'autre, à mi-hauteur */
-.guard .dome.l { left: -1.1rem; } .guard .dome.r { right: -1.1rem; }
