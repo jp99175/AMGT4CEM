@@ -48,7 +48,6 @@ for (let c = 0; c < 3; c++) {
     fcol.appendChild(dsp);
   }
   grp.append(kcol, fcol);
-  grp.insertAdjacentHTML('beforeend', '<i class="dome tl"></i><i class="dome tr"></i><i class="dome bl"></i><i class="dome br"></i>');
   grid.appendChild(grp);
 }
 

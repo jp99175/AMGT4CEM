@@ -7,9 +7,8 @@ Variante de [dés 2](../dice2/README.md) aux couleurs et fixations d'un panneau 
   granuleuse, bords légèrement relevés, repères « + » gravés, filet blanc après le titre). Le joint entre deux panneaux est un
   simple trait noir. Les 4 coins de chaque plaque sont en alvéole (fond sombre, coin intérieur arrondi) ; l'alvéole du bas d'un
   panneau et celle du haut du suivant forment une poche continue traversée par le joint. Au fond, une vis à tête droite (fente
-  quasi verticale) dans un anneau clair. Chaque bloc d'instrument (colonne touches + afficheurs, écran sur une bride emboutie,
-  chaque bouton rotatif dans sa découpe ronde, cadre SOUND/LAUNCH) est fixé par 4 vis à tête bombée en croix, tête claire
-  peinte, de même ordre de grandeur que les vis des coins.
+  quasi verticale) dans un anneau clair. Les instruments (colonnes touches + afficheurs, écran, boutons rotatifs dans leur
+  découpe ronde, cadre SOUND/LAUNCH) sont montés à plat, sans vis apparentes ni bride.
 - **Panneau du haut** : 12 emplacements, chacun = touche **HOLD** + afficheur **0-100** à segments (3 caractères, ambre),
   numérotés par colonnes (1-4, 5-8, 9-12). HOLD s'éclaire : le dé est conservé au jet suivant. **RELEASE** (bouton rond noir,
   en bas à droite) relâche tous les HOLD. Changer de dé relâche aussi les HOLD.
