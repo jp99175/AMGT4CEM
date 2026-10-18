@@ -113,9 +113,13 @@ export class Seg16 {
     line.cells.forEach((cell, c) => this.setChar(cell, text[c] ?? ' '));
   }
 
+  // Annule l'animation d'une ligne ; la promesse en attente est résolue (sinon un `await` resterait bloqué).
   cancel(r) {
-    clearInterval(this.timers.get(r));
+    const t = this.timers.get(r);
+    if (!t) return;
+    clearInterval(t.id);
     this.timers.delete(r);
+    t.resolve();
   }
 
   /** La ligne se met à jour en « brouillant » ses caractères, qui se figent de gauche à droite. */
@@ -135,9 +139,9 @@ export class Seg16 {
           if (dt >= settle(c)) this.setChar(cell, ch);
           else { running = true; this.setChar(cell, POOL[Math.floor(Math.random() * POOL.length)]); }
         });
-        if (!running) { this.cancel(r); resolve(); }
+        if (!running) this.cancel(r);
       }, 55);
-      this.timers.set(r, id);
+      this.timers.set(r, { id, resolve });
     });
   }
 }
