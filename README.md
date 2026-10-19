@@ -85,7 +85,7 @@ bouton de secours : les données ne sont pas chargées).
    (voir `src/buildInfo.js` — site statique, pas de véritable étape de
    compilation : cette valeur est mise à jour à la main à chaque commit
    poussé).
-8. **Connexion** : l'icône en haut à droite (à gauche de la loupe) ouvre l'écran de connexion ; connecté, elle porte un badge vert qui devient une croix rouge au survol (un clic déconnecte ; sur écran tactile, une confirmation est demandée). **✚ Ajouter un point** n'apparaît que pour un compte connecté ; **⚙ Paramètres** (menu ☰ Carte) que pour un administrateur connecté. **📏** est sous la loupe, pour tout le monde (`src/accountButton.js`).
+8. **Connexion** : l'icône du menu **☰ Carte** (à droite, sur la ligne « Réinitialiser la vue ») ouvre l'écran de connexion ; connecté, elle porte un badge vert qui devient une croix rouge au survol (un clic déconnecte ; sur écran tactile, une confirmation est demandée). **✚ Ajouter un point** n'apparaît que pour un compte connecté ; **⚙ Paramètres** (menu ☰ Carte) que pour un administrateur connecté. **📏** est sous la loupe, pour tout le monde (`src/accountButton.js`).
    Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
    carte (vous pouvez continuer à naviguer avant de cliquer) : un marqueur
    déplaçable apparaît (les coordonnées ne sont pas affichées).
@@ -920,7 +920,7 @@ src/mapMenu.js                menu fond de plan / couches / réinitialisation
 src/searchTool.js             recherche station/tunnel/point (remplace le zoom +/-)
 src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
 src/plugins.js               chargeur de plugins (applications séparées branchées sur la carte)
-src/accountButton.js          icône de connexion (haut droite) : affiche ou masque « Ajouter un point » et « ⚙ Paramètres » selon le compte connecté
+src/accountButton.js          icône de connexion (menu ☰ Carte) : affiche ou masque « Ajouter un point » et « ⚙ Paramètres » selon le compte connecté
 src/addPointMenu.js          menu du bouton « ✚ Ajouter un point » : Point métier + entrées ajoutées par les plugins
 src/signalements/            plugin « Signalements » (voir son README.md)
 src/signalementsLayer.js      couche « Signalements et demandes » (lecture seule, GET /signalements du serveur de dépôt) ; remplace pointsLayer.js, retiré du chargement

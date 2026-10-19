@@ -137,9 +137,29 @@
       </p>
     </div>
 
-    <button id="amgt-reset-view-btn" class="amgt-link-btn" title="Revenir à l'emprise générale du réseau">
-      ⤢ Réinitialiser la vue
-    </button>
+    <div class="amgt-map-menu__footer">
+      <button id="amgt-reset-view-btn" class="amgt-link-btn" title="Revenir à l'emprise générale du réseau">
+        ⤢ Réinitialiser la vue
+      </button>
+      <!-- Connexion (src/accountButton.js) : icône vierge si personne n'est connecté ; badge vert « validé »
+           si un compte est connecté, qui devient une croix rouge au survol (un clic déconnecte). -->
+      <button id="amgt-account-btn" class="amgt-btn amgt-btn--icon" type="button" title="Se connecter" aria-label="Se connecter">
+        <svg class="amgt-account__user" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+        </svg>
+        <span class="amgt-account__badge" aria-hidden="true">
+          <svg class="amgt-account__ok" viewBox="0 0 16 16" width="16" height="16">
+            <circle cx="8" cy="8" r="7" />
+            <path d="M4.5 8.3l2.4 2.4 4.6-4.9" />
+          </svg>
+          <svg class="amgt-account__out" viewBox="0 0 16 16" width="16" height="16">
+            <circle cx="8" cy="8" r="7" />
+            <path d="M5.2 5.2l5.6 5.6M10.8 5.2l-5.6 5.6" />
+          </svg>
+        </span>
+      </button>
+    </div>
   </div>
 
   <!-- Fenêtre de paramètres (⚙), à onglets. Exclusive avec le menu ☰ Carte.
@@ -251,24 +271,6 @@
        Leaflet en haut à droite. Le zoom reste possible à la molette, au
        pincement et au double-clic. -->
   <div id="amgt-topright">
-    <!-- Connexion (src/accountButton.js) : icône vierge si personne n'est connecté ; badge vert « validé »
-         si un compte est connecté, qui devient une croix rouge au survol (un clic déconnecte). -->
-    <button id="amgt-account-btn" class="amgt-btn amgt-btn--icon" type="button" title="Se connecter" aria-label="Se connecter">
-      <svg class="amgt-account__user" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-        <circle cx="12" cy="8" r="4" />
-        <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
-      </svg>
-      <span class="amgt-account__badge" aria-hidden="true">
-        <svg class="amgt-account__ok" viewBox="0 0 16 16" width="16" height="16">
-          <circle cx="8" cy="8" r="7" />
-          <path d="M4.5 8.3l2.4 2.4 4.6-4.9" />
-        </svg>
-        <svg class="amgt-account__out" viewBox="0 0 16 16" width="16" height="16">
-          <circle cx="8" cy="8" r="7" />
-          <path d="M5.2 5.2l5.6 5.6M10.8 5.2l-5.6 5.6" />
-        </svg>
-      </span>
-    </button>
     <div id="amgt-search-box">
       <button id="amgt-search-toggle" class="amgt-btn amgt-btn--icon" title="Rechercher une station, un tunnel ou un point">
         🔍

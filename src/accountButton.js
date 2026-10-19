@@ -1,5 +1,5 @@
 /**
- * Icône de connexion (haut droite, à gauche de la loupe) et droits d'accès de l'interface carte.
+ * Icône de connexion (menu ☰ Carte, à droite, sur la ligne de « Réinitialiser la vue ») et droits d'accès de l'interface carte.
  *
  *  - Personne n'est connecté : icône vierge. Un clic ouvre l'écran de connexion (AMGT4CEM_AuthUi).
  *  - Un compte est connecté : l'icône porte un badge vert « validé » ; au survol (souris) il devient une croix

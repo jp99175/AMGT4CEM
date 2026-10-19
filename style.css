@@ -24,8 +24,8 @@ html, body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  /* Laisse la place à l'icône de connexion et à la loupe (haut droite) : les boutons passent à la ligne avant. */
-  max-width: calc(100vw - 130px);
+  /* Laisse la place à la loupe (haut droite) : les boutons passent à la ligne avant. */
+  max-width: calc(100vw - 80px);
 }
 
 .amgt-btn {
@@ -87,7 +87,7 @@ html, body {
 }
 
 /* --- Haut droite : connexion, recherche, mesure, capture --- */
-/* Deux colonnes : [connexion][loupe] ; la règle 📏 est sous la loupe et le « 💾 » (visible seulement le temps
+/* Une colonne : la loupe, la règle 📏 en dessous, puis le « 💾 » (visible seulement le temps
    d'une mesure, measureTool.js) sous la règle : il n'apparaît/disparaît qu'avec une mesure en cours, ce qui ne
    fait donc bouger aucun autre bouton. */
 #amgt-topright {
@@ -96,16 +96,13 @@ html, body {
   right: 10px;
   z-index: 1000;
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: auto;
   gap: 8px;
   justify-items: end;
   align-items: start;
 }
 
-#amgt-topright #amgt-account-btn { grid-column: 1; grid-row: 1; }
-#amgt-topright #amgt-search-box { grid-column: 2; grid-row: 1; position: relative; top: auto; right: auto; }
-#amgt-topright #amgt-measure-btn { grid-column: 2; grid-row: 2; }
-#amgt-topright #amgt-screenshot-btn { grid-column: 2; grid-row: 3; }
+#amgt-topright #amgt-search-box { position: relative; top: auto; right: auto; }
 
 /* La liste de recherche passe devant la règle qui se trouve juste dessous. */
 #amgt-topright #amgt-search-panel { z-index: 2; }
@@ -119,14 +116,34 @@ html, body {
 }
 
 /* --- Icône de connexion (accountButton.js) --- */
+/* Dans le menu ☰ Carte, à droite, sur la ligne de « Réinitialiser la vue ». */
+.amgt-map-menu__footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.amgt-map-menu__footer .amgt-link-btn { margin-top: 0; }
+
 #amgt-account-btn {
   position: relative;
-  width: 44px;
-  height: 36px;
+  flex: none;
+  width: 40px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: none;
+  border: none;
+  box-shadow: none;
+  border-radius: 4px;
+  padding: 0;
+  cursor: pointer;
 }
+
+#amgt-account-btn:hover { background: #f0f0f0; }
 
 .amgt-account__user {
   fill: none;
