@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "note": "Sélection par défaut PARTAGÉE des orthophotos proposées dans la navigation par année (⚙ Orthophotos). Clé = « source:millésime » (ex. bruxelles:1953, vlaanderen:2022) ; valeur = couleur, sans effet ici. Vide = toutes les années de toutes les sources. Modifiable par un administrateur depuis ⚙ Orthophotos (écrit par le relais).",
+  "selection": {}
+}

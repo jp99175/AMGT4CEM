@@ -88,6 +88,11 @@ function createSelectionStore({ key, preferencesKey, sharedUrl, sharedRoute, pal
       this._save(this.withoutMany(this.getSelection(), codes));
     },
 
+    /** Remplace d'un coup la sélection de l'appareil (écran ⚙ Orthophotos, où une sélection vide veut dire « tout »). */
+    replaceSelection(selection) {
+      this._save({ ...selection });
+    },
+
     /** Enregistre la sélection actuelle comme préférences locales de l'utilisateur (bouton 💾 du sélecteur). */
     saveCurrentAsDefault() {
       localStorage.setItem(preferencesKey, JSON.stringify(this.getSelection()));

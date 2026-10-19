@@ -101,9 +101,13 @@ const AMGT4CEM_MapMenu = {
     // AMGT4CEM_Basemap) lors du premier passage sur "Orthophotos" ; tant que
     // le sondage n'est pas terminé, la navigation est désactivée plutôt que
     // de risquer d'afficher une image cassée ou un message d'erreur.
+    // `fullTimeline` : tout ce qui est accessible ; `timeline` : ce qui est coché dans ⚙ Orthophotos (voir
+    // AMGT4CEM_OrthoSelectionStore), seul utilisé par la navigation.
+    let fullTimeline = null;
     let timeline = null;
     let currentIndex = -1;
     let currentSource = null;
+    const orthoOn = () => document.querySelector('input[name="amgt-basemap"][value="bruciel"]').checked;
 
     const renderNav = () => {
       const hasYears = timeline && timeline.length > 0;
@@ -146,15 +150,36 @@ const AMGT4CEM_MapMenu = {
     };
 
     const ensureTimelineLoaded = async () => {
-      if (timeline) return;
-      renderNav(); // affiche "…" pendant le sondage
-      timeline = await AMGT4CEM_Basemap.getAccessibleTimeline();
+      if (!fullTimeline) {
+        renderNav(); // affiche "…" pendant le sondage
+        fullTimeline = await AMGT4CEM_Basemap.getAccessibleTimeline();
+        timeline = AMGT4CEM_Basemap.filterTimeline(fullTimeline, AMGT4CEM_OrthoSelectionStore.getSelection());
+        currentIndex = -1;
+      }
       if (timeline.length > 0) {
-        showYearAt(timeline.length - 1); // le plus récent accessible
+        showYearAt(currentIndex >= 0 ? currentIndex : timeline.length - 1); // l'année en cours, sinon la plus récente
       } else {
         renderNav();
       }
     };
+
+    // Cases cochées / décochées dans ⚙ Orthophotos : la navigation suit tout de suite. L'année affichée reste
+    // si elle est encore cochée, sinon on prend la plus proche.
+    AMGT4CEM_OrthoSelectionStore.onChange(() => {
+      if (!fullTimeline) return;
+      const before = currentIndex >= 0 && timeline[currentIndex] ? timeline[currentIndex] : null;
+      timeline = AMGT4CEM_Basemap.filterTimeline(fullTimeline, AMGT4CEM_OrthoSelectionStore.getSelection());
+      if (!timeline.length) { currentIndex = -1; renderNav(); return; }
+      let index = timeline.length - 1;
+      if (before) {
+        const same = timeline.findIndex((t) => t.key === before.key);
+        index = same >= 0
+          ? same
+          : timeline.reduce((best, t, i) => (Math.abs(t.sortYear - before.sortYear) < Math.abs(timeline[best].sortYear - before.sortYear) ? i : best), 0);
+      }
+      if (orthoOn()) showYearAt(index); else { currentIndex = index; renderNav(); }
+    });
+    document.getElementById('amgt-ortho-settings-btn').addEventListener('click', () => AMGT4CEM_OrthoPicker.open());
 
     prevBtn.addEventListener('click', () => {
       if (timeline && currentIndex > 0) showYearAt(currentIndex - 1);

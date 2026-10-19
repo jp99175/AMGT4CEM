@@ -317,12 +317,14 @@ html, body {
   gap: 8px;
 }
 
-.amgt-layer-row .amgt-checkbox-row {
+.amgt-layer-row .amgt-checkbox-row,
+.amgt-layer-row .amgt-radio-row {
   flex: 1;
   min-width: 0;
 }
 
-.amgt-opacity-toggle-btn {
+.amgt-opacity-toggle-btn,
+#amgt-ortho-settings-btn {
   flex-shrink: 0;
   background: none;
   border: none;
@@ -333,19 +335,22 @@ html, body {
   line-height: 0;
 }
 
-.amgt-opacity-toggle-btn:hover {
+.amgt-opacity-toggle-btn:hover,
+#amgt-ortho-settings-btn:hover {
   background: #f0f0f0;
   color: #333;
 }
 
-.amgt-opacity-toggle-btn svg {
+.amgt-opacity-toggle-btn svg,
+#amgt-ortho-settings-btn svg {
   stroke: currentColor;
   stroke-width: 1.6;
   stroke-linecap: round;
   fill: none;
 }
 
-.amgt-opacity-toggle-btn svg circle {
+.amgt-opacity-toggle-btn svg circle,
+#amgt-ortho-settings-btn svg circle {
   fill: currentColor;
   stroke: none;
 }
@@ -1028,3 +1033,37 @@ html, body {
 .amgt-sig-popup__actions .amgt-sig-popup__edit { margin-top: 0; }
 .amgt-sig-popup__trash { padding: 2px 6px; font-size: 18px; line-height: 1; background: none; border: none; cursor: pointer; }
 .amgt-sig-popup__trash:disabled { opacity: 0.4; }
+
+/* --- Écran « Orthophotos » (orthoPicker.js) : tableau années × sources --- */
+.amgt-ortho-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+}
+
+.amgt-ortho-table th,
+.amgt-ortho-table td {
+  border-bottom: 1px solid #e4e4e4;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.amgt-ortho-table thead th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  font-weight: 600;
+  z-index: 1;
+}
+
+.amgt-ortho-none { color: #aaa; }
+
+.amgt-ortho-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.amgt-ortho-res { color: #333; }
+.amgt-ortho-res--unknown { color: #999; font-style: italic; }

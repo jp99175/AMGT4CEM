@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-07",
-  "note": "Bruciel historique (Bruxelles Urbanisme & Patrimoine / urban.brussels) : GeoServer gis.urban.brussels, workspace URBAN_DCC_ER (et non BRUCIEL, qui ne contient que des couches thématiques annexes), couches Orthophotoplans_<année>, 1935-1996. Noms confirmés par un GetCapabilities réel. Ces couches ne déclarent que EPSG:31370 et CRS:84 : `crs` force les requêtes dans ce CRS (sinon tuiles vides). Fusionné avec urbis-orthophotos.json dans une seule ligne du temps. URL dans services.json (clé « bruciel »).",
+  "note": "Bruciel historique (Bruxelles Urbanisme & Patrimoine / urban.brussels) : GeoServer gis.urban.brussels, workspace URBAN_DCC_ER (et non BRUCIEL, qui ne contient que des couches thématiques annexes), couches Orthophotoplans_<année>, 1935-1996. Noms confirmés par un GetCapabilities réel. Ces couches ne déclarent que EPSG:31370 et CRS:84 : `crs` force les requêtes dans ce CRS (sinon tuiles vides). Fusionné avec urbis-orthophotos.json dans une seule ligne du temps. URL dans services.json (clé « bruciel »). Champ facultatif `resolution` par entrée (texte libre, ex. « 25 cm », affiché dans ⚙ Orthophotos) : non renseigné, la résolution n'est publiée dans les fiches du catalogue Geobru consultées (à compléter à la main ou à relever dans le GetCapabilities du service).",
   "type": "wms",
   "wmsVersion": "1.3.0",
   "format": "image/jpeg",

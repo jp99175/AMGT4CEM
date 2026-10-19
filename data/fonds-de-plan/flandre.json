@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-07",
-  "note": "Orthophotos de la Flandre (Digitaal Vlaanderen, « Orthofotomozaïek, middenschalig, winteropnamen »), en plus de la série bruxelloise : quand une année existe dans les deux sources, l'utilisateur bascule de l'une à l'autre. Noms confirmés par un GetCapabilities réel : 25 cm jusqu'en 2021, 15 cm dès 2022 ; EPSG:3857 et 31370 déclarés (aucun `crs` forcé). Les entrées avec `period` sont des compilations de plusieurs campagnes ; la couche <nom>_vdc donne la date de vol. Les tuiles sont découpées selon le contour de la Région, lu dans UrbIS Adm (WFS, couche UrbisAdm:Mu ; URL = services.json « urbis-adm »), non testé ici : en cas d'échec, repli sur le rectangle `regionBboxLambert` (rien n'est découpé). URL dans services.json (clé « flandre »).",
+  "note": "Orthophotos de la Flandre (Digitaal Vlaanderen, « Orthofotomozaïek, middenschalig, winteropnamen »), en plus de la série bruxelloise : quand une année existe dans les deux sources, l'utilisateur bascule de l'une à l'autre. Noms confirmés par un GetCapabilities réel : 25 cm jusqu'en 2021, 15 cm dès 2022 ; EPSG:3857 et 31370 déclarés (aucun `crs` forcé). Les entrées avec `period` sont des compilations de plusieurs campagnes ; la couche <nom>_vdc donne la date de vol. Les tuiles sont découpées selon le contour de la Région, lu dans UrbIS Adm (WFS, couche UrbisAdm:Mu ; URL = services.json « urbis-adm »), non testé ici : en cas d'échec, repli sur le rectangle `regionBboxLambert` (rien n'est découpé). URL dans services.json (clé « flandre »). `resolution` (texte libre affiché dans ⚙ Orthophotos) : renseignée d'après cette note pour les années isolées ; laissée vide pour les compilations multi-années (valeur non confirmée).",
   "attribution": "&copy; Digitaal Vlaanderen",
   "regionBoundary": {
     "version": "1.0.0",
@@ -31,59 +31,73 @@
     },
     {
       "year": 2012,
-      "layers": "OMWRGB12VL"
+      "layers": "OMWRGB12VL",
+      "resolution": "25 cm"
     },
     {
       "year": 2013,
-      "layers": "OMWRGB13VL"
+      "layers": "OMWRGB13VL",
+      "resolution": "25 cm"
     },
     {
       "year": 2014,
-      "layers": "OMWRGB14VL"
+      "layers": "OMWRGB14VL",
+      "resolution": "25 cm"
     },
     {
       "year": 2015,
-      "layers": "OMWRGB15VL"
+      "layers": "OMWRGB15VL",
+      "resolution": "25 cm"
     },
     {
       "year": 2016,
-      "layers": "OMWRGB16VL"
+      "layers": "OMWRGB16VL",
+      "resolution": "25 cm"
     },
     {
       "year": 2017,
-      "layers": "OMWRGB17VL"
+      "layers": "OMWRGB17VL",
+      "resolution": "25 cm"
     },
     {
       "year": 2018,
-      "layers": "OMWRGB18VL"
+      "layers": "OMWRGB18VL",
+      "resolution": "25 cm"
     },
     {
       "year": 2019,
-      "layers": "OMWRGB19VL"
+      "layers": "OMWRGB19VL",
+      "resolution": "25 cm"
     },
     {
       "year": 2020,
-      "layers": "OMWRGB20VL"
+      "layers": "OMWRGB20VL",
+      "resolution": "25 cm"
     },
     {
       "year": 2021,
-      "layers": "OMWRGB21VL"
+      "layers": "OMWRGB21VL",
+      "resolution": "25 cm"
     },
     {
       "year": 2022,
-      "layers": "OMWRGB22VL"
+      "layers": "OMWRGB22VL",
+      "resolution": "15 cm"
     },
     {
       "year": 2023,
-      "layers": "OMWRGB23VL"
+      "layers": "OMWRGB23VL",
+      "resolution": "15 cm"
     },
     {
       "year": 2024,
-      "layers": "OMWRGB24VL"
+      "layers": "OMWRGB24VL",
+      "resolution": "15 cm"
     },
     {
       "year": 2025,
-      "layers": "OMWRGB25VL"
+      "layers": "OMWRGB25VL",
+      "resolution": "15 cm"
     }
   ]
 }

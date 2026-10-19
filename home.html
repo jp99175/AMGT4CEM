@@ -43,9 +43,22 @@
     <label class="amgt-radio-row">
       <input type="radio" name="amgt-basemap" value="urbis" checked /> UrbIS
     </label>
-    <label class="amgt-radio-row">
-      <input type="radio" name="amgt-basemap" value="bruciel" /> Orthophotos
-    </label>
+    <div class="amgt-layer-row">
+      <label class="amgt-radio-row">
+        <input type="radio" name="amgt-basemap" value="bruciel" /> Orthophotos
+      </label>
+      <!-- Réglages des orthophotos : années et sources proposées, résolution (src/orthoPicker.js). -->
+      <button type="button" id="amgt-ortho-settings-btn" class="amgt-opacity-toggle-btn" title="Réglages des orthophotos : années, sources, résolution">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <line x1="1" y1="3" x2="15" y2="3" />
+          <circle cx="5" cy="3" r="1.6" />
+          <line x1="1" y1="8" x2="15" y2="8" />
+          <circle cx="11" cy="8" r="1.6" />
+          <line x1="1" y1="13" x2="15" y2="13" />
+          <circle cx="7" cy="13" r="1.6" />
+        </svg>
+      </button>
+    </div>
 
     <h3>Couches</h3>
 
@@ -338,6 +351,21 @@
     />
     <div id="amgt-topo-picker-content" class="amgt-fs-picker-content"></div>
     <div id="amgt-topo-picker-default-bar"></div>
+  </div>
+
+  <!-- Écran plein écran des orthophotos : années × sources, résolution, cases à cocher (src/orthoPicker.js) -->
+  <div id="amgt-ortho-picker" class="amgt-hidden amgt-fs-picker">
+    <div class="amgt-fs-picker-header">
+      <h2>Orthophotos : années et sources</h2>
+      <div class="amgt-fs-picker-header-actions">
+        <button id="amgt-ortho-picker-save-default" class="amgt-btn amgt-btn--icon" title="Enregistrer mes préférences (sélection locale, propre à cet appareil)">
+          💾
+        </button>
+        <button id="amgt-ortho-picker-close" class="amgt-btn" title="Retour à la carte">✕ Fermer</button>
+      </div>
+    </div>
+    <div id="amgt-ortho-picker-content" class="amgt-fs-picker-content"></div>
+    <div id="amgt-ortho-picker-default-bar"></div>
   </div>
 
   <!-- Sélecteur plein écran des types de signalements et demandes à afficher (mêmes classes que les autres sélecteurs) -->

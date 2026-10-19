@@ -87,6 +87,7 @@ const AMGT4CEM_Basemap = {
         attribution: `${fl.attribution} &ndash; orthophoto ${key}`,
         bounds: flBounds,
         clipToRegion: true,
+        resolution: e.resolution || '',
       });
     }
     return entries;
@@ -128,6 +129,27 @@ const AMGT4CEM_Basemap = {
     try {
       localStorage.setItem(this._SOURCE_STORAGE_PREFIX + item.key, source);
     } catch (_) { /* sans conséquence : le choix vaut pour la session seulement */ }
+  },
+
+  /** Code d'une entrée dans la sélection des orthophotos : « source:millésime » (ex. bruxelles:1953). */
+  entryCode(entry) {
+    return `${entry.source}:${entry.key}`;
+  },
+
+  /** Toutes les orthophotos configurées (accessibles ou non), pour l'écran ⚙ Orthophotos. */
+  getConfiguredEntries() {
+    return this._entries.slice();
+  },
+
+  /**
+   * Ligne du temps réduite aux orthophotos cochées dans ⚙ Orthophotos. Sélection vide = tout. Un millésime
+   * sans aucune source cochée disparaît.
+   */
+  filterTimeline(timeline, selection) {
+    if (!selection || Object.keys(selection).length === 0) return timeline;
+    return timeline
+      .map((item) => ({ ...item, sources: item.sources.filter((s) => selection[this.entryCode(s.entry)]) }))
+      .filter((item) => item.sources.length > 0);
   },
 
   /**

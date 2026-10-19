@@ -81,6 +81,7 @@ const AMGT4CEM_Services = {
         crs: o.crs,
         attribution: o.attribution,
         year: e.year,
+        resolution: e.resolution || '',
       }));
     };
     const f = src('flandre');

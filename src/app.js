@@ -10,7 +10,7 @@
   await AMGT4CEM_Services.load();
   // Sélections par défaut PARTAGÉES (UrbIS Topo, Plans patrimoine) : lues avant la création des couches, qui
   // en dépendent pour une première visite. Ne rejette jamais (délai borné).
-  await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared()]);
+  await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared(), AMGT4CEM_OrthoSelectionStore.loadShared()]);
 
   const map = L.map('map', {
     // Pas de contrôle de zoom Leaflet : remplacé par la recherche en haut à
@@ -65,6 +65,7 @@
   AMGT4CEM_Interstation.init(); // charge les numéros d'interstation (associés aux tunnels dans AMGT4CEM_Network.build)
   AMGT4CEM_PatrimoineLayer.init(map);
   AMGT4CEM_PatrimoinePicker.init();
+  AMGT4CEM_OrthoPicker.init(); // les orthophotos configurées sont lues à l'ouverture de l'écran
 
   let metroBounds = null;
 

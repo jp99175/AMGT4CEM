@@ -197,6 +197,16 @@ poste.
 
 ### Orthophotos
 
+**Réglages (icône à droite de « Orthophotos » dans ☰ Carte, `src/orthoPicker.js`)** : tableau
+année × source (une colonne par source : Bruxelles, Flandre). Chaque case porte la
+**résolution** de l'image quand elle est connue (champ facultatif `resolution` de chaque
+entrée de `data/fonds-de-plan/*.json`, texte libre : « 25 cm »…) et une **case à cocher** : seules
+les orthophotos cochées sont proposées avec les chevrons ‹ ›. Enregistrement comme les autres
+sélecteurs : sélection de l'appareil, 💾 préférences locales, et sélection par défaut partagée
+(`data/fonds-de-plan/orthophotos-selection-par-defaut.json`, administrateur, via le relais).
+Sélection vide = tout (une année ajoutée plus tard est proposée d'office). Résolutions connues :
+Flandre uniquement (25 cm jusqu'en 2021, 15 cm dès 2022) ; les autres restent à renseigner.
+
 Une seule ligne du temps continue, de **1935 à 2025**, alimentée par deux sources (Bruxelles et Flandre, voir plus bas),
 parcourue avec des chevrons ‹ › en bas de l'écran une fois "Orthophotos"
 sélectionné dans le menu. Contrairement à un simple curseur, **seules les
@@ -917,6 +927,8 @@ src/patrimoineSelectionStore.js sélection utilisateur des couches Plans patrimo
 src/patrimoinePicker.js      sélecteur plein écran "Plans patrimoine"
 src/patrimoineLayer.js       affichage carte des couches Plans patrimoine sélectionnées
 src/mapMenu.js                menu fond de plan / couches / réinitialisation
+src/orthoPicker.js            écran « ⚙ Orthophotos » : années × sources, résolution, cases à cocher
+src/orthoSelectionStore.js    sélection des orthophotos (appareil, préférences, défaut partagé)
 src/searchTool.js             recherche station/tunnel/point (remplace le zoom +/-)
 src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
 src/plugins.js               chargeur de plugins (applications séparées branchées sur la carte)
