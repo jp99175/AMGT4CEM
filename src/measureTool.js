@@ -130,7 +130,7 @@ const AMGT4CEM_MeasureTool = {
     container.addEventListener('pointerdown', (e) => this._onPointerDown(e));
     window.addEventListener('pointermove', (e) => this._onPointerMove(e));
     window.addEventListener('pointerup', (e) => this._onPointerUp(e));
-    window.addEventListener('pointercancel', (e) => this._onPointerUp(e));
+    window.addEventListener('pointercancel', (e) => this._onPointerUp(e, true));
   },
 
   isActive() {
@@ -201,14 +201,16 @@ const AMGT4CEM_MeasureTool = {
     this._handleMove(this._eventToLatLng(e));
   },
 
-  _onPointerUp(e) {
+  /** @param {boolean} annule - pointercancel : le navigateur reprend le geste ; ses coordonnées ne sont pas
+   *  fiables (parfois nulles ou périmées sur mobile) : on fige la mesure à la dernière position reçue. */
+  _onPointerUp(e, annule) {
     if (e.pointerId !== this._pointerId) return;
     this._pointerId = null;
     // Une dernière mise à jour avec la position exacte du relâchement
     // (pas le dernier "move" enregistré, qui peut être légèrement en
     // retard sur un appareil moins réactif) : la cote et le cercle doivent
     // se figer pile là où on relâche, pas à une position intermédiaire.
-    this._handleMove(this._eventToLatLng(e));
+    if (!annule) this._handleMove(this._eventToLatLng(e));
     this._handleRelease();
   },
 

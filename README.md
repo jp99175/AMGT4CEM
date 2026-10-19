@@ -85,7 +85,8 @@ bouton de secours : les données ne sont pas chargées).
    (voir `src/buildInfo.js` — site statique, pas de véritable étape de
    compilation : cette valeur est mise à jour à la main à chaque commit
    poussé).
-8. Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
+8. **Connexion** : l'icône en haut à droite (à gauche de la loupe) ouvre l'écran de connexion ; connecté, elle porte un badge vert qui devient une croix rouge au survol (un clic déconnecte ; sur écran tactile, une confirmation est demandée). **✚ Ajouter un point** n'apparaît que pour un compte connecté ; **⚙ Paramètres** (menu ☰ Carte) que pour un administrateur connecté. **📏** est sous la loupe, pour tout le monde (`src/accountButton.js`).
+   Cliquez **✚ Ajouter un point**, puis cliquez à l'endroit voulu sur la
    carte (vous pouvez continuer à naviguer avant de cliquer) : un marqueur
    déplaçable apparaît (les coordonnées ne sont pas affichées).
 9. Choisissez le **type de données à saisir** (pour l'instant : *Signalements
@@ -102,9 +103,9 @@ bouton de secours : les données ne sont pas chargées).
     mode édition des étiquettes (planches, interstations) ; charger un nouveau shapefile :
     à venir — il devra accepter un ou plusieurs fichiers du dossier du
     shapefile : .shp, .dbf, .shx, .prj, .cpg…, pas seulement le .shp). La fenêtre est **réservée aux administrateurs** : son ouverture
-    passe par `AMGT4CEM_Admin.requestAccess()` (`src/admin.js`), où se
-    branchera le mot de passe administrateur (pas encore implémenté : accès
-    ouvert tant que `adminMode` vaut vrai dans `config.js`). Ce sont des
+    passe par `AMGT4CEM_Admin.requestAccess()` (`src/admin.js`) : un compte
+    **connecté** portant le droit administrateur du serveur de dépôt ; l'engrenage
+    n'apparaît pas autrement. Ce sont des
     **paramètres généraux**, enregistrés sur le serveur et communs à tous les
     visiteurs — rien n'est gardé localement.
 12. Bouton **📏** (icône seule, "Mesurer" au survol) : effet dynamique en deux gestes
@@ -919,6 +920,7 @@ src/mapMenu.js                menu fond de plan / couches / réinitialisation
 src/searchTool.js             recherche station/tunnel/point (remplace le zoom +/-)
 src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
 src/plugins.js               chargeur de plugins (applications séparées branchées sur la carte)
+src/accountButton.js          icône de connexion (haut droite) : affiche ou masque « Ajouter un point » et « ⚙ Paramètres » selon le compte connecté
 src/addPointMenu.js          menu du bouton « ✚ Ajouter un point » : Point métier + entrées ajoutées par les plugins
 src/signalements/            plugin « Signalements » (voir son README.md)
 src/signalementsLayer.js      couche « Signalements et demandes » (lecture seule, GET /signalements du serveur de dépôt) ; remplace pointsLayer.js, retiré du chargement

@@ -28,25 +28,16 @@
     <button id="amgt-menu-btn" class="amgt-btn" title="Fond de plan, couches, vue">
       ☰ Carte
     </button>
-    <button id="amgt-add-point-btn" class="amgt-btn" title="Ajouter un point">
+    <!-- Visible seulement pour un utilisateur connecté (src/accountButton.js). -->
+    <button id="amgt-add-point-btn" class="amgt-btn amgt-hidden" title="Ajouter un point">
       ✚ Ajouter un point
     </button>
-    <button id="amgt-measure-btn" class="amgt-btn" title="Mesurer un rayon : presser-glisser-relâcher">
-      📏
-    </button>
   </div>
-
-  <!-- Sous "☰ Carte" (pas dans la barre d'outils, pour ne pas la faire
-       déborder pendant l'affichage d'une mesure) : visible seulement le
-       temps d'une mesure (measureTool.js, _hideDelayMs). -->
-  <button id="amgt-screenshot-btn" class="amgt-btn amgt-hidden" title="Enregistrer la capture de la mesure (image PNG)">
-    💾
-  </button>
 
   <!-- Menu : fond de plan, couches visibles, réinitialisation de la vue -->
   <div id="amgt-map-menu" class="amgt-panel amgt-hidden">
     <h3>Fond de plan</h3>
-    <button id="amgt-settings-btn" class="amgt-map-menu__settings-btn" title="Paramètres des sources de données">
+    <button id="amgt-settings-btn" class="amgt-map-menu__settings-btn amgt-hidden" title="Paramètres des sources de données">
       ⚙
     </button>
     <label class="amgt-radio-row">
@@ -259,14 +250,42 @@
   <!-- Recherche (station, tunnel, point métier) : remplace le contrôle de zoom
        Leaflet en haut à droite. Le zoom reste possible à la molette, au
        pincement et au double-clic. -->
-  <div id="amgt-search-box">
-    <button id="amgt-search-toggle" class="amgt-btn amgt-btn--icon" title="Rechercher une station, un tunnel ou un point">
-      🔍
+  <div id="amgt-topright">
+    <!-- Connexion (src/accountButton.js) : icône vierge si personne n'est connecté ; badge vert « validé »
+         si un compte est connecté, qui devient une croix rouge au survol (un clic déconnecte). -->
+    <button id="amgt-account-btn" class="amgt-btn amgt-btn--icon" type="button" title="Se connecter" aria-label="Se connecter">
+      <svg class="amgt-account__user" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+      </svg>
+      <span class="amgt-account__badge" aria-hidden="true">
+        <svg class="amgt-account__ok" viewBox="0 0 16 16" width="16" height="16">
+          <circle cx="8" cy="8" r="7" />
+          <path d="M4.5 8.3l2.4 2.4 4.6-4.9" />
+        </svg>
+        <svg class="amgt-account__out" viewBox="0 0 16 16" width="16" height="16">
+          <circle cx="8" cy="8" r="7" />
+          <path d="M5.2 5.2l5.6 5.6M10.8 5.2l-5.6 5.6" />
+        </svg>
+      </span>
     </button>
-    <div id="amgt-search-panel" class="amgt-hidden">
-      <input type="text" id="amgt-search-input" placeholder="Station, tunnel, point..." autocomplete="off" />
-      <ul id="amgt-search-results"></ul>
+    <div id="amgt-search-box">
+      <button id="amgt-search-toggle" class="amgt-btn amgt-btn--icon" title="Rechercher une station, un tunnel ou un point">
+        🔍
+      </button>
+      <div id="amgt-search-panel" class="amgt-hidden">
+        <input type="text" id="amgt-search-input" placeholder="Station, tunnel, point..." autocomplete="off" />
+        <ul id="amgt-search-results"></ul>
+      </div>
     </div>
+    <!-- Sous la loupe, pour tout le monde. -->
+    <button id="amgt-measure-btn" class="amgt-btn amgt-btn--icon" title="Mesurer un rayon : presser-glisser-relâcher">
+      📏
+    </button>
+    <!-- Sous la règle : visible seulement le temps d'une mesure (measureTool.js, _hideDelayMs). -->
+    <button id="amgt-screenshot-btn" class="amgt-btn amgt-btn--icon amgt-hidden" title="Enregistrer la capture de la mesure (image PNG)">
+      💾
+    </button>
   </div>
 
   <!-- Échec de chargement des données (ex. ouverture en file:// sans serveur HTTP) : message rempli par app.js -->

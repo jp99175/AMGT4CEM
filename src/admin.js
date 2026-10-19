@@ -1,25 +1,26 @@
 /**
- * Accès administrateur : la fenêtre « ⚙ Paramètres » (et, dans ses onglets,
- * l'enregistrement des paramètres généraux sur le serveur, le mode édition des
- * étiquettes de planche) n'est destinée qu'aux administrateurs.
+ * Accès administrateur : la fenêtre « ⚙ Paramètres » (et, dans ses onglets, l'enregistrement des paramètres
+ * généraux sur le serveur, le mode édition des étiquettes de planche) n'est destinée qu'aux administrateurs.
  *
- * POINT DE BRANCHEMENT du futur mot de passe administrateur — pas encore
- * implémenté : pour l'instant l'accès est ouvert (config.js `adminMode`).
- * Quand le mot de passe existera, `requestAccess()` est le seul endroit à
- * compléter (demander le mot de passe, le vérifier, retourner true/false) ;
- * tous les appelants (settingsPanel.js, pe-label-editor) passent par lui.
+ * L'administrateur est un compte CONNECTÉ (AMGT4CEM_Auth, src/auth/) dont la fiche porte le droit administrateur ;
+ * le serveur de dépôt reste seul juge de ce droit, ici on ne fait que masquer ce qui ne sert à rien.
+ * Quand le droit `admin` sera découpé en droits précis (utilisateurs, attributs, plans, vocabulaire), isAdmin()
+ * est le seul endroit à compléter.
  */
 const AMGT4CEM_Admin = {
-  /** Faut-il considérer l'utilisateur comme administrateur, sans rien lui demander ? */
+  /** Un administrateur est-il connecté ? */
   isAdmin() {
-    return AMGT4CEM_CONFIG.adminMode !== false;
+    const s = AMGT4CEM_Auth.session();
+    return !!(s && s.utilisateur && s.utilisateur.admin);
   },
 
   /**
-   * Demande l'accès administrateur (futur mot de passe).
-   * @returns {Promise<boolean>} true si l'accès est accordé.
+   * Demande l'accès administrateur : écran de connexion si personne n'est connecté.
+   * @returns {Promise<boolean>} true si un administrateur est connecté.
    */
   async requestAccess() {
-    return this.isAdmin();
+    if (this.isAdmin()) return true;
+    const s = await AMGT4CEM_Auth.ensure({ admin: true, message: 'Cette fonction est réservée aux administrateurs.' });
+    return !!s && this.isAdmin();
   },
 };

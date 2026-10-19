@@ -42,11 +42,13 @@
  * drawOverlayOnContext), puis composés par-dessus ce fond : ces éléments ne
  * peuvent donc plus jamais disparaître d'une capture pour une raison réseau.
  *
- * Limite connue : si le fond WMS n'a pas pu être capturé du tout (service
- * indisponible dès la 1re capture de l'activation), il reste blanc dans
- * toutes les captures de cette activation ; les couches vectorielles
- * (réseau métro, UrbIS Topo, Plans patrimoine) et la mesure elle-même,
- * dessinées directement dans la page/en Canvas 2D, sont toujours capturées.
+ * Tuiles du fond de plan : recopiées depuis l'écran (_drawTiles), jamais
+ * redemandées. Les couches de tuiles (basemap.js, _CorsWmsLayer) les
+ * demandent avec CORS dès l'affichage, ce qui rend leurs pixels exportables.
+ * Limite connue : un service qui refuse CORS reste affichable, mais son fond
+ * n'apparaît pas dans l'image (backgroundIncomplete, message dans la console
+ * et dans l'infobulle du « 💾 ») ; les couches vectorielles (réseau métro,
+ * UrbIS Topo, Plans patrimoine) et la mesure elle-même sont toujours capturées.
  *
  * Rendu Canvas (voir app.js, preferCanvas) plutôt que SVG pour les couches
  * (Métro, UrbIS Topo, Plans patrimoine...) : plus fiable pour html2canvas
@@ -64,6 +66,8 @@ const AMGT4CEM_ScreenshotTool = {
   // Fond (tuiles + couches, sans la mesure) capturé une fois par activation
   // de l'outil "Mesurer" — voir _ensureBackground/invalidateBackground.
   _backgroundCanvas: null,
+  // Des tuiles du fond de plan n'ont pas pu être recopiées dans le dernier fond capturé.
+  backgroundIncomplete: false,
 
   init(map) {
     this._map = map;
@@ -82,6 +86,12 @@ const AMGT4CEM_ScreenshotTool = {
    * dans un nouveau canvas — voir en-tête du fichier. */
   async _buildCompositeBlob() {
     const background = await this._ensureBackground();
+    const saveBtn = document.getElementById('amgt-screenshot-btn');
+    if (saveBtn) {
+      saveBtn.title = this.backgroundIncomplete
+        ? 'Enregistrer la capture (sans le fond de plan : son service ne permet pas de le recopier)'
+        : 'Enregistrer la capture de la mesure (image PNG)';
+    }
 
     const composite = document.createElement('canvas');
     composite.width = background.width;
@@ -104,7 +114,13 @@ const AMGT4CEM_ScreenshotTool = {
   /** Capture (une seule fois par activation, voir invalidateBackground) le
    * fond de plan SANS la mesure : la pane dédiée (amgtMeasurePane) est
    * masquée le temps de la capture, pour ne jamais graver une mesure
-   * précédente dans le fond réutilisé par les suivantes. */
+   * précédente dans le fond réutilisé par les suivantes.
+   *
+   * Les tuiles du fond de plan (UrbIS, orthophotos) sont recopiées telles
+   * quelles depuis l'écran (_drawTiles) au lieu d'être redemandées au réseau
+   * par html2canvas : c'est cette nouvelle requête qui faisait disparaître
+   * le fond de plan de l'image (voir en-tête). Le reste (couches vectorielles,
+   * étiquettes, contrôles) passe toujours par html2canvas, sans les tuiles. */
   async _ensureBackground() {
     if (this._backgroundCanvas) return this._backgroundCanvas;
 
@@ -113,11 +129,85 @@ const AMGT4CEM_ScreenshotTool = {
     if (pane) pane.style.display = 'none';
     await this._waitForPaint();
     try {
-      this._backgroundCanvas = await html2canvas(this._map.getContainer(), { useCORS: true, logging: false });
+      try {
+        this._backgroundCanvas = await this._renderBackground();
+      } catch (err) {
+        // Repli : ancienne méthode (tout par html2canvas, tuiles redemandées au réseau).
+        console.warn('[AMGT4CEM] Capture : recopie des tuiles impossible, repli sur html2canvas seul :', err);
+        this._backgroundCanvas = await html2canvas(this._map.getContainer(), { useCORS: true, logging: false });
+      }
     } finally {
       if (pane) pane.style.display = prevDisplay || '';
     }
     return this._backgroundCanvas;
+  },
+
+  async _renderBackground() {
+    const container = this._map.getContainer();
+    const tilePane = this._map.getPane('tilePane');
+    const bg = getComputedStyle(container).backgroundColor;
+
+    // 1. Tout sauf les tuiles, sur fond transparent.
+    const overlay = await html2canvas(container, {
+      useCORS: true,
+      logging: false,
+      backgroundColor: null,
+      ignoreElements: (el) => el === tilePane,
+      onclone: (doc) => {
+        const c = doc.getElementById(container.id);
+        if (c) c.style.background = 'none';
+      },
+    });
+
+    // 2. Couleur de fond de la carte, puis tuiles recopiées, puis le reste par-dessus.
+    const out = document.createElement('canvas');
+    out.width = overlay.width;
+    out.height = overlay.height;
+    const ctx = out.getContext('2d');
+    ctx.fillStyle = bg && bg !== 'rgba(0, 0, 0, 0)' ? bg : '#ddd';
+    ctx.fillRect(0, 0, out.width, out.height);
+    const ignorees = this._drawTiles(ctx, out.width / container.getBoundingClientRect().width);
+    ctx.drawImage(overlay, 0, 0);
+
+    this.backgroundIncomplete = ignorees > 0;
+    if (ignorees > 0) {
+      console.warn(`[AMGT4CEM] Capture : ${ignorees} tuile(s) du fond de plan non recopiables (service sans CORS) : fond absent de l'image.`);
+    }
+    return out;
+  },
+
+  /** Recopie les tuiles chargées de chaque couche de tuiles de la carte (dans l'ordre d'empilement) à leur
+   * position à l'écran. Une tuile qu'un canvas ne peut pas exporter (image chargée sans CORS) est ignorée :
+   * l'image garderait sinon un canvas « souillé », donc impossible à enregistrer. Retourne le nombre ignoré. */
+  _drawTiles(ctx, scale) {
+    const container = this._map.getContainer();
+    const cr = container.getBoundingClientRect();
+    const tilePane = this._map.getPane('tilePane');
+    const layers = Array.from(tilePane.querySelectorAll('.leaflet-layer'))
+      .map((el, i) => ({ el, z: parseInt(getComputedStyle(el).zIndex, 10) || 0, i }))
+      .sort((a, b) => a.z - b.z || a.i - b.i);
+    let ignorees = 0;
+    for (const { el: layer } of layers) {
+      const ls = getComputedStyle(layer);
+      if (ls.display === 'none' || ls.visibility === 'hidden') continue;
+      const layerOpacity = parseFloat(ls.opacity);
+      for (const tile of layer.querySelectorAll('img.leaflet-tile, canvas.leaflet-tile')) {
+        if (tile.tagName === 'IMG') {
+          if (!tile.complete || !tile.naturalWidth) continue; // pas (encore) chargée : rien à recopier
+          if (tile.getAttribute('crossorigin') === null) { ignorees++; continue; }
+        } else {
+          try { tile.getContext('2d').getImageData(0, 0, 1, 1); } catch (err) { ignorees++; continue; }
+        }
+        const r = tile.getBoundingClientRect();
+        if (r.right < cr.left || r.left > cr.right || r.bottom < cr.top || r.top > cr.bottom) continue;
+        const tileOpacity = parseFloat(getComputedStyle(tile).opacity);
+        ctx.globalAlpha = (Number.isNaN(layerOpacity) ? 1 : layerOpacity) * (Number.isNaN(tileOpacity) ? 1 : tileOpacity);
+        // +0,5 px de recouvrement : pas de filet clair entre deux tuiles aux positions arrondies.
+        ctx.drawImage(tile, (r.left - cr.left) * scale, (r.top - cr.top) * scale, r.width * scale + 0.5, r.height * scale + 0.5);
+      }
+    }
+    ctx.globalAlpha = 1;
+    return ignorees;
   },
 
   /** Appelé par measureTool.js à chaque activate()/deactivate() : le fond

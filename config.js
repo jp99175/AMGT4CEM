@@ -53,10 +53,8 @@ const AMGT4CEM_CONFIG = {
   // saisit la première fois dans ⚙ Paramètres > Serveur. Vide = enregistrement impossible.
   peLabelAnchorsRelayUrl: '',
 
-  // Accès administrateur à la fenêtre ⚙ Paramètres et au mode édition des
-  // étiquettes de planche. Ouvert à tous pour l'instant : le mot de passe
-  // administrateur se branchera dans src/admin.js (AMGT4CEM_Admin.requestAccess).
-  adminMode: true,
+  // Accès administrateur (⚙ Paramètres, mode édition des étiquettes de planche) : compte connecté portant le
+  // droit administrateur du serveur de dépôt (src/admin.js, src/accountButton.js).
 
   // Petite emprise (2km x 2km, centre de Bruxelles) utilisée uniquement pour
   // sonder si un fond WMS répond avant de le proposer (voir basemap.js) —
@@ -201,6 +199,7 @@ const AMGT4CEM_CONFIG = {
         './src/searchTool.js',
         './src/plugins.js',
         './src/addPointMenu.js',
+        './src/accountButton.js',
         './src/app.js',
       ],
     },

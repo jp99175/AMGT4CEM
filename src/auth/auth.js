@@ -9,6 +9,7 @@
  *   AMGT4CEM_Auth.session()          session valide ou null : { jeton, expire, utilisateur }
  *   AMGT4CEM_Auth.ensure(options)    session, sinon écran de connexion (AMGT4CEM_AuthUi) ; null si l'agent renonce
  *   AMGT4CEM_Auth.call(path, { method, body, auth })   appel JSON ; lève une Error au message lisible
+ *   AMGT4CEM_Auth.onChange(fn)       fn() est appelée quand la session change (connexion, déconnexion, autre onglet)
  */
 const AMGT4CEM_Auth = {
   serverUrl: '',
@@ -32,6 +33,25 @@ const AMGT4CEM_Auth = {
 
   _store(s) {
     try { if (s) localStorage.setItem(this.KEY, JSON.stringify(s)); else localStorage.removeItem(this.KEY); } catch (err) { /* sans mémoire locale : redemandé à chaque fois */ }
+    this._emit();
+  },
+
+  _listeners: [],
+  _watching: false,
+
+  /** `fn()` est appelée à chaque changement de session : connexion, déconnexion, jeton refusé, autre onglet. */
+  onChange(fn) {
+    this._listeners.push(fn);
+    if (!this._watching) {
+      this._watching = true;
+      window.addEventListener('storage', (e) => { if (e.key === this.KEY || e.key === null) this._emit(); });
+    }
+  },
+
+  _emit() {
+    for (const fn of this._listeners) {
+      try { fn(); } catch (err) { console.error('[AMGT4CEM] Auth.onChange :', err); }
+    }
   },
 
   logout() {

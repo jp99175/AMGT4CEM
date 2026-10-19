@@ -133,6 +133,10 @@
     },
   });
 
+  // Icône de connexion : montre/masque « Ajouter un point » et « ⚙ Paramètres » selon le compte connecté.
+  // Après une connexion ou une déconnexion, la couche des signalements (données privées) est relue.
+  AMGT4CEM_AccountButton.init({ onChange: () => AMGT4CEM_SignalementsLayer.refresh() });
+
   document.getElementById('amgt-measure-btn').addEventListener('click', () => {
     AMGT4CEM_AddPointTool.deactivate();
     AMGT4CEM_Plugins.notifyCoreToolActivated('measure');

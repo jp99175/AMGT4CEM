@@ -290,6 +290,26 @@ const AMGT4CEM_Basemap = {
     },
   }),
 
+  /**
+   * Couche WMS dont les tuiles sont demandées avec CORS (attribut crossorigin), pour que la capture d'écran de
+   * la mesure (screenshotTool.js) puisse recopier leurs pixels telles quelles, sans les redemander au réseau.
+   * Si le serveur ne l'autorise pas, la tuile est redemandée une fois sans CORS : l'affichage reste correct,
+   * seule la capture du fond de plan est alors impossible (voir screenshotTool.js).
+   */
+  _CorsWmsLayer: L.TileLayer.WMS.extend({
+    options: { crossOrigin: 'anonymous' },
+    _tileOnError(done, tile, e) {
+      if (tile.getAttribute('crossorigin') !== null && !tile._amgtSansCors) {
+        tile._amgtSansCors = true;
+        const src = tile.src;
+        tile.removeAttribute('crossorigin');
+        tile.src = src;
+        return;
+      }
+      L.TileLayer.WMS.prototype._tileOnError.call(this, done, tile, e);
+    },
+  }),
+
   _setActiveLayer(layer) {
     if (this._currentLayer === layer) return;
     if (this._currentLayer) this._map.removeLayer(this._currentLayer);
@@ -327,7 +347,7 @@ const AMGT4CEM_Basemap = {
       options.regionRings = () => this._getRegionRings();
       return new this._ClippedWmsLayer(entry.url, options);
     }
-    return L.tileLayer.wms(entry.url, options);
+    return new this._CorsWmsLayer(entry.url, options);
   },
 
   /**
