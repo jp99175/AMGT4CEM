@@ -94,6 +94,7 @@ const AMGT4CEM_MapMenu = {
     const latestBtn = document.getElementById('amgt-year-latest');
     const yearLabel = document.getElementById('amgt-bruciel-year-label');
     const sourceLogo = document.getElementById('amgt-source-logo');
+    const orientation = document.getElementById('amgt-orientation');
 
     // Ligne du temps : un élément par millésime accessible (voir
     // AMGT4CEM_Basemap.getAccessibleTimeline), chacun avec ses sources
@@ -130,6 +131,19 @@ const AMGT4CEM_MapMenu = {
         sourceLogo.src = shown.logo;
         sourceLogo.alt = shown.logoAlt;
         sourceLogo.title = shown.logoAlt;
+      }
+
+      // Flèche d'orientation de la prise de vue quand l'année a plusieurs variantes bruxelloises.
+      const SRC = AMGT4CEM_Basemap.SOURCES;
+      const cur = item && SRC[currentSource || item.sources[0].source];
+      const variants = item ? item.sources.filter((s) => SRC[s.source].column === 'bruxelles').length : 0;
+      const showOrientation = !!cur && cur.column === 'bruxelles' && variants > 1;
+      orientation.classList.toggle('amgt-hidden', !showOrientation);
+      if (showOrientation) {
+        const ir = cur.variant.startsWith('IR');
+        const ns = cur.variant.endsWith('N-S');
+        orientation.textContent = (ir ? 'IR ' : '') + (ns ? '↕' : '↔');
+        orientation.title = `Prise de vue ${ns ? 'nord-sud' : 'est-ouest'}${ir ? ', proche infrarouge' : ''}`;
       }
 
       if (!item) {

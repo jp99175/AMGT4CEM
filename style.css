@@ -1078,3 +1078,6 @@ html, body {
 .amgt-ortho-res--off { color: #b00020; }
 .amgt-ortho-variant { font-weight: 600; font-size: 12px; }
 .amgt-ortho-table td .amgt-ortho-cell + .amgt-ortho-cell { margin-top: 4px; }
+
+/* Orientation de la prise de vue (↕ nord-sud, ↔ est-ouest) entre la date et le logo. */
+#amgt-orientation { margin-left: 4px; font-size: 15px; font-weight: 700; line-height: 1; white-space: nowrap; }
