@@ -1076,3 +1076,5 @@ html, body {
 .amgt-ortho-res--unknown { color: #999; font-style: italic; }
 .amgt-ortho-cell--off { cursor: not-allowed; }
 .amgt-ortho-res--off { color: #b00020; }
+.amgt-ortho-variant { font-weight: 600; font-size: 12px; }
+.amgt-ortho-table td .amgt-ortho-cell + .amgt-ortho-cell { margin-top: 4px; }

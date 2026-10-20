@@ -114,13 +114,17 @@ const AMGT4CEM_OrthoPicker = {
     const store = AMGT4CEM_OrthoSelectionStore;
     const selection = this._selection();
     const entries = AMGT4CEM_Basemap.getConfiguredEntries();
-    const sources = Object.keys(AMGT4CEM_Basemap.SOURCES).filter((s) => entries.some((e) => e.source === s));
+    const SRC = AMGT4CEM_Basemap.SOURCES;
+    const columns = Object.keys(AMGT4CEM_Basemap.COLUMNS).filter((c) => entries.some((e) => SRC[e.source].column === c));
+    const srcOrder = Object.keys(SRC);
 
     // Une ligne par millésime (clé : année, ou plage pour les compilations), les plus récents d'abord.
+    // Une case de colonne contient une ligne par variante disponible cette année-là.
     const rows = new Map();
     for (const e of entries) {
-      if (!rows.has(e.key)) rows.set(e.key, { key: e.key, sortYear: e.sortYear, bySource: {} });
-      rows.get(e.key).bySource[e.source] = e;
+      if (!rows.has(e.key)) rows.set(e.key, { key: e.key, sortYear: e.sortYear, byColumn: {} });
+      const r = rows.get(e.key);
+      (r.byColumn[SRC[e.source].column] = r.byColumn[SRC[e.source].column] || []).push(e);
     }
     const sorted = [...rows.values()].sort((a, b) => b.sortYear - a.sortYear || b.key.length - a.key.length);
 
@@ -128,22 +132,22 @@ const AMGT4CEM_OrthoPicker = {
     table.className = 'amgt-ortho-table';
     const head = table.createTHead().insertRow();
     head.insertCell().outerHTML = '<th>Année</th>';
-    for (const s of sources) {
+    for (const c of columns) {
       const th = document.createElement('th');
-      const codes = entries.filter((e) => e.source === s).map((e) => AMGT4CEM_Basemap.entryCode(e));
-      const n = codes.filter((c) => selection[c]).length;
+      const codes = entries.filter((e) => SRC[e.source].column === c).map((e) => AMGT4CEM_Basemap.entryCode(e));
+      const n = codes.filter((code) => selection[code]).length;
       const all = document.createElement('input');
       all.type = 'checkbox';
       all.checked = n === codes.length;
       all.indeterminate = n > 0 && n < codes.length;
-      all.title = `Tout cocher/décocher — ${AMGT4CEM_Basemap.SOURCES[s].label}`;
+      all.title = `Tout cocher/décocher — ${AMGT4CEM_Basemap.COLUMNS[c]}`;
       all.addEventListener('change', () => {
         const next = { ...selection };
-        for (const c of codes) { if (all.checked) next[c] = next[c] || store.nextColor(next); else delete next[c]; }
+        for (const code of codes) { if (all.checked) next[code] = next[code] || store.nextColor(next); else delete next[code]; }
         this._apply(next);
         this._render();
       });
-      th.append(all, document.createTextNode(' ' + AMGT4CEM_Basemap.SOURCES[s].label));
+      th.append(all, document.createTextNode(' ' + AMGT4CEM_Basemap.COLUMNS[c]));
       head.appendChild(th);
     }
 
@@ -151,33 +155,43 @@ const AMGT4CEM_OrthoPicker = {
     for (const r of sorted) {
       const tr = body.insertRow();
       tr.insertCell().textContent = r.key;
-      for (const s of sources) {
+      for (const c of columns) {
         const td = tr.insertCell();
-        const e = r.bySource[s];
-        if (!e) { td.className = 'amgt-ortho-none'; td.textContent = '—'; continue; }
-        const code = AMGT4CEM_Basemap.entryCode(e);
-        const unavailable = this._access && this._access[e.id] === false;
-        const label = document.createElement('label');
-        label.className = 'amgt-ortho-cell' + (unavailable ? ' amgt-ortho-cell--off' : '');
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = Boolean(selection[code]);
-        if (unavailable) {
-          cb.disabled = true;
-          label.title = `Le service ne répond pas pour cette couche (${e.layers}) : elle n'est pas proposée dans la navigation.`;
+        const list = (r.byColumn[c] || []).sort((x, y) => srcOrder.indexOf(x.source) - srcOrder.indexOf(y.source));
+        if (!list.length) { td.className = 'amgt-ortho-none'; td.textContent = '—'; continue; }
+        for (const e of list) {
+          const code = AMGT4CEM_Basemap.entryCode(e);
+          const unavailable = this._access && this._access[e.id] === false;
+          const label = document.createElement('label');
+          label.className = 'amgt-ortho-cell' + (unavailable ? ' amgt-ortho-cell--off' : '');
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = Boolean(selection[code]);
+          if (unavailable) {
+            cb.disabled = true;
+            label.title = `Le service ne répond pas pour cette couche (${e.layers}) : elle n'est pas proposée dans la navigation.`;
+          }
+          cb.addEventListener('change', () => {
+            const next = { ...selection };
+            if (cb.checked) next[code] = store.nextColor(next); else delete next[code];
+            this._apply(next);
+            this._render();
+          });
+          label.appendChild(cb);
+          // Plusieurs variantes dans la case : on nomme chacune (sinon la case se suffit).
+          if (list.length > 1) {
+            const v = document.createElement('span');
+            v.className = 'amgt-ortho-variant';
+            v.textContent = SRC[e.source].variant;
+            label.appendChild(v);
+          }
+          const res = document.createElement('span');
+          res.className = 'amgt-ortho-res' + (e.resolution ? '' : ' amgt-ortho-res--unknown');
+          res.textContent = unavailable ? 'indisponible' : (e.resolution || 'résolution ?');
+          if (unavailable) res.className = 'amgt-ortho-res amgt-ortho-res--off';
+          label.appendChild(res);
+          td.appendChild(label);
         }
-        cb.addEventListener('change', () => {
-          const next = { ...selection };
-          if (cb.checked) next[code] = store.nextColor(next); else delete next[code];
-          this._apply(next);
-          this._render();
-        });
-        const res = document.createElement('span');
-        res.className = 'amgt-ortho-res' + (e.resolution ? '' : ' amgt-ortho-res--unknown');
-        res.textContent = unavailable ? 'indisponible' : (e.resolution || 'résolution ?');
-        if (unavailable) res.className = 'amgt-ortho-res amgt-ortho-res--off';
-        label.append(cb, res);
-        td.appendChild(label);
       }
     }
 

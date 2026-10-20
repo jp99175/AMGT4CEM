@@ -198,7 +198,7 @@ poste.
 ### Orthophotos
 
 **Réglages (icône à droite de « Orthophotos » dans ☰ Carte, `src/orthoPicker.js`)** : tableau
-année × source (une colonne par source : Bruciel historique 1935-1996, Bruxelles UrbIS 2004-2024, ses variantes est-ouest et proche infrarouge — champ `variant` de `urbis-orthophotos.json` — et Flandre ; le tableau défile horizontalement). Chaque case porte la
+année × source (trois colonnes : Bruciel historique 1935-1996, Bruxelles UrbIS 2004-2024 et Flandre ; une année à plusieurs variantes — champ `variant` de `urbis-orthophotos.json` : N-S, E-O, IR — a plusieurs lignes dans la case). Chaque case porte la
 **résolution** de l'image quand elle est connue (champ facultatif `resolution` de chaque
 entrée de `data/fonds-de-plan/*.json`, texte libre : « 25 cm »…) et une **case à cocher** : seules
 les orthophotos cochées sont proposées avec les chevrons ‹ ›. Enregistrement comme les autres
