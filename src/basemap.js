@@ -1,6 +1,6 @@
 /**
  * Fonds de plan : UrbIS et orthophotos (ligne du temps unique alimentée par
- * deux sources : Bruxelles — Bruciel/UrbIS, 1935-2022 — et Flandre — Digitaal
+ * deux sources : Bruciel historique 1935-1996 et Bruxelles UrbIS 2004-2024 — et Flandre — Digitaal
  * Vlaanderen, 2000-2025). Un millésime présent dans les deux sources peut
  * être affiché depuis l'une ou l'autre (choix mémorisé par année).
  *
@@ -30,7 +30,11 @@ const AMGT4CEM_Basemap = {
   // Sources d'orthophotos, dans l'ordre d'affichage du bouton de bascule.
   // `defaultOrder` : préférence quand aucun choix n'a été mémorisé pour l'année.
   SOURCES: {
+    bruciel: { label: 'Bruciel (historique)', logo: './assets/logo-bruxelles.png', logoAlt: 'Région de Bruxelles-Capitale (Bruciel, orthophotos historiques)' },
     bruxelles: { label: 'Bruxelles', logo: './assets/logo-bruxelles.png', logoAlt: 'Région de Bruxelles-Capitale' },
+    'bruxelles-eo': { label: 'Bruxelles E-O', logo: './assets/logo-bruxelles.png', logoAlt: 'Région de Bruxelles-Capitale (vol est-ouest)' },
+    'bruxelles-nir-ns': { label: 'Bruxelles IR N-S', logo: './assets/logo-bruxelles.png', logoAlt: 'Région de Bruxelles-Capitale (proche infrarouge, vol nord-sud)' },
+    'bruxelles-nir-eo': { label: 'Bruxelles IR E-O', logo: './assets/logo-bruxelles.png', logoAlt: 'Région de Bruxelles-Capitale (proche infrarouge, vol est-ouest)' },
     vlaanderen: { label: 'Flandre', logo: './assets/logo-vlaanderen.png', logoAlt: 'Vlaanderen' },
   },
   DEFAULT_SOURCE: 'bruxelles',
@@ -159,7 +163,8 @@ const AMGT4CEM_Basemap = {
   filterTimeline(timeline, selection) {
     if (!selection || Object.keys(selection).length === 0) return timeline;
     return timeline
-      .map((item) => ({ ...item, sources: item.sources.filter((s) => selection[this.entryCode(s.entry)]) }))
+      // Ancien code « bruxelles:<année> » des années historiques, avant leur séparation en source « bruciel ».
+      .map((item) => ({ ...item, sources: item.sources.filter((s) => selection[this.entryCode(s.entry)] || (s.source === 'bruciel' && selection[`bruxelles:${s.entry.key}`])) }))
       .filter((item) => item.sources.length > 0);
   },
 

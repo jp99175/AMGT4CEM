@@ -70,9 +70,10 @@ const AMGT4CEM_Services = {
     const orthoEntries = (key, id) => {
       const o = src(key);
       return (o.entries || []).map((e) => ({
-        id: `bruciel-${e.year}`,
-        label: `Bruciel ${e.year}`,
-        source: id,
+        id: `bruciel-${e.year}${e.variant ? '-' + e.variant : ''}`,
+        label: `Bruciel ${e.year}${e.variant ? ' (' + e.variant + ')' : ''}`,
+        // Variante (est-ouest, infrarouge...) : traitée comme une source à part (colonne, bascule, logo de Bruxelles).
+        source: e.variant ? `${id}-${e.variant}` : id,
         type: o.type || 'wms',
         url: this._url(key),
         layers: e.layers,
@@ -97,7 +98,7 @@ const AMGT4CEM_Services = {
         attribution: u.attribution,
       },
       // Ligne du temps unique : Bruciel historique (1935-1996) puis orthophotos récentes UrbIS (2004-2022).
-      bruciel: { entries: [...orthoEntries('bruciel', 'bruxelles'), ...orthoEntries('urbis-orthophotos', 'bruxelles')] },
+      bruciel: { entries: [...orthoEntries('bruciel', 'bruciel'), ...orthoEntries('urbis-orthophotos', 'bruxelles')] },
       flandre: {
         url: this._url('flandre'),
         regionBoundary: { wfsUrl: this._url('urbis-adm'), ...(f.regionBoundary || {}) },

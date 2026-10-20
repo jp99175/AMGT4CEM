@@ -1038,8 +1038,15 @@ html, body {
 .amgt-ortho-table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 14px;
+  font-size: 13px;
 }
+
+/* Beaucoup de colonnes (variantes) : défilement horizontal, colonne des années fixe. */
+#amgt-ortho-picker-content { overflow-x: auto; }
+.amgt-ortho-table th { white-space: nowrap; }
+.amgt-ortho-table th:first-child,
+.amgt-ortho-table td:first-child { position: sticky; left: 0; background: #fff; z-index: 2; white-space: nowrap; }
+.amgt-ortho-table td { white-space: nowrap; }
 
 .amgt-ortho-table th,
 .amgt-ortho-table td {
