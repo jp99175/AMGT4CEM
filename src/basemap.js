@@ -142,6 +142,17 @@ const AMGT4CEM_Basemap = {
   },
 
   /**
+   * Sonde toutes les orthophotos configurées (résultat mis en cache : une seule requête par couche par session)
+   * et retourne { id d'entrée: accessible ? }. Sert à l'écran ⚙ Orthophotos, qui montre ce que le service ne sert pas.
+   */
+  async probeAll() {
+    const results = await Promise.all(this._entries.map((entry) => this._checkAccessible(entry)));
+    const out = {};
+    this._entries.forEach((entry, i) => { out[entry.id] = results[i]; });
+    return out;
+  },
+
+  /**
    * Ligne du temps réduite aux orthophotos cochées dans ⚙ Orthophotos. Sélection vide = tout. Un millésime
    * sans aucune source cochée disparaît.
    */

@@ -15,6 +15,7 @@ const AMGT4CEM_OrthoPicker = {
   _draft: null, // brouillon de la sélection par défaut partagée (édition administrateur), sinon null
   _bar: null,
   _notice: '',
+  _access: null, // { id d'entrée: le service répond ? } une fois le sondage fini, sinon null
 
   init() {
     this._overlay = document.getElementById('amgt-ortho-picker');
@@ -95,6 +96,11 @@ const AMGT4CEM_OrthoPicker = {
     this._bar.reset();
     this._render();
     this._overlay.classList.remove('amgt-hidden');
+    // Le service répond-il pour chaque orthophoto ? (même sondage que la navigation, mis en cache)
+    AMGT4CEM_Basemap.probeAll().then((access) => {
+      this._access = access;
+      if (!this._overlay.classList.contains('amgt-hidden')) this._render();
+    });
   },
 
   close() {
@@ -150,11 +156,16 @@ const AMGT4CEM_OrthoPicker = {
         const e = r.bySource[s];
         if (!e) { td.className = 'amgt-ortho-none'; td.textContent = '—'; continue; }
         const code = AMGT4CEM_Basemap.entryCode(e);
+        const unavailable = this._access && this._access[e.id] === false;
         const label = document.createElement('label');
-        label.className = 'amgt-ortho-cell';
+        label.className = 'amgt-ortho-cell' + (unavailable ? ' amgt-ortho-cell--off' : '');
         const cb = document.createElement('input');
         cb.type = 'checkbox';
         cb.checked = Boolean(selection[code]);
+        if (unavailable) {
+          cb.disabled = true;
+          label.title = `Le service ne répond pas pour cette couche (${e.layers}) : elle n'est pas proposée dans la navigation.`;
+        }
         cb.addEventListener('change', () => {
           const next = { ...selection };
           if (cb.checked) next[code] = store.nextColor(next); else delete next[code];
@@ -163,7 +174,8 @@ const AMGT4CEM_OrthoPicker = {
         });
         const res = document.createElement('span');
         res.className = 'amgt-ortho-res' + (e.resolution ? '' : ' amgt-ortho-res--unknown');
-        res.textContent = e.resolution || 'résolution ?';
+        res.textContent = unavailable ? 'indisponible' : (e.resolution || 'résolution ?');
+        if (unavailable) res.className = 'amgt-ortho-res amgt-ortho-res--off';
         label.append(cb, res);
         td.appendChild(label);
       }
@@ -173,7 +185,7 @@ const AMGT4CEM_OrthoPicker = {
     this._content.appendChild(table);
     const hint = document.createElement('p');
     hint.className = 'amgt-settings-hint';
-    hint.textContent = (this._notice ? this._notice + ' ' : '') + "Seules les orthophotos cochées sont proposées avec les flèches de la navigation par année. « résolution ? » : valeur pas encore renseignée (champ « resolution » de data/fonds-de-plan/*.json).";
+    hint.textContent = (this._notice ? this._notice + ' ' : '') + "Seules les orthophotos cochées sont proposées avec les flèches de la navigation par année. « indisponible » : le service ne répond pas pour cette couche (nom de couche à vérifier, ou service en panne) ; « résolution ? » : valeur pas encore renseignée (champ « resolution » de data/fonds-de-plan/*.json).";
     this._content.appendChild(hint);
   },
 };

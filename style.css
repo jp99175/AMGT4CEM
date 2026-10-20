@@ -1067,3 +1067,5 @@ html, body {
 
 .amgt-ortho-res { color: #333; }
 .amgt-ortho-res--unknown { color: #999; font-style: italic; }
+.amgt-ortho-cell--off { cursor: not-allowed; }
+.amgt-ortho-res--off { color: #b00020; }
