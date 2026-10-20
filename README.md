@@ -505,6 +505,9 @@ La couche **« Plans patrimoine » tout entière** (planches, numéros interstat
 `temp_DELTA_mod`) est **réservée aux comptes connectés** : sans connexion, elle n'est ni
 affichée ni lue, et sa ligne du menu « Couches » (case, curseur d'opacité, « modifier la
 sélection ») et son sélecteur sont masqués (`AMGT4CEM_PatrimoineLayer.setAccess`).
+Il en va de même pour **« Points métier »** (signalements et demandes) : titre, ligne du
+menu et sélecteur masqués, et points métier locaux exclus de la recherche, tant que
+personne n'est connecté (`applyConnectionAccess` dans `src/app.js`).
 L'adresse et le nom de la couche de la Région sont dans `data/fonds-de-plan/services.json`
 (clé `metro`).
 

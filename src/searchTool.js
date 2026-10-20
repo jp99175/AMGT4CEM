@@ -102,6 +102,7 @@ const AMGT4CEM_SearchTool = {
   },
 
   async _searchPoints(query) {
+    if (!AMGT4CEM_Auth.session()) return []; // les points métier sont réservés aux comptes connectés
     const needle = this._normalize(query);
     const results = [];
     const points = await AMGT4CEM_PointsStore.getAll();

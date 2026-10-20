@@ -142,21 +142,30 @@
   }
 
   /**
-   * « Plans patrimoine » est réservée aux comptes connectés : sans connexion, la couche n'est ni affichée ni lue, et sa
-   * ligne du menu « Couches » (case, curseur d'opacité, lien « modifier la sélection ») et son sélecteur sont masqués.
+   * « Plans patrimoine » et « Points métier » (signalements et demandes) sont réservés aux comptes connectés. Sans
+   * connexion, ces deux couches n'apparaissent pas : rien n'est affiché ni lu, et leurs lignes du menu « Couches »
+   * (titre, case, état, curseur d'opacité, lien « modifier la sélection ») et leurs sélecteurs sont masqués.
+   * Le masquage du menu passe par `style.display` : la classe `amgt-hidden` des curseurs sert déjà à l'icône d'opacité.
    */
-  function applyPatrimoineAccess(allowed) {
-    AMGT4CEM_PatrimoineLayer.setAccess(allowed);
-    const row = document.getElementById('amgt-layer-patrimoine').closest('.amgt-layer-row');
-    const slider = document.querySelector('.amgt-opacity-slider-row[data-layer="patrimoine"]');
-    for (const el of [row, slider]) if (el) el.style.display = allowed ? '' : 'none';
-    if (!allowed) AMGT4CEM_PatrimoinePicker.close();
+  function applyConnectionAccess(connected) {
+    const show = (el) => { if (el) el.style.display = connected ? '' : 'none'; };
+
+    AMGT4CEM_PatrimoineLayer.setAccess(connected);
+    show(document.getElementById('amgt-layer-patrimoine').closest('.amgt-layer-row'));
+    show(document.querySelector('.amgt-opacity-slider-row[data-layer="patrimoine"]'));
+    if (!connected) AMGT4CEM_PatrimoinePicker.close();
+
+    show(document.getElementById('amgt-points-heading'));
+    show(document.getElementById('amgt-layer-points').closest('.amgt-layer-row'));
+    show(document.getElementById('amgt-signalements-status'));
+    show(document.querySelector('.amgt-opacity-slider-row[data-layer="points"]'));
+    if (!connected) AMGT4CEM_SignalementsLayer.closePicker();
   }
 
   /** Affiche la source de réseau qui correspond à la connexion actuelle ; sans effet si c'est déjà elle. */
   function loadNetwork() {
     const mode = wantedNetworkMode();
-    applyPatrimoineAccess(mode === 'prive');
+    applyConnectionAccess(mode === 'prive');
     if (mode === networkMode) return;
     const token = ++networkToken;
     const loading = mode === 'prive' ? AMGT4CEM_Network.load(map) : AMGT4CEM_MetroPublicLayer.load(map);
