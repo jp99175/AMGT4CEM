@@ -15,8 +15,8 @@
       "url": "https://gis.urban.brussels/geoserver/URBAN_DCC_ER/wms"
     },
     "urbis-orthophotos": {
-      "libelle": "UrbIS — orthophotos récentes 2004-2022 (WMS)",
-      "url": "https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms"
+      "libelle": "UrbIS — orthophotos récentes 2004-2024 (WMS)",
+      "url": "https://geoservices-grid.irisnet.be/geoserver/urbisgrid/wms"
     },
     "flandre": {
       "libelle": "Digitaal Vlaanderen — orthophotos 2000-2025 (WMS)",
