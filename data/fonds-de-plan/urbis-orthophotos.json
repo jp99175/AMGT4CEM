@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "date": "2026-10-07",
-  "note": "Orthophotos récentes UrbIS 2004-2022, les mêmes que celles de MobiGIS : GeoServer geoservices-urbis.irisnet.be, workspace urbisgrid, couches urbisgrid:Ortho<année>. Noms confirmés par un snapshot HTML de MobiGIS. Ne déclarent que EPSG:31370 et CRS:84 (`crs` forcé). Fusionné avec bruciel.json dans une seule ligne du temps. URL dans services.json (clé « urbis-orthophotos »). Champ facultatif `resolution` par entrée (texte libre, ex. « 25 cm », affiché dans ⚙ Orthophotos) : non renseigné, la résolution n'est publiée dans les fiches du catalogue Geobru consultées (à compléter à la main ou à relever dans le GetCapabilities du service).",
+  "date": "2026-10-20",
+  "note": "Orthophotos récentes UrbIS 2004-2024, les mêmes que celles de MobiGIS : GeoServer geoservices-urbis.irisnet.be, workspace urbisgrid, couches urbisgrid:Ortho<année>. Noms vérifiés dans le GetCapabilities du service (20/10/2026) : sensibles à la casse (Ortho2021NS, pas « Ns »). Existent aussi en variantes est-ouest (EO) pour 2021, 2022, 2024 et proche infrarouge (NIR) pour 2024, non reprises ici (une seule couche par année et par source). Ne déclarent que EPSG:31370 et CRS:84 (`crs` forcé). Fusionné avec bruciel.json dans une seule ligne du temps. URL dans services.json (clé « urbis-orthophotos »). Champ facultatif `resolution` par entrée (texte libre, ex. « 25 cm », affiché dans ⚙ Orthophotos) : non renseigné, la résolution n'est publiée dans les fiches du catalogue Geobru consultées (à compléter à la main ou à relever dans le GetCapabilities du service).",
   "type": "wms",
   "wmsVersion": "1.3.0",
   "format": "image/jpeg",
@@ -25,6 +25,10 @@
       "layers": "urbisgrid:Ortho2014"
     },
     {
+      "year": 2015,
+      "layers": "urbisgrid:Ortho2015"
+    },
+    {
       "year": 2016,
       "layers": "urbisgrid:Ortho2016"
     },
@@ -46,11 +50,19 @@
     },
     {
       "year": 2021,
-      "layers": "urbisgrid:Ortho2021Ns"
+      "layers": "urbisgrid:Ortho2021NS"
     },
     {
       "year": 2022,
-      "layers": "urbisgrid:Ortho2022Ns"
+      "layers": "urbisgrid:Ortho2022NS"
+    },
+    {
+      "year": 2023,
+      "layers": "urbisgrid:Ortho2023"
+    },
+    {
+      "year": 2024,
+      "layers": "urbisgrid:Ortho2024NS"
     }
   ]
 }
