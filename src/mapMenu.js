@@ -267,6 +267,18 @@ const AMGT4CEM_MapMenu = {
       AMGT4CEM_ScreenshotTool.invalidateBackground();
       AMGT4CEM_PatrimoineLayer.setEnabled(e.target.checked);
     });
+
+    // Nappe phréatique : case principale (décochée au départ) + choix des éléments dans le sous-volet.
+    document.getElementById('amgt-layer-nappe').addEventListener('change', (e) => {
+      AMGT4CEM_ScreenshotTool.invalidateBackground();
+      AMGT4CEM_NappeLayer.setEnabled(e.target.checked);
+    });
+    for (const [id, part] of [['amgt-nappe-isopieses', 'isopieses'], ['amgt-nappe-stations', 'stations']]) {
+      document.getElementById(id).addEventListener('change', (e) => {
+        AMGT4CEM_ScreenshotTool.invalidateBackground();
+        AMGT4CEM_NappeLayer.setParts({ [part]: e.target.checked });
+      });
+    }
   },
 
   /**
@@ -284,6 +296,7 @@ const AMGT4CEM_MapMenu = {
       { key: 'points', apply: (factor) => AMGT4CEM_SignalementsLayer.setOpacity(factor) },
       { key: 'urbistopo', apply: (factor) => AMGT4CEM_UrbisTopoLayer.setOpacity(factor) },
       { key: 'patrimoine', apply: (factor) => AMGT4CEM_PatrimoineLayer.setOpacity(factor) },
+      { key: 'nappe', apply: (factor) => AMGT4CEM_NappeLayer.setOpacity(factor) },
     ];
 
     const pairs = [];

@@ -52,8 +52,8 @@ bouton de secours : les données ne sont pas chargées).
    parcourir les millésimes de 1935 à 2022 — seules les années dont le
    service répond sont proposées, réglée sur la plus récente accessible par
    défaut ; le bouton **⏭** y ramène directement). **Couches** : cases à
-   cocher pour Métro (Stations et Tunnels), UrbIS Topo (voir section 3bis)
-   et Plans patrimoine (section 3ter). **Points métier** (ligne « Signalements et demandes ») : case à
+   cocher pour Métro (Stations et Tunnels), UrbIS Topo (voir section 3bis),
+   Plans patrimoine (section 3ter) et Nappe phréatique (section 3quater). **Points métier** (ligne « Signalements et demandes ») : case à
    cocher pour les entrées envoyées au serveur de dépôt, visibles par tous les agents connectés (connexion demandée à
    l'activation de la couche ; lecture seule ; clic sur un point : titre, référence, version, rédacteur, contributeurs). L'icône curseurs de la ligne donne l'opacité et « (modifier la sélection) » ouvre la liste des types à afficher (mémorisée sur l'appareil).
    L'icône **☰ curseurs** à côté de chaque couche, dans les trois
@@ -596,6 +596,30 @@ Liste volontairement ouverte : d'autres plans (constats, relevés...)
 pourront s'y ajouter au fur et à mesure, un fichier et une entrée de
 catalogue à la fois.
 
+## 3quater. Nappe phréatique
+
+Case **Nappe phréatique** du menu **☰ Carte** (décochée au départ : rien n'est requêté tant qu'elle ne l'est pas ; l'icône
+curseurs donne l'opacité et le choix des éléments). Source : WFS « water » de **Bruxelles Environnement**
+(`https://ows.environnement.brussels/water`, clé `eaux-souterraines` de `data/fonds-de-plan/services.json`), licence
+**CC BY 4.0** (attribution affichée dans les crédits de la carte). Deux éléments :
+
+- **Isopièzes** de la nappe phréatique (couche `groundwater_model_phreatic_head`) : lignes de niveau à équidistance de 2 m,
+  en m DNG, avec leur valeur en étiquette à fort zoom. Résultat du **modèle BPSM v1.0, état de mai 2013** : valeur
+  indicative qui ne remplace pas une étude d'expert (mention reprise dans chaque fenêtre d'information). Ce n'est pas un
+  niveau mesuré aujourd'hui.
+- **Stations de mesure piézométriques** (couche `water_monitoring_groundwater_level`) : position et attributs de la station.
+  Les chroniques (séries temporelles) ne sont pas servies par le WFS (outil Geodata de Bruxelles Environnement).
+
+Comme UrbIS Topo : requêtes limitées à l'emprise visible, en Lambert 72, à partir du zoom `minZoom`, plafonnées à
+`maxFeaturesPerQuery` (message « résultat tronqué » sous la case). Le nom publié exact des couches (avec son préfixe)
+est retrouvé dans le GetCapabilities. Réglages : `data/nappe/parametres.json` ; code : `src/nappeLayer.js`.
+
+**À vérifier depuis un navigateur réel** (l'accès sortant de l'environnement de développement vers
+`*.environnement.brussels` est bloqué, comme pour les autres services de la Région) : noms d'attributs (`gw_head`, `period`,
+`uh_rbc`... d'après le descriptif officiel), autorisation CORS du service, volume d'objets par emprise. Si le navigateur
+refuse (CORS), le service est signalé indisponible sous la case et la console donne la cause ; la parade serait de passer
+par le relais (`relay/`), comme pour d'autres échanges.
+
 ## 4. Architecture des données
 
 L'application appelle plusieurs **services de fonds de plan** (UrbIS, orthophotos...)
@@ -609,6 +633,7 @@ data/
   metro/              référentiel de la couche Métro : stations, tunnels (et tronçons, plus tard)
   plans-patrimoine/   référentiel des planches, étiquettes, sélection par défaut, fichiers legacy
   urbis-topo/         réglages du service UrbIS Topo + sélection par défaut partagée
+  nappe/              réglages de la couche Nappe phréatique (WFS Bruxelles Environnement)
   fonds-de-plan/      services externes : services.json (général) + un fichier par service
   points-metier/      (réservé : structure des points métier, phase B)
   suivi/              suivi (fiches, constats...) : HORS DÉPÔT (.gitignore), phase B
@@ -933,6 +958,7 @@ data/shapefile/              famille 1 : polygones.* et lignes.* (shapefiles Lam
 data/metro/                  famille 2 : référentiel stations/tunnels/tronçons (polygones.json, lignes.json, vocabulaires.json) + region-metro.json (copie de secours de la couche publique)
 data/plans-patrimoine/       référentiel des planches, étiquettes (écrites via le relais), sélection par défaut, fichiers legacy
 data/urbis-topo/             réglages du service UrbIS Topo, sélection par défaut partagée
+data/nappe/                  réglages de la couche Nappe phréatique (parametres.json)
 data/fonds-de-plan/          services externes : services.json + un fichier par service
 data/points-metier/          (réservé : structure des points métier, phase B)
 data/signalements/           vocabulaire.json : natures, types, domaines techniques (public)
@@ -944,6 +970,7 @@ data/urbis-topo/catalogue.js       catalogue complet des types d'objets UrbIS To
 src/urbisTopoSelectionStore.js sélection utilisateur des types UrbIS Topo affichés
 src/urbisTopoPicker.js        sélecteur plein écran (catalogue classé par thème)
 src/urbisTopoLayer.js        affichage carte des types UrbIS Topo sélectionnés
+src/nappeLayer.js            couche Nappe phréatique : isopièzes (mai 2013) et stations piézométriques, WFS Bruxelles Environnement
 data/plans-patrimoine/catalogue.js catalogue des couches "Plans patrimoine" (référence)
 src/patrimoineSelectionStore.js sélection utilisateur des couches Plans patrimoine affichées
 src/patrimoinePicker.js      sélecteur plein écran "Plans patrimoine"

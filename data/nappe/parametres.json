@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "date": "2026-10-20",
+  "note": "Réglages de la couche « Nappe phréatique » (WFS de Bruxelles Environnement, service « water » ; URL dans data/fonds-de-plan/services.json, clé « eaux-souterraines »). Source des noms de couches et d'attributs : descriptif officiel du WFS géologie/hydrogéologie (20190513_descriptif_wfs_geol_hydrogeol_FR.pdf) et catalogue Geobru ; AUCUN n'a pu être vérifié par un appel réel (l'accès sortant de l'environnement de développement vers *.environnement.brussels est bloqué). Le préfixe d'espace de noms des couches n'est pas supposé : nappeLayer.js le retrouve dans le GetCapabilities en cherchant le nom de couche ci-dessous comme fin du nom publié. À confirmer depuis un navigateur : noms d'attributs, CORS, nombre d'objets par emprise. Données du modèle BPSM v1.0 (FEFLOW), état de MAI 2013, valeur indicative, CC BY 4.0.",
+  "wfsVersion": "1.1.0",
+  "minZoom": 14,
+  "maxFeaturesPerQuery": 2000,
+  "periodeReference": "mai 2013",
+  "mentionLegale": "Données issues d'un modèle (BPSM v1.0), état de mai 2013 : valeur indicative, qui ne remplace pas une étude d'expert.",
+  "attribution": "&copy; Bruxelles Environnement &ndash; nappe phréatique (CC BY 4.0)",
+  "isopieses": {
+    "libelle": "Isopièzes de la nappe phréatique",
+    "couche": "groundwater_model_phreatic_head",
+    "attributNiveau": "gw_head",
+    "unite": "m DNG",
+    "attributsPopup": {
+      "gw_head": "Niveau de la nappe (m DNG)",
+      "period": "Période",
+      "uh_rbc": "Unité hydrogéologique",
+      "code_uh": "Code UH",
+      "source": "Source"
+    },
+    "couleur": "#0b5fa5",
+    "epaisseur": 1.5,
+    "etiquetteMinZoom": 16
+  },
+  "stations": {
+    "libelle": "Stations de mesure piézométriques",
+    "couche": "water_monitoring_groundwater_level",
+    "couleur": "#00838f",
+    "rayon": 6,
+    "note": "Couche des points de mesure (suivi quantitatif). Les attributs ne sont pas listés ici : la fenêtre d'information affiche tous ceux que le service renvoie, tant qu'ils n'ont pas été confirmés. Les chroniques (séries temporelles) ne sont PAS exposées par le WFS : elles passent par l'outil Geodata de Bruxelles Environnement."
+  }
+}

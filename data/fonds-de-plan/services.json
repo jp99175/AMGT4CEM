@@ -38,6 +38,10 @@
       "libelle": "Bruxelles Mobilité (MobiGIS) — couche publique « Métro » : stations et tunnels (WFS)",
       "url": "https://data.mobility.brussels/geoserver/bm_public_transport/wfs",
       "couche": "bm_public_transport:Metro"
+    },
+    "eaux-souterraines": {
+      "libelle": "Bruxelles Environnement — eaux (WFS) : isopièzes de la nappe phréatique et stations piézométriques",
+      "url": "https://ows.environnement.brussels/water"
     }
   }
 }

@@ -62,6 +62,7 @@
   const pointsGroup = AMGT4CEM_SignalementsLayer.init(map); // signalements et demandes (ex-« points métier »)
   AMGT4CEM_UrbisTopoLayer.init(map);
   AMGT4CEM_UrbisTopoPicker.init();
+  AMGT4CEM_NappeLayer.init(map); // nappe phréatique : décochée au départ, rien n'est requêté avant la case
   AMGT4CEM_Interstation.init(); // charge les numéros d'interstation (associés aux tunnels dans AMGT4CEM_Network.build)
   AMGT4CEM_PatrimoineLayer.init(map);
   AMGT4CEM_PatrimoinePicker.init();

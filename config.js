@@ -87,6 +87,7 @@ const AMGT4CEM_CONFIG = {
       'flandre': './data/fonds-de-plan/flandre.json',
       'geocodeur': './data/fonds-de-plan/geocodeur.json',
       'urbis-topo': './data/urbis-topo/parametres.json',
+      'nappe': './data/nappe/parametres.json',
     },
   },
 
@@ -193,6 +194,7 @@ const AMGT4CEM_CONFIG = {
         './src/urbisTopoSelectionStore.js',
         './src/urbisTopoLayer.js',
         './src/urbisTopoPicker.js',
+        './src/nappeLayer.js',
         './src/patrimoineSelectionStore.js',
         './src/patrimoineLayer.js',
         './src/patrimoinePicker.js',

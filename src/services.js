@@ -122,6 +122,10 @@ const AMGT4CEM_Services = {
       colorPalette: t.colorPalette || [],
     };
 
+    // Nappe phréatique (Bruxelles Environnement) : adresse du WFS dans services.json (clé `eaux-souterraines`),
+    // réglages (couches, attributs, zoom minimal, mentions) dans data/nappe/parametres.json.
+    config.nappe = { ...src('nappe'), wfsUrl: this._url('eaux-souterraines') };
+
     // Couche Métro publique (non connecté) : adresse et couche de la Région lues dans services.json (clé `metro`),
     // copie de secours et délai fixés dans config.js.
     const m = (this._services && this._services.services && this._services.services.metro) || {};
