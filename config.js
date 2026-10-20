@@ -35,6 +35,13 @@ const AMGT4CEM_CONFIG = {
     lignesJson: ['./data/metro/lignes.json'],
     vocabulairesJson: ['./data/metro/vocabulaires.json', './data/plans-patrimoine/vocabulaires.json'],
   },
+  // Couche Métro PUBLIQUE (personne non connectée, src/metroPublicLayer.js) : Région d'abord (adresse et couche dans
+  // data/fonds-de-plan/services.json, clé `metro`, renseignées par src/services.js), copie de secours du dépôt
+  // ensuite (export d'origine de la même couche) si la Région refuse, ne répond pas ou renvoie un contenu inutilisable.
+  metroPublic: {
+    secoursUrl: './data/metro/region-metro.json',
+    delaiMs: 8000, // attente maximale de chaque lecture avant de passer à la suivante
+  },
   // LEGACY : repères de transition entre tronçons (triangles + codes D0, D1, G1a...), sans identifiant ;
   // à rattacher à lignes.shp quand il existera (voir metroLayer.js et le README).
   reperesTronconsLegacyUrl: './data/plans-patrimoine/reperes-troncons.legacy.json',
@@ -174,6 +181,7 @@ const AMGT4CEM_CONFIG = {
         './src/peLabelAnchors.js',
         './src/interstation.js',
         './src/metroLayer.js',
+        './src/metroPublicLayer.js',
         './src/network.js',
         './src/pointsStore.js',
         './src/auth/auth.js',

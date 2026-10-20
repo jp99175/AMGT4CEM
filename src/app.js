@@ -93,20 +93,75 @@
     },
   });
 
-  /** Réseau construit : le menu (opacité), la recherche et la vue en dépendent. */
-  function onNetworkBuilt({ layersByType, bounds, searchIndex }) {
-    AMGT4CEM_MapMenu.setMetroLayers(layersByType);
-    AMGT4CEM_SearchTool.setMetroIndex(searchIndex);
-
-    metroBounds = bounds;
-    if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
-  }
-
   /** Message bloquant (bandeau) : les données ne se lisent que servies par HTTP. */
   function showLoadError(message) {
     const banner = document.getElementById('amgt-load-error');
     banner.textContent = message;
     banner.classList.remove('amgt-hidden');
+  }
+
+  // Couche Métro selon la connexion :
+  //  - personne n'est connecté : couche PUBLIQUE de la Région (stations et tunnels, copie de secours du dépôt si la
+  //    Région ne répond pas), voir src/metroPublicLayer.js ; ni planches ni référentiel ;
+  //  - un compte est connecté : couche corrigée (shapefile + référentiel) et planches « Plans patrimoine »,
+  //    voir src/network.js.
+  // Elle est relue sans recharger la page à chaque connexion ou déconnexion (voir plus bas).
+  let networkMode = null; // 'prive' | 'public' : source actuellement affichée (null : rien d'affiché)
+  let networkLayers = null; // groupes Leaflet du réseau affiché
+  let networkToken = 0; // numéro de la dernière lecture demandée : une lecture périmée est jetée
+  let networkFitted = false; // la vue a déjà été recentrée sur le réseau une première fois
+
+  function wantedNetworkMode() {
+    return AMGT4CEM_Auth.session() ? 'prive' : 'public';
+  }
+
+  /** Retire de la carte les couches d'un réseau (Stations, Tunnels, et planches de la source privée). */
+  function discardNetwork(mode, layersByType) {
+    if (!layersByType) return;
+    for (const type of ['MS', 'MT']) if (layersByType[type]) map.removeLayer(layersByType[type]);
+    if (mode === 'prive') AMGT4CEM_PatrimoineLayer.unregisterExternalLayer('plans-ensemble-500e');
+  }
+
+  /** Réseau construit : le menu (opacité), la recherche et la vue en dépendent. */
+  function onNetworkBuilt(mode, { layersByType, bounds, searchIndex }) {
+    networkMode = mode;
+    networkLayers = layersByType;
+    AMGT4CEM_MapMenu.setMetroLayers(layersByType);
+    AMGT4CEM_SearchTool.setMetroIndex(searchIndex);
+
+    // Case « Métro » décochée avant le changement de source : les nouvelles couches restent masquées.
+    if (!document.getElementById('amgt-layer-metro').checked) {
+      for (const type of ['MS', 'MT']) map.removeLayer(layersByType[type]);
+    }
+
+    metroBounds = bounds;
+    // Recentrage seulement au premier affichage : un changement de source ne déplace pas la carte.
+    if (!networkFitted && bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
+    networkFitted = true;
+    document.getElementById('amgt-load-error').classList.add('amgt-hidden');
+  }
+
+  /** Affiche la source de réseau qui correspond à la connexion actuelle ; sans effet si c'est déjà elle. */
+  function loadNetwork() {
+    const mode = wantedNetworkMode();
+    if (mode === networkMode) return;
+    const token = ++networkToken;
+    const loading = mode === 'prive' ? AMGT4CEM_Network.load(map) : AMGT4CEM_MetroPublicLayer.load(map);
+    loading.then(
+      (result) => {
+        if (token !== networkToken) { // connexion ou déconnexion pendant la lecture : cette lecture est périmée
+          discardNetwork(mode, result.layersByType);
+          return;
+        }
+        discardNetwork(networkMode, networkLayers); // l'ancienne source (si elle existe) cède la place
+        onNetworkBuilt(mode, result);
+      },
+      (err) => {
+        if (token !== networkToken) return;
+        console.error('[AMGT4CEM] Chargement des données impossible :', err);
+        showLoadError(`Chargement des données impossible : ${err.message}`);
+      }
+    );
   }
 
   // Les shapefiles et JSON se lisent par fetch(), impossible en file:// (restriction des
@@ -116,13 +171,11 @@
       'Servez le dossier par un petit serveur HTTP : « python3 -m http.server 8000 » dans le dossier, ' +
       'puis ouvrez http://localhost:8000/.');
   } else {
-    AMGT4CEM_Network.load(map).then(
-      onNetworkBuilt,
-      (err) => {
-        console.error('[AMGT4CEM] Chargement des données impossible :', err);
-        showLoadError(`Chargement des données impossible : ${err.message}`);
-      }
-    );
+    loadNetwork();
+    // Connexion, déconnexion ou session expirée (onglet redevenu actif, la session expire sans événement) :
+    // la source du réseau suit.
+    AMGT4CEM_Auth.onChange(loadNetwork);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) loadNetwork(); });
   }
 
   // « ✚ Ajouter un point » : lance « Point métier » directement, ou ouvre le menu si un plugin y a ajouté des entrées.

@@ -426,7 +426,7 @@ permanente côté application.
 **Où est configuré chaque service.** Plus rien n'est en dur dans `config.js` :
 - `data/fonds-de-plan/services.json` — fichier **général** : adresse du relais et
   URL de chaque service (`urbis`, `bruciel`, `urbis-orthophotos`, `flandre`,
-  `urbis-adm`, `geocodeur`, `urbis-topo`) ;
+  `urbis-adm`, `geocodeur`, `urbis-topo`, `metro`) ;
 - un fichier par service pour ses réglages propres (couches, années, attribution,
   format, CRS, notes de provenance) : `data/fonds-de-plan/urbis.json`, `bruciel.json`,
   `urbis-orthophotos.json`, `flandre.json`, `geocodeur.json`, et
@@ -489,6 +489,20 @@ Familles actuelles :
   stations — étiquette soulignée à taille réelle, reliée au centre de son
   tronçon par une ligne de repère (voir plus bas).
 - **Plans d'ensemble (1/500e)** : voir ci-dessous.
+
+**Couche Métro selon la connexion.** Sans connexion, la carte affiche la couche
+**publique** de la Région (Bruxelles Mobilité, MobiGIS, WFS `bm_public_transport:Metro`,
+Lambert 72) : stations et tunnels, avec leurs noms FR/NL, sans planches ni
+référentiel (`src/metroPublicLayer.js`). Le navigateur interroge la Région
+**d'abord** ; si elle refuse (CORS), ne répond pas en 8 s ou renvoie un contenu
+inutilisable, il lit à la place la **copie de secours** `data/metro/region-metro.json`
+(export d'origine de la même couche : 156 polygones, 69 stations et 87 tunnels). La
+source utilisée est écrite dans la console (« Couche métro publique : source ... »).
+Avec un compte connecté, la couche corrigée (shapefile + référentiel) et les planches
+de « Plans patrimoine » remplacent la couche publique, sans recharger la page ; elles
+cèdent la place à la couche publique à la déconnexion (`src/app.js`, `loadNetwork`).
+L'adresse et le nom de la couche de la Région sont dans `data/fonds-de-plan/services.json`
+(clé `metro`).
 
 La couche **« Noms de station »** importée d'INFRAVIEW (206 textes, sans lien
 fiable avec les emprises) a été **retirée**. Les noms et références de station
@@ -907,8 +921,9 @@ src/referentiel.js           chargement des géométries + référentiel JSON, j
 src/network.js               construction partagée du réseau (stations/tunnels/planches) pour carto et signal
 src/scaledText.js            texte HTML à taille réelle constante (zoom), pour les codes de tronçon et les références de planche
 src/metroLayer.js            construction des couches Leaflet Stations/Tunnels/Planches (+ repères legacy)
+src/metroPublicLayer.js      couche Métro publique (non connecté) : WFS de la Région, sinon copie de secours data/metro/region-metro.json
 data/shapefile/              famille 1 : polygones.* et lignes.* (shapefiles Lambert 72, champ `id` seul) + identifiants.json — voir section 4
-data/metro/                  famille 2 : référentiel stations/tunnels/tronçons (polygones.json, lignes.json, vocabulaires.json)
+data/metro/                  famille 2 : référentiel stations/tunnels/tronçons (polygones.json, lignes.json, vocabulaires.json) + region-metro.json (copie de secours de la couche publique)
 data/plans-patrimoine/       référentiel des planches, étiquettes (écrites via le relais), sélection par défaut, fichiers legacy
 data/urbis-topo/             réglages du service UrbIS Topo, sélection par défaut partagée
 data/fonds-de-plan/          services externes : services.json + un fichier par service

@@ -51,6 +51,19 @@ const AMGT4CEM_PatrimoineLayer = {
   },
 
   /**
+   * Retire une couche externe enregistrée par registerExternalLayer (ex : planches PE quand plus aucun compte n'est
+   * connecté) : elle disparaît de la carte et son entrée du catalogue n'affiche plus rien jusqu'à un nouvel enregistrement.
+   */
+  unregisterExternalLayer(id) {
+    const layer = this._externalLayers[id];
+    delete this._externalLayers[id];
+    if (layer && this._subGroups[id] === layer) {
+      if (this._group) this._group.removeLayer(layer);
+      delete this._subGroups[id];
+    }
+  },
+
+  /**
    * Réglage d'opacité (icône curseurs du menu ☰ Carte), 0 à 1. Les couches
    * externes (ex : planches PE) n'y sont pas soumises : leur opacité reste
    * gérée par leur propre module (curseur "Métro" pour PE) pour éviter que

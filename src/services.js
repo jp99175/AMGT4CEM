@@ -122,6 +122,11 @@ const AMGT4CEM_Services = {
       colorPalette: t.colorPalette || [],
     };
 
+    // Couche Métro publique (non connecté) : adresse et couche de la Région lues dans services.json (clé `metro`),
+    // copie de secours et délai fixés dans config.js.
+    const m = (this._services && this._services.services && this._services.services.metro) || {};
+    config.metroPublic = { ...config.metroPublic, wfsUrl: m.url || '', couche: m.couche || '' };
+
     config.peLabelAnchorsRelayUrl = (this._services && this._services.relais && this._services.relais.url) || '';
   },
 

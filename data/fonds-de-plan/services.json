@@ -33,6 +33,11 @@
     "urbis-topo": {
       "libelle": "UrbIS Topo — objets détaillés (WFS)",
       "url": "https://geoservices-urbis.irisnet.be/geoserver/urbistopo/wfs"
+    },
+    "metro": {
+      "libelle": "Bruxelles Mobilité (MobiGIS) — couche publique « Métro » : stations et tunnels (WFS)",
+      "url": "https://data.mobility.brussels/geoserver/bm_public_transport/wfs",
+      "couche": "bm_public_transport:Metro"
     }
   }
 }
