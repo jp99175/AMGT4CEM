@@ -141,9 +141,22 @@
     document.getElementById('amgt-load-error').classList.add('amgt-hidden');
   }
 
+  /**
+   * « Plans patrimoine » est réservée aux comptes connectés : sans connexion, la couche n'est ni affichée ni lue, et sa
+   * ligne du menu « Couches » (case, curseur d'opacité, lien « modifier la sélection ») et son sélecteur sont masqués.
+   */
+  function applyPatrimoineAccess(allowed) {
+    AMGT4CEM_PatrimoineLayer.setAccess(allowed);
+    const row = document.getElementById('amgt-layer-patrimoine').closest('.amgt-layer-row');
+    const slider = document.querySelector('.amgt-opacity-slider-row[data-layer="patrimoine"]');
+    for (const el of [row, slider]) if (el) el.style.display = allowed ? '' : 'none';
+    if (!allowed) AMGT4CEM_PatrimoinePicker.close();
+  }
+
   /** Affiche la source de réseau qui correspond à la connexion actuelle ; sans effet si c'est déjà elle. */
   function loadNetwork() {
     const mode = wantedNetworkMode();
+    applyPatrimoineAccess(mode === 'prive');
     if (mode === networkMode) return;
     const token = ++networkToken;
     const loading = mode === 'prive' ? AMGT4CEM_Network.load(map) : AMGT4CEM_MetroPublicLayer.load(map);

@@ -20,6 +20,7 @@ const AMGT4CEM_PatrimoineLayer = {
   _map: null,
   _group: null,
   _enabled: true,
+  _allowed: true, // accès à la couche (carte AMGT4CEM : réservée aux comptes connectés, voir setAccess)
   _opacityFactor: 1,
   _cache: {}, // id -> features[]
   _subGroups: {}, // id -> L.LayerGroup
@@ -35,6 +36,16 @@ const AMGT4CEM_PatrimoineLayer = {
 
   setEnabled(enabled) {
     this._enabled = enabled;
+    this.refresh();
+  },
+
+  /**
+   * Accès à la couche « Plans patrimoine » : sans accès (personne n'est connecté), rien n'est affiché ni lu,
+   * quelle que soit la case à cocher ni la sélection mémorisée. Vrai par défaut (carte de choix du point de SIG4CEM).
+   */
+  setAccess(allowed) {
+    if (this._allowed === !!allowed) return;
+    this._allowed = !!allowed;
     this.refresh();
   },
 
@@ -81,7 +92,7 @@ const AMGT4CEM_PatrimoineLayer = {
   },
 
   async refresh() {
-    if (!this._enabled) {
+    if (!this._enabled || !this._allowed) {
       this._map.removeLayer(this._group);
       return;
     }
