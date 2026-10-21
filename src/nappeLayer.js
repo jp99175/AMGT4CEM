@@ -476,6 +476,107 @@ const AMGT4CEM_NappeLayer = {
     return out;
   },
 
+  _NO_BAND: -32768,
+
+  /**
+   * Intervalles COLLÉS aux isopièzes : on dessine les lignes sur une grille, on délimite les zones qu'elles
+   * séparent (remplissage par régions), puis chaque zone prend l'intervalle compris entre les deux lignes qui la bordent.
+   * Une zone bordée par une seule ligne (sommet, creux) ou par aucune (vue très rapprochée) est tranchée par une
+   * interpolation en UN point. Les bords des aplats suivent donc exactement les lignes dessinées.
+   * @returns {Int16Array} numéro d'intervalle par cellule (= numéro de sa ligne basse), `_NO_BAND` si indéterminé
+   */
+  _bandGrid(segs, aff, w, h, e, off, rayonM) {
+    const NO = this._NO_BAND, n = w * h, BASE = 2000;
+    const { ox, oy, ax, ay, bx, by } = aff;
+    const det = ax * by - ay * bx;
+    const toCell = (x, y) => [((x - ox) * by - (y - oy) * bx) / det, (ax * (y - oy) - ay * (x - ox)) / det];
+    const line = new Int16Array(n); // 0 = pas de ligne, sinon indice de niveau + BASE
+    for (let s = 0; s < segs.length; s += 5) {
+      const [i1, j1] = toCell(segs[s], segs[s + 1]), [i2, j2] = toCell(segs[s + 2], segs[s + 3]);
+      if ((i1 < -1 && i2 < -1) || (i1 > w + 1 && i2 > w + 1) || (j1 < -1 && j2 < -1) || (j1 > h + 1 && j2 > h + 1)) continue;
+      const idx = Math.round((segs[s + 4] - off) / e) + BASE;
+      const steps = Math.max(1, Math.ceil(Math.hypot(i2 - i1, j2 - j1) / 0.4));
+      for (let k = 0; k <= steps; k++) {
+        const i = Math.floor(i1 + ((i2 - i1) * k) / steps), j = Math.floor(j1 + ((j2 - j1) * k) / steps);
+        if (i >= 0 && i < w && j >= 0 && j < h) line[j * w + i] = idx;
+      }
+    }
+    // Régions (4-connexité) et niveaux des lignes qui les bordent.
+    const region = new Int32Array(n).fill(-1);
+    const info = []; // { cell, levels:Set }
+    const stack = new Int32Array(n);
+    for (let start = 0; start < n; start++) {
+      if (line[start] || region[start] >= 0) continue;
+      const id = info.length;
+      const rec = { cell: start, levels: new Set() };
+      info.push(rec);
+      let sp = 0;
+      stack[sp++] = start;
+      region[start] = id;
+      while (sp) {
+        const k = stack[--sp], i = k % w, j = (k - i) / w;
+        const nb = [i > 0 ? k - 1 : -1, i < w - 1 ? k + 1 : -1, j > 0 ? k - w : -1, j < h - 1 ? k + w : -1];
+        for (const m of nb) {
+          if (m < 0) continue;
+          if (line[m]) rec.levels.add(line[m]);
+          else if (region[m] < 0) { region[m] = id; stack[sp++] = m; }
+        }
+      }
+    }
+    // Régions voisines de part et d'autre d'une même ligne (pour trancher sommets et creux par proximité).
+    const across = [];
+    const seen = new Set();
+    for (let k = 0; k < n; k++) {
+      if (!line[k]) continue;
+      const i = k % w, j = (k - i) / w;
+      const rs = [];
+      for (const m of [i > 0 ? k - 1 : -1, i < w - 1 ? k + 1 : -1, j > 0 ? k - w : -1, j < h - 1 ? k + w : -1]) {
+        if (m >= 0 && region[m] >= 0 && !rs.includes(region[m])) rs.push(region[m]);
+      }
+      for (let p = 0; p < rs.length; p++) for (let q = p + 1; q < rs.length; q++) {
+        const key = rs[p] < rs[q] ? `${rs[p]}_${rs[q]}_${line[k]}` : `${rs[q]}_${rs[p]}_${line[k]}`;
+        if (!seen.has(key)) { seen.add(key); across.push([rs[p], rs[q], line[k] - BASE]); }
+      }
+    }
+    // Intervalle de chaque région : bordée par deux lignes consécutives = l'intervalle qu'elles délimitent.
+    const bandOf = new Int16Array(info.length).fill(NO);
+    const single = []; // régions bordées par une seule ligne : tranchées d'après leurs voisines
+    info.forEach((rec, id) => {
+      const lv = [...rec.levels].sort((a, b) => a - b);
+      if (lv.length === 2 && lv[1] - lv[0] === 1) bandOf[id] = lv[0] - BASE;
+      else if (lv.length === 1) single.push(id);
+      else if (lv.length >= 2) { // lignes non consécutives : valeur interpolée au centre d'une cellule de la région
+        const i = rec.cell % w, j = (rec.cell - i) / w;
+        const cx = ox + (i + 0.5) * ax + (j + 0.5) * bx, cy = oy + (i + 0.5) * ay + (j + 0.5) * by;
+        const v = this._interpolateGrid(segs, { ox: cx - 0.5, oy: cy - 0.5, ax: 1, ay: 0, bx: 0, by: 1 }, 1, 1, rayonM, e)[0];
+        if (!Number.isNaN(v)) bandOf[id] = Math.floor((v - off) / e);
+      }
+    });
+    for (let pass = 0; pass < 6; pass++) {
+      let changed = false;
+      for (const [r1, r2, L] of across) {
+        for (const [r, o] of [[r1, r2], [r2, r1]]) {
+          if (bandOf[r] !== NO || !single.includes(r) || bandOf[o] === NO) continue;
+          // la voisine est au-dessus de la ligne L (intervalle L) -> r est dessous (L-1), et inversement
+          if (bandOf[o] === L) { bandOf[r] = L - 1; changed = true; }
+          else if (bandOf[o] === L - 1) { bandOf[r] = L; changed = true; }
+        }
+      }
+      if (!changed) break;
+    }
+    // Image : régions, puis cases des lignes (elles prennent l'intervalle d'une région voisine).
+    const out = new Int16Array(n).fill(NO);
+    for (let k = 0; k < n; k++) if (region[k] >= 0) out[k] = bandOf[region[k]];
+    for (let k = 0; k < n; k++) {
+      if (!line[k]) continue;
+      const i = k % w, j = (k - i) / w;
+      for (const m of [i > 0 ? k - 1 : -1, i < w - 1 ? k + 1 : -1, j > 0 ? k - w : -1, j < h - 1 ? k + w : -1]) {
+        if (m >= 0 && region[m] >= 0 && out[m] !== NO) { out[k] = out[m]; break; }
+      }
+    }
+    return out;
+  },
+
   /**
    * Colore l'espace entre deux isopièzes voisines (une teinte par intervalle de 2 m, teintes bleues alternées, assorties aux lignes).
    * Calculé pour la vue seulement, sur une grille de cellules d'écran dont la taille grossit si les isopièzes sont
@@ -491,29 +592,20 @@ const AMGT4CEM_NappeLayer = {
     const o = lam([0, 0]), px = lam([size.x, 0]), py = lam([0, size.y]);
     const perX = [(px.x - o.x) / size.x, (px.y - o.y) / size.x], perY = [(py.x - o.x) / size.y, (py.y - o.y) / size.y];
     const mPerPx = Math.hypot(perX[0], perX[1]);
-    const nSeg = segs.length / 5;
-    let c = b.cellulePx;
-    let w, h;
-    for (;;) {
-      w = Math.ceil(size.x / c); h = Math.ceil(size.y / c);
-      const rCells = Math.ceil(b.rayonM / (c * mPerPx));
-      if (nSeg * Math.min(w * h, (2 * rCells + 1) ** 2) <= b.budgetOperations || c >= 40) break;
-      c *= 1.4; // isopièzes très nombreuses : cellules plus grosses (les lignes, dessinées dessus, gardent leur précision)
-    }
+    const c = b.cellulePx;
+    const w = Math.ceil(size.x / c), h = Math.ceil(size.y / c);
     const aff = { ox: o.x, oy: o.y, ax: perX[0] * c, ay: perX[1] * c, bx: perY[0] * c, by: perY[1] * c };
-    const values = this._interpolateGrid(segs, aff, w, h, b.rayonM, b.equidistance);
     const off = this._levelOffset(features, part.attributNiveau, b.equidistance);
-
+    const bandGrid = this._bandGrid(segs, aff, w, h, b.equidistance, off, b.rayonM);
     const canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext('2d');
     const image = ctx.createImageData(w, h);
     const colours = new Map();
     let painted = 0;
-    for (let k = 0; k < values.length; k++) {
-      const v = values[k];
-      if (Number.isNaN(v)) continue;
-      const band = Math.floor((v - off) / b.equidistance);
+    for (let k = 0; k < bandGrid.length; k++) {
+      const band = bandGrid[k];
+      if (band === this._NO_BAND) continue;
       if (!colours.has(band)) colours.set(band, this._bandRgb(band, part));
       const [r, g, bl] = colours.get(band);
       image.data[4 * k] = r; image.data[4 * k + 1] = g; image.data[4 * k + 2] = bl; image.data[4 * k + 3] = 255;
