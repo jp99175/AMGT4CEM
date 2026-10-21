@@ -125,12 +125,12 @@
       </p>
     </div>
 
-    <!-- Nappe phréatique (src/nappeLayer.js) : décochée au départ, rien n'est requêté tant qu'elle ne l'est pas. -->
+    <!-- Géotechnique : nappe phréatique (src/nappeLayer.js) : décochée au départ, rien n'est requêté tant qu'elle ne l'est pas. -->
     <div class="amgt-layer-row">
       <label class="amgt-checkbox-row">
-        <input type="checkbox" id="amgt-layer-nappe" /> Nappe phréatique
+        <input type="checkbox" id="amgt-layer-nappe" /> Géotechnique
       </label>
-      <button type="button" class="amgt-opacity-toggle-btn" data-layer="nappe" title="Régler l'opacité et choisir les éléments">
+      <button type="button" class="amgt-opacity-toggle-btn" data-layer="nappe" title="Régler l'opacité">
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
           <line x1="1" y1="3" x2="15" y2="3" />
           <circle cx="5" cy="3" r="1.6" />
@@ -143,15 +143,9 @@
     </div>
     <div class="amgt-opacity-slider-row amgt-hidden" data-layer="nappe">
       <input type="range" min="0" max="100" value="100" class="amgt-opacity-slider" />
-      <label class="amgt-checkbox-row amgt-nappe-part">
-        <input type="checkbox" id="amgt-nappe-isopieses" checked /> Isopièzes (mai 2013, modèle)
-      </label>
-      <label class="amgt-checkbox-row amgt-nappe-part">
-        <input type="checkbox" id="amgt-nappe-bandes" checked /> Colorer les intervalles
-      </label>
-      <label class="amgt-checkbox-row amgt-nappe-part">
-        <input type="checkbox" id="amgt-nappe-stations" checked /> Stations de mesure
-      </label>
+      <p class="amgt-topo-edit-hint">
+        <a href="#" id="amgt-nappe-edit-link">(modifier la sélection)</a>
+      </p>
     </div>
     <p class="amgt-topo-edit-hint" id="amgt-nappe-status"></p>
 
@@ -405,6 +399,17 @@
   </div>
 
   <!-- Sélecteur plein écran des types de signalements et demandes à afficher (mêmes classes que les autres sélecteurs) -->
+  <!-- Sélecteur plein écran de la couche Géotechnique (src/nappeLayer.js, openPicker) -->
+  <div id="amgt-nappe-picker" class="amgt-hidden amgt-fs-picker">
+    <div class="amgt-fs-picker-header">
+      <h2>Géotechnique : éléments à afficher</h2>
+      <div class="amgt-fs-picker-header-actions">
+        <button id="amgt-nappe-picker-close" class="amgt-btn" title="Retour à la carte">✕ Fermer</button>
+      </div>
+    </div>
+    <div id="amgt-nappe-picker-content" class="amgt-fs-picker-content"></div>
+  </div>
+
   <div id="amgt-signalements-picker" class="amgt-hidden amgt-fs-picker">
     <div class="amgt-fs-picker-header">
       <h2>Signalements et demandes à afficher</h2>

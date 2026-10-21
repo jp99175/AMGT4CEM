@@ -1,5 +1,5 @@
 /**
- * Couche « Nappe phréatique » : deux jeux de données du WFS « water » de Bruxelles Environnement
+ * Couche « Géotechnique » (nappe phréatique) : deux jeux de données du WFS « water » de Bruxelles Environnement
  * (adresse : data/fonds-de-plan/services.json, clé `eaux-souterraines` ; réglages : data/nappe/parametres.json) :
  *
  *  - ISOPIÈZES de la nappe phréatique (lignes de niveau, équidistance 2 m, en m DNG) : résultat du modèle BPSM v1.0,
@@ -40,6 +40,8 @@ const AMGT4CEM_NappeLayer = {
     const cfg = AMGT4CEM_CONFIG.nappe || {};
     this._group = L.layerGroup([], { attribution: cfg.attribution || '&copy; Bruxelles Environnement' });
     this._statusEl = document.getElementById('amgt-nappe-status');
+    document.getElementById('amgt-nappe-picker-close').addEventListener('click', () => this.closePicker());
+    this._loadSelection();
     // Intervalles colorés : sous toutes les couches vectorielles (overlayPane = 400), au-dessus des fonds de carte (tilePane = 200).
     const pane = map.createPane('amgtNappeFill');
     pane.style.zIndex = 395;
@@ -58,11 +60,57 @@ const AMGT4CEM_NappeLayer = {
   },
 
   /** Cases « Isopièzes » / « Stations de mesure » du sous-volet du menu. */
-  setParts({ isopieses, stations, bandes }) {
+  _storeKey: 'amgt-geotech-elements',
+
+  /** Éléments affichés (choix de « modifier la sélection »), mémorisés sur l'appareil. */
+  _loadSelection() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(this._storeKey) || 'null');
+      if (saved) this.setParts(saved, true);
+    } catch (err) { /* stockage indisponible : tout est affiché */ }
+  },
+
+  openPicker() {
+    this._renderPicker();
+    document.getElementById('amgt-nappe-picker').classList.remove('amgt-hidden');
+  },
+
+  closePicker() {
+    document.getElementById('amgt-nappe-picker').classList.add('amgt-hidden');
+  },
+
+  _renderPicker() {
+    const content = document.getElementById('amgt-nappe-picker-content');
+    const items = [
+      ['isopieses', 'Isopièzes de la nappe phréatique (mai 2013, modèle)', this._showIsopieses],
+      ['bandes', 'Colorer les intervalles entre isopièzes', this._showBandes],
+      ['stations', 'Stations de mesure piézométriques', this._showStations],
+    ];
+    content.textContent = '';
+    for (const [key, label, on] of items) {
+      const row = document.createElement('label');
+      row.className = 'amgt-checkbox-row';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = on;
+      cb.addEventListener('change', () => {
+        AMGT4CEM_ScreenshotTool.invalidateBackground();
+        this.setParts({ [key]: cb.checked });
+        this._renderPicker();
+      });
+      row.append(cb, document.createTextNode(' ' + label));
+      content.append(row);
+    }
+  },
+
+  setParts({ isopieses, stations, bandes }, silent) {
     if (typeof isopieses === 'boolean') this._showIsopieses = isopieses;
     if (typeof bandes === 'boolean') this._showBandes = bandes;
     if (typeof stations === 'boolean') this._showStations = stations;
-    this.refresh();
+    if (!silent) {
+      try { localStorage.setItem(this._storeKey, JSON.stringify({ isopieses: this._showIsopieses, bandes: this._showBandes, stations: this._showStations })); } catch (err) { /* choix valable pour la session */ }
+      this.refresh();
+    }
   },
 
   /** Réglage d'opacité (icône curseurs du menu ☰ Carte), 0 à 1. */
@@ -294,7 +342,7 @@ const AMGT4CEM_NappeLayer = {
       }
       if (bandes) this._renderBands(fetched.list, part, min, max);
       this._renderIsopieses(features.list, part, cfg, min, max);
-      const legend = Number.isFinite(min) && max > min ? `niveaux de ${this._fmt(min)} à ${this._fmt(max)} m DNG, du clair au foncé` : '';
+      const legend = Number.isFinite(min) && max > min ? `niveaux de ${this._fmt(min)} à ${this._fmt(max)} m DNG, une teinte par intervalle de ${part.bandes ? part.bandes.equidistance : 2} m (valeur sur chaque ligne)` : '';
       return { truncated: features.truncated, count: features.list.length, label: 'isopièzes', source: this._sourceNote(features.ds), legend };
     } catch (err) {
       console.warn('[AMGT4CEM] Isopièzes de la nappe indisponibles :', err);
@@ -311,16 +359,33 @@ const AMGT4CEM_NappeLayer = {
     return Number(v).toLocaleString('fr-BE', { maximumFractionDigits: 1 });
   },
 
-  /** Couleur de la rampe (liste de teintes du plus bas au plus haut niveau), interpolée en RVB. */
-  _rampColor(v, min, max, stops) {
-    if (!stops || !stops.length || !(max > min) || !Number.isFinite(v)) return null;
-    const t = Math.min(1, Math.max(0, (v - min) / (max - min))) * (stops.length - 1);
-    const i = Math.min(stops.length - 2, Math.floor(t));
-    const f = t - i;
-    const rgb = (hex) => [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
-    const [a, b] = [rgb(stops[i]), rgb(stops[i + 1])];
-    return `rgb(${a.map((c, k) => Math.round(c + (b[k] - c) * f)).join(',')})`;
+  /**
+   * Teinte d'un intervalle : palette de bleus, parcourue dans un ordre qui écarte deux intervalles voisins
+   * (`ordrePalette`), donc toujours bien distincts l'un de l'autre. Retourne [r, g, b].
+   * @param {number} k - numéro de l'intervalle = (niveau de sa ligne basse − décalage) / équidistance
+   */
+  _bandRgb(k, part) {
+    const pal = part.palette, order = part.ordrePalette || pal.map((_, i) => i);
+    const hex = pal[order[((k % order.length) + order.length) % order.length]];
+    return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
   },
+
+  /** Décalage des niveaux par rapport à un multiple de l'équidistance (les niveaux du jeu sont tous espacés de 2 m). */
+  _levelOffset(features, attr, e) {
+    for (const f of features) {
+      const v = Number(f.properties && f.properties[attr]);
+      if (Number.isFinite(v)) return ((v % e) + e) % e;
+    }
+    return 0;
+  },
+
+  /** Couleur de la ligne d'un niveau : la teinte de l'intervalle qu'elle borde par le bas, assombrie. */
+  _lineColor(level, part, off) {
+    const e = part.bandes ? part.bandes.equidistance : 2;
+    const rgb = this._bandRgb(Math.round((level - off) / e), part).map((c) => Math.round(c * 0.72));
+    return `rgb(${rgb.join(',')})`;
+  },
+
 
   _textWidth(text, px) {
     if (!this._canvasCtx) this._canvasCtx = document.createElement('canvas').getContext('2d');
@@ -412,7 +477,7 @@ const AMGT4CEM_NappeLayer = {
   },
 
   /**
-   * Colore l'espace entre deux isopièzes voisines (une teinte par intervalle de 2 m, la même rampe que les lignes).
+   * Colore l'espace entre deux isopièzes voisines (une teinte par intervalle de 2 m, teintes bleues alternées, assorties aux lignes).
    * Calculé pour la vue seulement, sur une grille de cellules d'écran dont la taille grossit si les isopièzes sont
    * nombreuses (budget d'opérations de `bandes.budgetOperations`) ; image posée sous les couches vectorielles.
    */
@@ -437,6 +502,7 @@ const AMGT4CEM_NappeLayer = {
     }
     const aff = { ox: o.x, oy: o.y, ax: perX[0] * c, ay: perX[1] * c, bx: perY[0] * c, by: perY[1] * c };
     const values = this._interpolateGrid(segs, aff, w, h, b.rayonM, b.equidistance);
+    const off = this._levelOffset(features, part.attributNiveau, b.equidistance);
 
     const canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;
@@ -447,11 +513,8 @@ const AMGT4CEM_NappeLayer = {
     for (let k = 0; k < values.length; k++) {
       const v = values[k];
       if (Number.isNaN(v)) continue;
-      const band = Math.floor(v / b.equidistance);
-      if (!colours.has(band)) {
-        const rgb = this._rampColor(band * b.equidistance + b.equidistance / 2, min, max, part.rampe) || 'rgb(95,176,224)';
-        colours.set(band, rgb.match(/\d+/g).map(Number));
-      }
+      const band = Math.floor((v - off) / b.equidistance);
+      if (!colours.has(band)) colours.set(band, this._bandRgb(band, part));
       const [r, g, bl] = colours.get(band);
       image.data[4 * k] = r; image.data[4 * k + 1] = g; image.data[4 * k + 2] = bl; image.data[4 * k + 3] = 255;
       painted++;
@@ -462,6 +525,7 @@ const AMGT4CEM_NappeLayer = {
     this._group.addLayer(L.imageOverlay(canvas.toDataURL('image/png'), bounds, {
       pane: 'amgtNappeFill',
       interactive: false,
+      className: 'amgt-nappe-bands',
       opacity: this._bandOpacity() * this._opacityFactor,
     }));
   },
@@ -480,6 +544,7 @@ const AMGT4CEM_NappeLayer = {
    * le long de chaque ligne, calculées en pixels du zoom courant (donc recalculées à chaque déplacement/zoom).
    */
   _renderIsopieses(list, part, cfg, min, max) {
+    const off = this._levelOffset(list, part.attributNiveau, part.bandes ? part.bandes.equidistance : 2);
     const map = this._map;
     const px = part.etiquettePx || 12;
     const padding = 4;
@@ -487,7 +552,7 @@ const AMGT4CEM_NappeLayer = {
     const margin = 200;
     for (const feature of list) {
       const value = Number(feature.properties && feature.properties[part.attributNiveau]);
-      const color = this._rampColor(value, min, max, part.rampe) || part.couleur;
+      const color = this._lineColor(value, part, off);
       const text = Number.isFinite(value) ? this._fmt(value) : '';
       const width = text ? this._textWidth(text, px) + 2 * padding : 0;
       const keep = []; // morceaux de ligne conservés (LatLng)

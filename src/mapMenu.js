@@ -268,17 +268,15 @@ const AMGT4CEM_MapMenu = {
       AMGT4CEM_PatrimoineLayer.setEnabled(e.target.checked);
     });
 
-    // Nappe phréatique : case principale (décochée au départ) + choix des éléments dans le sous-volet.
+    // Géotechnique (nappe phréatique) : case principale (décochée au départ) + « modifier la sélection ».
     document.getElementById('amgt-layer-nappe').addEventListener('change', (e) => {
       AMGT4CEM_ScreenshotTool.invalidateBackground();
       AMGT4CEM_NappeLayer.setEnabled(e.target.checked);
     });
-    for (const [id, part] of [['amgt-nappe-isopieses', 'isopieses'], ['amgt-nappe-bandes', 'bandes'], ['amgt-nappe-stations', 'stations']]) {
-      document.getElementById(id).addEventListener('change', (e) => {
-        AMGT4CEM_ScreenshotTool.invalidateBackground();
-        AMGT4CEM_NappeLayer.setParts({ [part]: e.target.checked });
-      });
-    }
+    document.getElementById('amgt-nappe-edit-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      AMGT4CEM_NappeLayer.openPicker();
+    });
   },
 
   /**
