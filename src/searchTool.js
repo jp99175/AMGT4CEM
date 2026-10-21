@@ -20,6 +20,7 @@ const AMGT4CEM_SearchTool = {
 
     const open = () => {
       panel.classList.remove('amgt-hidden');
+      toggleBtn.parentElement.classList.add('amgt-search--open');
       toggleBtn.classList.add('amgt-btn--active');
       input.value = '';
       resultsEl.innerHTML = '';
@@ -27,6 +28,7 @@ const AMGT4CEM_SearchTool = {
     };
     const close = () => {
       panel.classList.add('amgt-hidden');
+      toggleBtn.parentElement.classList.remove('amgt-search--open');
       toggleBtn.classList.remove('amgt-btn--active');
       clearTimeout(this._geocodeTimer);
     };
