@@ -34,7 +34,7 @@
       "actif": true,
       "opacite": 0.6,
       "equidistance": 2,
-      "rayonM": 800,
+      "rayonM": 4000,
       "cellulePx": 6,
       "budgetOperations": 40000000
     },

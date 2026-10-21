@@ -476,7 +476,39 @@ const AMGT4CEM_NappeLayer = {
     return out;
   },
 
+  /**
+   * Intervalle d'un point sans ligne de part et d'autre : on prend la ligne la plus proche (niveau V1) et la plus proche
+   * de niveau différent (V2) ; si V2 est plus haut, le point est du côté bas de V1, sinon du côté haut.
+   * @returns {number|null} numéro d'intervalle (= numéro de sa ligne basse)
+   */
+  _nearestBand(segs, cx, cy, e, off) {
+    let d1 = Infinity, v1 = NaN, d2 = Infinity, v2 = NaN;
+    for (let s = 0; s < segs.length; s += 5) {
+      const x1 = segs[s], y1 = segs[s + 1], dx = segs[s + 2] - x1, dy = segs[s + 3] - y1, v = segs[s + 4];
+      const len2 = dx * dx + dy * dy;
+      const t = len2 ? Math.max(0, Math.min(1, ((cx - x1) * dx + (cy - y1) * dy) / len2)) : 0;
+      const d = Math.hypot(cx - (x1 + t * dx), cy - (y1 + t * dy));
+      if (v === v1) { if (d < d1) d1 = d; }
+      else if (d < d1) { if (v1 !== v) { d2 = d1; v2 = v1; } d1 = d; v1 = v; }
+      else if (v !== v1 && (v === v2 ? d < d2 : d < d2)) { d2 = d; v2 = v; }
+    }
+    if (!Number.isFinite(d1)) return null;
+    const k1 = Math.round((v1 - off) / e);
+    if (!Number.isFinite(v2)) return k1;
+    return v2 > v1 ? k1 - 1 : k1;
+  },
+
   _NO_BAND: -32768,
+
+  /** Intervalle au centre d'une cellule de la région : interpolation entre deux lignes de part et d'autre, sinon ligne la plus proche. */
+  _nearestBandAt(rec, w, ox, oy, ax, ay, bx, by, segs, e, off) {
+    const i = rec.cell % w, j = (rec.cell - i) / w;
+    const cx = ox + (i + 0.5) * ax + (j + 0.5) * bx, cy = oy + (i + 0.5) * ay + (j + 0.5) * by;
+    const v = this._interpolateGrid(segs, { ox: cx - 0.5, oy: cy - 0.5, ax: 1, ay: 0, bx: 0, by: 1 }, 1, 1, Infinity, e)[0];
+    if (!Number.isNaN(v)) return Math.floor((v - off) / e);
+    const k = this._nearestBand(segs, cx, cy, e, off);
+    return k === null ? this._NO_BAND : k;
+  },
 
   /**
    * Intervalles COLLÉS aux isopièzes : on dessine les lignes sur une grille, on délimite les zones qu'elles
@@ -545,11 +577,12 @@ const AMGT4CEM_NappeLayer = {
       const lv = [...rec.levels].sort((a, b) => a - b);
       if (lv.length === 2 && lv[1] - lv[0] === 1) bandOf[id] = lv[0] - BASE;
       else if (lv.length === 1) single.push(id);
+      else if (lv.length === 0) bandOf[id] = this._nearestBandAt(rec, w, ox, oy, ax, ay, bx, by, segs, e, off);
       else if (lv.length >= 2) { // lignes non consécutives : valeur interpolée au centre d'une cellule de la région
         const i = rec.cell % w, j = (rec.cell - i) / w;
         const cx = ox + (i + 0.5) * ax + (j + 0.5) * bx, cy = oy + (i + 0.5) * ay + (j + 0.5) * by;
         const v = this._interpolateGrid(segs, { ox: cx - 0.5, oy: cy - 0.5, ax: 1, ay: 0, bx: 0, by: 1 }, 1, 1, rayonM, e)[0];
-        if (!Number.isNaN(v)) bandOf[id] = Math.floor((v - off) / e);
+        bandOf[id] = Number.isNaN(v) ? this._nearestBandAt(rec, w, ox, oy, ax, ay, bx, by, segs, e, off) : Math.floor((v - off) / e);
       }
     });
     for (let pass = 0; pass < 6; pass++) {
@@ -563,6 +596,9 @@ const AMGT4CEM_NappeLayer = {
         }
       }
       if (!changed) break;
+    }
+    for (const id of single) { // sommet ou creux sans voisine résolue : proximité des lignes
+      if (bandOf[id] === NO) bandOf[id] = this._nearestBandAt(info[id], w, ox, oy, ax, ay, bx, by, segs, e, off);
     }
     // Image : régions, puis cases des lignes (elles prennent l'intervalle d'une région voisine).
     const out = new Int16Array(n).fill(NO);
