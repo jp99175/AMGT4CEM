@@ -7,7 +7,7 @@
  *
  *   GET /nappe/etat.json              état de chaque jeu de données (empreinte, dates, dernière erreur)
  *   GET /nappe/<jeu>.json             GeoJSON complet du jeu (isopieses, stations), Lambert 72
- *   GET /nappe/sync                   déclenche une synchronisation immédiate (en-tête X-Sync-Code = secret SYNC_CODE) ;
+ *   GET /nappe/sync                   déclenche une synchronisation immédiate (secret SYNC_CODE : en-tête X-Sync-Code ou ?code=…) ;
  *                                     à lancer une fois après le déploiement, sans attendre le prochain passage
  *
  * Réglages lus à chaque passage dans le site publié (SITE_URL) : data/fonds-de-plan/services.json (adresses des
@@ -127,7 +127,8 @@ export default {
 
     const url = new URL(request.url);
     if (url.pathname === '/nappe/sync') {
-      if (!env.SYNC_CODE || request.headers.get('X-Sync-Code') !== env.SYNC_CODE) return new Response('Code de synchronisation refusé', { status: 403, headers: cors });
+      const code = request.headers.get('X-Sync-Code') || url.searchParams.get('code'); // en-tête, ou ?code=… depuis un navigateur
+      if (!env.SYNC_CODE || code !== env.SYNC_CODE) return new Response('Code de synchronisation refusé', { status: 403, headers: cors });
       try {
         const etat = await synchroniser(env, { force: true });
         return new Response(JSON.stringify(etat, null, 1), { headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8' } });

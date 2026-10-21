@@ -9,7 +9,7 @@ l'appareil (cache du navigateur) et ne s'adresse au service régional qu'à déf
 |---|---|---|
 | `GET /nappe/etat.json` | public | état de chaque jeu : empreinte, date de dernière vérification, date de dernier changement, dernière erreur |
 | `GET /nappe/isopieses.json` · `GET /nappe/stations.json` | public | GeoJSON complet du jeu, Lambert 72 |
-| `GET /nappe/sync` | secret `SYNC_CODE` (en-tête `X-Sync-Code`) | synchronisation immédiate de tous les jeux |
+| `GET /nappe/sync` | secret `SYNC_CODE` (en-tête `X-Sync-Code`, ou `?code=…` dans l'adresse) | synchronisation immédiate de tous les jeux |
 
 - **Contrôle de fraîcheur** : le Worker passe toutes les 6 heures (`wrangler.toml`, `crons`). Un jeu n'est réinterrogé que
   s'il est « échu » (`synchro.intervalleJours` dans `data/nappe/parametres.json` : 30 jours pour les isopièzes, 1 jour pour
@@ -41,6 +41,8 @@ Même bucket que le serveur de dépôt (`amgt4cem-depots`), préfixe `public/nap
    ```
    curl -H "X-Sync-Code: <le secret>" https://amgt4cem-nappe-sync.<compte>.workers.dev/nappe/sync
    ```
+   ou, sans terminal, en ouvrant dans un navigateur
+   `https://amgt4cem-nappe-sync.<compte>.workers.dev/nappe/sync?code=<le secret>` (peut durer une minute).
    La réponse est l'état : chaque jeu doit indiquer `"disponible": true` et `"derniereErreur": null`.
    Si une erreur apparaît (nom de couche, 502 persistant...), elle est écrite dans `derniereErreur`.
 4. `ALLOWED_ORIGINS` (`wrangler.toml`) doit contenir l'adresse du site (`https://jp99175.github.io`).
