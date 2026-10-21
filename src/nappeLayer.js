@@ -24,8 +24,8 @@ const AMGT4CEM_NappeLayer = {
   _fetchToken: 0,
   _moveTimer: null,
   _candidates: [], // couches publiées au nom proche, pour le message d'erreur
-  _typeNames: {}, // nom configuré -> nom publié (ou null si introuvable), mémorisé par session
-  _capabilitiesPromise: null,
+  _typeNames: {}, // « adresse|nom configuré » -> nom publié (ou null si introuvable), mémorisé par session
+  _capabilitiesByUrl: {}, // GetCapabilities par adresse de service
   _statusEl: null,
   // Opacités de base (facteur 1) : le facteur réglable du menu ☰ Carte s'applique en multiplicateur dessus.
   _baseLineOpacity: 0.9,
@@ -78,9 +78,8 @@ const AMGT4CEM_NappeLayer = {
     this._setStatus(this._enabled ? 'Chargement…' : '');
 
     const cfg = AMGT4CEM_CONFIG.nappe;
-    if (!this._enabled || !cfg || !cfg.wfsUrl || (!this._showIsopieses && !this._showStations)) {
+    if (!this._enabled || !cfg || !cfg.urls || (!this._showIsopieses && !this._showStations)) {
       this._map.removeLayer(this._group);
-      if (this._enabled && (!cfg || !cfg.wfsUrl)) this._setStatus('Service non configuré (services.json, clé « eaux-souterraines »).');
       return;
     }
     this._group.addTo(this._map);
@@ -113,7 +112,7 @@ const AMGT4CEM_NappeLayer = {
   async _loadIsopieses(cfg, bbox, token) {
     const part = cfg.isopieses;
     try {
-      const features = await this._fetchFeatures(part.couche, bbox, cfg);
+      const features = await this._fetchFeatures(part, bbox, cfg);
       if (token !== this._fetchToken) return null;
       const labelled = this._map.getZoom() >= part.etiquetteMinZoom;
       for (const feature of features.list) {
@@ -166,7 +165,7 @@ const AMGT4CEM_NappeLayer = {
   async _loadStations(cfg, bbox, token) {
     const part = cfg.stations;
     try {
-      const features = await this._fetchFeatures(part.couche, bbox, cfg);
+      const features = await this._fetchFeatures(part, bbox, cfg);
       if (token !== this._fetchToken) return null;
       for (const feature of features.list) {
         const g = feature.geometry;
@@ -192,30 +191,39 @@ const AMGT4CEM_NappeLayer = {
 
   // --- Service WFS ---------------------------------------------------------------------------------------------
 
-  /** Nom publié d'une couche (avec préfixe), d'après le GetCapabilities ; null s'il n'y figure pas. */
-  async _resolveTypeName(configured, cfg) {
-    if (configured in this._typeNames) return this._typeNames[configured];
-    if (!this._capabilitiesPromise) this._capabilitiesPromise = this._fetchPublishedTypeNames(cfg);
-    const published = await this._capabilitiesPromise;
+  /** Adresse du WFS d'un élément (isopièzes, stations) d'après services.json ; lève une Error si absente. */
+  _serviceUrl(part, cfg) {
+    const url = cfg.urls && cfg.urls[part.service];
+    if (!url) throw new Error(`service « ${part.service} » non configuré (data/fonds-de-plan/services.json)`);
+    return url;
+  },
+
+  /** Nom publié d'une couche (avec préfixe), d'après le GetCapabilities de son service ; null s'il n'y figure pas. */
+  async _resolveTypeName(part, cfg) {
+    const url = this._serviceUrl(part, cfg);
+    const memo = `${url}|${part.couche}`;
+    if (memo in this._typeNames) return this._typeNames[memo];
+    if (!this._capabilitiesByUrl[url]) this._capabilitiesByUrl[url] = this._fetchPublishedTypeNames(url, cfg);
+    const published = await this._capabilitiesByUrl[url];
     // Préfixe d'espace de noms (« ns:nom ») ou de jeu de données (« bruenvi_nom ») : on accepte une fin de nom égale
     // à celle configurée, la plus courte l'emportant (la plus proche du nom exact).
     const matches = published
-      .filter((name) => name === configured || name.endsWith(`:${configured}`) || name.endsWith(`_${configured}`))
+      .filter((name) => name === part.couche || name.endsWith(`:${part.couche}`) || name.endsWith(`_${part.couche}`))
       .sort((a, b) => a.length - b.length);
-    this._typeNames[configured] = matches[0] || null;
+    this._typeNames[memo] = matches[0] || null;
     if (!matches[0]) {
       const related = published.filter((n) => /groundwater|piezo|phreatic|nappe|grondwater/i.test(n));
-      console.warn(`[AMGT4CEM] Couche « ${configured} » absente du GetCapabilities (${published.length} couches publiées). ` +
-        `Couches proches : ${related.join(', ') || 'aucune'}.`);
-      this._candidates = related;
+      console.warn(`[AMGT4CEM] Couche « ${part.couche} » absente du GetCapabilities de ${url} (${published.length} couches publiées). ` +
+        `Couches proches : ${related.join(', ') || 'aucune'}. Toutes : ${published.join(', ')}`);
+      this._candidates = related.length ? related : published;
     }
-    return this._typeNames[configured];
+    return this._typeNames[memo];
   },
 
-  async _fetchPublishedTypeNames(cfg) {
+  async _fetchPublishedTypeNames(url, cfg) {
     const params = new URLSearchParams({ service: 'WFS', version: cfg.wfsVersion, request: 'GetCapabilities' });
     try {
-      const response = await fetch(`${cfg.wfsUrl}?${params.toString()}`);
+      const response = await fetch(`${url}?${params.toString()}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const xml = new DOMParser().parseFromString(await response.text(), 'text/xml');
       return Array.from(xml.getElementsByTagNameNS('*', 'FeatureType'))
@@ -225,17 +233,18 @@ const AMGT4CEM_NappeLayer = {
         })
         .filter(Boolean);
     } catch (err) {
-      this._capabilitiesPromise = null; // une panne passagère ne doit pas condamner la session : on réessaiera
+      delete this._capabilitiesByUrl[url]; // une panne passagère ne doit pas condamner la session : on réessaiera
       throw err;
     }
   },
 
   /** Objets de l'emprise visible (bbox Lambert 72), au plus `maxFeaturesPerQuery`. */
-  async _fetchFeatures(configuredName, [minX, minY, maxX, maxY], cfg) {
-    const typeName = await this._resolveTypeName(configuredName, cfg);
+  async _fetchFeatures(part, [minX, minY, maxX, maxY], cfg) {
+    const url = this._serviceUrl(part, cfg);
+    const typeName = await this._resolveTypeName(part, cfg);
     if (!typeName) {
-      const near = (this._candidates || []).slice(0, 6).join(', ');
-      throw new Error(`couche « ${configuredName} » introuvable${near ? ` ; couches proches publiées : ${near}` : ''}`);
+      const near = (this._candidates || []).slice(0, 8).join(', ');
+      throw new Error(`couche « ${part.couche} » introuvable sur ${url}${near ? ` ; couches publiées proches : ${near}` : ''}`);
     }
     const crs = AMGT4CEM_CONFIG.businessCRS.epsg;
     const params = new URLSearchParams({
@@ -248,7 +257,7 @@ const AMGT4CEM_NappeLayer = {
       bbox: `${minX},${minY},${maxX},${maxY},${crs}`,
       maxFeatures: String(cfg.maxFeaturesPerQuery + 1), // un objet de trop sert à détecter la troncature
     });
-    const response = await fetch(`${cfg.wfsUrl}?${params.toString()}`);
+    const response = await fetch(`${url}?${params.toString()}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const geojson = await response.json();
     const all = geojson.features || [];

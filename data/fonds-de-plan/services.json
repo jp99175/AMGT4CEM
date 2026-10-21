@@ -40,8 +40,12 @@
       "couche": "bm_public_transport:Metro"
     },
     "eaux-souterraines": {
-      "libelle": "Bruxelles Environnement — eaux (WFS) : isopièzes de la nappe phréatique et stations piézométriques",
+      "libelle": "Bruxelles Environnement — eaux (WFS) : stations piézométriques (monitoring_groundwater_level)",
       "url": "https://ows.environnement.brussels/water"
+    },
+    "geologie": {
+      "libelle": "Bruxelles Environnement — géologie et hydrogéologie (WFS) : isopièzes de la nappe phréatique (mai 2013)",
+      "url": "https://ows.environnement.brussels/geology"
     }
   }
 }
