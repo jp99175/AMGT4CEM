@@ -23,6 +23,7 @@ const AMGT4CEM_NappeLayer = {
   _enabled: false, // la case du menu est décochée au départ : aucune requête tant qu'on ne la coche pas
   _showIsopieses: true,
   _showStations: true,
+  _showBandes: true,
   _fetchToken: 0,
   _moveTimer: null,
   _candidates: [], // couches publiées au nom proche, pour le message d'erreur
@@ -39,6 +40,10 @@ const AMGT4CEM_NappeLayer = {
     const cfg = AMGT4CEM_CONFIG.nappe || {};
     this._group = L.layerGroup([], { attribution: cfg.attribution || '&copy; Bruxelles Environnement' });
     this._statusEl = document.getElementById('amgt-nappe-status');
+    // Intervalles colorés : sous toutes les couches vectorielles (overlayPane = 400), au-dessus des fonds de carte (tilePane = 200).
+    const pane = map.createPane('amgtNappeFill');
+    pane.style.zIndex = 395;
+    pane.style.pointerEvents = 'none';
 
     map.on('moveend', () => {
       if (!this._enabled) return;
@@ -53,8 +58,9 @@ const AMGT4CEM_NappeLayer = {
   },
 
   /** Cases « Isopièzes » / « Stations de mesure » du sous-volet du menu. */
-  setParts({ isopieses, stations }) {
+  setParts({ isopieses, stations, bandes }) {
     if (typeof isopieses === 'boolean') this._showIsopieses = isopieses;
+    if (typeof bandes === 'boolean') this._showBandes = bandes;
     if (typeof stations === 'boolean') this._showStations = stations;
     this.refresh();
   },
@@ -66,6 +72,8 @@ const AMGT4CEM_NappeLayer = {
     this._group.eachLayer((layer) => {
       if (layer instanceof L.CircleMarker) {
         layer.setStyle({ opacity: factor, fillOpacity: this._basePointFillOpacity * factor });
+      } else if (layer instanceof L.ImageOverlay) {
+        layer.setOpacity(this._bandOpacity() * factor);
       } else if (layer instanceof L.Polyline) {
         layer.setStyle({ opacity: this._baseLineOpacity * factor });
       } else if (layer instanceof L.Marker && layer.getElement()) {
@@ -268,12 +276,23 @@ const AMGT4CEM_NappeLayer = {
   async _loadIsopieses(cfg, bbox, token) {
     const part = cfg.isopieses;
     try {
-      const features = await this._getFeatures('isopieses', part, bbox, cfg);
+      // Les intervalles se calculent avec des isopièzes situées au-delà de la vue (la ligne voisine peut être loin) :
+      // bbox élargie pour elles, vue stricte pour dessiner les lignes et leurs étiquettes.
+      const bandes = part.bandes && part.bandes.actif && this._showBandes ? part.bandes : null;
+      const margin = bandes ? bandes.rayonM : 0;
+      const wide = [bbox[0] - margin, bbox[1] - margin, bbox[2] + margin, bbox[3] + margin];
+      const fetched = await this._getFeatures('isopieses', part, wide, cfg);
       if (token !== this._fetchToken) return null;
+      const inView = (f) => {
+        if (!f._bb) f._bb = this._bboxOf(f.geometry);
+        return f._bb && f._bb[0] <= bbox[2] && f._bb[2] >= bbox[0] && f._bb[1] <= bbox[3] && f._bb[3] >= bbox[1];
+      };
+      const features = { ...fetched, list: fetched.list.filter(inView) };
       let { min, max } = features.ds || { min: Infinity, max: -Infinity };
       if (!features.ds) {
         for (const f of features.list) { const v = Number(f.properties && f.properties[part.attributNiveau]); if (Number.isFinite(v)) { min = Math.min(min, v); max = Math.max(max, v); } }
       }
+      if (bandes) this._renderBands(fetched.list, part, min, max);
       this._renderIsopieses(features.list, part, cfg, min, max);
       const legend = Number.isFinite(min) && max > min ? `niveaux de ${this._fmt(min)} à ${this._fmt(max)} m DNG, du clair au foncé` : '';
       return { truncated: features.truncated, count: features.list.length, label: 'isopièzes', source: this._sourceNote(features.ds), legend };
@@ -281,6 +300,11 @@ const AMGT4CEM_NappeLayer = {
       console.warn('[AMGT4CEM] Isopièzes de la nappe indisponibles :', err);
       return { error: `isopièzes (${this._reason(err)})` };
     }
+  },
+
+  _bandOpacity() {
+    const c = AMGT4CEM_CONFIG.nappe;
+    return (c && c.isopieses && c.isopieses.bandes && c.isopieses.bandes.opacite) || 0.5;
   },
 
   _fmt(v) {
@@ -302,6 +326,144 @@ const AMGT4CEM_NappeLayer = {
     if (!this._canvasCtx) this._canvasCtx = document.createElement('canvas').getContext('2d');
     this._canvasCtx.font = `600 ${px}px Arial, sans-serif`; // même police que .amgt-nappe-label (style.css)
     return this._canvasCtx.measureText(text).width;
+  },
+
+  // --- Intervalles colorés ---------------------------------------------------------------------------------------
+
+  /** Segments des isopièzes : suite à plat de (x1, y1, x2, y2, niveau), Lambert 72. */
+  _lambertSegments(features, attr) {
+    const out = [];
+    for (const f of features) {
+      const v = Number(f.properties && f.properties[attr]);
+      if (!Number.isFinite(v)) continue;
+      for (const coords of this._lineParts(f.geometry)) {
+        for (let i = 0; i + 1 < coords.length; i++) out.push(coords[i][0], coords[i][1], coords[i + 1][0], coords[i + 1][1], v);
+      }
+    }
+    return Float64Array.from(out);
+  },
+
+  /**
+   * Niveau en chaque cellule d'une grille, par interpolation linéaire entre les deux isopièzes voisines de niveaux
+   * différents, SI la cellule est entre elles (leurs points les plus proches sont de part et d'autre). Sinon la cellule
+   * est « indéterminée » (NaN) : sommet, creux ou bord de la zone couverte, où une valeur serait inventée.
+   * @param {Float64Array} segs - (x1, y1, x2, y2, niveau) par segment, Lambert 72 (m)
+   * @param {{ox,oy,ax,ay,bx,by}} aff - centre de la cellule (i, j) = (ox + (i+.5)·ax + (j+.5)·bx, oy + (i+.5)·ay + (j+.5)·by)
+   * @param {number} rayonM - distance maximale d'une isopièze utile à une cellule
+   * @param {number} ecart - équidistance des isopièzes (m) : deux lignes plus éloignées en niveau ne sont pas voisines
+   * @returns {Float32Array} niveaux (w × h)
+   */
+  _interpolateGrid(segs, aff, w, h, rayonM, ecart) {
+    const n = w * h;
+    const D1 = new Float64Array(n).fill(Infinity), D2 = new Float64Array(n).fill(Infinity);
+    const V1 = new Float64Array(n).fill(NaN), V2 = new Float64Array(n).fill(NaN);
+    const X1 = new Float64Array(n), Y1 = new Float64Array(n), X2 = new Float64Array(n), Y2 = new Float64Array(n);
+    const { ox, oy, ax, ay, bx, by } = aff;
+    const det = ax * by - ay * bx;
+    const cellM = Math.hypot(ax, ay);
+    const pad = rayonM / cellM + 1;
+    for (let s = 0; s < segs.length; s += 5) {
+      const x1 = segs[s], y1 = segs[s + 1], x2 = segs[s + 2], y2 = segs[s + 3], v = segs[s + 4];
+      // Fenêtre de cellules à moins de rayonM du segment (coordonnées de cellule des deux extrémités, élargies).
+      const ci1 = ((x1 - ox) * by - (y1 - oy) * bx) / det - 0.5, cj1 = (ax * (y1 - oy) - ay * (x1 - ox)) / det - 0.5;
+      const ci2 = ((x2 - ox) * by - (y2 - oy) * bx) / det - 0.5, cj2 = (ax * (y2 - oy) - ay * (x2 - ox)) / det - 0.5;
+      const i0 = Math.max(0, Math.floor(Math.min(ci1, ci2) - pad)), i1 = Math.min(w - 1, Math.ceil(Math.max(ci1, ci2) + pad));
+      const j0 = Math.max(0, Math.floor(Math.min(cj1, cj2) - pad)), j1 = Math.min(h - 1, Math.ceil(Math.max(cj1, cj2) + pad));
+      if (i0 > i1 || j0 > j1) continue;
+      const dx = x2 - x1, dy = y2 - y1, len2 = dx * dx + dy * dy;
+      for (let j = j0; j <= j1; j++) {
+        for (let i = i0; i <= i1; i++) {
+          const cx = ox + (i + 0.5) * ax + (j + 0.5) * bx, cy = oy + (i + 0.5) * ay + (j + 0.5) * by;
+          const t = len2 ? Math.max(0, Math.min(1, ((cx - x1) * dx + (cy - y1) * dy) / len2)) : 0;
+          const qx = x1 + t * dx, qy = y1 + t * dy;
+          const d = Math.hypot(cx - qx, cy - qy);
+          if (d > rayonM) continue;
+          const k = j * w + i;
+          if (v === V1[k]) {
+            if (d < D1[k]) { D1[k] = d; X1[k] = qx; Y1[k] = qy; }
+          } else if (v === V2[k]) {
+            if (d < D2[k]) {
+              D2[k] = d; X2[k] = qx; Y2[k] = qy;
+              if (D2[k] < D1[k]) { // la deuxième ligne devient la plus proche : on échange
+                [D1[k], D2[k]] = [D2[k], D1[k]]; [V1[k], V2[k]] = [V2[k], V1[k]];
+                [X1[k], X2[k]] = [X2[k], X1[k]]; [Y1[k], Y2[k]] = [Y2[k], Y1[k]];
+              }
+            }
+          } else if (d < D1[k]) {
+            D2[k] = D1[k]; V2[k] = V1[k]; X2[k] = X1[k]; Y2[k] = Y1[k];
+            D1[k] = d; V1[k] = v; X1[k] = qx; Y1[k] = qy;
+          } else if (d < D2[k]) {
+            D2[k] = d; V2[k] = v; X2[k] = qx; Y2[k] = qy;
+          }
+        }
+      }
+    }
+    const out = new Float32Array(n).fill(NaN);
+    for (let j = 0; j < h; j++) {
+      for (let i = 0; i < w; i++) {
+        const k = j * w + i;
+        if (!Number.isFinite(D1[k]) || !Number.isFinite(D2[k]) || Math.abs(V1[k] - V2[k]) > ecart * 1.01) continue;
+        const cx = ox + (i + 0.5) * ax + (j + 0.5) * bx, cy = oy + (i + 0.5) * ay + (j + 0.5) * by;
+        const between = (X1[k] - cx) * (X2[k] - cx) + (Y1[k] - cy) * (Y2[k] - cy) < 0;
+        if (between && D1[k] + D2[k] > 0) out[k] = V1[k] + ((V2[k] - V1[k]) * D1[k]) / (D1[k] + D2[k]);
+      }
+    }
+    return out;
+  },
+
+  /**
+   * Colore l'espace entre deux isopièzes voisines (une teinte par intervalle de 2 m, la même rampe que les lignes).
+   * Calculé pour la vue seulement, sur une grille de cellules d'écran dont la taille grossit si les isopièzes sont
+   * nombreuses (budget d'opérations de `bandes.budgetOperations`) ; image posée sous les couches vectorielles.
+   */
+  _renderBands(features, part, min, max) {
+    const b = part.bandes;
+    const map = this._map;
+    const size = map.getSize();
+    const segs = this._lambertSegments(features, part.attributNiveau);
+    if (!segs.length) return;
+    const lam = (pt) => AMGT4CEM_CRS.latLngToLambert(map.containerPointToLatLng(pt));
+    const o = lam([0, 0]), px = lam([size.x, 0]), py = lam([0, size.y]);
+    const perX = [(px.x - o.x) / size.x, (px.y - o.y) / size.x], perY = [(py.x - o.x) / size.y, (py.y - o.y) / size.y];
+    const mPerPx = Math.hypot(perX[0], perX[1]);
+    const nSeg = segs.length / 5;
+    let c = b.cellulePx;
+    let w, h;
+    for (;;) {
+      w = Math.ceil(size.x / c); h = Math.ceil(size.y / c);
+      const rCells = Math.ceil(b.rayonM / (c * mPerPx));
+      if (nSeg * Math.min(w * h, (2 * rCells + 1) ** 2) <= b.budgetOperations || c >= 40) break;
+      c *= 1.4; // isopièzes très nombreuses : cellules plus grosses (les lignes, dessinées dessus, gardent leur précision)
+    }
+    const aff = { ox: o.x, oy: o.y, ax: perX[0] * c, ay: perX[1] * c, bx: perY[0] * c, by: perY[1] * c };
+    const values = this._interpolateGrid(segs, aff, w, h, b.rayonM, b.equidistance);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    const image = ctx.createImageData(w, h);
+    const colours = new Map();
+    let painted = 0;
+    for (let k = 0; k < values.length; k++) {
+      const v = values[k];
+      if (Number.isNaN(v)) continue;
+      const band = Math.floor(v / b.equidistance);
+      if (!colours.has(band)) {
+        const rgb = this._rampColor(band * b.equidistance + b.equidistance / 2, min, max, part.rampe) || 'rgb(95,176,224)';
+        colours.set(band, rgb.match(/\d+/g).map(Number));
+      }
+      const [r, g, bl] = colours.get(band);
+      image.data[4 * k] = r; image.data[4 * k + 1] = g; image.data[4 * k + 2] = bl; image.data[4 * k + 3] = 255;
+      painted++;
+    }
+    if (!painted) return;
+    ctx.putImageData(image, 0, 0);
+    const bounds = L.latLngBounds(map.containerPointToLatLng([0, 0]), map.containerPointToLatLng([w * c, h * c]));
+    this._group.addLayer(L.imageOverlay(canvas.toDataURL('image/png'), bounds, {
+      pane: 'amgtNappeFill',
+      interactive: false,
+      opacity: this._bandOpacity() * this._opacityFactor,
+    }));
   },
 
   _lineParts(geom) {
@@ -356,7 +518,7 @@ const AMGT4CEM_NappeLayer = {
       }
       if (!keep.length) continue;
       const line = L.polyline(keep, { color, weight: part.epaisseur, opacity: this._baseLineOpacity * this._opacityFactor });
-      line.bindPopup(() => this._buildPopup(part.libelle, feature.properties || {}, part.attributsPopup, cfg));
+      line.bindPopup(() => this._buildPopup(part.libelle, feature.properties || {}, part.attributsPopup, cfg, true));
       this._group.addLayer(line);
     }
   },
@@ -435,7 +597,7 @@ const AMGT4CEM_NappeLayer = {
           opacity: this._opacityFactor,
           fillOpacity: this._basePointFillOpacity * this._opacityFactor,
         });
-        marker.bindPopup(() => this._buildPopup(part.libelle, feature.properties || {}, null, cfg));
+        marker.bindPopup(() => this._buildPopup(part.libelle, feature.properties || {}, part.attributsPopup, cfg, false));
         this._group.addLayer(marker);
       }
       return { truncated: features.truncated, count: features.list.length, label: 'stations', source: this._sourceNote(features.ds) };
@@ -523,7 +685,7 @@ const AMGT4CEM_NappeLayer = {
   // --- Fenêtre d'information et état ---------------------------------------------------------------------------
 
   /** Construction DOM sûre (pas d'innerHTML) : les valeurs viennent d'un service externe. */
-  _buildPopup(title, props, labels, cfg) {
+  _buildPopup(title, props, labels, cfg, modele) {
     const container = document.createElement('div');
     container.className = 'amgt-popup';
     const heading = document.createElement('strong');
@@ -549,7 +711,7 @@ const AMGT4CEM_NappeLayer = {
     }
     container.appendChild(table);
 
-    if (labels && cfg.periodeReference) {
+    if (modele && cfg.periodeReference) {
       const note = document.createElement('p');
       note.className = 'amgt-nappe-note';
       note.textContent = `Modèle, état de ${cfg.periodeReference}. ${cfg.mentionLegale || ''}`.trim();

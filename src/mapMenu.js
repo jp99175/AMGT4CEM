@@ -273,7 +273,7 @@ const AMGT4CEM_MapMenu = {
       AMGT4CEM_ScreenshotTool.invalidateBackground();
       AMGT4CEM_NappeLayer.setEnabled(e.target.checked);
     });
-    for (const [id, part] of [['amgt-nappe-isopieses', 'isopieses'], ['amgt-nappe-stations', 'stations']]) {
+    for (const [id, part] of [['amgt-nappe-isopieses', 'isopieses'], ['amgt-nappe-bandes', 'bandes'], ['amgt-nappe-stations', 'stations']]) {
       document.getElementById(id).addEventListener('change', (e) => {
         AMGT4CEM_ScreenshotTool.invalidateBackground();
         AMGT4CEM_NappeLayer.setParts({ [part]: e.target.checked });

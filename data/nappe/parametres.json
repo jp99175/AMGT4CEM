@@ -36,18 +36,40 @@
       "#0c3a78"
     ],
     "etiquettePx": 12,
-    "etiquetteEspacementPx": 480
+    "etiquetteEspacementPx": 480,
+    "bandes": {
+      "actif": true,
+      "opacite": 0.55,
+      "equidistance": 2,
+      "rayonM": 800,
+      "cellulePx": 6,
+      "budgetOperations": 40000000
+    }
   },
   "stations": {
     "libelle": "Stations de mesure piézométriques",
     "couche": "monitoring_groundwater_level",
     "couleur": "#00838f",
     "rayon": 6,
-    "note": "Couche des points de mesure (suivi quantitatif). Les attributs ne sont pas listés ici : la fenêtre d'information affiche tous ceux que le service renvoie, tant qu'ils n'ont pas été confirmés. Les chroniques (séries temporelles) ne sont PAS exposées par le WFS : elles passent par l'outil Geodata de Bruxelles Environnement.",
+    "note": "Position et caractéristiques des stations (52 au 21/10/2026) : masse d'eau, fréquence de relevé (« 1 heure » = automatique), début du suivi, cote de référence, profondeur. AUCUN niveau mesuré ni date de mesure dans ce service : les chroniques sont dans BruWater.",
     "service": "eaux-souterraines",
     "minZoom": 13,
     "synchro": {
       "intervalleJours": 1
+    },
+    "attributsPopup": {
+      "mon_be_code": "Code BE",
+      "adresse": "Adresse",
+      "postalcode": "Code postal",
+      "nom_gwb_fr": "Masse d'eau",
+      "nom_gw_ref": "Unité hydrogéologique",
+      "mon_freq": "Fréquence de relevé",
+      "start_mon": "Début du suivi",
+      "z_ref_m": "Cote de référence (m DNG)",
+      "prof_rel_m": "Profondeur du piézomètre (m)",
+      "top_crepine_rel_m": "Haut de la crépine (m)",
+      "prof_crepine_rel_m": "Bas de la crépine (m)",
+      "mon_eu_code": "Code européen"
     }
   }
 }
