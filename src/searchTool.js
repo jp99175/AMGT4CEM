@@ -38,7 +38,7 @@ const AMGT4CEM_SearchTool = {
 
     document.addEventListener('click', (e) => {
       if (panel.classList.contains('amgt-hidden')) return;
-      if (panel.contains(e.target) || e.target === toggleBtn) return;
+      if (panel.contains(e.target) || toggleBtn.contains(e.target)) return;
       close();
     });
 
