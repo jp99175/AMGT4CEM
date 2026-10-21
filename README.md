@@ -610,7 +610,7 @@ curseurs donne l'opacité et le choix des éléments). Source : WFS « water » 
 - **Stations de mesure piézométriques** (couche `water_monitoring_groundwater_level`) : position et attributs de la station.
   Les chroniques (séries temporelles) ne sont pas servies par le WFS (outil Geodata de Bruxelles Environnement).
 
-Comme UrbIS Topo : requêtes limitées à l'emprise visible, en Lambert 72, à partir du zoom `minZoom`, plafonnées à
+Comme UrbIS Topo : requêtes limitées à l'emprise visible, en Lambert 72, à partir d'un zoom propre à chaque élément (stations dès 13, isopièzes dès 15 ; `minZoom` de chaque bloc de `data/nappe/parametres.json`), plafonnées à
 `maxFeaturesPerQuery` (message « résultat tronqué » sous la case). Le nom publié exact des couches (avec son préfixe)
 est retrouvé dans le GetCapabilities. Réglages : `data/nappe/parametres.json` ; code : `src/nappeLayer.js`.
 

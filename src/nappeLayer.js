@@ -84,21 +84,29 @@ const AMGT4CEM_NappeLayer = {
     }
     this._group.addTo(this._map);
 
-    if (this._map.getZoom() < cfg.minZoom) {
-      this._setStatus(`Zoomer davantage pour afficher la nappe (niveau ${cfg.minZoom} minimum).`);
+    // Seuil de zoom propre à chaque élément (data/nappe/parametres.json) : stations dès 13, isopièzes dès 15.
+    const zoom = this._map.getZoom();
+    const wantIsopieses = this._showIsopieses && zoom >= cfg.isopieses.minZoom;
+    const wantStations = this._showStations && zoom >= cfg.stations.minZoom;
+    const tooFar = [];
+    if (this._showIsopieses && !wantIsopieses) tooFar.push(`isopièzes dès le zoom ${cfg.isopieses.minZoom}`);
+    if (this._showStations && !wantStations) tooFar.push(`stations dès le zoom ${cfg.stations.minZoom}`);
+    if (!wantIsopieses && !wantStations) {
+      this._setStatus(`Zoomer davantage : ${tooFar.join(', ')}.`);
       return;
     }
 
     const bbox = AMGT4CEM_CRS.boundsToLambertBbox(this._map.getBounds());
     const jobs = [];
-    if (this._showIsopieses) jobs.push(this._loadIsopieses(cfg, bbox, token));
-    if (this._showStations) jobs.push(this._loadStations(cfg, bbox, token));
+    if (wantIsopieses) jobs.push(this._loadIsopieses(cfg, bbox, token));
+    if (wantStations) jobs.push(this._loadStations(cfg, bbox, token));
     const results = await Promise.all(jobs);
     if (token !== this._fetchToken) return; // la vue a changé entre-temps
 
     const failures = results.filter((r) => r && r.error).map((r) => r.error);
     const truncated = results.some((r) => r && r.truncated);
     const messages = [];
+    if (tooFar.length) messages.push(`Zoomer davantage : ${tooFar.join(', ')}.`);
     const counts = results.filter((r) => r && !r.error).map((r) => `${r.count} ${r.label}`);
     if (counts.length) messages.push(`Dans la vue : ${counts.join(', ')}.`);
     if (results.some((r) => r && !r.error && r.count === 0)) messages.push('Aucun objet dans cette emprise : déplacer ou dézoomer.');

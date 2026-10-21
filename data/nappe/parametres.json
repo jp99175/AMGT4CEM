@@ -3,7 +3,7 @@
   "date": "2026-10-20",
   "note": "Réglages de la couche « Nappe phréatique » (WFS de Bruxelles Environnement : stations = service « water », clé « eaux-souterraines » ; isopièzes = service « geology », clé « geologie » ; URL dans data/fonds-de-plan/services.json). Source des noms de couches et d'attributs : descriptif officiel du WFS géologie/hydrogéologie (20190513_descriptif_wfs_geol_hydrogeol_FR.pdf) et catalogue Geobru ; AUCUN n'a pu être vérifié par un appel réel (l'accès sortant de l'environnement de développement vers *.environnement.brussels est bloqué). Le préfixe d'espace de noms des couches n'est pas supposé : nappeLayer.js le retrouve dans le GetCapabilities en cherchant le nom de couche ci-dessous comme fin du nom publié. À confirmer depuis un navigateur : noms d'attributs, CORS, nombre d'objets par emprise. Données du modèle BPSM v1.0 (FEFLOW), état de MAI 2013, valeur indicative, CC BY 4.0. Constat du 21/10/2026 sur le service « water » : il publie `monitoring_groundwater_level` (sans préfixe `water_`) ; les couches `groundwater_model_*` du descriptif de 2019 n'y figurent pas, elles relèvent du service « geology » (adresse déduite du schéma ows.environnement.brussels/<thème>, à confirmer).",
   "wfsVersion": "1.1.0",
-  "minZoom": 14,
+  "minZoom": 13,
   "maxFeaturesPerQuery": 2000,
   "periodeReference": "mai 2013",
   "mentionLegale": "Données issues d'un modèle (BPSM v1.0), état de mai 2013 : valeur indicative, qui ne remplace pas une étude d'expert.",
@@ -23,7 +23,8 @@
     "couleur": "#0b5fa5",
     "epaisseur": 1.5,
     "etiquetteMinZoom": 16,
-    "service": "geologie"
+    "service": "geologie",
+    "minZoom": 15
   },
   "stations": {
     "libelle": "Stations de mesure piézométriques",
@@ -31,6 +32,7 @@
     "couleur": "#00838f",
     "rayon": 6,
     "note": "Couche des points de mesure (suivi quantitatif). Les attributs ne sont pas listés ici : la fenêtre d'information affiche tous ceux que le service renvoie, tant qu'ils n'ont pas été confirmés. Les chroniques (séries temporelles) ne sont PAS exposées par le WFS : elles passent par l'outil Geodata de Bruxelles Environnement.",
-    "service": "eaux-souterraines"
+    "service": "eaux-souterraines",
+    "minZoom": 13
   }
 }
