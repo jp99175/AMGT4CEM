@@ -23,6 +23,7 @@ const AMGT4CEM_NappeLayer = {
   _showStations: true,
   _fetchToken: 0,
   _moveTimer: null,
+  _candidates: [], // couches publiées au nom proche, pour le message d'erreur
   _typeNames: {}, // nom configuré -> nom publié (ou null si introuvable), mémorisé par session
   _capabilitiesPromise: null,
   _statusEl: null,
@@ -196,9 +197,18 @@ const AMGT4CEM_NappeLayer = {
     if (configured in this._typeNames) return this._typeNames[configured];
     if (!this._capabilitiesPromise) this._capabilitiesPromise = this._fetchPublishedTypeNames(cfg);
     const published = await this._capabilitiesPromise;
-    const match = published.find((name) => name === configured || name.endsWith(`:${configured}`));
-    this._typeNames[configured] = match || null;
-    if (!match) console.warn(`[AMGT4CEM] Couche « ${configured} » absente du GetCapabilities (${published.length} couches publiées).`);
+    // Préfixe d'espace de noms (« ns:nom ») ou de jeu de données (« bruenvi_nom ») : on accepte une fin de nom égale
+    // à celle configurée, la plus courte l'emportant (la plus proche du nom exact).
+    const matches = published
+      .filter((name) => name === configured || name.endsWith(`:${configured}`) || name.endsWith(`_${configured}`))
+      .sort((a, b) => a.length - b.length);
+    this._typeNames[configured] = matches[0] || null;
+    if (!matches[0]) {
+      const related = published.filter((n) => /groundwater|piezo|phreatic|nappe|grondwater/i.test(n));
+      console.warn(`[AMGT4CEM] Couche « ${configured} » absente du GetCapabilities (${published.length} couches publiées). ` +
+        `Couches proches : ${related.join(', ') || 'aucune'}.`);
+      this._candidates = related;
+    }
     return this._typeNames[configured];
   },
 
@@ -223,7 +233,10 @@ const AMGT4CEM_NappeLayer = {
   /** Objets de l'emprise visible (bbox Lambert 72), au plus `maxFeaturesPerQuery`. */
   async _fetchFeatures(configuredName, [minX, minY, maxX, maxY], cfg) {
     const typeName = await this._resolveTypeName(configuredName, cfg);
-    if (!typeName) throw new Error(`couche « ${configuredName} » introuvable`);
+    if (!typeName) {
+      const near = (this._candidates || []).slice(0, 6).join(', ');
+      throw new Error(`couche « ${configuredName} » introuvable${near ? ` ; couches proches publiées : ${near}` : ''}`);
+    }
     const crs = AMGT4CEM_CONFIG.businessCRS.epsg;
     const params = new URLSearchParams({
       service: 'WFS',
