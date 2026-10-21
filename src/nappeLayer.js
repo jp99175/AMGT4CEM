@@ -7,8 +7,10 @@
  *  - STATIONS de mesure piézométriques (points) du réseau de suivi régional. Les chroniques ne sont pas servies par le
  *    WFS : seule la position et les attributs de la station s'affichent ici.
  *
- * Même principe que UrbIS Topo (urbisTopoLayer.js) : rien n'est requêté tant que la case est décochée, seuls les objets de
- * l'emprise visible sont demandés, et en dessous du zoom minimal rien n'est affiché ni requêté. Une couche en échec
+ * Source des données : une COPIE rangée dans R2 par le Worker nappe-sync/ (revérifiée périodiquement), gardée aussi sur
+ * l'appareil (IndexedDB) ; le service régional, parfois en HTTP 502, n'est interrogé directement qu'à défaut (voir
+ * « Jeux de données complets » plus bas). Rien n'est lu tant que la case est décochée ; seuls les objets de l'emprise
+ * visible sont dessinés, et en dessous du zoom minimal de chaque élément rien n'est affiché. Une couche en échec
  * (réseau, CORS, nom de couche inconnu) est signalée en console et simplement absente : aucun état cassé n'est montré.
  *
  * Le nom exact des couches publiées (avec son préfixe d'espace de noms) n'est PAS supposé : il est retrouvé dans le
@@ -110,9 +112,155 @@ const AMGT4CEM_NappeLayer = {
     const counts = results.filter((r) => r && !r.error).map((r) => `${r.count} ${r.label}`);
     if (counts.length) messages.push(`Dans la vue : ${counts.join(', ')}.`);
     if (results.some((r) => r && !r.error && r.count === 0)) messages.push('Aucun objet dans cette emprise : déplacer ou dézoomer.');
+    const legend = results.find((r) => r && r.legend);
+    if (legend) messages.push(`Isopièzes : ${legend.legend}.`);
+    const sources = [...new Set(results.filter((r) => r && !r.error && r.source).map((r) => r.source))];
+    if (sources.length) messages.push(`Source : ${sources.join(' ; ')}.`);
     if (failures.length) messages.push(`Indisponible : ${failures.join(' ; ')}.`);
     if (truncated) messages.push('Résultat tronqué (trop d\'objets) : zoomer pour tout voir.');
     this._setStatus(messages.join(' '));
+  },
+
+  // --- Jeux de données complets : copie R2 -> cache de l'appareil -> (en dernier recours) service ----------------
+
+  /**
+   * Les isopièzes (modèle de 2013) ne bougent pas et le service régional répond parfois en HTTP 502 : la carte lit donc
+   * d'abord la COPIE rangée dans R2 par le Worker nappe-sync/ (clé `nappe-sync` de services.json), qui la revérifie
+   * périodiquement. Son etat.json donne l'empreinte (sha256) de chaque jeu : si la copie gardée sur l'appareil
+   * (IndexedDB) a la même, elle est utilisée telle quelle, sinon le jeu est retéléchargé. Le service n'est interrogé
+   * directement (par emprise, comme avant) que si ni la copie R2 ni le cache de l'appareil ne sont disponibles.
+   */
+  _datasets: {}, // clé -> Promise du jeu complet { features, source, verifieLe, min, max } (null si indisponible)
+  _datasetRetryAt: {}, // clé -> heure avant laquelle on ne réessaie pas (jeu indisponible)
+  _idbPromise: null,
+
+  _dataset(key, part, cfg) {
+    if (this._datasets[key]) return this._datasets[key];
+    if (this._datasetRetryAt[key] && Date.now() < this._datasetRetryAt[key]) return Promise.resolve(null);
+    const promise = this._loadDataset(key, part, cfg).then((ds) => {
+      if (!ds) { delete this._datasets[key]; this._datasetRetryAt[key] = Date.now() + 60000; } // pas de nouvel essai avant 1 min
+      return ds;
+    });
+    this._datasets[key] = promise;
+    return promise;
+  },
+
+  async _loadDataset(key, part, cfg) {
+    const base = (cfg.snapshotUrl || '').replace(/\/$/, '');
+    let meta = null;
+    if (base) {
+      try {
+        const etat = await this._fetchJson(`${base}/nappe/etat.json`, 8000);
+        meta = etat && etat.parties && etat.parties[key];
+      } catch (err) {
+        console.warn('[AMGT4CEM] Copie R2 de la nappe injoignable :', err);
+      }
+    }
+    const cached = await this._idbGet(key);
+    if (meta && meta.disponible && cached && cached.sha256 === meta.sha256) {
+      return this._prepare(cached.geojson, part, { source: 'copie du serveur AMGT4CEM (déjà sur cet appareil)', verifieLe: meta.verifieLe });
+    }
+    if (meta && meta.disponible) {
+      try {
+        const geojson = await this._fetchJson(`${base}/nappe/${key}.json`, 60000);
+        this._idbPut(key, { sha256: meta.sha256, geojson });
+        return this._prepare(geojson, part, { source: 'copie du serveur AMGT4CEM', verifieLe: meta.verifieLe });
+      } catch (err) {
+        console.warn(`[AMGT4CEM] Copie R2 « ${key} » illisible :`, err);
+      }
+    }
+    if (cached) return this._prepare(cached.geojson, part, { source: 'cache de cet appareil (non revérifié)', verifieLe: null });
+    return null;
+  },
+
+  async _fetchJson(url, delaiMs) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), delaiMs);
+    try {
+      const response = await fetch(url, { signal: controller.signal, cache: 'no-cache' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } finally {
+      clearTimeout(timer);
+    }
+  },
+
+  _idb() {
+    if (!this._idbPromise) {
+      this._idbPromise = new Promise((resolve) => {
+        try {
+          const rq = indexedDB.open('amgt4cem-nappe', 1);
+          rq.onupgradeneeded = () => rq.result.createObjectStore('jeux');
+          rq.onsuccess = () => resolve(rq.result);
+          rq.onerror = () => resolve(null);
+        } catch (err) {
+          resolve(null); // IndexedDB indisponible (navigation privée...) : pas de cache, le reste fonctionne
+        }
+      });
+    }
+    return this._idbPromise;
+  },
+
+  async _idbGet(key) {
+    const db = await this._idb();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      try {
+        const rq = db.transaction('jeux').objectStore('jeux').get(key);
+        rq.onsuccess = () => resolve(rq.result || null);
+        rq.onerror = () => resolve(null);
+      } catch (err) { resolve(null); }
+    });
+  },
+
+  async _idbPut(key, value) {
+    const db = await this._idb();
+    if (!db) return;
+    try { db.transaction('jeux', 'readwrite').objectStore('jeux').put(value, key); } catch (err) { /* cache facultatif */ }
+  },
+
+  /** Ajoute à chaque objet son rectangle englobant (Lambert) et calcule l'étendue des niveaux. */
+  _prepare(geojson, part, info) {
+    const features = (geojson && geojson.features) || [];
+    let min = Infinity;
+    let max = -Infinity;
+    for (const f of features) {
+      f._bb = this._bboxOf(f.geometry);
+      const v = Number(f.properties && f.properties[part.attributNiveau]);
+      if (part.attributNiveau && Number.isFinite(v)) { if (v < min) min = v; if (v > max) max = v; }
+    }
+    return { features, min, max, ...info };
+  },
+
+  _bboxOf(geometry) {
+    if (!geometry) return null;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const visit = (c) => {
+      if (typeof c[0] === 'number') {
+        if (c[0] < minX) minX = c[0]; if (c[0] > maxX) maxX = c[0];
+        if (c[1] < minY) minY = c[1]; if (c[1] > maxY) maxY = c[1];
+      } else c.forEach(visit);
+    };
+    visit(geometry.coordinates || []);
+    return Number.isFinite(minX) ? [minX, minY, maxX, maxY] : null;
+  },
+
+  /** Objets de l'emprise visible : depuis le jeu complet si disponible, sinon requête directe au service. */
+  async _getFeatures(key, part, bbox, cfg) {
+    const ds = await this._dataset(key, part, cfg);
+    const [minX, minY, maxX, maxY] = bbox;
+    if (ds) {
+      const list = ds.features.filter((f) => f._bb && f._bb[0] <= maxX && f._bb[2] >= minX && f._bb[1] <= maxY && f._bb[3] >= minY);
+      return { list, truncated: false, ds };
+    }
+    const live = await this._fetchFeatures(part, bbox, cfg);
+    return { ...live, ds: null };
+  },
+
+  _sourceNote(ds) {
+    if (!ds) return 'service régional (copie indisponible)';
+    const date = ds.verifieLe ? `, vérifiée le ${new Date(ds.verifieLe).toLocaleDateString('fr-BE')}` : '';
+    return `${ds.source}${date}`;
   },
 
   // --- Isopièzes -----------------------------------------------------------------------------------------------
@@ -120,22 +268,40 @@ const AMGT4CEM_NappeLayer = {
   async _loadIsopieses(cfg, bbox, token) {
     const part = cfg.isopieses;
     try {
-      const features = await this._fetchFeatures(part, bbox, cfg);
+      const features = await this._getFeatures('isopieses', part, bbox, cfg);
       if (token !== this._fetchToken) return null;
-      const labelled = this._map.getZoom() >= part.etiquetteMinZoom;
-      for (const feature of features.list) {
-        const line = this._buildLine(feature, part, cfg);
-        if (line) this._group.addLayer(line);
-        if (labelled) {
-          const label = this._buildLineLabel(feature, part);
-          if (label) this._group.addLayer(label);
-        }
+      let { min, max } = features.ds || { min: Infinity, max: -Infinity };
+      if (!features.ds) {
+        for (const f of features.list) { const v = Number(f.properties && f.properties[part.attributNiveau]); if (Number.isFinite(v)) { min = Math.min(min, v); max = Math.max(max, v); } }
       }
-      return { truncated: features.truncated, count: features.list.length, label: 'isopièzes' };
+      this._renderIsopieses(features.list, part, cfg, min, max);
+      const legend = Number.isFinite(min) && max > min ? `niveaux de ${this._fmt(min)} à ${this._fmt(max)} m DNG, du clair au foncé` : '';
+      return { truncated: features.truncated, count: features.list.length, label: 'isopièzes', source: this._sourceNote(features.ds), legend };
     } catch (err) {
       console.warn('[AMGT4CEM] Isopièzes de la nappe indisponibles :', err);
       return { error: `isopièzes (${this._reason(err)})` };
     }
+  },
+
+  _fmt(v) {
+    return Number(v).toLocaleString('fr-BE', { maximumFractionDigits: 1 });
+  },
+
+  /** Couleur de la rampe (liste de teintes du plus bas au plus haut niveau), interpolée en RVB. */
+  _rampColor(v, min, max, stops) {
+    if (!stops || !stops.length || !(max > min) || !Number.isFinite(v)) return null;
+    const t = Math.min(1, Math.max(0, (v - min) / (max - min))) * (stops.length - 1);
+    const i = Math.min(stops.length - 2, Math.floor(t));
+    const f = t - i;
+    const rgb = (hex) => [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
+    const [a, b] = [rgb(stops[i]), rgb(stops[i + 1])];
+    return `rgb(${a.map((c, k) => Math.round(c + (b[k] - c) * f)).join(',')})`;
+  },
+
+  _textWidth(text, px) {
+    if (!this._canvasCtx) this._canvasCtx = document.createElement('canvas').getContext('2d');
+    this._canvasCtx.font = `600 ${px}px Arial, sans-serif`; // même police que .amgt-nappe-label (style.css)
+    return this._canvasCtx.measureText(text).width;
   },
 
   _lineParts(geom) {
@@ -145,27 +311,109 @@ const AMGT4CEM_NappeLayer = {
     return [];
   },
 
-  _buildLine(feature, part, cfg) {
-    const parts = this._lineParts(feature.geometry).map((line) => line.map((pair) => AMGT4CEM_CRS.lambertToLatLng(pair)));
-    if (!parts.length) return null;
-    const line = L.polyline(parts, { color: part.couleur, weight: part.epaisseur, opacity: this._baseLineOpacity * this._opacityFactor });
-    line.bindPopup(() => this._buildPopup(part.libelle, feature.properties || {}, part.attributsPopup, cfg));
-    return line;
+  /**
+   * Isopièzes : chaque ligne est colorée selon son niveau ; la valeur est écrite DANS la ligne, alignée sur elle, qui est
+   * interrompue à cet endroit (pas de trait sous le texte). Le texte reste toujours lisible : son angle est ramené dans
+   * [-90°, +90°[ (jamais à l'envers), à la taille de police de l'indicateur de zoom. Étiquettes régulièrement espacées
+   * le long de chaque ligne, calculées en pixels du zoom courant (donc recalculées à chaque déplacement/zoom).
+   */
+  _renderIsopieses(list, part, cfg, min, max) {
+    const map = this._map;
+    const px = part.etiquettePx || 12;
+    const padding = 4;
+    const labelled = map.getZoom() >= part.etiquetteMinZoom;
+    const margin = 200;
+    for (const feature of list) {
+      const value = Number(feature.properties && feature.properties[part.attributNiveau]);
+      const color = this._rampColor(value, min, max, part.rampe) || part.couleur;
+      const text = Number.isFinite(value) ? this._fmt(value) : '';
+      const width = text ? this._textWidth(text, px) + 2 * padding : 0;
+      const keep = []; // morceaux de ligne conservés (LatLng)
+
+      for (const coords of this._lineParts(feature.geometry)) {
+        const pts = coords.map((c) => map.latLngToLayerPoint(AMGT4CEM_CRS.lambertToLatLng(c)));
+        const cum = [0];
+        for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
+        const total = cum[cum.length - 1];
+        const cuts = [];
+        if (labelled && width && total >= width * 1.8) {
+          const n = Math.max(1, Math.round(total / (part.etiquetteEspacementPx || 480)));
+          for (let k = 0; k < n; k++) {
+            const s = (total * (k + 0.5)) / n;
+            const centre = this._pointAt(pts, cum, s);
+            if (!this._inLayerView(centre, margin)) continue; // étiquette hors de la vue : ni posée ni coupée
+            const before = this._pointAt(pts, cum, s - width / 2);
+            const after = this._pointAt(pts, cum, s + width / 2);
+            let angle = (Math.atan2(after.y - before.y, after.x - before.x) * 180) / Math.PI;
+            // Plage [-90°, +90°[ : jamais à l'envers ; une ligne verticale donne -90° (texte lisible de bas en haut).
+            if (angle >= 90) angle -= 180;
+            else if (angle < -90) angle += 180;
+            cuts.push([s - width / 2, s + width / 2]);
+            this._group.addLayer(this._buildLabel(map.layerPointToLatLng(centre), text, angle, color, px));
+          }
+        }
+        for (const piece of this._cut(pts, cum, total, cuts)) keep.push(piece.map((p) => map.layerPointToLatLng(p)));
+      }
+      if (!keep.length) continue;
+      const line = L.polyline(keep, { color, weight: part.epaisseur, opacity: this._baseLineOpacity * this._opacityFactor });
+      line.bindPopup(() => this._buildPopup(part.libelle, feature.properties || {}, part.attributsPopup, cfg));
+      this._group.addLayer(line);
+    }
   },
 
-  /** Étiquette de niveau posée au milieu de la ligne (marqueur non cliquable, texte seul). */
-  _buildLineLabel(feature, part) {
-    const value = feature.properties && feature.properties[part.attributNiveau];
-    const parts = this._lineParts(feature.geometry);
-    if (value === undefined || value === null || value === '' || !parts.length) return null;
-    const longest = parts.reduce((best, p) => (p.length > best.length ? p : best), parts[0]);
-    if (longest.length < 4) return null; // fragment trop court pour porter une étiquette lisible
-    const middle = AMGT4CEM_CRS.lambertToLatLng(longest[Math.floor(longest.length / 2)]);
-    const text = document.createElement('span');
-    text.className = 'amgt-nappe-label';
-    text.textContent = Number(value).toLocaleString('fr-BE', { maximumFractionDigits: 1 });
-    const icon = L.divIcon({ className: 'amgt-nappe-label-icon', html: text.outerHTML, iconSize: null });
-    return L.marker(middle, { icon, interactive: false, keyboard: false });
+  _inLayerView(layerPoint, margin) {
+    const size = this._map.getSize();
+    const origin = this._map.containerPointToLayerPoint([0, 0]);
+    return layerPoint.x >= origin.x - margin && layerPoint.x <= origin.x + size.x + margin &&
+      layerPoint.y >= origin.y - margin && layerPoint.y <= origin.y + size.y + margin;
+  },
+
+  /** Point situé à la distance `s` (px) du début de la ligne (bornée à ses extrémités). */
+  _pointAt(pts, cum, s) {
+    const total = cum[cum.length - 1];
+    if (s <= 0) return pts[0];
+    if (s >= total) return pts[pts.length - 1];
+    let i = 1;
+    while (cum[i] < s) i++;
+    const f = (s - cum[i - 1]) / (cum[i] - cum[i - 1] || 1);
+    return L.point(pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f, pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f);
+  },
+
+  /** Morceaux de la ligne une fois retirés les intervalles [début, fin] (distances en px, triés ou non). */
+  _cut(pts, cum, total, cuts) {
+    const sorted = cuts.slice().sort((a, b) => a[0] - b[0]);
+    const keepRanges = [];
+    let from = 0;
+    for (const [a, b] of sorted) {
+      if (a > from) keepRanges.push([from, a]);
+      from = Math.max(from, b);
+    }
+    if (from < total) keepRanges.push([from, total]);
+    const pieces = [];
+    for (const [a, b] of keepRanges) {
+      if (b - a < 0.5) continue;
+      const piece = [this._pointAt(pts, cum, a)];
+      for (let i = 1; i < pts.length - 1; i++) if (cum[i] > a && cum[i] < b) piece.push(pts[i]);
+      piece.push(this._pointAt(pts, cum, b));
+      pieces.push(piece);
+    }
+    return pieces;
+  },
+
+  /** Étiquette de niveau : texte seul, centré sur son point et tourné de `angle` degrés (sens horaire de l'écran). */
+  _buildLabel(latlng, text, angle, color, px) {
+    const el = document.createElement('span');
+    el.className = 'amgt-nappe-label';
+    el.textContent = text;
+    el.style.fontSize = `${px}px`;
+    el.style.color = color;
+    el.style.transform = `translate(-50%, -50%) rotate(${angle.toFixed(1)}deg)`;
+    return L.marker(latlng, {
+      icon: L.divIcon({ className: 'amgt-nappe-label-icon', html: el, iconSize: [0, 0] }),
+      interactive: false,
+      keyboard: false,
+      opacity: this._opacityFactor,
+    });
   },
 
   // --- Stations de mesure --------------------------------------------------------------------------------------
@@ -173,7 +421,7 @@ const AMGT4CEM_NappeLayer = {
   async _loadStations(cfg, bbox, token) {
     const part = cfg.stations;
     try {
-      const features = await this._fetchFeatures(part, bbox, cfg);
+      const features = await this._getFeatures('stations', part, bbox, cfg);
       if (token !== this._fetchToken) return null;
       for (const feature of features.list) {
         const g = feature.geometry;
@@ -190,7 +438,7 @@ const AMGT4CEM_NappeLayer = {
         marker.bindPopup(() => this._buildPopup(part.libelle, feature.properties || {}, null, cfg));
         this._group.addLayer(marker);
       }
-      return { truncated: features.truncated, count: features.list.length, label: 'stations' };
+      return { truncated: features.truncated, count: features.list.length, label: 'stations', source: this._sourceNote(features.ds) };
     } catch (err) {
       console.warn('[AMGT4CEM] Stations piézométriques indisponibles :', err);
       return { error: `stations (${this._reason(err)})` };

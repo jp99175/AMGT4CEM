@@ -43,6 +43,10 @@
       "libelle": "Bruxelles Environnement — eaux (WFS) : stations piézométriques (monitoring_groundwater_level)",
       "url": "https://ows.environnement.brussels/water"
     },
+    "nappe-sync": {
+      "libelle": "AMGT4CEM — copie des données de la nappe dans R2 (Worker nappe-sync/) ; vide tant que le Worker n'est pas déployé",
+      "url": ""
+    },
     "geologie": {
       "libelle": "Bruxelles Environnement — géologie et hydrogéologie (WFS) : isopièzes de la nappe phréatique (mai 2013)",
       "url": "https://ows.environnement.brussels/geology"

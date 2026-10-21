@@ -1,0 +1,18 @@
+# Copie des données « nappe phréatique » dans R2 — déploiement : voir README.md.
+name = "amgt4cem-nappe-sync"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# Fichiers de configuration lus à chaque synchronisation (source unique : ce sont ceux de la carte).
+SITE_URL = "https://jp99175.github.io/AMGT4CEM"
+ALLOWED_ORIGINS = "https://jp99175.github.io"   # + ",http://localhost:8000" pour tester en local
+
+[[r2_buckets]]
+binding = "DEPOTS"
+bucket_name = "amgt4cem-depots"
+
+# Toutes les 6 heures : chaque jeu de données n'est réinterrogé que s'il est « échu » (intervalleJours de
+# data/nappe/parametres.json) ou si sa dernière tentative a échoué.
+[triggers]
+crons = ["0 */6 * * *"]

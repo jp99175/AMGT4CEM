@@ -900,22 +900,20 @@ html, body {
   color: #555;
 }
 
-/* Étiquette de niveau d'une isopièze : texte seul, centré sur le point d'ancrage, liseré blanc pour la lisibilité. */
+/* Étiquette de niveau d'une isopièze (nappeLayer.js) : texte seul, aligné sur la ligne (angle posé en style en ligne),
+   même police et même taille que l'indicateur de zoom ; la ligne est interrompue sous le texte, pas de liseré. */
 .amgt-nappe-label-icon {
   background: none;
   border: none;
-  width: auto;
-  height: auto;
+  width: 0;
+  height: 0;
 }
 
 .amgt-nappe-label {
   display: inline-block;
-  transform: translate(-50%, -50%);
-  font-size: 11px;
-  font-weight: 700;
-  color: #0b5fa5;
+  font-family: Arial, sans-serif;
+  font-weight: 600;
   white-space: nowrap;
-  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
   pointer-events: none;
 }
 

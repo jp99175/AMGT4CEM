@@ -614,6 +614,16 @@ Comme UrbIS Topo : requêtes limitées à l'emprise visible, en Lambert 72, à p
 `maxFeaturesPerQuery` (message « résultat tronqué » sous la case). Le nom publié exact des couches (avec son préfixe)
 est retrouvé dans le GetCapabilities. Réglages : `data/nappe/parametres.json` ; code : `src/nappeLayer.js`.
 
+**Fiabilité du service** (il répond parfois en HTTP 502) : les données sont copiées dans R2 (partie publique) par le Worker
+`nappe-sync/` (voir son README), qui les revérifie périodiquement ; la carte lit cette copie, la garde sur l'appareil
+(IndexedDB, comparée à l'empreinte de `etat.json`) et n'interroge le service régional qu'à défaut des deux. Tant que le
+Worker n'est pas déployé (clé `nappe-sync` vide dans `services.json`), l'ancien fonctionnement (requêtes par emprise) reste actif.
+
+**Isopièzes** : lignes colorées selon leur niveau (rampe `rampe` de `parametres.json`, du clair au foncé), avec leur valeur
+écrite dans la ligne, alignée sur elle (la ligne est interrompue sous le texte), à la taille de l'indicateur de zoom
+(12 px), plusieurs fois le long des lignes longues. L'angle du texte est ramené dans [-90°, +90°[ : jamais à l'envers, et
+vertical lisible de bas en haut.
+
 **À vérifier depuis un navigateur réel** (l'accès sortant de l'environnement de développement vers
 `*.environnement.brussels` est bloqué, comme pour les autres services de la Région) : noms d'attributs (`gw_head`, `period`,
 `uh_rbc`... d'après le descriptif officiel), autorisation CORS du service, volume d'objets par emprise. Si le navigateur
@@ -959,6 +969,7 @@ data/metro/                  famille 2 : référentiel stations/tunnels/tronçon
 data/plans-patrimoine/       référentiel des planches, étiquettes (écrites via le relais), sélection par défaut, fichiers legacy
 data/urbis-topo/             réglages du service UrbIS Topo, sélection par défaut partagée
 data/nappe/                  réglages de la couche Nappe phréatique (parametres.json)
+nappe-sync/                  Worker Cloudflare : copie des données de la nappe dans R2 (public/nappe/) + contrôle périodique
 data/fonds-de-plan/          services externes : services.json + un fichier par service
 data/points-metier/          (réservé : structure des points métier, phase B)
 data/signalements/           vocabulaire.json : natures, types, domaines techniques (public)
