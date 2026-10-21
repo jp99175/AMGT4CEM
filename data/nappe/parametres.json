@@ -71,5 +71,24 @@
       "prof_crepine_rel_m": "Bas de la crépine (m)",
       "mon_eu_code": "Code européen"
     }
+  },
+  "profondeur": {
+    "libelle": "Profondeur de la nappe phréatique (isobathes)",
+    "couche": "groundwater_model_phreatic_depth",
+    "attributNiveau": "gw_depth",
+    "unite": "m sous le sol",
+    "service": "geologie"
+  },
+  "sondage": {
+    "rayonLignesM": 300,
+    "rayonStationsM": 2000,
+    "nbStations": 3,
+    "ecartIsopiezesM": 2,
+    "brugeotool": {
+      "libelle": "Coupe géologique officielle (BrugeoTool)",
+      "url": "https://geodata.environnement.brussels/client/brugeotool/technical/{x}/{y}"
+    },
+    "note": "Sondage virtuel (src/virtualBoreTool.js) : niveau et profondeur de la nappe déduits des isopièzes/isobathes du modèle (mai 2013) par interpolation ; stations les plus proches ; coupe géologique officielle = lien vers BrugeoTool au point du réticule (X/Y Lambert 72).",
+    "coupes": []
   }
 }

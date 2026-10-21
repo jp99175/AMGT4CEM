@@ -83,6 +83,7 @@
     },
   });
   AMGT4CEM_MeasureTool.init(map);
+  AMGT4CEM_VirtualBoreTool.init(map); // après la mesure : réutilise sa pane et son réticule
   AMGT4CEM_ScreenshotTool.init(map);
 
   // Plugins (applications séparées, voir src/plugins.js) : après les outils du cœur, qu'ils peuvent arrêter.
@@ -91,6 +92,7 @@
     deactivateCoreTools() {
       AMGT4CEM_AddPointTool.deactivate();
       AMGT4CEM_MeasureTool.deactivate();
+      AMGT4CEM_VirtualBoreTool.deactivate();
     },
   });
 
@@ -205,6 +207,7 @@
   AMGT4CEM_AddPointMenu.init(document.getElementById('amgt-add-point-btn'), {
     corePoint: () => {
       AMGT4CEM_MeasureTool.deactivate();
+      AMGT4CEM_VirtualBoreTool.deactivate();
       AMGT4CEM_Plugins.notifyCoreToolActivated('add-point');
       AMGT4CEM_AddPointTool.toggle();
     },
@@ -216,8 +219,16 @@
 
   document.getElementById('amgt-measure-btn').addEventListener('click', () => {
     AMGT4CEM_AddPointTool.deactivate();
+    AMGT4CEM_VirtualBoreTool.deactivate();
     AMGT4CEM_Plugins.notifyCoreToolActivated('measure');
     AMGT4CEM_MeasureTool.toggle();
+  });
+
+  document.getElementById('amgt-bore-btn').addEventListener('click', () => {
+    AMGT4CEM_AddPointTool.deactivate();
+    AMGT4CEM_MeasureTool.deactivate();
+    AMGT4CEM_Plugins.notifyCoreToolActivated('virtual-bore');
+    AMGT4CEM_VirtualBoreTool.toggle();
   });
 
   document.getElementById('amgt-form-confirm').addEventListener('click', () => {

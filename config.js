@@ -200,6 +200,7 @@ const AMGT4CEM_CONFIG = {
         './src/patrimoinePicker.js',
         './src/addPointTool.js',
         './src/measureTool.js',
+        './src/virtualBoreTool.js',
         './src/screenshotTool.js',
         './src/scaleControl.js',
         './src/buildInfoControl.js',
