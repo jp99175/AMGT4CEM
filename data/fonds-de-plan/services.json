@@ -44,8 +44,8 @@
       "url": "https://ows.environnement.brussels/water"
     },
     "nappe-sync": {
-      "libelle": "AMGT4CEM — copie des données de la nappe dans R2 (Worker nappe-sync/) ; vide tant que le Worker n'est pas déployé",
-      "url": ""
+      "libelle": "AMGT4CEM — copie des données de la nappe dans R2 (Worker nappe-sync/)",
+      "url": "https://amgt4cem-nappe-sync.jp99175.workers.dev"
     },
     "geologie": {
       "libelle": "Bruxelles Environnement — géologie et hydrogéologie (WFS) : isopièzes de la nappe phréatique (mai 2013)",
