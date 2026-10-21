@@ -74,7 +74,7 @@ const AMGT4CEM_NappeLayer = {
   async refresh() {
     const token = ++this._fetchToken;
     this._group.clearLayers();
-    this._setStatus('');
+    this._setStatus(this._enabled ? 'Chargement…' : '');
 
     const cfg = AMGT4CEM_CONFIG.nappe;
     if (!this._enabled || !cfg || !cfg.wfsUrl || (!this._showIsopieses && !this._showStations)) {
@@ -99,7 +99,10 @@ const AMGT4CEM_NappeLayer = {
     const failures = results.filter((r) => r && r.error).map((r) => r.error);
     const truncated = results.some((r) => r && r.truncated);
     const messages = [];
-    if (failures.length) messages.push(`Indisponible : ${failures.join(' ; ')}`);
+    const counts = results.filter((r) => r && !r.error).map((r) => `${r.count} ${r.label}`);
+    if (counts.length) messages.push(`Dans la vue : ${counts.join(', ')}.`);
+    if (results.some((r) => r && !r.error && r.count === 0)) messages.push('Aucun objet dans cette emprise : déplacer ou dézoomer.');
+    if (failures.length) messages.push(`Indisponible : ${failures.join(' ; ')}.`);
     if (truncated) messages.push('Résultat tronqué (trop d\'objets) : zoomer pour tout voir.');
     this._setStatus(messages.join(' '));
   },
@@ -120,10 +123,10 @@ const AMGT4CEM_NappeLayer = {
           if (label) this._group.addLayer(label);
         }
       }
-      return { truncated: features.truncated };
+      return { truncated: features.truncated, count: features.list.length, label: 'isopièzes' };
     } catch (err) {
       console.warn('[AMGT4CEM] Isopièzes de la nappe indisponibles :', err);
-      return { error: part.libelle };
+      return { error: `isopièzes (${this._reason(err)})` };
     }
   },
 
@@ -179,10 +182,10 @@ const AMGT4CEM_NappeLayer = {
         marker.bindPopup(() => this._buildPopup(part.libelle, feature.properties || {}, null, cfg));
         this._group.addLayer(marker);
       }
-      return { truncated: features.truncated };
+      return { truncated: features.truncated, count: features.list.length, label: 'stations' };
     } catch (err) {
       console.warn('[AMGT4CEM] Stations piézométriques indisponibles :', err);
-      return { error: part.libelle };
+      return { error: `stations (${this._reason(err)})` };
     }
   },
 
@@ -275,6 +278,12 @@ const AMGT4CEM_NappeLayer = {
       container.appendChild(note);
     }
     return container;
+  },
+
+  /** Cause lisible d'un échec : un TypeError de fetch() = refus du navigateur (CORS) ou réseau coupé. */
+  _reason(err) {
+    if (err instanceof TypeError) return 'refusé par le navigateur (CORS) ou service injoignable';
+    return String(err && err.message ? err.message : err);
   },
 
   _setStatus(text) {
