@@ -19,6 +19,7 @@ const AMGT4CEM_ScaleControl = {
   _mode: 'scale', // 'scale' | 'coords'
   _lastLatLng: null,
   _revertTimer: null,
+  _zoomEl: null,
   _maxWidthPx: 220,
   _coordsDisplayMs: 5000,
 
@@ -38,10 +39,33 @@ const AMGT4CEM_ScaleControl = {
     });
     new Control().addTo(map);
 
+    // Niveau de zoom, juste au-dessus de l'échelle (le dernier contrôle ajouté dans un coin bas s'empile au-dessus).
+    // Mis à jour PENDANT le zoom (événement `zoom`, pas seulement `zoomend`) ; décimale affichée seulement si le zoom
+    // est fractionnaire (molette, pincement).
+    const ZoomControl = L.Control.extend({
+      options: { position: 'bottomleft' },
+      onAdd() {
+        const el = L.DomUtil.create('div', 'amgt-zoom-level');
+        L.DomEvent.disableClickPropagation(el);
+        el.title = 'Niveau de zoom';
+        self._zoomEl = el;
+        return el;
+      },
+    });
+    new ZoomControl().addTo(map);
+    map.on('zoom zoomend', () => this._renderZoom());
+    this._renderZoom();
+
     map.on('mousemove', (e) => { this._lastLatLng = e.latlng; });
     map.on('zoomend moveend', () => this._renderScale());
 
     this._showScale();
+  },
+
+  _renderZoom() {
+    if (!this._zoomEl) return;
+    const z = this._map.getZoom();
+    this._zoomEl.textContent = `Zoom ${Number.isInteger(z) ? z : z.toFixed(1)}`;
   },
 
   _onClick() {

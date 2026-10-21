@@ -663,6 +663,18 @@ html, body {
 /* Contrôle unique en bas à gauche : alterne au clic entre l'échelle
    graphique (par défaut) et les coordonnées Lambert du dernier point
    survolé/cliqué (5 secondes, puis retour automatique à l'échelle). */
+/* Niveau de zoom (scaleControl.js), au-dessus de l'échelle. */
+.amgt-zoom-level {
+  margin-bottom: 4px;
+  padding: 1px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
 .amgt-scale-control {
   cursor: pointer;
   background: rgba(255,255,255,0.85);
