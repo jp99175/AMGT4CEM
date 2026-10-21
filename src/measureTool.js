@@ -1,5 +1,5 @@
 /**
- * Outil "📏 Mesurer" : effet dynamique en deux gestes de type
+ * Outil "Mesurer" : effet dynamique en deux gestes de type
  * presser-glisser-relâcher (comme placer un point puis le corriger avant
  * de lâcher), un pour le centre, un pour le rayon :
  *
