@@ -20,12 +20,14 @@ const AMGT4CEM_SearchTool = {
 
     const open = () => {
       panel.classList.remove('amgt-hidden');
+      toggleBtn.classList.add('amgt-btn--active');
       input.value = '';
       resultsEl.innerHTML = '';
       input.focus();
     };
     const close = () => {
       panel.classList.add('amgt-hidden');
+      toggleBtn.classList.remove('amgt-btn--active');
       clearTimeout(this._geocodeTimer);
     };
 
