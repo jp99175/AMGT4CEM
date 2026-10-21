@@ -342,7 +342,7 @@ const AMGT4CEM_NappeLayer = {
       }
       if (bandes) this._renderBands(fetched.list, part, min, max);
       this._renderIsopieses(features.list, part, cfg, min, max);
-      const legend = Number.isFinite(min) && max > min ? `niveaux de ${this._fmt(min)} à ${this._fmt(max)} m DNG, une teinte par intervalle de ${part.bandes ? part.bandes.equidistance : 2} m (valeur sur chaque ligne)` : '';
+      const legend = Number.isFinite(min) && max > min ? `niveaux de ${this._fmt(min)} à ${this._fmt(max)} m DNG, dégradé du foncé (nappe basse) au clair (nappe haute), valeur sur chaque ligne` : '';
       return { truncated: features.truncated, count: features.list.length, label: 'isopièzes', source: this._sourceNote(features.ds), legend };
     } catch (err) {
       console.warn('[AMGT4CEM] Isopièzes de la nappe indisponibles :', err);
@@ -360,14 +360,20 @@ const AMGT4CEM_NappeLayer = {
   },
 
   /**
-   * Teinte d'un intervalle : palette de bleus, parcourue dans un ordre qui écarte deux intervalles voisins
-   * (`ordrePalette`), donc toujours bien distincts l'un de l'autre. Retourne [r, g, b].
+   * Teinte d'un intervalle : dégradé continu de bleus selon l'altitude (foncé = nappe basse, clair = nappe haute),
+   * calibré sur les niveaux min/max de TOUT le jeu de données pour que les couleurs ne changent pas d'une vue à l'autre.
    * @param {number} k - numéro de l'intervalle = (niveau de sa ligne basse − décalage) / équidistance
+   * @returns {number[]} [r, g, b]
    */
-  _bandRgb(k, part) {
-    const pal = part.palette, order = part.ordrePalette || pal.map((_, i) => i);
-    const hex = pal[order[((k % order.length) + order.length) % order.length]];
-    return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  _bandRgb(k, part, min, max, off) {
+    const e = part.bandes ? part.bandes.equidistance : 2;
+    const stops = part.rampe;
+    const level = off + k * e + e / 2;
+    const t = Number.isFinite(min) && max > min ? Math.min(1, Math.max(0, (level - min) / (max - min))) : 0.5;
+    const x = t * (stops.length - 1), i = Math.min(stops.length - 2, Math.floor(x)), f = x - i;
+    const rgb = (hex) => [1, 3, 5].map((q) => parseInt(hex.slice(q, q + 2), 16));
+    const [c0, c1] = [rgb(stops[i]), rgb(stops[i + 1])];
+    return c0.map((c, q) => Math.round(c + (c1[q] - c) * f));
   },
 
   /** Décalage des niveaux par rapport à un multiple de l'équidistance (les niveaux du jeu sont tous espacés de 2 m). */
@@ -379,10 +385,10 @@ const AMGT4CEM_NappeLayer = {
     return 0;
   },
 
-  /** Couleur de la ligne d'un niveau : la teinte de l'intervalle qu'elle borde par le bas, assombrie. */
-  _lineColor(level, part, off) {
+  /** Couleur de la ligne d'un niveau : la teinte de l'intervalle qu'elle borde par le bas, mêlée de bleu marine pour rester lisible. */
+  _lineColor(level, part, off, min, max) {
     const e = part.bandes ? part.bandes.equidistance : 2;
-    const rgb = this._bandRgb(Math.round((level - off) / e), part).map((c) => Math.round(c * 0.72));
+    const rgb = this._bandRgb(Math.round((level - off) / e), part, min, max, off).map((c, q) => Math.round(c * 0.4 + [11, 42, 107][q] * 0.6));
     return `rgb(${rgb.join(',')})`;
   },
 
@@ -642,7 +648,7 @@ const AMGT4CEM_NappeLayer = {
     for (let k = 0; k < bandGrid.length; k++) {
       const band = bandGrid[k];
       if (band === this._NO_BAND) continue;
-      if (!colours.has(band)) colours.set(band, this._bandRgb(band, part));
+      if (!colours.has(band)) colours.set(band, this._bandRgb(band, part, min, max, off));
       const [r, g, bl] = colours.get(band);
       image.data[4 * k] = r; image.data[4 * k + 1] = g; image.data[4 * k + 2] = bl; image.data[4 * k + 3] = 255;
       painted++;
@@ -680,7 +686,7 @@ const AMGT4CEM_NappeLayer = {
     const margin = 200;
     for (const feature of list) {
       const value = Number(feature.properties && feature.properties[part.attributNiveau]);
-      const color = this._lineColor(value, part, off);
+      const color = this._lineColor(value, part, off, min, max);
       const text = Number.isFinite(value) ? this._fmt(value) : '';
       const width = text ? this._textWidth(text, px) + 2 * padding : 0;
       const keep = []; // morceaux de ligne conservés (LatLng)
