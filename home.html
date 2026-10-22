@@ -174,16 +174,14 @@
       </p>
     </div>
 
-    <!-- Affichage du menu par défaut : préférences locales et défaut administrateur (src/menuPrefs.js) -->
-    <div class="amgt-menu-prefs">
-      <button type="button" id="amgt-menu-prefs-save" class="amgt-link-btn" title="Mémorise les couches cochées et les opacités comme préférences de cet appareil">💾 Enregistrer cet affichage (cet appareil)</button>
-      <div id="amgt-menu-prefs-default-bar"></div>
-    </div>
+    <div id="amgt-menu-prefs-code" class="amgt-menu-prefs amgt-hidden"></div>
 
     <div class="amgt-map-menu__footer">
       <button id="amgt-reset-view-btn" class="amgt-link-btn" title="Revenir à l'emprise générale du réseau">
         ⤢ Réinitialiser la vue
       </button>
+      <!-- Affichage actuel -> affichage par défaut (src/menuPrefs.js) : non connectés (code administrateur) ou, pour un administrateur connecté, tous les utilisateurs connectés. -->
+      <button id="amgt-menu-prefs-save" class="amgt-link-btn" type="button" title="Enregistrer l'affichage actuel comme affichage par défaut">💾</button>
       <!-- Connexion (src/accountButton.js) : icône vierge si personne n'est connecté ; badge vert « validé »
            si un compte est connecté, qui devient une croix rouge au survol (un clic déconnecte). -->
       <button id="amgt-account-btn" class="amgt-btn amgt-btn--icon" type="button" title="Se connecter" aria-label="Se connecter">

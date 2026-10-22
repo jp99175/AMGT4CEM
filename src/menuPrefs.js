@@ -1,41 +1,59 @@
 /**
- * Affichage du menu ☰ Carte « par défaut » : couches cochées et opacités. Deux niveaux, du plus prioritaire au moins :
- *  1. PRÉFÉRENCES LOCALES de l'appareil (bouton 💾 du menu) ;
- *  2. affichage PAR DÉFAUT PARTAGÉ (data/fonds-de-plan/menu-par-defaut.json), modifiable par un administrateur
- *     (barre « défaut administrateur » du menu, enregistrement par le relais).
- * Appliqués au démarrage : cases cochées toujours ; opacité seulement pour les couches dont l'appareil n'a pas déjà
- * réglé le curseur (le réglage courant de l'appareil reste prioritaire).
+ * Affichage du menu ☰ Carte : couches cochées et opacités.
+ *
+ *  - DERNIERS RÉGLAGES UTILISÉS : enregistrés automatiquement sur l'appareil à chaque changement fait par
+ *    l'utilisateur, et repris au démarrage.
+ *  - AFFICHAGE PAR DÉFAUT PARTAGÉ (appareil sans réglage enregistré : première visite, données effacées) :
+ *      · utilisateurs NON connectés : data/fonds-de-plan/menu-par-defaut.json ;
+ *      · utilisateurs connectés     : data/fonds-de-plan/menu-par-defaut-connectes.json (à défaut, le précédent).
+ *    La disquette à côté de « Réinitialiser la vue » enregistre l'affichage actuel : pour les non connectés après
+ *    validation par le code administrateur ; pour un administrateur connecté, pour tous les utilisateurs connectés.
+ *    L'écriture passe par le relais (code administrateur), le fichier est visible par tous après redéploiement du site.
+ * Au démarrage, l'opacité d'une couche n'est reprise que si le curseur de cette couche n'a pas déjà été réglé sur l'appareil.
  */
 const AMGT4CEM_MenuPrefs = {
-  _prefKey: 'amgt4cem.menu-prefs.v1',
-  _sharedUrl: './data/fonds-de-plan/menu-par-defaut.json',
-  _sharedRoute: 'shared/fonds-de-plan/menu-par-defaut',
-  _shared: null,
-  _draft: null,
-  _bar: null,
+  _lastKey: 'amgt4cem.menu-prefs.v1',
+  _files: {
+    public: { url: './data/fonds-de-plan/menu-par-defaut.json', route: 'shared/fonds-de-plan/menu-par-defaut' },
+    connectes: { url: './data/fonds-de-plan/menu-par-defaut-connectes.json', route: 'shared/fonds-de-plan/menu-par-defaut-connectes' },
+  },
+  _shared: { public: null, connectes: null },
 
-  /** Lit le fichier partagé ; ne rejette jamais (absent, illisible, lent : pas de défaut partagé). */
-  async loadShared() {
+  async _loadOne(kind) {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 4000);
-      const response = await fetch(this._sharedUrl, { cache: 'no-cache', signal: controller.signal });
+      const response = await fetch(this._files[kind].url, { cache: 'no-cache', signal: controller.signal });
       clearTimeout(timer);
       if (response.ok) {
         const json = (await response.json()) || {};
-        if (json.layers || json.opacity) this._shared = { layers: json.layers || {}, opacity: json.opacity || {} };
+        if (json.layers || json.opacity) this._shared[kind] = { layers: json.layers || {}, opacity: json.opacity || {} };
       }
     } catch (err) {
-      console.warn('[AMGT4CEM] Affichage par défaut du menu illisible, ignoré :', err);
+      console.warn(`[AMGT4CEM] Affichage par défaut (${kind}) illisible, ignoré :`, err);
     }
   },
 
-  _local() {
+  /** Lit les fichiers partagés ; ne rejette jamais. */
+  async loadShared() {
+    await Promise.all([this._loadOne('public'), this._loadOne('connectes')]);
+  },
+
+  _last() {
     try {
-      const raw = localStorage.getItem(this._prefKey);
+      const raw = localStorage.getItem(this._lastKey);
       if (raw) return JSON.parse(raw);
     } catch (err) { /* illisible : ignoré */ }
     return null;
+  },
+
+  _connected() {
+    return typeof AMGT4CEM_Auth !== 'undefined' && !!AMGT4CEM_Auth.session();
+  },
+
+  /** Affichage par défaut qui s'applique à cet utilisateur. */
+  _defaultState() {
+    return this._connected() ? this._shared.connectes || this._shared.public : this._shared.public;
   },
 
   /** État actuellement affiché : { layers: {id: bool}, opacity: {couche: facteur} }. */
@@ -51,7 +69,7 @@ const AMGT4CEM_MenuPrefs = {
 
   /** À appeler une fois TOUTES les couches initialisées. */
   applyStartup() {
-    const state = this._local() || this._shared;
+    const state = this._last() || this._defaultState();
     if (!state) return;
     for (const [name, on] of Object.entries(state.layers || {})) {
       const cb = document.getElementById(`amgt-layer-${name}`);
@@ -66,40 +84,96 @@ const AMGT4CEM_MenuPrefs = {
     }
   },
 
-  saveLocal() {
-    localStorage.setItem(this._prefKey, JSON.stringify(this.capture()));
+  _saveLast() {
+    try { localStorage.setItem(this._lastKey, JSON.stringify(this.capture())); } catch (err) { /* valable pour la session */ }
   },
 
-  /** Interface du menu : 💾 (appareil) et barre administrateur (défaut partagé). */
+  /** Écriture dans le fichier partagé `kind` ('public' | 'connectes') par le relais. */
+  async _saveShared(kind, code) {
+    const state = this.capture();
+    await AMGT4CEM_PeLabelAnchors.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, this._files[kind].route, { version: 1, ...state }, code);
+    this._shared[kind] = state;
+  },
+
   initUi() {
-    const saveBtn = document.getElementById('amgt-menu-prefs-save');
-    const barEl = document.getElementById('amgt-menu-prefs-default-bar');
-    if (!saveBtn || !barEl) return;
-    const text = saveBtn.textContent;
-    saveBtn.addEventListener('click', () => {
-      this.saveLocal();
-      saveBtn.textContent = '✓ Affichage enregistré sur cet appareil';
-      setTimeout(() => { saveBtn.textContent = text; }, 1800);
+    // Derniers réglages utilisés : enregistrés à chaque changement fait par l'utilisateur (pas par l'application).
+    document.addEventListener('change', (e) => {
+      if (e.isTrusted && e.target.matches && e.target.matches('input[type="checkbox"][id^="amgt-layer-"]')) this._saveLast();
     });
-    this._bar = AMGT4CEM_PickerDefaultBar.attach(barEl, {
-      labels: {
-        idle: '🔒 Affichage par défaut pour tous (administrateur)',
-        save: 'Enregistrer l’affichage actuel comme défaut',
-        done: '✓ Affichage par défaut enregistré (visible par tous après le redéploiement du site, environ 1 minute).',
-        editing: 'L’affichage actuel du menu (couches cochées, opacités) va devenir le défaut partagé : réglez-le puis enregistrez.',
-      },
-      start: () => { this._draft = true; },
-      save: async (code) => {
-        await AMGT4CEM_PeLabelAnchors.putToRelay(
-          AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl,
-          this._sharedRoute,
-          { version: 1, ...this.capture() },
-          code
-        );
-        this._shared = this.capture();
-        this._draft = null;
-      },
-      cancel: () => { this._draft = null; },
+    document.addEventListener('input', (e) => {
+      if (e.isTrusted && e.target.matches && e.target.matches('.amgt-opacity-slider')) this._saveLast();
+    });
+
+    const btn = document.getElementById('amgt-menu-prefs-save');
+    const zone = document.getElementById('amgt-menu-prefs-code');
+    if (!btn || !zone) return;
+    const isAdmin = () => typeof AMGT4CEM_Admin !== 'undefined' && AMGT4CEM_Admin.isAdmin();
+    const kind = () => (isAdmin() ? 'connectes' : 'public');
+
+    // Visible pour un visiteur non connecté (validation par code) et pour un administrateur connecté ; pas pour un autre compte.
+    const refresh = () => {
+      const show = !this._connected() || isAdmin();
+      btn.classList.toggle('amgt-hidden', !show);
+      btn.title = isAdmin()
+        ? "Enregistrer l'affichage actuel comme affichage par défaut de tous les utilisateurs connectés"
+        : "Enregistrer l'affichage actuel comme affichage par défaut des utilisateurs non connectés (code administrateur requis)";
+      zone.classList.add('amgt-hidden');
+    };
+    refresh();
+    if (typeof AMGT4CEM_Auth !== 'undefined') AMGT4CEM_Auth.onChange(refresh);
+
+    const say = (text, isError) => {
+      zone.textContent = '';
+      zone.classList.remove('amgt-hidden');
+      const p = document.createElement('p');
+      p.textContent = text;
+      if (isError) p.className = 'amgt-menu-prefs__err';
+      zone.append(p);
+    };
+
+    const save = async (code) => {
+      const problem = AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl ? '' : 'Adresse du relais non renseignée (⚙ Paramètres > Serveur) : enregistrement impossible.';
+      if (problem) return say(problem, true);
+      say('Vérification…');
+      try {
+        await AMGT4CEM_PeLabelAnchors.checkConnection(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, code);
+        AMGT4CEM_PeLabelAnchors.setAdminCode(code);
+        await this._saveShared(kind(), code);
+      } catch (err) {
+        AMGT4CEM_PeLabelAnchors.setAdminCode('');
+        return say(err.message, true);
+      }
+      say(kind() === 'connectes'
+        ? '✓ Affichage enregistré pour les utilisateurs connectés (visible après le redéploiement du site, environ 1 minute).'
+        : '✓ Affichage enregistré pour les utilisateurs non connectés (visible après le redéploiement du site, environ 1 minute).');
+    };
+
+    btn.addEventListener('click', () => {
+      const known = AMGT4CEM_PeLabelAnchors.getAdminCode();
+      if (known) return save(known); // code déjà validé dans cet onglet
+      zone.textContent = '';
+      zone.classList.remove('amgt-hidden');
+      const row = document.createElement('div');
+      row.className = 'amgt-menu-prefs__row';
+      const input = document.createElement('input');
+      input.type = 'password';
+      input.placeholder = 'Code administrateur';
+      input.autocomplete = 'off';
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.className = 'amgt-btn amgt-btn--primary';
+      go.textContent = 'Valider';
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'amgt-btn';
+      cancel.textContent = 'Annuler';
+      const submit = () => (input.value.trim() ? save(input.value.trim()) : say('Saisir le code administrateur.', true));
+      go.addEventListener('click', submit);
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+      cancel.addEventListener('click', () => zone.classList.add('amgt-hidden'));
+      row.append(input, go, cancel);
+      zone.append(row);
+      input.focus();
     });
   },
 };

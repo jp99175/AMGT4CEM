@@ -1221,11 +1221,10 @@ html, body {
 .amgt-zoom-threshold { margin: 6px 0 10px; font-size: 13px; color: #444; }
 .amgt-zoom-threshold input { width: 52px; margin-left: 6px; padding: 3px 4px; font-size: 14px; }
 
-/* Affichage du menu par défaut (menuPrefs.js). */
-.amgt-menu-prefs { margin-top: 12px; padding-top: 8px; border-top: 1px solid #e3e3e3; font-size: 13px; }
-.amgt-menu-prefs .amgt-link-btn { margin-top: 0; }
-
-/* Seuil de zoom rattaché à l'élément qu'il règle : ligne en italique sous son texte, alignée dessus. */
-.amgt-checkbox-row--top { align-items: flex-start; }
-.amgt-checkbox-row--top input[type="checkbox"] { margin-top: 3px; }
-.amgt-zoom-threshold--inline { margin: 2px 0 0; font-style: italic; font-size: 13px; color: #555; }
+/* Affichage du menu par défaut (menuPrefs.js) : disquette à côté de « Réinitialiser la vue », saisie du code dessous. */
+#amgt-menu-prefs-save { margin-top: 0; font-size: 18px; line-height: 1; padding: 2px 6px; }
+.amgt-menu-prefs { margin-top: 10px; font-size: 13px; }
+.amgt-menu-prefs p { margin: 4px 0 0; color: #555; }
+.amgt-menu-prefs .amgt-menu-prefs__row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.amgt-menu-prefs input { padding: 5px 6px; font-size: 14px; max-width: 160px; }
+.amgt-menu-prefs .amgt-menu-prefs__err { color: #b3261e; }
