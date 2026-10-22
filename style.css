@@ -1224,3 +1224,8 @@ html, body {
 /* Affichage du menu par défaut (menuPrefs.js). */
 .amgt-menu-prefs { margin-top: 12px; padding-top: 8px; border-top: 1px solid #e3e3e3; font-size: 13px; }
 .amgt-menu-prefs .amgt-link-btn { margin-top: 0; }
+
+/* Seuil de zoom rattaché à l'élément qu'il règle : ligne en italique sous son texte, alignée dessus. */
+.amgt-checkbox-row--top { align-items: flex-start; }
+.amgt-checkbox-row--top input[type="checkbox"] { margin-top: 3px; }
+.amgt-zoom-threshold--inline { margin: 2px 0 0; font-style: italic; font-size: 13px; color: #555; }

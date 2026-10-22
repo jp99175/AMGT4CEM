@@ -173,13 +173,17 @@ const AMGT4CEM_NappeLayer = {
         else store.toggle(code);
         this._renderPicker();
       });
-      row.append(cb, document.createTextNode(' ' + label));
-      content.append(row);
+      // Texte de l'élément ; pour isopièzes et stations, le seuil de zoom suit à la ligne, dans le même paragraphe, en italique.
+      const text = document.createElement('div');
+      text.append(document.createTextNode(label));
       if (code === 'isopieses' || code === 'stations') {
         const cfg = AMGT4CEM_CONFIG.nappe || {};
         const dflt = cfg[code] ? cfg[code].minZoom : 14;
-        content.append(AMGT4CEM_ZoomThresholds.buildControl(`nappe.${code}`, dflt, code === 'isopieses' ? 'Isopièzes et intervalles : à partir du zoom' : 'Stations : à partir du zoom', this));
+        text.append(AMGT4CEM_ZoomThresholds.buildControl(`nappe.${code}`, dflt, 'Afficher à partir du zoom', this, { inline: true }));
+        row.classList.add('amgt-checkbox-row--top');
       }
+      row.append(cb, text);
+      content.append(row);
     }
   },
 

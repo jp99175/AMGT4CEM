@@ -47,9 +47,9 @@ const AMGT4CEM_ZoomThresholds = {
    * défaut partagés en cours d'édition administrateur (sinon null) : la valeur y est lue et écrite à la place de l'appareil.
    * `row.refresh()` relit la valeur (à appeler quand le sélecteur change de mode).
    */
-  buildControl(id, fallback, label, picker) {
+  buildControl(id, fallback, label, picker, opts = {}) {
     const row = document.createElement('div');
-    row.className = 'amgt-zoom-threshold';
+    row.className = 'amgt-zoom-threshold' + (opts.inline ? ' amgt-zoom-threshold--inline' : '');
     const lab = document.createElement('label');
     lab.textContent = `${label || 'Afficher à partir du zoom'} `;
     const input = document.createElement('input');
