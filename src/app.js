@@ -10,7 +10,7 @@
   await AMGT4CEM_Services.load();
   // Sélections par défaut PARTAGÉES (UrbIS Topo, Plans patrimoine) : lues avant la création des couches, qui
   // en dépendent pour une première visite. Ne rejette jamais (délai borné).
-  await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared(), AMGT4CEM_OrthoSelectionStore.loadShared(), AMGT4CEM_NappeSelectionStore.loadShared()]);
+  await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared(), AMGT4CEM_OrthoSelectionStore.loadShared(), AMGT4CEM_NappeSelectionStore.loadShared(), AMGT4CEM_MenuPrefs.loadShared()]);
 
   const map = L.map('map', {
     // Pas de contrôle de zoom Leaflet : remplacé par la recherche en haut à
@@ -230,6 +230,10 @@
     AMGT4CEM_Plugins.notifyCoreToolActivated('virtual-bore');
     AMGT4CEM_VirtualBoreTool.toggle();
   });
+
+  // Affichage du menu par défaut (couches cochées, opacités) : après l'initialisation de TOUTES les couches.
+  AMGT4CEM_MenuPrefs.initUi();
+  AMGT4CEM_MenuPrefs.applyStartup();
 
   document.getElementById('amgt-form-confirm').addEventListener('click', () => {
     AMGT4CEM_AddPointTool.confirm();

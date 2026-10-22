@@ -22,6 +22,10 @@ const AMGT4CEM_UrbisTopoPicker = {
   _searchInput: null,
   _draft: null, // brouillon de la sélection par défaut partagée (édition administrateur), sinon null
   _bar: null,
+  _draftExtra: null, // brouillon des réglages annexes (seuil de zoom) du défaut partagé, avec _draft
+  _zoomControl: null,
+
+  draftExtra() { return this._draft ? this._draftExtra : null; },
 
   init() {
     this._overlay = document.getElementById('amgt-topo-picker');
@@ -30,20 +34,24 @@ const AMGT4CEM_UrbisTopoPicker = {
 
     document.getElementById('amgt-topo-picker-close').addEventListener('click', () => this.close());
     this._searchInput.addEventListener('input', () => this._render());
-    this._content.before(AMGT4CEM_ZoomThresholds.buildControl('urbistopo', AMGT4CEM_CONFIG.urbisTopo.minZoom, 'Afficher les objets à partir du zoom'));
+    this._zoomControl = AMGT4CEM_ZoomThresholds.buildControl('urbistopo', AMGT4CEM_CONFIG.urbisTopo.minZoom, 'Afficher les objets à partir du zoom', this);
+    this._content.before(this._zoomControl);
 
     this._bar = AMGT4CEM_PickerDefaultBar.attach(document.getElementById('amgt-topo-picker-default-bar'), {
       start: () => {
         this._draft = AMGT4CEM_UrbisTopoSelectionStore.getShared();
+        this._draftExtra = AMGT4CEM_UrbisTopoSelectionStore.getSharedExtra();
         this._setEditing(true);
       },
       save: async (code) => {
-        await AMGT4CEM_UrbisTopoSelectionStore.saveShared(this._draft, code);
+        await AMGT4CEM_UrbisTopoSelectionStore.saveShared(this._draft, code, this._draftExtra);
         this._draft = null;
+        this._draftExtra = null;
         this._setEditing(false);
       },
       cancel: () => {
         this._draft = null;
+        this._draftExtra = null;
         this._setEditing(false);
       },
     });
@@ -65,6 +73,7 @@ const AMGT4CEM_UrbisTopoPicker = {
   _setEditing(editing) {
     this._overlay.classList.toggle('amgt-fs-picker--editing-default', editing);
     document.getElementById('amgt-topo-picker-save-default').disabled = editing;
+    if (this._zoomControl) this._zoomControl.refresh();
     this._render();
   },
 
@@ -83,6 +92,7 @@ const AMGT4CEM_UrbisTopoPicker = {
 
   open() {
     this._draft = null;
+    this._draftExtra = null;
     this._setEditing(false);
     this._bar.reset();
     this._searchInput.value = '';
@@ -93,6 +103,7 @@ const AMGT4CEM_UrbisTopoPicker = {
 
   close() {
     this._draft = null; // une édition de la sélection par défaut non enregistrée est abandonnée
+    this._draftExtra = null;
     this._setEditing(false);
     this._bar.reset();
     this._overlay.classList.add('amgt-hidden');

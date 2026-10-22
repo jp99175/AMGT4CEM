@@ -16,6 +16,10 @@ const AMGT4CEM_LayerOpacityStore = {
     return layerKey in all ? all[layerKey] : 1;
   },
 
+  has(layerKey) {
+    return layerKey in this._readAll();
+  },
+
   setFactor(layerKey, factor) {
     const all = this._readAll();
     all[layerKey] = factor;

@@ -209,6 +209,7 @@ const AMGT4CEM_CONFIG = {
         './src/creditsLayout.js',
         './src/basemap.js',
         './src/orthoPicker.js',
+        './src/menuPrefs.js',
         './src/mapMenu.js',
         './src/settingsPanel.js',
         './src/searchTool.js',

@@ -16,6 +16,32 @@ function createSelectionStore({ key, preferencesKey, sharedUrl, sharedRoute, pal
   const store = {
     _listeners: [],
     _shared: {}, // sélection par défaut partagée (fichier du dépôt) ; {} si absente ou illisible
+    _sharedExtra: {}, // réglages annexes par défaut partagés (ex. seuils de zoom) ; {} si absents
+
+    // ---- Réglages annexes (hors sélection : seuils de zoom…), mêmes trois niveaux que la sélection ----------
+
+    /** Réglages de l'appareil, sinon préférences locales, sinon défaut partagé. */
+    getExtra() {
+      for (const k of [key + '.extra', preferencesKey + '.extra']) {
+        try {
+          const raw = localStorage.getItem(k);
+          if (raw) return JSON.parse(raw) || {};
+        } catch (err) { /* illisible : niveau suivant */ }
+      }
+      return { ...this._sharedExtra };
+    },
+
+    getSharedExtra() {
+      return { ...this._sharedExtra };
+    },
+
+    /** Modifie un réglage annexe de l'appareil. */
+    setExtraValue(name, value) {
+      const extra = this.getExtra();
+      if (value === null || value === undefined) delete extra[name]; else extra[name] = value;
+      try { localStorage.setItem(key + '.extra', JSON.stringify(extra)); } catch (err) { /* valable pour la session */ }
+      this._listeners.forEach((fn) => fn(this.getSelection()));
+    },
 
     // ---- Fonctions pures --------------------------------------------------------------------
 
@@ -96,6 +122,7 @@ function createSelectionStore({ key, preferencesKey, sharedUrl, sharedRoute, pal
     /** Enregistre la sélection actuelle comme préférences locales de l'utilisateur (bouton 💾 du sélecteur). */
     saveCurrentAsDefault() {
       localStorage.setItem(preferencesKey, JSON.stringify(this.getSelection()));
+      localStorage.setItem(preferencesKey + '.extra', JSON.stringify(this.getExtra()));
     },
 
     _save(selection) {
@@ -117,7 +144,11 @@ function createSelectionStore({ key, preferencesKey, sharedUrl, sharedRoute, pal
         const timer = setTimeout(() => controller.abort(), 4000);
         const response = await fetch(sharedUrl, { cache: 'no-cache', signal: controller.signal });
         clearTimeout(timer);
-        if (response.ok) this._shared = ((await response.json()) || {}).selection || {};
+        if (response.ok) {
+          const json = (await response.json()) || {};
+          this._shared = json.selection || {};
+          this._sharedExtra = json.extra || {};
+        }
       } catch (err) {
         console.warn(`[AMGT4CEM] Sélection par défaut ${label} illisible, ignorée :`, err);
       }
@@ -132,15 +163,16 @@ function createSelectionStore({ key, preferencesKey, sharedUrl, sharedRoute, pal
      * Enregistre `selection` comme sélection par défaut PARTAGÉE (dépôt, via le relais).
      * Rejetée avec un Error au message lisible en cas d'échec.
      */
-    async saveShared(selection, adminCode) {
+    async saveShared(selection, adminCode, extra) {
       await AMGT4CEM_PeLabelAnchors.putToRelay(
         AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl,
         sharedRoute,
-        { version: 1, selection },
+        { version: 1, selection, extra: extra || this._sharedExtra },
         adminCode
       );
       const before = JSON.stringify(this.getSelection());
       this._shared = { ...selection };
+      if (extra) this._sharedExtra = { ...extra };
       // Un appareil sans sélection ni préférences enregistrées voit sa sélection changer : la carte doit suivre.
       if (JSON.stringify(this.getSelection()) !== before) this._listeners.forEach((fn) => fn(this.getSelection()));
     },

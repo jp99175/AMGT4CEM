@@ -66,6 +66,8 @@ const AMGT4CEM_NappeLayer = {
     ['stations', 'Stations de mesure piézométriques'],
   ],
   _draft: null, // brouillon de la sélection par défaut partagée (édition administrateur), sinon null
+  _draftExtraV: null, // brouillon des réglages annexes (seuils de zoom) du défaut partagé
+  draftExtra() { return this._draft ? this._draftExtraV : null; },
 
   /** Reprend la sélection de l'appareil (préférences locales ou défaut partagé) dans les trois indicateurs d'affichage. */
   _syncFromStore() {
@@ -102,9 +104,9 @@ const AMGT4CEM_NappeLayer = {
     const barEl = document.getElementById('amgt-nappe-picker-default-bar');
     this._bar = barEl && typeof AMGT4CEM_PickerDefaultBar !== 'undefined'
       ? AMGT4CEM_PickerDefaultBar.attach(barEl, {
-        start: () => { this._draft = store.getShared(); this._setEditing(true); },
-        save: async (code) => { await store.saveShared(this._draft, code); this._draft = null; this._setEditing(false); },
-        cancel: () => { this._draft = null; this._setEditing(false); },
+        start: () => { this._draft = store.getShared(); this._draftExtraV = store.getSharedExtra(); this._setEditing(true); },
+        save: async (code) => { await store.saveShared(this._draft, code, this._draftExtraV); this._draft = null; this._draftExtraV = null; this._setEditing(false); },
+        cancel: () => { this._draft = null; this._draftExtraV = null; this._setEditing(false); },
       })
       : null;
     const saveBtn = document.getElementById('amgt-nappe-picker-save-default');
@@ -124,6 +126,7 @@ const AMGT4CEM_NappeLayer = {
 
   openPicker() {
     this._draft = null;
+    this._draftExtraV = null;
     this._setEditing(false);
     if (this._bar) this._bar.reset();
     this._renderPicker();
@@ -132,6 +135,7 @@ const AMGT4CEM_NappeLayer = {
 
   closePicker() {
     this._draft = null; // une édition de la sélection par défaut non enregistrée est abandonnée
+    this._draftExtraV = null;
     this._setEditing(false);
     if (this._bar) this._bar.reset();
     document.getElementById('amgt-nappe-picker').classList.add('amgt-hidden');
@@ -174,7 +178,7 @@ const AMGT4CEM_NappeLayer = {
       if (code === 'isopieses' || code === 'stations') {
         const cfg = AMGT4CEM_CONFIG.nappe || {};
         const dflt = cfg[code] ? cfg[code].minZoom : 14;
-        content.append(AMGT4CEM_ZoomThresholds.buildControl(`nappe.${code}`, dflt, code === 'isopieses' ? 'Isopièzes et intervalles : à partir du zoom' : 'Stations : à partir du zoom'));
+        content.append(AMGT4CEM_ZoomThresholds.buildControl(`nappe.${code}`, dflt, code === 'isopieses' ? 'Isopièzes et intervalles : à partir du zoom' : 'Stations : à partir du zoom', this));
       }
     }
   },

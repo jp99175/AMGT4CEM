@@ -1220,3 +1220,7 @@ html, body {
 /* Seuil de zoom dans les sélecteurs plein écran (zoomThresholds.js). */
 .amgt-zoom-threshold { margin: 6px 0 10px; font-size: 13px; color: #444; }
 .amgt-zoom-threshold input { width: 52px; margin-left: 6px; padding: 3px 4px; font-size: 14px; }
+
+/* Affichage du menu par défaut (menuPrefs.js). */
+.amgt-menu-prefs { margin-top: 12px; padding-top: 8px; border-top: 1px solid #e3e3e3; font-size: 13px; }
+.amgt-menu-prefs .amgt-link-btn { margin-top: 0; }

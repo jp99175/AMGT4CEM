@@ -14,6 +14,12 @@
  */
 const AMGT4CEM_PickerDefaultBar = {
   attach(container, hooks) {
+    const T = Object.assign({
+      idle: '🔒 Modifier la sélection par défaut (administrateur)',
+      save: 'Enregistrer la sélection par défaut',
+      done: '✓ Sélection par défaut enregistrée (visible par tous après le redéploiement du site, environ 1 minute).',
+      editing: 'Modification de la sélection par défaut PARTAGÉE : la carte et votre sélection ne changent pas tant que vous n’enregistrez pas.',
+    }, hooks.labels || {});
     container.classList.add('amgt-default-bar');
     container.innerHTML = '';
     const status = document.createElement('p');
@@ -39,7 +45,7 @@ const AMGT4CEM_PickerDefaultBar = {
 
     const showIdle = () => {
       row.innerHTML = '';
-      row.append(button('🔒 Modifier la sélection par défaut (administrateur)', startAuth));
+      row.append(button(T.idle, startAuth));
       say('');
     };
 
@@ -81,7 +87,7 @@ const AMGT4CEM_PickerDefaultBar = {
     const startEdit = (code) => {
       hooks.start();
       row.innerHTML = '';
-      const saveBtn = button('Enregistrer la sélection par défaut', async () => {
+      const saveBtn = button(T.save, async () => {
         saveBtn.disabled = true;
         say('Enregistrement…');
         try {
@@ -91,10 +97,10 @@ const AMGT4CEM_PickerDefaultBar = {
           return say(err.message, true);
         }
         showIdle();
-        say('✓ Sélection par défaut enregistrée (visible par tous après le redéploiement du site, environ 1 minute).');
+        say(T.done);
       }, 'amgt-btn amgt-btn--primary');
       row.append(saveBtn, button('Annuler', () => { hooks.cancel(); showIdle(); }));
-      say('Modification de la sélection par défaut PARTAGÉE : la carte et votre sélection ne changent pas tant que vous n’enregistrez pas.');
+      say(T.editing);
     };
 
     showIdle();
