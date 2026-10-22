@@ -34,6 +34,7 @@ const AMGT4CEM_UrbisTopoLayer = {
     this._group = L.layerGroup([], { attribution: '&copy; CIRB/CIBG &ndash; UrbIS Topo' });
 
     AMGT4CEM_UrbisTopoSelectionStore.onChange(() => this.refresh());
+    AMGT4CEM_ZoomThresholds.onChange((id) => { if (id === 'urbistopo') this.refresh(); });
 
     map.on('moveend', () => {
       clearTimeout(this._moveTimer);
@@ -78,7 +79,7 @@ const AMGT4CEM_UrbisTopoLayer = {
     }
     this._group.addTo(this._map);
 
-    if (this._map.getZoom() < AMGT4CEM_CONFIG.urbisTopo.minZoom) return;
+    if (this._map.getZoom() < AMGT4CEM_ZoomThresholds.get('urbistopo', AMGT4CEM_CONFIG.urbisTopo.minZoom)) return;
 
     const catalogByCode = this._catalogIndex();
     const pointCodes = codes.filter((c) => catalogByCode[c] && catalogByCode[c].geometry === 'point');

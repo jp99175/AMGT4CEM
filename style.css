@@ -1216,3 +1216,7 @@ html, body {
 /* Actif : négatif (disque plein, tracé blanc). */
 .amgt-btn--tool.amgt-btn--active,
 .amgt-btn--tool.amgt-btn--active:hover { background: #0b5c75; color: #fff; }
+
+/* Seuil de zoom dans les sélecteurs plein écran (zoomThresholds.js). */
+.amgt-zoom-threshold { margin: 6px 0 10px; font-size: 13px; color: #444; }
+.amgt-zoom-threshold input { width: 52px; margin-left: 6px; padding: 3px 4px; font-size: 14px; }

@@ -30,6 +30,7 @@ const AMGT4CEM_UrbisTopoPicker = {
 
     document.getElementById('amgt-topo-picker-close').addEventListener('click', () => this.close());
     this._searchInput.addEventListener('input', () => this._render());
+    this._content.before(AMGT4CEM_ZoomThresholds.buildControl('urbistopo', AMGT4CEM_CONFIG.urbisTopo.minZoom, 'Afficher les objets à partir du zoom'));
 
     this._bar = AMGT4CEM_PickerDefaultBar.attach(document.getElementById('amgt-topo-picker-default-bar'), {
       start: () => {

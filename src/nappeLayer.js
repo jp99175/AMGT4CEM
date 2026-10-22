@@ -77,6 +77,11 @@ const AMGT4CEM_NappeLayer = {
   },
 
   /** Outil « Forage virtuel » : visible seulement quand la couche Géotechnique est active. */
+  /** Seuil de zoom d'un élément : choix de l'utilisateur (menu de sélection), sinon réglage du fichier. */
+  _minZoom(part, cfg) {
+    return AMGT4CEM_ZoomThresholds.get(`nappe.${part}`, cfg[part].minZoom);
+  },
+
   _syncBoreButton() {
     const btn = document.getElementById('amgt-bore-btn');
     if (btn) btn.classList.toggle('amgt-hidden', !this._enabled);
@@ -87,6 +92,7 @@ const AMGT4CEM_NappeLayer = {
 
   _initPicker() {
     document.getElementById('amgt-nappe-picker-close').addEventListener('click', () => this.closePicker());
+    AMGT4CEM_ZoomThresholds.onChange((id) => { if (id.startsWith('nappe.')) this.refresh(); });
     const store = AMGT4CEM_NappeSelectionStore;
     store.onChange(() => {
       this._syncFromStore();
@@ -165,6 +171,11 @@ const AMGT4CEM_NappeLayer = {
       });
       row.append(cb, document.createTextNode(' ' + label));
       content.append(row);
+      if (code === 'isopieses' || code === 'stations') {
+        const cfg = AMGT4CEM_CONFIG.nappe || {};
+        const dflt = cfg[code] ? cfg[code].minZoom : 14;
+        content.append(AMGT4CEM_ZoomThresholds.buildControl(`nappe.${code}`, dflt, code === 'isopieses' ? 'Isopièzes et intervalles : à partir du zoom' : 'Stations : à partir du zoom'));
+      }
     }
   },
 
@@ -209,11 +220,12 @@ const AMGT4CEM_NappeLayer = {
 
     // Seuil de zoom propre à chaque élément (data/nappe/parametres.json) : stations dès 13, isopièzes dès 15.
     const zoom = this._map.getZoom();
-    const wantIsopieses = this._showIsopieses && zoom >= cfg.isopieses.minZoom;
-    const wantStations = this._showStations && zoom >= cfg.stations.minZoom;
+    const zIso = this._minZoom('isopieses', cfg), zSta = this._minZoom('stations', cfg);
+    const wantIsopieses = this._showIsopieses && zoom >= zIso;
+    const wantStations = this._showStations && zoom >= zSta;
     const tooFar = [];
-    if (this._showIsopieses && !wantIsopieses) tooFar.push(`isopièzes dès le zoom ${cfg.isopieses.minZoom}`);
-    if (this._showStations && !wantStations) tooFar.push(`stations dès le zoom ${cfg.stations.minZoom}`);
+    if (this._showIsopieses && !wantIsopieses) tooFar.push(`isopièzes dès le zoom ${zIso}`);
+    if (this._showStations && !wantStations) tooFar.push(`stations dès le zoom ${zSta}`);
     if (!wantIsopieses && !wantStations) {
       this._setStatus(`Zoomer davantage : ${tooFar.join(', ')}.`);
       return;
@@ -601,7 +613,9 @@ const AMGT4CEM_NappeLayer = {
       // Une teinte par palier (ex. 10 m = 5 intervalles) : des aplats nettement distincts plutôt qu'un dégradé.
       const palier = part.bandes.paliersM || e;
       const k = Math.floor(f.properties.niv / palier);
-      const [r, g, b] = this._bandRgb((k * palier + palier / 2 - e / 2) / e, part, min, max, 0);
+      let [r, g, b] = this._bandRgb((k * palier + palier / 2 - e / 2) / e, part, min, max, 0);
+      const alt = part.bandes.alternance || 0;
+      if (alt && palier === e && Math.round(f.properties.niv / e) % 2) [r, g, b] = [r, g, b].map((c) => Math.round(c + (255 - c) * alt)); // voisins plus distincts
       this._group.addLayer(L.polygon(f._ll, {
         pane: 'amgtNappeFill',
         interactive: false,

@@ -24,7 +24,7 @@
     "epaisseur": 1.5,
     "etiquetteMinZoom": 15,
     "service": "geologie",
-    "minZoom": 15,
+    "minZoom": 14,
     "synchro": {
       "intervalleJours": 30
     },
@@ -38,7 +38,8 @@
       "cellulePx": 6,
       "budgetOperations": 40000000,
       "fichier": "./data/nappe/intervalles.json",
-      "paliersM": 10
+      "paliersM": 2,
+      "alternance": 0.12
     },
     "rampe": [
       "#060f66",
