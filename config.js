@@ -194,6 +194,7 @@ const AMGT4CEM_CONFIG = {
         './src/urbisTopoSelectionStore.js',
         './src/urbisTopoLayer.js',
         './src/urbisTopoPicker.js',
+        './src/nappeSelectionStore.js',
         './src/nappeLayer.js',
         './src/patrimoineSelectionStore.js',
         './src/patrimoineLayer.js',

@@ -40,8 +40,8 @@ const AMGT4CEM_NappeLayer = {
     const cfg = AMGT4CEM_CONFIG.nappe || {};
     this._group = L.layerGroup([], { attribution: cfg.attribution || '&copy; Bruxelles Environnement' });
     this._statusEl = document.getElementById('amgt-nappe-status');
-    document.getElementById('amgt-nappe-picker-close').addEventListener('click', () => this.closePicker());
-    this._loadSelection();
+    if (typeof AMGT4CEM_NappeSelectionStore !== 'undefined') { this._syncFromStore(); this._initPicker(); }
+    this._syncBoreButton();
     // Intervalles colorés : sous toutes les couches vectorielles (overlayPane = 400), au-dessus des fonds de carte (tilePane = 200).
     const pane = map.createPane('amgtNappeFill');
     pane.style.zIndex = 395;
@@ -56,46 +56,111 @@ const AMGT4CEM_NappeLayer = {
 
   setEnabled(enabled) {
     this._enabled = enabled;
+    this._syncBoreButton();
     this.refresh();
   },
 
-  /** Cases « Isopièzes » / « Stations de mesure » du sous-volet du menu. */
-  _storeKey: 'amgt-geotech-elements',
+  _PARTS: [
+    ['isopieses', 'Isopièzes de la nappe phréatique (mai 2013, modèle)'],
+    ['bandes', 'Colorer les intervalles entre isopièzes'],
+    ['stations', 'Stations de mesure piézométriques'],
+  ],
+  _draft: null, // brouillon de la sélection par défaut partagée (édition administrateur), sinon null
 
-  /** Éléments affichés (choix de « modifier la sélection »), mémorisés sur l'appareil. */
-  _loadSelection() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(this._storeKey) || 'null');
-      if (saved) this.setParts(saved, true);
-    } catch (err) { /* stockage indisponible : tout est affiché */ }
+  /** Reprend la sélection de l'appareil (préférences locales ou défaut partagé) dans les trois indicateurs d'affichage. */
+  _syncFromStore() {
+    if (typeof AMGT4CEM_NappeSelectionStore === 'undefined') return;
+    const sel = AMGT4CEM_NappeSelectionStore.getSelection();
+    this._showIsopieses = Boolean(sel.isopieses);
+    this._showBandes = Boolean(sel.bandes);
+    this._showStations = Boolean(sel.stations);
+  },
+
+  /** Outil « Forage virtuel » : visible seulement quand la couche Géotechnique est active. */
+  _syncBoreButton() {
+    const btn = document.getElementById('amgt-bore-btn');
+    if (btn) btn.classList.toggle('amgt-hidden', !this._enabled);
+    if (!this._enabled && typeof AMGT4CEM_VirtualBoreTool !== 'undefined') {
+      try { AMGT4CEM_VirtualBoreTool.deactivate(); AMGT4CEM_VirtualBoreTool.close(); } catch (err) { /* outil pas encore initialisé */ }
+    }
+  },
+
+  _initPicker() {
+    document.getElementById('amgt-nappe-picker-close').addEventListener('click', () => this.closePicker());
+    const store = AMGT4CEM_NappeSelectionStore;
+    store.onChange(() => {
+      this._syncFromStore();
+      if (typeof AMGT4CEM_ScreenshotTool !== 'undefined') AMGT4CEM_ScreenshotTool.invalidateBackground();
+      this.refresh();
+    });
+    const barEl = document.getElementById('amgt-nappe-picker-default-bar');
+    this._bar = barEl && typeof AMGT4CEM_PickerDefaultBar !== 'undefined'
+      ? AMGT4CEM_PickerDefaultBar.attach(barEl, {
+        start: () => { this._draft = store.getShared(); this._setEditing(true); },
+        save: async (code) => { await store.saveShared(this._draft, code); this._draft = null; this._setEditing(false); },
+        cancel: () => { this._draft = null; this._setEditing(false); },
+      })
+      : null;
+    const saveBtn = document.getElementById('amgt-nappe-picker-save-default');
+    const saveText = saveBtn.textContent;
+    saveBtn.addEventListener('click', () => {
+      store.saveCurrentAsDefault();
+      saveBtn.textContent = '✓';
+      setTimeout(() => { saveBtn.textContent = saveText; }, 1200);
+    });
+  },
+
+  _setEditing(editing) {
+    document.getElementById('amgt-nappe-picker').classList.toggle('amgt-fs-picker--editing-default', editing);
+    document.getElementById('amgt-nappe-picker-save-default').disabled = editing;
+    this._renderPicker();
   },
 
   openPicker() {
+    this._draft = null;
+    this._setEditing(false);
+    if (this._bar) this._bar.reset();
     this._renderPicker();
     document.getElementById('amgt-nappe-picker').classList.remove('amgt-hidden');
   },
 
   closePicker() {
+    this._draft = null; // une édition de la sélection par défaut non enregistrée est abandonnée
+    this._setEditing(false);
+    if (this._bar) this._bar.reset();
     document.getElementById('amgt-nappe-picker').classList.add('amgt-hidden');
   },
 
   _renderPicker() {
+    const store = AMGT4CEM_NappeSelectionStore;
+    const selection = this._draft || store.getSelection();
     const content = document.getElementById('amgt-nappe-picker-content');
-    const items = [
-      ['isopieses', 'Isopièzes de la nappe phréatique (mai 2013, modèle)', this._showIsopieses],
-      ['bandes', 'Colorer les intervalles entre isopièzes', this._showBandes],
-      ['stations', 'Stations de mesure piézométriques', this._showStations],
-    ];
     content.textContent = '';
-    for (const [key, label, on] of items) {
+    const codes = this._PARTS.map(([code]) => code);
+    const setMany = (on) => {
+      if (this._draft) this._draft = on ? store.withMany(this._draft, codes) : store.withoutMany(this._draft, codes);
+      else if (on) store.selectMany(codes); else store.deselectMany(codes);
+      this._renderPicker();
+    };
+    const all = document.createElement('label');
+    all.className = 'amgt-checkbox-row amgt-topo-global-toggle';
+    const n = codes.filter((c) => selection[c]).length;
+    const allCb = document.createElement('input');
+    allCb.type = 'checkbox';
+    allCb.checked = n === codes.length;
+    allCb.indeterminate = n > 0 && n < codes.length;
+    allCb.addEventListener('change', () => setMany(allCb.checked));
+    all.append(allCb, document.createTextNode(' Tout (dé)sélectionner'));
+    content.append(all);
+    for (const [code, label] of this._PARTS) {
       const row = document.createElement('label');
       row.className = 'amgt-checkbox-row';
       const cb = document.createElement('input');
       cb.type = 'checkbox';
-      cb.checked = on;
+      cb.checked = Boolean(selection[code]);
       cb.addEventListener('change', () => {
-        AMGT4CEM_ScreenshotTool.invalidateBackground();
-        this.setParts({ [key]: cb.checked });
+        if (this._draft) this._draft = store.withToggle(this._draft, code);
+        else store.toggle(code);
         this._renderPicker();
       });
       row.append(cb, document.createTextNode(' ' + label));
@@ -103,14 +168,12 @@ const AMGT4CEM_NappeLayer = {
     }
   },
 
-  setParts({ isopieses, stations, bandes }, silent) {
+  /** Affichage programmatique des éléments (tests) ; l'interface passe par « modifier la sélection ». */
+  setParts({ isopieses, stations, bandes }) {
     if (typeof isopieses === 'boolean') this._showIsopieses = isopieses;
     if (typeof bandes === 'boolean') this._showBandes = bandes;
     if (typeof stations === 'boolean') this._showStations = stations;
-    if (!silent) {
-      try { localStorage.setItem(this._storeKey, JSON.stringify({ isopieses: this._showIsopieses, bandes: this._showBandes, stations: this._showStations })); } catch (err) { /* choix valable pour la session */ }
-      this.refresh();
-    }
+    this.refresh();
   },
 
   /** Réglage d'opacité (icône curseurs du menu ☰ Carte), 0 à 1. */
@@ -122,6 +185,8 @@ const AMGT4CEM_NappeLayer = {
         layer.setStyle({ opacity: factor, fillOpacity: this._basePointFillOpacity * factor });
       } else if (layer instanceof L.ImageOverlay) {
         layer.setOpacity(this._bandOpacity() * factor);
+      } else if (layer.options && layer.options.amgtBand) {
+        layer.setStyle({ fillOpacity: this._bandOpacity() * factor });
       } else if (layer instanceof L.Polyline) {
         layer.setStyle({ opacity: this._baseLineOpacity * factor });
       } else if (layer instanceof L.Marker && layer.getElement()) {
@@ -340,7 +405,12 @@ const AMGT4CEM_NappeLayer = {
       if (!features.ds) {
         for (const f of features.list) { const v = Number(f.properties && f.properties[part.attributNiveau]); if (Number.isFinite(v)) { min = Math.min(min, v); max = Math.max(max, v); } }
       }
-      if (bandes) this._renderBands(fetched.list, part, min, max);
+      if (bandes) {
+        // Polygones précalculés (data/nappe/intervalles.json) ; à défaut, calcul par grille.
+        const drawn = bandes.fichier ? await this._renderBandPolygons(part, bbox, min, max, token) : false;
+        if (token !== this._fetchToken) return null;
+        if (!drawn) this._renderBands(fetched.list, part, min, max);
+      }
       this._renderIsopieses(features.list, part, cfg, min, max);
       const legend = Number.isFinite(min) && max > min ? `niveaux de ${this._fmt(min)} à ${this._fmt(max)} m DNG, dégradé du foncé (nappe basse) au clair (nappe haute), valeur sur chaque ligne` : '';
       return { truncated: features.truncated, count: features.list.length, label: 'isopièzes', source: this._sourceNote(features.ds), legend };
@@ -502,6 +572,43 @@ const AMGT4CEM_NappeLayer = {
     const k1 = Math.round((v1 - off) / e);
     if (!Number.isFinite(v2)) return k1;
     return v2 > v1 ? k1 - 1 : k1;
+  },
+
+  _bandPolygons: null, // Promise du fichier d'intervalles (polygones Lambert 72), chargé une fois
+
+  _loadBandPolygons(part) {
+    if (!this._bandPolygons) {
+      this._bandPolygons = fetch(part.bandes.fichier)
+        .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then((json) => {
+          for (const f of json.features) f._bb = this._bboxOf(f.geometry);
+          return json.features;
+        })
+        .catch((err) => { console.warn('[AMGT4CEM] Intervalles précalculés indisponibles, calcul par grille :', err); this._bandPolygons = null; return null; });
+    }
+    return this._bandPolygons;
+  },
+
+  /** Aplats unis : un polygone par zone comprise entre deux isopièzes consécutives, teinte selon l'altitude. */
+  async _renderBandPolygons(part, bbox, min, max, token) {
+    const feats = await this._loadBandPolygons(part);
+    if (!feats || token !== this._fetchToken) return false;
+    const e = part.bandes.equidistance;
+    const factor = this._opacityFactor;
+    for (const f of feats) {
+      if (!f._bb || f._bb[0] > bbox[2] || f._bb[2] < bbox[0] || f._bb[1] > bbox[3] || f._bb[3] < bbox[1]) continue;
+      if (!f._ll) f._ll = f.geometry.coordinates.map((ring) => ring.map((pt) => AMGT4CEM_CRS.lambertToLatLng(pt)));
+      const [r, g, b] = this._bandRgb(f.properties.niv / e, part, min, max, 0);
+      this._group.addLayer(L.polygon(f._ll, {
+        pane: 'amgtNappeFill',
+        interactive: false,
+        stroke: false,
+        fillColor: `rgb(${r},${g},${b})`,
+        fillOpacity: this._bandOpacity() * factor,
+        amgtBand: true,
+      }));
+    }
+    return true;
   },
 
   _NO_BAND: -32768,

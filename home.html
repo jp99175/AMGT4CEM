@@ -142,12 +142,12 @@
       </button>
     </div>
     <div class="amgt-opacity-slider-row amgt-hidden" data-layer="nappe">
+      <p class="amgt-topo-edit-hint" id="amgt-nappe-status"></p>
       <input type="range" min="0" max="100" value="100" class="amgt-opacity-slider" />
       <p class="amgt-topo-edit-hint">
         <a href="#" id="amgt-nappe-edit-link">(modifier la sélection)</a>
       </p>
     </div>
-    <p class="amgt-topo-edit-hint" id="amgt-nappe-status"></p>
 
     <h3 id="amgt-points-heading">Points métier</h3>
 
@@ -404,10 +404,14 @@
     <div class="amgt-fs-picker-header">
       <h2>Géotechnique : éléments à afficher</h2>
       <div class="amgt-fs-picker-header-actions">
+        <button id="amgt-nappe-picker-save-default" class="amgt-btn amgt-btn--icon" title="Enregistrer mes préférences (sélection locale, propre à cet appareil)">
+          💾
+        </button>
         <button id="amgt-nappe-picker-close" class="amgt-btn" title="Retour à la carte">✕ Fermer</button>
       </div>
     </div>
     <div id="amgt-nappe-picker-content" class="amgt-fs-picker-content"></div>
+    <div id="amgt-nappe-picker-default-bar"></div>
   </div>
 
   <div id="amgt-signalements-picker" class="amgt-hidden amgt-fs-picker">

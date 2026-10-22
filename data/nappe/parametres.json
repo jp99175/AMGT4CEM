@@ -36,7 +36,8 @@
       "equidistance": 2,
       "rayonM": 4000,
       "cellulePx": 6,
-      "budgetOperations": 40000000
+      "budgetOperations": 40000000,
+      "fichier": "./data/nappe/intervalles.json"
     },
     "rampe": [
       "#060f66",
