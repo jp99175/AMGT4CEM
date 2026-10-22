@@ -32,18 +32,19 @@
     "etiquetteEspacementPx": 480,
     "bandes": {
       "actif": true,
-      "opacite": 0.6,
+      "opacite": 0.8,
       "equidistance": 2,
       "rayonM": 4000,
       "cellulePx": 6,
       "budgetOperations": 40000000
     },
     "rampe": [
-      "#1c2fb0",
-      "#2d63d8",
-      "#4aa3ee",
-      "#93d6f5",
-      "#e6f7fc"
+      "#060f66",
+      "#1534b5",
+      "#2a7be0",
+      "#3dbcf0",
+      "#9fe6f4",
+      "#eafcff"
     ]
   },
   "stations": {
