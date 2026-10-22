@@ -39,7 +39,7 @@
       "budgetOperations": 40000000,
       "fichier": "./data/nappe/intervalles.json",
       "paliersM": 2,
-      "alternance": 0.12
+      "alternance": 0
     },
     "rampe": [
       "#060f66",
