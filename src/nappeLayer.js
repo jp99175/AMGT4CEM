@@ -598,7 +598,10 @@ const AMGT4CEM_NappeLayer = {
     for (const f of feats) {
       if (!f._bb || f._bb[0] > bbox[2] || f._bb[2] < bbox[0] || f._bb[1] > bbox[3] || f._bb[3] < bbox[1]) continue;
       if (!f._ll) f._ll = f.geometry.coordinates.map((ring) => ring.map((pt) => AMGT4CEM_CRS.lambertToLatLng(pt)));
-      const [r, g, b] = this._bandRgb(f.properties.niv / e, part, min, max, 0);
+      // Une teinte par palier (ex. 10 m = 5 intervalles) : des aplats nettement distincts plutôt qu'un dégradé.
+      const palier = part.bandes.paliersM || e;
+      const k = Math.floor(f.properties.niv / palier);
+      const [r, g, b] = this._bandRgb((k * palier + palier / 2 - e / 2) / e, part, min, max, 0);
       this._group.addLayer(L.polygon(f._ll, {
         pane: 'amgtNappeFill',
         interactive: false,

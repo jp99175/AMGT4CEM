@@ -37,7 +37,8 @@
       "rayonM": 4000,
       "cellulePx": 6,
       "budgetOperations": 40000000,
-      "fichier": "./data/nappe/intervalles.json"
+      "fichier": "./data/nappe/intervalles.json",
+      "paliersM": 10
     },
     "rampe": [
       "#060f66",
