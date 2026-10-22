@@ -53,7 +53,7 @@ const AMGT4CEM_ScaleControl = {
       },
     });
     new ZoomControl().addTo(map);
-    map.on('zoom zoomend', () => this._renderZoom());
+    map.on('zoom zoomend', () => this._flashZoom());
     this._renderZoom();
 
     map.on('mousemove', (e) => { this._lastLatLng = e.latlng; });
@@ -65,7 +65,16 @@ const AMGT4CEM_ScaleControl = {
   _renderZoom() {
     if (!this._zoomEl) return;
     const z = this._map.getZoom();
-    this._zoomEl.textContent = `Zoom ${Number.isInteger(z) ? z : z.toFixed(1)}`;
+    this._zoomEl.textContent = `ZOOM ${Number.isInteger(z) ? z : z.toFixed(1)}`;
+  },
+
+  /** Affiche le niveau de zoom tant que le zoom change, puis le retire 300 ms après le dernier changement. */
+  _flashZoom() {
+    if (!this._zoomEl) return;
+    this._renderZoom();
+    this._zoomEl.classList.add('amgt-zoom-level--on');
+    clearTimeout(this._zoomTimer);
+    this._zoomTimer = setTimeout(() => this._zoomEl.classList.remove('amgt-zoom-level--on'), 300);
   },
 
   _onClick() {
