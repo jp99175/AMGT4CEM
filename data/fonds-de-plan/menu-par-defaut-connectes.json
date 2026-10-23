@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "layers": {
+    "metro": true,
+    "urbistopo": true,
+    "patrimoine": true,
+    "nappe": false,
+    "points": true
+  },
+  "opacity": {
+    "metro": 0.65,
+    "urbistopo": 0.99,
+    "patrimoine": 1,
+    "nappe": 1,
+    "points": 1
+  }
+}
