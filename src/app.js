@@ -216,6 +216,8 @@
   // Icône de connexion : montre/masque « Ajouter un point » et « ⚙ Paramètres » selon le compte connecté.
   // Après une connexion ou une déconnexion, la couche des signalements (données privées) est relue.
   AMGT4CEM_AccountButton.init({ onChange: () => AMGT4CEM_SignalementsLayer.refresh() });
+  // Session proche de son expiration (7 derniers jours) : le mot de passe est redemandé, une fois par 24 h.
+  AMGT4CEM_Auth.surveillerExpiration();
 
   document.getElementById('amgt-measure-btn').addEventListener('click', () => {
     AMGT4CEM_AddPointTool.deactivate();

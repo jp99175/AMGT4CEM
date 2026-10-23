@@ -94,6 +94,58 @@ const AMGT4CEM_Auth = {
     return this.session();
   },
 
+  // --- Rappel avant l'expiration ----------------------------------------------------------------------------------
+  // La session dure 30 jours (jeton signé par le serveur de dépôt, TOKEN_TTL_S). Pour qu'elle n'expire pas en plein
+  // travail (tunnel, local technique, sans réseau), le mot de passe est redemandé DANS LES 7 DERNIERS JOURS : une
+  // nouvelle connexion émet un nouveau jeton de 30 jours. Au plus une demande par 24 h ; « Plus tard » la repousse.
+  RAPPEL_JOURS: 7,
+  RAPPEL_KEY: 'amgt4cem.session.rappel.v1', // horodatage du dernier rappel affiché
+  _rappelEnCours: false,
+
+  /** Jours restants avant l'expiration (arrondi au-dessus), ou null sans session. */
+  joursRestants() {
+    const s = this.session();
+    return s ? Math.ceil((new Date(s.expire).getTime() - Date.now()) / 86400000) : null;
+  },
+
+  /**
+   * Redemande le mot de passe si la session expire dans 7 jours ou moins (une fois par 24 h, hors ligne : plus tard).
+   * @returns {Promise<object|null>} la nouvelle session si l'agent s'est reconnecté, sinon null
+   */
+  async rappelerSiBesoin() {
+    const s = this.session();
+    if (!s || this._rappelEnCours) return null;
+    const reste = new Date(s.expire).getTime() - Date.now();
+    if (reste > this.RAPPEL_JOURS * 86400000) return null;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return null; // la connexion échouerait : au retour du réseau
+    try {
+      if (Date.now() - Number(localStorage.getItem(this.RAPPEL_KEY) || 0) < 86400000) return null;
+      localStorage.setItem(this.RAPPEL_KEY, String(Date.now()));
+    } catch (err) { /* sans mémoire locale : le rappel peut revenir à chaque ouverture, sans gravité */ }
+    this._rappelEnCours = true;
+    try {
+      const jours = this.joursRestants();
+      const date = new Date(s.expire).toLocaleDateString('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' });
+      return await AMGT4CEM_AuthUi.prompt({
+        titre: 'Prolonger la session',
+        message: `Votre session expire le ${date} (dans ${jours} jour${jours > 1 ? 's' : ''}). Saisissez de nouveau votre mot de passe pour la prolonger de 30 jours.`,
+        matricule: s.utilisateur && s.utilisateur.matricule,
+        fermer: 'Plus tard',
+        sansActivation: true,
+      });
+    } finally {
+      this._rappelEnCours = false;
+    }
+  },
+
+  /** À appeler une fois au démarrage d'une interface : rappel à l'ouverture, au retour sur l'onglet et au retour du réseau. */
+  surveillerExpiration() {
+    const go = () => { this.rappelerSiBesoin().catch((err) => console.error('[AMGT4CEM] Rappel de session :', err)); };
+    go();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) go(); });
+    window.addEventListener('online', go);
+  },
+
   /** Session valide, sinon écran de connexion. `options` : voir AMGT4CEM_AuthUi.prompt. */
   async ensure(options) {
     return this.session() || AMGT4CEM_AuthUi.prompt(options || {});

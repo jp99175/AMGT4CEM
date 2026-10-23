@@ -43,7 +43,34 @@ function item(label, counter, onClick) {
   return btn;
 }
 
+/**
+ * Menu SANS connexion : ni formulaire, ni listes, ni compteurs. Seule la connexion est proposée. Les entrées déjà
+ * enregistrées sur l'appareil (brouillons, envois en attente) ne sont ni modifiées ni effacées : elles réapparaissent
+ * à la connexion.
+ */
+async function renderMenuSansConnexion() {
+  const c = await SIG.Entries.counts();
+  const surAppareil = c.draft + c.file + c.erreur + c.envoye > 0;
+  const connect = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--primary', text: 'Se connecter' });
+  connect.addEventListener('click', async () => {
+    const ok = await AMGT4CEM_Auth.ensure({ message: 'Connectez-vous pour saisir ou consulter des signalements et des demandes.' });
+    if (ok) notice = `Connecté : ${AMGT4CEM_Auth.label(ok)}.`;
+    await renderMenu();
+  });
+  const parts = [];
+  if (notice) { parts.push(h('p', { class: 'sig4cem-notice', text: notice })); notice = ''; }
+  parts.push(h('p', { text: 'Connexion requise : la saisie et la consultation des signalements et des demandes sont réservées aux agents identifiés.' }));
+  if (surAppareil) parts.push(h('p', { text: 'Les entrées déjà enregistrées sur cet appareil réapparaîtront après la connexion.' }));
+  parts.push(connect);
+  screens.menu.textContent = '';
+  screens.menu.append(
+    h('header', { class: 'sig4cem-header' }, h('h1', { text: 'SIG4CEM' }), h('p', { text: 'Signalements et demandes' })),
+    h('nav', { class: 'sig4cem-menu', 'aria-label': 'Connexion' }, ...parts),
+    h('footer', { class: 'sig4cem-footer' }, identityLine(), h('span', { class: 'sig4cem-build', text: `BUILD ${AMGT4CEM_BUILD_TIMESTAMP}` })));
+}
+
 async function renderMenu() {
+  if (!AMGT4CEM_Auth.session()) return renderMenuSansConnexion();
   const c = await SIG.Entries.counts();
   const enFile = c.file + c.erreur;
   // Toutes les entrées : compte du serveur (actives dans le système), demandé en arrière-plan pour ne pas retarder le menu.
@@ -134,7 +161,16 @@ async function openAll() {
 }
 
 // ------------------------------------------------------------------ listes « Mes entrées »
+/** Session valide, sinon écran de connexion ; false si l'agent y renonce (on reste sur le menu de connexion). */
+async function requireSession(message) {
+  if (AMGT4CEM_Auth.session()) return true;
+  const ok = await AMGT4CEM_Auth.ensure({ message });
+  if (!ok) { showScreen('menu'); await renderMenu(); return false; }
+  return true;
+}
+
 async function openList(kind, message) {
+  if (!(await requireSession('Connectez-vous pour consulter vos entrées.'))) return;
   origin = kind;
   showScreen('list');
   await SIG.List.open({ kind, notice: message || '', back: backToMenu, edit: startEdit, send: sendEntry, revise: startRevision });
@@ -146,7 +182,8 @@ function startEdit(entry) {
 }
 
 // ------------------------------------------------------------------ nouvelle entrée
-function startNewEntry() {
+async function startNewEntry() {
+  if (!(await requireSession('Connectez-vous pour saisir un signalement ou une demande.'))) return;
   origin = null;
   openForm(newId(), null, false); // formulaire complet tout de suite ; la position se pointe depuis son champ
 }
@@ -248,6 +285,10 @@ async function sendEntry(id) {
     console.error('[SIG4CEM] Reprise des anciens signalements impossible :', err);
   }
   await renderMenu();
+  // Session qui change (déconnexion depuis un autre onglet, jeton refusé) : le menu suit, sans toucher à un formulaire ouvert.
+  AMGT4CEM_Auth.onChange(() => { if (!screens.menu.classList.contains('sig4cem-hidden')) renderMenu(); });
+  // Session proche de son expiration (7 derniers jours) : le mot de passe est redemandé, une fois par 24 h.
+  AMGT4CEM_Auth.surveillerExpiration();
   // Lien reçu par email : première connexion (matricule et code déjà remplis).
   const pm = AMGT4CEM_Router.params.get('m');
   const pc = AMGT4CEM_Router.params.get('code');
@@ -268,6 +309,7 @@ async function sendEntry(id) {
   const py = Number(AMGT4CEM_Router.params.get('y'));
   if (AMGT4CEM_Router.params.has('x') && Number.isFinite(px) && Number.isFinite(py) && px > 0 && py > 0 && px < 400000 && py < 400000) {
     history.replaceState(null, '', AMGT4CEM_Router.url('signal')); // un rechargement ne rouvre pas un nouveau formulaire
+    if (!(await requireSession('Connectez-vous pour saisir un signalement ou une demande.'))) return;
     origin = null;
     openForm(newId(), { x: px, y: py }, false);
   }

@@ -78,8 +78,18 @@ Le menu a trois rubriques : **Nouvelle entrée** (un sous-élément par formulai
 
 Chaque entrée porte un **rédacteur** (le créateur, matricule) et des **contributeurs** (matricules de ceux qui l'ont modifiée : enregistrer sans rien changer, ou envoyer, n'ajoute personne). Ces informations ne figurent pas dans le formulaire : elles viennent de la session connectée au moment de l'enregistrement (ou, à défaut, de l'envoi) et partent dans `signalement.json` (`redacteur`, `contributeurs`). Elles apparaissent dans la fiche dépliée d'une entrée envoyée.
 
-Le pied du menu indique « Connecté : Prénom Nom (matricule) » ou « Non connecté ». L'envoi redemande la connexion si besoin ;
-les brouillons et les entrées restent sur l'appareil sans connexion. Première connexion : lien reçu par email
+**SIG4CEM est réservé aux agents connectés.** Sans connexion, le menu n'affiche ni nouvelle entrée, ni listes, ni compteurs :
+seulement « Connexion requise » et le bouton « Se connecter » (`renderMenuSansConnexion`). Les entrées déjà enregistrées
+sur l'appareil (brouillons, envois en attente) ne sont ni modifiées ni effacées : elles réapparaissent à la connexion. Les
+arrivées par lien (`edit`, `x`/`y`) et chaque rubrique redemandent la connexion si elle manque (`requireSession`).
+
+**Session et rappel.** La session dure 30 jours. Dans les **7 derniers jours**, le mot de passe est redemandé (écran
+« Prolonger la session », bouton « Plus tard ») : à l'ouverture, au retour sur l'onglet et au retour du réseau, au plus une
+fois par 24 h, jamais hors ligne. Une nouvelle connexion émet un nouveau jeton de 30 jours (`AMGT4CEM_Auth.surveillerExpiration`,
+constante `RAPPEL_JOURS` à garder alignée sur `TOKEN_TTL_S` du serveur de dépôt). Même rappel sur la carte.
+
+Le pied du menu indique « Connecté : Prénom Nom (matricule) » ou « Non connecté ». L'envoi redemande la connexion si besoin.
+Première connexion : lien reçu par email
 (`?app=signal&m=matricule&code=…`) qui ouvre l'écran d'activation (choix du mot de passe). Modules : `src/auth/`.
 
 ## Fichiers

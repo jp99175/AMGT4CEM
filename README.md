@@ -1154,7 +1154,7 @@ Une seule page, `home.html`, deux interfaces choisies par le paramètre d'adress
 | `home.html?app=admin` | Administration | référentiel des intervenants (matricule, nom, GSM, email, service, droit admin), code de première connexion, email d'accueil (`mailto:`) |
 
 **Identification.** L'envoi au serveur exige une connexion personnelle (matricule + mot de passe, jeton gardé sur l'appareil
-30 jours). Le référentiel des intervenants vit dans R2, sur le serveur de dépôt, jamais dans ce dépôt public. L'administrateur
+30 jours ; le mot de passe est redemandé dans les 7 derniers jours pour prolonger la session). Le référentiel des intervenants vit dans R2, sur le serveur de dépôt, jamais dans ce dépôt public. L'administrateur
 crée la fiche ; le serveur génère un code d'activation à usage unique ; la page admin prépare l'email d'accueil (lien
 `home.html?app=signal&m=…&code=…`) que l'administrateur envoie depuis sa messagerie. L'envoi automatique depuis le serveur
 viendra plus tard (domaine propre et accord de l'IT).

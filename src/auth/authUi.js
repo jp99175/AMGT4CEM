@@ -1,8 +1,10 @@
 /**
  * Écran de connexion (plein écran, au-dessus de l'interface) : « Connexion » et « Première connexion ».
  *
- *   AMGT4CEM_AuthUi.prompt({ message, onglet: 'connexion' | 'activation', matricule, code, admin })
+ *   AMGT4CEM_AuthUi.prompt({ message, onglet: 'connexion' | 'activation', matricule, code, admin, titre, fermer, sansActivation })
  *     -> Promise<session | null>   null si l'agent ferme l'écran. `admin: true` exige le droit administrateur.
+ *     `titre` (défaut « Identification »), `fermer` (libellé du bouton de fermeture, défaut « Fermer »),
+ *     `sansActivation: true` masque l'onglet « Première connexion » (prolongation de session).
  *
  * Première connexion : matricule + code d'activation reçu par email + mot de passe choisi (8 caractères au moins).
  */
@@ -36,9 +38,11 @@ const AMGT4CEM_AuthUi = {
         return [k, b];
       });
       const ok = el('button', { type: 'button', class: 'auth-btn auth-btn--primary' });
-      const cancel = el('button', { type: 'button', class: 'auth-btn', text: 'Fermer' });
+      const cancel = el('button', { type: 'button', class: 'auth-btn', text: options.fermer || 'Fermer' });
       const form = el('form', { class: 'auth-form' }, matricule.row, code.row, mdp.row, mdp2.row, msg, el('div', { class: 'auth-actions' }, cancel, ok));
-      const box = el('div', { class: 'auth-box' }, el('h2', { text: 'Identification' }), intro, el('div', { class: 'auth-tabs' }, ...tabs.map((t) => t[1])), form);
+      const tabsBar = el('div', { class: 'auth-tabs' }, ...tabs.map((t) => t[1]));
+      tabsBar.hidden = !!options.sansActivation;
+      const box = el('div', { class: 'auth-box' }, el('h2', { text: options.titre || 'Identification' }), intro, tabsBar, form);
       const root = el('div', { class: 'auth-overlay' }, box);
       document.body.append(root);
 
