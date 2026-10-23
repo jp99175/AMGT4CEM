@@ -1225,7 +1225,19 @@ html, body {
 .amgt-zoom-threshold input { width: 52px; margin-left: 6px; padding: 3px 4px; font-size: 14px; }
 
 /* Affichage du menu par défaut (menuPrefs.js) : disquette à côté de « Réinitialiser la vue », saisie du code dessous. */
-#amgt-menu-prefs-save { margin-top: 0; font-size: 18px; line-height: 1; padding: 2px 6px; text-decoration: none; }
+#amgt-menu-prefs-save {
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 0; width: 34px; height: 34px; padding: 0; border-radius: 4px;
+  color: #333; text-decoration: none;
+}
+#amgt-menu-prefs-save:hover { background: #f0f0f0; color: #333; }
+
+/* Icônes en trait fin du pied de menu (disquette, flèche circulaire) : même trait que l'icône de connexion. */
+.amgt-footer-ic { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+#amgt-menu-prefs-save .amgt-footer-ic { width: 22px; height: 22px; }
+/* Flèche circulaire devant « Réinitialiser la vue » : couleur du lien, non soulignée (seul le texte l'est). */
+#amgt-reset-view-btn { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+#amgt-reset-view-btn .amgt-footer-ic { width: 16px; height: 16px; stroke-width: 2; }
 .amgt-menu-prefs { margin-top: 10px; font-size: 13px; }
 .amgt-menu-prefs p { margin: 4px 0 0; color: #555; }
 .amgt-menu-prefs .amgt-menu-prefs__row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
