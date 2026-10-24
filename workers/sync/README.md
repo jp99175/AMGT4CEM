@@ -46,3 +46,7 @@ Même bucket que le serveur de dépôt (`amgt4cem-depots`), préfixe `public/nap
    La réponse est l'état : chaque jeu doit indiquer `"disponible": true` et `"derniereErreur": null`.
    Si une erreur apparaît (nom de couche, 502 persistant...), elle est écrite dans `derniereErreur`.
 4. `ALLOWED_ORIGINS` (`wrangler.toml`) doit contenir l'adresse du site (`https://jp99175.github.io`).
+
+## Construction automatique (Cloudflare)
+
+Worker relié au dépôt GitHub : dossier racine `workers/sync`, chemins surveillés `workers/sync/*`. Chaque publication sur la branche déployée qui touche ce dossier reconstruit et redéploie le Worker.

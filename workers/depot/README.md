@@ -78,3 +78,7 @@ simule R2 et le compteur. Vérifié ainsi : amorçage par première connexion, a
 ## Relire les dépôts
 
 Tableau de bord Cloudflare > R2 > `amgt4cem-depots`, ou `npx wrangler r2 object get amgt4cem-depots/signalements/signalement-demande/2026-0001/depot.zip`.
+
+## Construction automatique (Cloudflare)
+
+Worker relié au dépôt GitHub : dossier racine `workers/depot`, chemins surveillés `workers/depot/*`. Chaque publication sur la branche déployée qui touche ce dossier reconstruit et redéploie le Worker.
