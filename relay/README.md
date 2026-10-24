@@ -4,7 +4,7 @@ Permet à l'application d'**enregistrer dans le dépôt** les données modifiée
 par un administrateur :
 
 - `PUT /shared/<dossier>/<fichier>` : toute donnée écrite par l'application,
-  dans `data/<dossier>/<fichier>.json` — aujourd'hui le dossier
+  dans `config/<dossier>/<fichier>.json` (transition : cherché d'abord dans `config/`, puis dans l'ancien `data/`, et réécrit là où il existe) — aujourd'hui le dossier
   **`plans-patrimoine`** (`etiquettes-planches` : ancrage/orientation des
   références de planche ; `etiquettes-troncons` : position et tronçon de
   rattachement des numéros d'interstation), modifiés avec le plugin

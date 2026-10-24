@@ -10,8 +10,8 @@
  *   GET /nappe/sync                   déclenche une synchronisation immédiate (secret SYNC_CODE : en-tête X-Sync-Code ou ?code=…) ;
  *                                     à lancer une fois après le déploiement, sans attendre le prochain passage
  *
- * Réglages lus à chaque passage dans le site publié (SITE_URL) : data/fonds-de-plan/services.json (adresses des
- * services) et data/nappe/parametres.json (couches, `synchro.intervalleJours` de chaque jeu). Une modification de ces
+ * Réglages lus à chaque passage dans le site publié (SITE_URL), dans config/ (sinon l'ancien data/) : fonds-de-plan/services.json (adresses des
+ * services) et nappe/parametres.json (couches, `synchro.intervalleJours` de chaque jeu). Une modification de ces
  * fichiers est donc prise en compte sans redéployer ce Worker.
  *
  * Choix pour rester sous la limite de temps processeur (erreur 1102) : le GeoJSON n'est jamais décodé ici. Il est contrôlé
@@ -41,6 +41,15 @@ async function lireJson(url) {
   const reponse = await fetch(url, { cf: { cacheTtl: 0 } });
   if (!reponse.ok) throw new Error(`${url} : HTTP ${reponse.status}`);
   return reponse.json();
+}
+
+/** Réglage du site publié : config/<chemin> (rangement du dépôt), sinon l'ancien data/<chemin> (transition). */
+async function lireReglage(site, chemin) {
+  try {
+    return await lireJson(`${site}/config/${chemin}`);
+  } catch (err) {
+    return lireJson(`${site}/data/${chemin}`);
+  }
 }
 
 /** Nom publié d'une couche : égal au nom configuré, ou terminé par « :nom » / « _nom » (la plus courte l'emporte). */
@@ -74,7 +83,7 @@ async function telecharger(urlService, typeName, version, crs) {
 
 async function synchroniser(env, { force = false } = {}) {
   const site = env.SITE_URL.replace(/\/$/, '');
-  const [services, parametres] = await Promise.all([lireJson(`${site}/data/fonds-de-plan/services.json`), lireJson(`${site}/data/nappe/parametres.json`)]);
+  const [services, parametres] = await Promise.all([lireReglage(site, 'fonds-de-plan/services.json'), lireReglage(site, 'nappe/parametres.json')]);
   const etatBrut = await env.DEPOTS.get('public/nappe/etat.json');
   const etat = etatBrut ? await etatBrut.json() : { version: 1, parties: {} };
   const crs = 'EPSG:31370';

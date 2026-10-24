@@ -8,7 +8,9 @@
  * UNE SEULE AUTORISATION pour tout : le code administrateur (ADMIN_TOKEN) ouvre
  * toutes les routes. Les routes ne sont pas des droits distincts : ce sont des
  * chemins de fichiers. Deux familles :
- *   PUT /shared/<dossier>/<fichier>   donnée écrite par l'application -> data/<dossier>/<fichier>.json
+ *   PUT /shared/<dossier>/<fichier>   donnée écrite par l'application -> config/<dossier>/<fichier>.json
+ *       TRANSITION (rangement du dépôt) : le fichier est cherché d'abord dans config/, puis dans data/ ; il est
+ *       réécrit là où il existe. Un fichier nouveau va dans config/ si ce dossier existe, sinon dans data/.
  *       ex. /shared/plans-patrimoine/etiquettes-planches   -> data/plans-patrimoine/etiquettes-planches.json
  *           /shared/plans-patrimoine/etiquettes-troncons   -> data/plans-patrimoine/etiquettes-troncons.json
  *       (<dossier>, <fichier> : minuscules, chiffres, tirets). Corps JSON { "version": 1, ... }, au
@@ -129,9 +131,9 @@ export default {
     let target = null;
     if (shared) {
       const dossier = parts[parts.length - 2];
-      target = { path: `data/${dossier}/${route}.json`, validate: validateShared, key: null, message: `Données « ${dossier}/${route} » : mise à jour (via l'application)` };
+      target = { paths: [`config/${dossier}/${route}.json`, `data/${dossier}/${route}.json`], validate: validateShared, key: null, message: `Données « ${dossier}/${route} » : mise à jour (via l'application)` };
     } else if (route === 'settings') {
-      target = { path: env.SETTINGS_PATH || 'data/app-settings.json', validate: validateSettings, key: 'settings', message: "Paramètres généraux : mise à jour (via l'application)" };
+      target = { paths: env.SETTINGS_PATH ? [env.SETTINGS_PATH] : ['config/app-settings.json', 'data/app-settings.json'], validate: validateSettings, key: 'settings', message: "Paramètres généraux : mise à jour (via l'application)" };
     }
     if (!target) return json(404, { error: 'Route inconnue (attendu : /shared/<dossier>/<fichier> ou /settings)' }, cors);
 
@@ -146,7 +148,6 @@ export default {
     const problem = target.validate(body);
     if (problem) return json(400, { error: problem }, cors);
 
-    const path = target.path;
     // Contenu canonique (clés triées) : un enregistrement sans changement réel ne crée pas de commit parasite.
     let content;
     if (target.key) {
@@ -160,15 +161,24 @@ export default {
     for (const byte of new TextEncoder().encode(content)) binary += String.fromCharCode(byte);
     const encoded = btoa(binary);
 
-    // Version actuelle du fichier (sha requis par GitHub pour le remplacer) ; absent = création.
+    // Version actuelle du fichier (sha requis par GitHub pour le remplacer), cherchée dans l'ordre des chemins
+    // (config/ puis data/) ; absent partout = création, dans config/ si ce dossier existe déjà, sinon data/.
     let sha;
-    const current = await github(env, 'GET', path);
-    if (current.ok) {
-      const file = await current.json();
-      sha = file.sha;
-      if (file.content && file.content.replace(/\s/g, '') === encoded) return json(200, { ok: true, unchanged: true }, cors);
-    } else if (current.status !== 404) {
-      return json(502, { error: `Lecture GitHub impossible (HTTP ${current.status})` }, cors);
+    let path = null;
+    for (const candidate of target.paths) {
+      const current = await github(env, 'GET', candidate);
+      if (current.ok) {
+        const file = await current.json();
+        sha = file.sha;
+        path = candidate;
+        if (file.content && file.content.replace(/\s/g, '') === encoded) return json(200, { ok: true, unchanged: true }, cors);
+        break;
+      }
+      if (current.status !== 404) return json(502, { error: `Lecture GitHub impossible (HTTP ${current.status})` }, cors);
+    }
+    if (!path) {
+      const configDir = target.paths.length > 1 ? await github(env, 'GET', 'config') : null;
+      path = configDir && configDir.ok ? target.paths[0] : target.paths[target.paths.length - 1];
     }
     const put = await github(env, 'PUT', path, {
       message: target.message,

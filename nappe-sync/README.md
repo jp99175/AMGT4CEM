@@ -17,7 +17,7 @@ l'appareil (cache du navigateur) et ne s'adresse au service régional qu'à déf
 - **Service en panne** : jusqu'à 4 essais espacés (2 s, 6 s, 15 s) ; en cas d'échec, l'ancienne copie reste servie et
   l'erreur est notée dans `etat.json` (`derniereErreur`).
 - **Réglages** : adresses des services et couches sont lues à chaque passage dans le site publié (`SITE_URL`) : mêmes fichiers
-  que la carte (`data/fonds-de-plan/services.json`, `data/nappe/parametres.json`). Pas besoin de redéployer pour les changer.
+  que la carte (`config/fonds-de-plan/services.json`, `config/nappe/parametres.json` ; à défaut, l'ancien `data/`). Pas besoin de redéployer pour les changer.
 - **Temps processeur** : le GeoJSON n'est jamais décodé dans le Worker (contrôle par recherche de texte, empreinte calculée par
   le système) pour rester sous la limite de l'offre gratuite (erreur 1102).
 - **Limite** : seules les **positions et attributs** des stations sont copiés. Les niveaux mesurés (chroniques horaires) ne
