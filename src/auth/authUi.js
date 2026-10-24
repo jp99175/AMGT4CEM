@@ -2,7 +2,7 @@
  * Écran de connexion (plein écran, au-dessus de l'interface) : « Connexion » et « Première connexion ».
  *
  *   AMGT4CEM_AuthUi.prompt({ message, onglet: 'connexion' | 'activation', matricule, code, admin, titre, fermer, sansActivation })
- *     -> Promise<session | null>   null si l'agent ferme l'écran. `admin: true` exige le droit administrateur.
+ *     -> Promise<session | null>   null si l'agent ferme l'écran. `admin: true` exige le droit « utilisateurs ».
  *     `titre` (défaut « Identification »), `fermer` (libellé du bouton de fermeture, défaut « Fermer »),
  *     `sansActivation: true` masque l'onglet « Première connexion » (prolongation de session).
  *
@@ -75,9 +75,9 @@ const AMGT4CEM_AuthUi = {
           const s = onglet === 'activation'
             ? await AMGT4CEM_Auth.activer(m, code.input.value.trim(), mdp.input.value)
             : await AMGT4CEM_Auth.login(m, mdp.input.value);
-          if (options.admin && !s.utilisateur.admin) {
+          if (options.admin && !AMGT4CEM_Auth.aDroit('utilisateurs', s)) {
             AMGT4CEM_Auth.logout();
-            msg.textContent = "Ce compte n'a pas le droit administrateur.";
+            msg.textContent = "Ce compte n'a pas le droit « gestion des utilisateurs ».";
             return;
           }
           close(s);

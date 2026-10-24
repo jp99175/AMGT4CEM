@@ -35,7 +35,7 @@ SIG.All = {
   /** Le rédacteur de l'entrée et les administrateurs peuvent la supprimer (le serveur le vérifie aussi). */
   canDelete(redacteur) {
     const s = AMGT4CEM_Auth.session();
-    return !!s && (s.utilisateur.admin || (!!redacteur && s.utilisateur.matricule === redacteur));
+    return !!s && (AMGT4CEM_Auth.aDroit('utilisateurs', s) || (!!redacteur && s.utilisateur.matricule === redacteur));
   },
 
   /** Icône corbeille alignée à droite du cadre ; `onDone()` après une suppression réussie. */

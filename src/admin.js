@@ -4,14 +4,14 @@
  *
  * L'administrateur est un compte CONNECTÉ (AMGT4CEM_Auth, src/auth/) dont la fiche porte le droit administrateur ;
  * le serveur de dépôt reste seul juge de ce droit, ici on ne fait que masquer ce qui ne sert à rien.
- * Quand le droit `admin` sera découpé en droits précis (utilisateurs, attributs, plans, vocabulaire), isAdmin()
- * est le seul endroit à compléter.
+ * Droits précis (utilisateurs, attributs, plans, vocabulaire) : AMGT4CEM_Auth.aDroit(). Pour l'instant, la fenêtre
+ * ⚙ Paramètres reste réservée au droit `utilisateurs` ; elle sera répartie par onglet avec l'écriture dans R2.
  */
 const AMGT4CEM_Admin = {
   /** Un administrateur est-il connecté ? */
   isAdmin() {
     const s = AMGT4CEM_Auth.session();
-    return !!(s && s.utilisateur && s.utilisateur.admin);
+    return !!s && AMGT4CEM_Auth.aDroit('utilisateurs', s);
   },
 
   /**

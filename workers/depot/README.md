@@ -13,10 +13,11 @@ jamais, car le suivi n'entre pas dans le dépôt.
 | `POST /depot` | jeton | corps = archive ZIP ; en-têtes `Authorization: Bearer …`, `X-Signalement-Id`, `X-Flux` (`STANDARD`), `X-Fichier` ; répond `{ reference, deja, recuLe }` ; le matricule du rédacteur est noté dans `recu.json` |
 | `GET /signalements` | jeton | index des entrées envoyées (référence, type, titre, position Lambert 72, version, rédacteur et contributeurs avec leurs noms) : lu par la couche « Signalements et demandes » de la carte |
 | `GET /signalements/AAAA-NNNN/archive` | jeton | archive ZIP de la dernière version d'une entrée (pour la rouvrir et la réviser) |
-| `POST /signalements/AAAA-NNNN/supprimer` | jeton | supprime l'entrée du système (rédacteur ou administrateur) : retirée de l'index, donc de la carte et des listes ; l'archive et son historique restent dans R2 ; un renvoi de cette entrée est refusé (410) |
+| `POST /signalements/AAAA-NNNN/supprimer` | jeton | supprime l'entrée du système (rédacteur ou droit `utilisateurs`) : retirée de l'index, donc de la carte et des listes ; l'archive et son historique restent dans R2 ; un renvoi de cette entrée est refusé (410) |
 | `GET /sante` | jeton | vérifie l'adresse et la connexion |
-| `GET` · `POST /admin/intervenants` | jeton admin | liste · création/modification d'une fiche (la création génère le code d'activation) |
-| `POST /admin/activation` | jeton admin | nouveau code d'activation pour un matricule |
+| `GET` · `POST /admin/intervenants` | droit `utilisateurs` | liste · création/modification d'une fiche (la création génère le code d'activation) |
+| `POST /admin/activation` | droit `utilisateurs` | nouveau code d'activation pour un matricule |
+| `GET /admin/compteurs` | droit `utilisateurs` ou `plans` | état des compteurs : prochains identifiants P, L, G et prochaines références par flux et par année |
 
 - **Idempotent** : renvoyer le même signalement (même `X-Signalement-Id`) redonne la même référence, sans doublon
   ni numéro perdu ; un envoi interrompu se refait sans risque.
@@ -27,12 +28,16 @@ jamais, car le suivi n'entre pas dans le dépôt.
   (version, date, compte déposant). Une version plus ancienne que celle du serveur est refusée (409) : quelqu'un a révisé entre-temps.
 - **Index** : à chaque dépôt, le serveur lit `signalement.json` dans l'archive et met à jour `index/signalements.json` (R2). La carte ne lit que cet index, jamais les archives ni les photos.
 - **Référentiel des intervenants** : un seul objet R2, `referentiel/intervenants.json` (jamais dans le dépôt GitHub).
-  Clé = matricule ; prénom, nom, GSM (`+32…`), email, organisation, division, département, service, droit admin, actif.
+  Clé = matricule ; prénom, nom, GSM (`+32…`), email, organisation, division, département, service, **droits** (`utilisateurs`, `attributs`, `plans`, `vocabulaire` ; remplacent l'ancien booléen `admin`, converti à la première écriture), actif.
   Mot de passe : jamais conservé, seulement une empreinte PBKDF2-SHA256 salée. Code d'activation : `XXXXX-XXXXX`,
   à usage unique, 7 jours, seule l'empreinte est conservée. Écritures conditionnelles (ETag) : pas d'écrasement concurrent.
 - **Sécurité** : 5 échecs de connexion → blocage 15 min ; jeton signé (HMAC) re-vérifié à chaque appel (un compte désactivé
-  ou privé du droit admin est refusé aussitôt) ; un administrateur ne peut pas se retirer son droit ni se désactiver, et il
-  reste toujours au moins un administrateur actif.
+  ou privé d'un droit est refusé aussitôt) ; on ne peut pas se retirer son droit `utilisateurs` ni se désactiver, et il
+  reste toujours au moins un compte actif qui détient ce droit.
+- **Compteurs** : Durable Object `Compteur` (demandes traitées une par une : jamais deux fois le même numéro, un renvoi
+  retrouve son numéro). Références AAAA-NNNN par flux et par année (série « commun » tant que les deux flux partagent le
+  même dossier R2) ; identifiants P (193), L (1), G (193) réservés par blocs. Copie lisible écrite après chaque
+  attribution dans `prive/referentiels/compteurs.json`.
 - **Transition** : tant qu'aucun compte n'est activé, l'ancien code partagé (`X-Depot-Code`, secret `DEPOT_CODE`) reste accepté
   pour `/depot` et `/sante`. Dès le premier compte activé, il ne sert plus.
 - **Contrôles** : origine autorisée (`ALLOWED_ORIGINS`), flux valide, archive ZIP de 30 Mo au plus.

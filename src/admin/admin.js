@@ -82,6 +82,20 @@ function emailAccueil(u, code, expire) {
   return { sujet, corps, mailto: `mailto:${encodeURIComponent(u.email)}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}` };
 }
 
+// ------------------------------------------------------------------ droits
+const DROITS = {
+  utilisateurs: { court: 'Utilisateurs', libelle: 'Gestion des utilisateurs', aide: 'comptes, codes d\'activation, sécurité, suppression des entrées des autres, purge' },
+  attributs: { court: 'Attributs', libelle: 'Attributs', aide: 'attributs des stations, tunnels et planches, étiquettes, repères' },
+  plans: { court: 'Plans', libelle: 'Plans', aide: 'shapefile, plans et scans, mise à jour des données publiques' },
+  vocabulaire: { court: 'Vocabulaire', libelle: 'Vocabulaire', aide: 'listes de choix (types d\'entrée, niveaux)' },
+};
+
+/** Droits d'une fiche ; fiche d'avant les droits (booléen admin) : les quatre si admin. */
+function droitsDe(u) {
+  if (Array.isArray(u.droits)) return Object.keys(DROITS).filter((d) => u.droits.includes(d));
+  return u.admin ? Object.keys(DROITS) : [];
+}
+
 // ------------------------------------------------------------------ rendu
 async function charger() {
   const r = await AMGT4CEM_Auth.call('/admin/intervenants');
@@ -95,7 +109,7 @@ function pastille(texte, classe) {
 function carte(u) {
   const org = [u.organisation, u.division, u.departement, u.service].filter(Boolean).join(' · ');
   const etat = [];
-  if (u.admin) etat.push(pastille('Admin', 'adm-badge--admin'));
+  for (const d of droitsDe(u)) etat.push(pastille(DROITS[d].court, 'adm-badge--admin'));
   if (!u.actif) etat.push(pastille('Inactif', 'adm-badge--off'));
   else if (u.motDePasseDefini && !u.activationExpire) etat.push(pastille('Compte activé', 'adm-badge--ok'));
   else if (u.activationExpire) etat.push(pastille(`En attente d'activation (jusqu'au ${jour(u.activationExpire)})`, 'adm-badge--wait'));
@@ -128,8 +142,12 @@ function formulaire() {
     departement: champ('adm-dep', 'Département', nouveau ? 'AMGT' : edition.departement),
     service: champ('adm-srv', 'Service', nouveau ? 'CEM' : edition.service),
   };
-  const admin = h('input', { type: 'checkbox', id: 'adm-admin' });
-  admin.checked = !!edition.admin;
+  const droits = droitsDe(edition);
+  const cases = Object.entries(DROITS).map(([code, d]) => {
+    const c = h('input', { type: 'checkbox', id: `adm-droit-${code}`, value: code });
+    c.checked = droits.includes(code);
+    return { code, c, row: h('label', { class: 'adm-check' }, c, ` ${d.libelle}`, h('span', { class: 'adm-check__aide', text: ` — ${d.aide}` })) };
+  });
   const actif = h('input', { type: 'checkbox', id: 'adm-actif' });
   actif.checked = nouveau ? true : edition.actif !== false;
   const msg = h('p', { class: 'adm-msg', role: 'alert' });
@@ -161,7 +179,9 @@ function formulaire() {
         gsm: gsmNormalise(f.gsm.input.value), email: f.email.input.value,
         organisation: f.organisation.input.value, division: f.division.input.value,
         departement: f.departement.input.value, service: f.service.input.value,
-        admin: admin.checked, actif: actif.checked,
+        droits: cases.filter((x) => x.c.checked).map((x) => x.code), actif: actif.checked,
+        // Compatibilité avec un serveur pas encore à jour (il ne lit que `admin`) ; le serveur à jour lit `droits`.
+        admin: cases.some((x) => x.code === 'utilisateurs' && x.c.checked),
       };
       const r = await AMGT4CEM_Auth.call('/admin/intervenants', { method: 'POST', body: { fiche } });
       accueil = r.codeActivation ? { intervenant: r.intervenant, code: r.codeActivation, expire: r.intervenant.activationExpire } : null;
@@ -178,7 +198,8 @@ function formulaire() {
     h('h2', { text: nouveau ? 'Nouvel intervenant' : `${edition.prenom} ${edition.nom} (${edition.matricule})` }),
     f.matricule.row, h('div', { class: 'adm-grid' }, f.prenom.row, f.nom.row), h('div', { class: 'adm-grid' }, f.gsm.row, f.email.row),
     h('div', { class: 'adm-grid' }, f.organisation.row, f.division.row), h('div', { class: 'adm-grid' }, f.departement.row, f.service.row),
-    h('label', { class: 'adm-check' }, admin, ' Droit : accès aux fonctions admin'),
+    h('fieldset', { class: 'adm-droits' }, h('legend', { text: 'Droits' }), ...cases.map((x) => x.row),
+      h('p', { class: 'adm-note', text: 'Sans droit coché : agent (lit les couches, crée et révise ses entrées).' })),
     nouveau ? null : h('label', { class: 'adm-check' }, actif, ' Compte actif (décoché : accès coupé immédiatement)'),
     msg, h('div', { class: 'adm-actions' }, ...actions));
 }
@@ -206,10 +227,10 @@ function render() {
   root.textContent = '';
   const s = AMGT4CEM_Auth.session();
   const entete = h('header', { class: 'adm-head' }, h('h1', { text: 'Intervenants' }), h('p', { text: 'AMGT4CEM · administration' }));
-  if (!s || !s.utilisateur.admin) {
+  if (!s || !AMGT4CEM_Auth.aDroit('utilisateurs', s)) {
     const b = h('button', { type: 'button', class: 'adm-btn adm-btn--primary', text: 'Se connecter' });
     b.addEventListener('click', demarrer);
-    root.append(entete, h('p', { class: 'adm-note', text: 'Cette page est réservée aux administrateurs. Connexion requise.' }), b);
+    root.append(entete, h('p', { class: 'adm-note', text: 'Cette page est réservée aux comptes qui ont le droit « gestion des utilisateurs ». Connexion requise.' }), b);
     return;
   }
   const sortir = h('button', { type: 'button', class: 'adm-link', text: 'Se déconnecter' });
@@ -240,7 +261,7 @@ function render() {
 
 async function demarrer() {
   let s = AMGT4CEM_Auth.session();
-  if (!s || !s.utilisateur.admin) s = await AMGT4CEM_Auth.ensure({ admin: true, message: 'Page réservée aux administrateurs.' });
+  if (!s || !AMGT4CEM_Auth.aDroit('utilisateurs', s)) s = await AMGT4CEM_Auth.ensure({ admin: true, message: 'Page réservée au droit « gestion des utilisateurs ».' });
   if (!s) { render(); return; }
   try { await charger(); } catch (err) { message = err.message; liste = []; }
   render();

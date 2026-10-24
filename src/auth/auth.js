@@ -151,6 +151,20 @@ const AMGT4CEM_Auth = {
     return this.session() || AMGT4CEM_AuthUi.prompt(options || {});
   },
 
+  /** Les quatre droits (le serveur reste seul juge ; ici on ne fait que masquer ce qui ne sert à rien). */
+  DROITS: ['utilisateurs', 'attributs', 'plans', 'vocabulaire'],
+
+  /**
+   * Le compte connecté détient-il ce droit ? Session d'avant les droits (booléen `admin`) : les quatre si admin.
+   * @param {string} droit  utilisateurs | attributs | plans | vocabulaire
+   */
+  aDroit(droit, s) {
+    const u = (s || this.session() || {}).utilisateur;
+    if (!u) return false;
+    if (Array.isArray(u.droits)) return u.droits.includes(droit);
+    return !!u.admin;
+  },
+
   /** « Prénom Nom (matricule) » */
   label(s) {
     const u = (s || this.session() || {}).utilisateur;

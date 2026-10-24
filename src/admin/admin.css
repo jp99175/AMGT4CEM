@@ -29,6 +29,10 @@ html[data-app="admin"] body { background: #f4f6f8; color: #1f2933; font-family: 
 .adm-grid { display: grid; gap: 0 12px; grid-template-columns: 1fr 1fr; }
 @media (max-width: 520px) { .adm-grid { grid-template-columns: 1fr; } }
 .adm-check { display: block; margin: 6px 0; font-size: 14px; }
+.adm-droits { border: 1px solid #ddd; border-radius: 6px; padding: 6px 10px 2px; margin: 10px 0; }
+.adm-droits legend { font-size: 13px; font-weight: 600; padding: 0 4px; }
+.adm-check__aide { color: #777; font-size: 12px; }
+.adm-droits .adm-note { margin: 4px 0 6px; }
 .adm-msg { min-height: 1.2em; color: #9b1c1c; font-size: 14px; }
 .adm-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 8px; }
 .adm-btn { padding: 10px 14px; font-size: 15px; border: 1px solid #9aa5b1; background: #fff; border-radius: 6px; cursor: pointer; text-decoration: none; color: #1f2933; display: inline-block; }

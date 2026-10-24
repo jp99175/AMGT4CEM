@@ -12,25 +12,42 @@
  *   GET  /auth/moi            (jeton)                                      -> { utilisateur }
  *   POST /auth/motdepasse     (jeton) { ancien, nouveau }                  -> { ok: true }
  *   GET  /signalements       (jeton)  -> { date, signalements:[…] } index lu par la carte
- *   POST /signalements/AAAA-NNNN/supprimer (jeton ; rédacteur ou admin) retire l'entrée de l'index (archive conservée)
+ *   POST /signalements/AAAA-NNNN/supprimer (jeton ; rédacteur ou droit utilisateurs) retire l'entrée de l'index (archive conservée)
  *   GET  /sante               (jeton)                                      -> { ok: true, utilisateur }
  *   POST /depot               (jeton) corps ZIP ; X-Signalement-Id, X-Flux, X-Fichier
  *                                                                          -> { reference, deja, recuLe }
- *   GET  /admin/intervenants  (jeton admin)                                -> { intervenants: [...] }
- *   POST /admin/intervenants  (jeton admin) { fiche }                      -> { intervenant, codeActivation? }
- *   POST /admin/activation    (jeton admin) { matricule }                  -> { intervenant, codeActivation }
+ *   GET  /admin/intervenants  (jeton ; droit utilisateurs)                                -> { intervenants: [...] }
+ *   POST /admin/intervenants  (jeton ; droit utilisateurs) { fiche }                      -> { intervenant, codeActivation? }
+ *   POST /admin/activation    (jeton ; droit utilisateurs) { matricule }                  -> { intervenant, codeActivation }
  *   POST /admin/amorcer       { code, intervenant }  premier compte admin, une seule fois (secret ADMIN_BOOTSTRAP_CODE)
  *
+ *   GET  /admin/compteurs     (jeton ; droit utilisateurs ou plans)          -> état des compteurs (copie de compteurs.json)
+ *
  * Jeton : « Authorization: Bearer … », signé (HMAC, secret SESSION_SECRET), valable 30 jours ; l'existence, l'état
- * actif et le droit admin de l'intervenant sont revérifiés dans le référentiel à chaque appel (désactiver un agent
- * coupe son accès tout de suite).
+ * actif et les DROITS de l'intervenant sont revérifiés dans le référentiel à chaque appel (désactiver un agent ou lui
+ * retirer un droit prend effet tout de suite).
+ *
+ * Droits (liste `droits` de chaque fiche ; remplace l'ancien booléen `admin`, converti à la première écriture) :
+ *   utilisateurs  comptes, codes d'activation, sécurité, suppression des entrées des autres, purge ;
+ *   attributs     attributs des polygones et lignes, étiquettes, repères ;
+ *   plans         shapefile, plans, scans, données publiques (vérifier / forcer) ;
+ *   vocabulaire   listes de choix.
+ * Garde-fous : on ne retire pas son propre droit `utilisateurs` (ni ne se désactive) ; il reste toujours un compte
+ * actif qui le détient.
  *
  * Référentiel : R2 `referentiel/intervenants.json`. Le mot de passe n'y est jamais en clair : PBKDF2-SHA-256 avec un
  * sel propre à chaque intervenant. L'administrateur ne le connaît jamais : il génère un code d'activation (valable
  * 7 jours, stocké haché), l'agent choisit son mot de passe en l'utilisant.
  *
- * Référence : année de Bruxelles + compteur incrémenté. Idempotent : renvoyer le même signalement (même
- * X-Signalement-Id) redonne la même référence, sans doublon ni numéro perdu.
+ * Compteurs : Durable Object `Compteur` (une seule instance, « references ») : les demandes y passent une par une,
+ * deux envois simultanés ne reçoivent jamais le même numéro.
+ *   - références AAAA-NNNN par flux et par année (année de Bruxelles). Idempotent : renvoyer la même entrée (même
+ *     X-Signalement-Id) redonne la même référence, sans doublon ni numéro perdu. Tant que les entrées des deux flux
+ *     sont rangées dans le même dossier R2, elles partagent la série « commun » (séparation à l'étape des fiches) ;
+ *   - identifiants des géométries P (polygones.shp), L (lignes.shp), G (objets de l'application) : réservation d'un
+ *     bloc, jamais de réutilisation ; prochains numéros au départ : P 193, L 1, G 193.
+ * Après chaque attribution, une copie lisible est écrite dans R2 : prive/referentiels/compteurs.json (consultation et
+ * sauvegarde ; la référence reste le Durable Object).
  * Rangement R2 : <flux>/<année>/<référence>/depot.zip et recu.json (le rédacteur authentifié y est inscrit).
  *
  * Transition : tant qu'aucun intervenant n'a activé son compte, l'ancien code partagé (secret DEPOT_CODE, en-tête
@@ -46,20 +63,72 @@ const BLOCAGE_MS = 15 * 60 * 1000;
 const MDP_MIN = 8;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans I, O, 0, 1 : lisible au téléphone
 
+const DROITS = ['utilisateurs', 'attributs', 'plans', 'vocabulaire'];
+const PREFIXES = { P: 193, L: 1, G: 193 }; // prochain numéro au départ (P et G : après la migration G→P du 16/10)
+const COMPTEURS_KEY = 'prive/referentiels/compteurs.json';
+
 export class Compteur {
   constructor(state) {
     this.state = state;
   }
 
-  async fetch(request) {
-    const { id, annee } = await request.json();
-    const known = await this.state.storage.get(`id:${id}`);
-    if (known) return Response.json({ reference: known, deja: true });
-    const n = ((await this.state.storage.get(`n:${annee}`)) || 0) + 1;
-    const reference = `${annee}-${String(n).padStart(4, '0')}`;
-    await this.state.storage.put({ [`n:${annee}`]: n, [`id:${id}`]: reference });
-    return Response.json({ reference, deja: false });
+  /** État lisible : { version, identifiants: {P, L, G} (prochains), references: {flux: {annee: prochain}} }. */
+  async etat() {
+    const e = (await this.state.storage.get('etat')) || { version: 1, identifiants: {}, references: {} };
+    for (const [p, depart] of Object.entries(PREFIXES)) if (!e.identifiants[p]) e.identifiants[p] = depart;
+    return e;
   }
+
+  async fetch(request) {
+    const demande = await request.json();
+    const action = demande.action || 'reference'; // ancien appel { id, annee } : une référence
+    const e = await this.etat();
+
+    if (action === 'etat') return Response.json({ etat: e });
+
+    if (action === 'reference') {
+      const { id, annee } = demande;
+      const flux = demande.flux || 'commun';
+      const connue = (await this.state.storage.get(`refid:${flux}:${id}`)) || (flux === 'commun' ? await this.state.storage.get(`id:${id}`) : null);
+      if (connue) return Response.json({ reference: connue, deja: true, etat: e });
+      const serie = (e.references[flux] = e.references[flux] || {});
+      // Série « commun » : reprend l'ancien compteur (n:AAAA = dernier numéro attribué) s'il existe.
+      const prochain = serie[annee] || (flux === 'commun' ? ((await this.state.storage.get(`n:${annee}`)) || 0) + 1 : 1);
+      const reference = `${annee}-${String(prochain).padStart(4, '0')}`;
+      serie[annee] = prochain + 1;
+      e.date = new Date().toISOString();
+      await this.state.storage.put({ etat: e, [`refid:${flux}:${id}`]: reference });
+      return Response.json({ reference, deja: false, etat: e });
+    }
+
+    if (action === 'reserver') {
+      const { prefixe } = demande;
+      const n = Number(demande.n);
+      if (!PREFIXES[prefixe]) return Response.json({ erreur: 'Préfixe inconnu.' }, { status: 400 });
+      if (!Number.isInteger(n) || n < 1 || n > 10000) return Response.json({ erreur: 'Nombre invalide (1 à 10 000).' }, { status: 400 });
+      const debut = e.identifiants[prefixe];
+      e.identifiants[prefixe] = debut + n;
+      e.date = new Date().toISOString();
+      await this.state.storage.put({ etat: e });
+      const id = (k) => `${prefixe}${String(k).padStart(6, '0')}`;
+      return Response.json({ premier: id(debut), dernier: id(debut + n - 1), ids: Array.from({ length: n }, (_, i) => id(debut + i)), etat: e });
+    }
+    return Response.json({ erreur: 'Action inconnue.' }, { status: 400 });
+  }
+}
+
+/** Appel du Durable Object des compteurs ; écrit ensuite la copie lisible dans R2 (un échec de copie ne bloque rien). */
+async function compteur(env, demande) {
+  const stub = env.COMPTEUR.get(env.COMPTEUR.idFromName('references'));
+  const r = await stub.fetch('https://compteur/', { method: 'POST', body: JSON.stringify(demande) });
+  const out = await r.json();
+  if (!r.ok) throw new HttpError(r.status, out.erreur || 'Compteur indisponible.');
+  if (demande.action !== 'etat' && !out.deja && out.etat) {
+    try {
+      await env.DEPOTS.put(COMPTEURS_KEY, JSON.stringify({ ...out.etat, note: 'Copie lisible : la référence est le Durable Object Compteur du serveur de dépôt.' }, null, 2), { httpMetadata: { contentType: 'application/json' } });
+    } catch (err) { console.error('copie compteurs', err); }
+  }
+  return out;
 }
 
 // ------------------------------------------------------------------ réponses et CORS
@@ -184,11 +253,24 @@ async function chargerRef(env) {
   return { ref: await obj.json(), etag: obj.etag };
 }
 
+/** Droits d'une fiche : liste `droits` ; ancienne fiche (booléen `admin`) : les quatre droits si admin. */
+function droitsDe(u) {
+  if (Array.isArray(u.droits)) return DROITS.filter((d) => u.droits.includes(d));
+  return u.admin ? [...DROITS] : [];
+}
+
+function aDroit(u, droit) {
+  return droitsDe(u).includes(droit);
+}
+
 /** Lecture, modification, écriture conditionnelle (ETag) : deux écritures simultanées ne s'écrasent pas. */
 async function modifierRef(env, mutation) {
   for (let essai = 0; essai < 5; essai++) {
     const { ref, etag } = await chargerRef(env);
     const resultat = await mutation(ref);
+    // Conversion des anciennes fiches (admin -> droits), faite à la première écriture du référentiel.
+    for (const u of ref.intervenants) { u.droits = droitsDe(u); delete u.admin; }
+    ref.version = Math.max(2, ref.version || 1);
     ref.date = new Date().toISOString();
     const onlyIf = etag ? { etagMatches: etag } : { etagDoesNotMatch: '*' };
     const ecrit = await env.DEPOTS.put(REF_KEY, JSON.stringify(ref, null, 2), { onlyIf, httpMetadata: { contentType: 'application/json' } });
@@ -235,7 +317,8 @@ function validerFiche(f) {
     division: texte(f.division, 60, 'division', false),
     departement: texte(f.departement, 60, 'département', false),
     service: texte(f.service, 60, 'service', false),
-    admin: f.admin === true,
+    // Droits cochés ; ancienne page d'administration (case « admin ») : les quatre droits.
+    droits: Array.isArray(f.droits) ? DROITS.filter((d) => f.droits.includes(d)) : (f.admin === true ? [...DROITS] : []),
     actif: f.actif !== false,
   };
 }
@@ -245,7 +328,7 @@ function vue(u) {
   return {
     matricule: u.matricule, prenom: u.prenom, nom: u.nom, gsm: u.gsm, email: u.email,
     organisation: u.organisation, division: u.division, departement: u.departement, service: u.service,
-    admin: !!u.admin, actif: u.actif !== false,
+    droits: droitsDe(u), admin: aDroit(u, 'utilisateurs'), actif: u.actif !== false, // admin : compatibilité des anciennes pages
     motDePasseDefini: !!u.hash,
     activationExpire: u.activation ? u.activation.expire : null,
     creeLe: u.creeLe, modifieLe: u.modifieLe,
@@ -289,9 +372,12 @@ async function intervenantCourant(request, env) {
   return u;
 }
 
-async function exigerAdmin(request, env) {
+const LIBELLE_DROIT = { utilisateurs: 'gestion des utilisateurs', attributs: 'attributs', plans: 'plans', vocabulaire: 'vocabulaire' };
+
+/** Intervenant courant, s'il détient l'un des droits demandés ; 403 sinon. */
+async function exigerDroit(request, env, ...droits) {
   const u = await intervenantCourant(request, env);
-  if (!u.admin) throw new HttpError(403, 'Droit administrateur requis.');
+  if (!droits.some((d) => aDroit(u, d))) throw new HttpError(403, `Droit requis : ${droits.map((d) => LIBELLE_DROIT[d]).join(' ou ')}.`);
   return u;
 }
 
@@ -304,10 +390,10 @@ async function repliCodePartage(request, env) {
   return sameSecret(code, env.DEPOT_CODE);
 }
 
-/** Au moins un administrateur actif doit rester (compte activé, ou activation en attente). */
+/** Au moins un compte actif doit garder le droit `utilisateurs` (compte activé, ou activation en attente). */
 function verifierAdminRestant(ref) {
-  if (!ref.intervenants.some((u) => u.admin && u.actif !== false && (u.hash || u.activation))) {
-    throw new HttpError(409, 'Il doit rester au moins un administrateur actif.');
+  if (!ref.intervenants.some((u) => aDroit(u, 'utilisateurs') && u.actif !== false && (u.hash || u.activation))) {
+    throw new HttpError(409, 'Il doit rester au moins un compte actif avec le droit « gestion des utilisateurs ».');
   }
 }
 
@@ -351,7 +437,7 @@ async function routeAuth(request, env, url) {
       const u = await modifierRef(env, async (r) => {
         if (r.intervenants.length) throw new HttpError(409, 'Le référentiel existe déjà : amorçage impossible.');
         const now = new Date().toISOString();
-        const c = { matricule, prenom: '', nom: '', gsm: '', email: '', organisation: 'BM', division: 'DITP', departement: 'AMGT', service: 'CEM', admin: true, actif: true, hash: hash0, activation: null, creeLe: now, modifieLe: now };
+        const c = { matricule, prenom: '', nom: '', gsm: '', email: '', organisation: 'BM', division: 'DITP', departement: 'AMGT', service: 'CEM', droits: [...DROITS], actif: true, hash: hash0, activation: null, creeLe: now, modifieLe: now };
         r.intervenants.push(c);
         return c;
       });
@@ -407,7 +493,7 @@ async function routeAdmin(request, env, url) {
   if (request.method === 'POST' && p === '/admin/amorcer') {
     const { code, intervenant } = await lireJson(request);
     if (!env.ADMIN_BOOTSTRAP_CODE || !code || !(await sameSecret(String(code), env.ADMIN_BOOTSTRAP_CODE))) throw new HttpError(401, "Code d'amorçage refusé.");
-    const fiche = validerFiche({ ...intervenant, admin: true, actif: true });
+    const fiche = validerFiche({ ...intervenant, droits: [...DROITS], actif: true });
     const act = await nouvelleActivation(env);
     await modifierRef(env, async (ref) => {
       if (ref.intervenants.length) throw new HttpError(409, 'Le référentiel existe déjà : amorçage impossible.');
@@ -417,22 +503,28 @@ async function routeAdmin(request, env, url) {
     return { status: 200, body: { codeActivation: act.code, expire: act.activation.expire } };
   }
 
+  if (request.method === 'GET' && p === '/admin/compteurs') {
+    await exigerDroit(request, env, 'utilisateurs', 'plans');
+    return { status: 200, body: (await compteur(env, { action: 'etat' })).etat };
+  }
+
   if (request.method === 'GET' && p === '/admin/intervenants') {
-    await exigerAdmin(request, env);
+    await exigerDroit(request, env, 'utilisateurs');
     const { ref } = await chargerRef(env);
     return { status: 200, body: { date: ref.date, intervenants: ref.intervenants.map(vue) } };
   }
 
   if (request.method === 'POST' && p === '/admin/intervenants') {
-    const moi = await exigerAdmin(request, env);
+    const moi = await exigerDroit(request, env, 'utilisateurs');
     const { fiche: brute } = await lireJson(request);
     const fiche = validerFiche(brute);
-    if (fiche.matricule === moi.matricule && (!fiche.admin || !fiche.actif)) throw new HttpError(409, 'Vous ne pouvez pas retirer votre propre droit administrateur ni vous désactiver.');
+    if (fiche.matricule === moi.matricule && (!fiche.droits.includes('utilisateurs') || !fiche.actif)) throw new HttpError(409, 'Vous ne pouvez pas retirer votre propre droit « gestion des utilisateurs » ni vous désactiver.');
     const resultat = await modifierRef(env, async (ref) => {
       const now = new Date().toISOString();
       const existant = ref.intervenants.find((x) => x.matricule === fiche.matricule);
       if (existant) {
         Object.assign(existant, fiche, { modifieLe: now });
+        delete existant.admin;
         verifierAdminRestant(ref);
         return { u: existant };
       }
@@ -445,7 +537,7 @@ async function routeAdmin(request, env, url) {
   }
 
   if (request.method === 'POST' && p === '/admin/activation') {
-    await exigerAdmin(request, env);
+    await exigerDroit(request, env, 'utilisateurs');
     const matricule = normMatricule((await lireJson(request)).matricule);
     const act = await nouvelleActivation(env);
     const u = await modifierRef(env, async (ref) => {
@@ -634,7 +726,7 @@ async function routeDepot(request, env, url) {
       const idx = await obj.json();
       const e = idx.signalements.find((x) => x.reference === mSup[1] && !estSupprime(x));
       if (!e) throw new HttpError(404, 'Entrée inconnue ou déjà supprimée.');
-      if (!moi.admin && e.redacteur !== moi.matricule) throw new HttpError(403, "Seuls le rédacteur de l'entrée et les administrateurs peuvent la supprimer.");
+      if (!aDroit(moi, 'utilisateurs') && e.redacteur !== moi.matricule) throw new HttpError(403, "Seuls le rédacteur de l'entrée et les gestionnaires des utilisateurs peuvent la supprimer.");
       e.statut = 'supprime';
       e.supprimeLe = new Date().toISOString();
       e.supprimePar = moi.matricule;
@@ -666,9 +758,8 @@ async function routeDepot(request, env, url) {
   const magic = new Uint8Array(body.slice(0, 4));
   if (!(magic[0] === 0x50 && magic[1] === 0x4b && magic[2] === 0x03 && magic[3] === 0x04)) throw new HttpError(400, "Ce n'est pas une archive ZIP.");
 
-  const stub = env.COMPTEUR.get(env.COMPTEUR.idFromName('references'));
-  const attribution = await (await stub.fetch('https://compteur/', { method: 'POST', body: JSON.stringify({ id, annee: anneeBruxelles() }) })).json();
-  const { reference, deja } = attribution;
+  // Série « commun » tant que les deux flux partagent le même dossier R2 (séparation à l'étape des fiches).
+  const { reference, deja } = await compteur(env, { action: 'reference', flux: 'commun', id, annee: anneeBruxelles() });
 
   const dossier = `${BASE}/${reference}`;
   const recuLe = new Date().toISOString();

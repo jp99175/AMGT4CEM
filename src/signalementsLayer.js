@@ -242,7 +242,7 @@ const AMGT4CEM_SignalementsLayer = {
     actions.append(edit);
     // Corbeille alignée à droite : rédacteur de l'entrée ou administrateur (le serveur le vérifie aussi).
     const me = AMGT4CEM_Auth.session();
-    if (me && (me.utilisateur.admin || (s.redacteur && s.redacteur === me.utilisateur.matricule))) {
+    if (me && (AMGT4CEM_Auth.aDroit('utilisateurs', me) || (s.redacteur && s.redacteur === me.utilisateur.matricule))) {
       const trash = document.createElement('button');
       trash.type = 'button';
       trash.className = 'amgt-sig-popup__trash';
