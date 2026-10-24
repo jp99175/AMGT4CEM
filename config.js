@@ -33,13 +33,13 @@ const AMGT4CEM_CONFIG = {
     identifiantsJson: './data/shapefile/identifiants.json',
     polygonesJson: ['./data/metro/polygones.json', './data/plans-patrimoine/polygones.json'],
     lignesJson: ['./data/metro/lignes.json'],
-    vocabulairesJson: ['./data/metro/vocabulaires.json', './data/plans-patrimoine/vocabulaires.json'],
+    vocabulairesJson: ['./config/metro/vocabulaires.json', './config/plans-patrimoine/vocabulaires.json'],
   },
   // Couche Métro PUBLIQUE (personne non connectée, src/metroPublicLayer.js) : Région d'abord (adresse et couche dans
-  // data/fonds-de-plan/services.json, clé `metro`, renseignées par src/services.js), copie de secours du dépôt
+  // config/fonds-de-plan/services.json, clé `metro`, renseignées par src/services.js), copie de secours du dépôt
   // ensuite (export d'origine de la même couche) si la Région refuse, ne répond pas ou renvoie un contenu inutilisable.
   metroPublic: {
-    secoursUrl: './data/metro/region-metro.json',
+    secoursUrl: './config/secours/region-metro.json',
     delaiMs: 8000, // attente maximale de chaque lecture avant de passer à la suivante
   },
   // LEGACY : repères de transition entre tronçons (triangles + codes D0, D1, G1a...), sans identifiant ;
@@ -50,12 +50,12 @@ const AMGT4CEM_CONFIG = {
   // géométrie de data/shapefile/, seule éditable sous AutoCAD) : un fichier JSON par type
   // d'élément dans data/plans-patrimoine/, en Lambert 72, partagés entre visiteurs. Lus par
   // tous ; enregistrés (administrateurs, outil d'édition src/peLabelEditor/) par un relais
-  // serveur à déployer une fois (relay/README.md), route PUT /shared/plans-patrimoine/<fichier>.
+  // serveur à déployer une fois (workers/relay/README.md), route PUT /shared/plans-patrimoine/<fichier>.
   // Ancrage/orientation des références de planche (src/peLabelAnchors.js) :
   peLabelAnchorsUrl: './data/plans-patrimoine/etiquettes-planches.json',
   // Position et tronçon de rattachement des numéros d'interstation (src/interstation.js) :
   interstationLabelsUrl: './data/plans-patrimoine/etiquettes-troncons.json',
-  // Adresse du relais d'enregistrement : lue dans data/fonds-de-plan/services.json (clé
+  // Adresse du relais d'enregistrement : lue dans config/fonds-de-plan/services.json (clé
   // `relais`) par src/services.js, qui renseigne cette propriété au démarrage ; elle se
   // saisit la première fois dans ⚙ Paramètres > Serveur. Vide = enregistrement impossible.
   peLabelAnchorsRelayUrl: '',
@@ -72,36 +72,36 @@ const AMGT4CEM_CONFIG = {
 
   // --- Services externes : fonds de plan, géocodeur, UrbIS Topo ---
   // Leur configuration (URL de chaque service, couches, années, attribution...) n'est plus ici :
-  // elle vit dans data/fonds-de-plan/ (un fichier général `services.json` + un fichier par
-  // service) et data/urbis-topo/parametres.json, lue au démarrage par src/services.js, qui
+  // elle vit dans config/fonds-de-plan/ (un fichier général `services.json` + un fichier par
+  // service) et config/urbis-topo/parametres.json, lue au démarrage par src/services.js, qui
   // assemble `basemaps`, `geocoder` et `urbisTopo` ci-dessous dans cet objet.
   // Note générale : l'accès sortant de l'environnement de développement vers *.irisnet.be et
   // *.brussels est bloqué (voir README) : ces services n'ont pu être vérifiés que depuis un
   // navigateur réel.
   fondsDePlan: {
-    servicesUrl: './data/fonds-de-plan/services.json',
+    servicesUrl: './config/fonds-de-plan/services.json',
     sourcesUrls: {
-      'urbis': './data/fonds-de-plan/urbis.json',
-      'bruciel': './data/fonds-de-plan/bruciel.json',
-      'urbis-orthophotos': './data/fonds-de-plan/urbis-orthophotos.json',
-      'flandre': './data/fonds-de-plan/flandre.json',
-      'geocodeur': './data/fonds-de-plan/geocodeur.json',
-      'urbis-topo': './data/urbis-topo/parametres.json',
-      'nappe': './data/nappe/parametres.json',
+      'urbis': './config/fonds-de-plan/urbis.json',
+      'bruciel': './config/fonds-de-plan/bruciel.json',
+      'urbis-orthophotos': './config/fonds-de-plan/urbis-orthophotos.json',
+      'flandre': './config/fonds-de-plan/flandre.json',
+      'geocodeur': './config/fonds-de-plan/geocodeur.json',
+      'urbis-topo': './config/urbis-topo/parametres.json',
+      'nappe': './config/nappe/parametres.json',
     },
   },
 
   // --- Couches UrbIS Topo (à la demande) ---
-  // Réglages du service : data/urbis-topo/parametres.json. Ici seulement le fichier de la
-  // sélection par défaut PARTAGÉE (data/urbis-topo/), modifiable par un administrateur depuis
+  // Réglages du service : config/urbis-topo/parametres.json. Ici seulement le fichier de la
+  // sélection par défaut PARTAGÉE (config/urbis-topo/), modifiable par un administrateur depuis
   // le sélecteur « modifier la sélection » (src/urbisTopoPicker.js, src/selectionStore.js).
   urbisTopo: {
-    defaultSelectionUrl: './data/urbis-topo/selection-par-defaut.json',
+    defaultSelectionUrl: './config/urbis-topo/selection-par-defaut.json',
   },
 
   // --- Plans patrimoine (à la demande) ---
   // Données de référence LOCALES fournies directement par l'utilisateur
-  // (fichiers GeoJSON EPSG:31370, voir data/plans-patrimoine/catalogue.js) : plans
+  // (fichiers GeoJSON EPSG:31370, voir config/plans-patrimoine/catalogue.js) : plans
   // d'ensemble au 1/500e, numéros interstation. Jamais
   // rechargées depuis un service externe (contrairement à UrbIS Topo), donc
   // pas de garde-fou de zoom/emprise nécessaire (volumes très modestes).
@@ -110,43 +110,22 @@ const AMGT4CEM_CONFIG = {
     // patrimoineSelectionStore.js), dans cet ordre, en boucle si besoin.
     colorPalette: ['#e64a19', '#1565c0', '#2e7d32', '#8e24aa', '#00838f'],
     // Sélection par défaut PARTAGÉE (rien de présélectionné au départ), modifiable par un administrateur.
-    defaultSelectionUrl: './data/plans-patrimoine/selection-par-defaut.json',
+    defaultSelectionUrl: './config/plans-patrimoine/selection-par-defaut.json',
   },
 
-  // --- Micro-base de données métier (stockage local du prototype) ---
-  // Tentative abandonnée : stocker les points dans data/points.json de ce
-  // dépôt via l'API GitHub (partagé entre appareils). Ça ne fonctionne pas :
-  // l'API Contents de GitHub ne répond pas correctement au préflight CORS
-  // dès qu'une requête porte un en-tête Authorization ou
-  // Content-Type: application/json — le navigateur bloque toute écriture
-  // avant même qu'elle parte, quel que soit le jeton (vérifié en conditions
-  // réelles). Voir README section "Micro-base de données" pour le détail et
-  // les deux pistes sérieuses pour la suite (petit relais serveur, ou un
-  // service pensé pour ça comme Supabase).
-  pointsStorageKey: 'amgt4cem.points.v1',
+  // --- Serveur de dépôt (workers/depot/, Cloudflare Worker) ---
+  // Comptes et connexion, envoi des signalements et demandes de SIG4CEM (référence AAAA-NNNN attribuée à la
+  // réception), couche « Points métier » de la carte, administration. '' = pas de serveur.
+  depot: {
+    serverUrl: 'https://amgt4cem-depot-signalements.jp99175.workers.dev',
+    // Zoom à partir duquel le pictogramme amiante remplace le losange rouge sur la carte (à ajuster).
+    amiantePictoZoomMin: 17,
+  },
 
   // --- Plugins (applications séparées branchées sur la carte, voir src/plugins.js) ---
   // Chaque plugin vit dans son dossier : styles puis scripts chargés dans l'ordre ; le dernier
   // script s'enregistre par AMGT4CEM_Plugins.register. `enabled: false` le retire sans rien supprimer.
-  plugins: [
-    {
-      id: 'signalements',
-      // Retiré de la carto (la saisie vit dans home.html?app=signal, SIG4CEM) : le code du plugin reste
-      // en place le temps d'être repris par l'interface de saisie. Une couche en lecture seule des
-      // signalements du serveur reviendra dans la carto (à brancher avec le serveur de dépôt).
-      enabled: false,
-      base: './src/signalements/',
-      styles: ['signalements.css'],
-      scripts: ['pieces-store.js', 'zip-writer.js', 'depot.js', 'store.js', 'envoi.js', 'signalements.js'],
-      options: {
-        // Adresse du serveur de dépôt (depot-signalements/, Cloudflare Worker) qui attribue la référence
-        // AAAA-NNNN. '' = pas de serveur : les signalements restent sur l'appareil (export ZIP à la main).
-        serverUrl: 'https://amgt4cem-depot-signalements.jp99175.workers.dev',
-        // SIG4CEM : zoom à partir duquel le pictogramme amiante remplace le losange rouge sur la carte (à ajuster).
-        amiantePictoZoomMin: 17,
-      },
-    },
-  ],
+  plugins: [],
 
   // --- Interfaces (une seule page, home.html ; voir src/router.js) ---
   // home.html?app=<id> choisit l'interface. Le routeur copie le gabarit `template` (balise <template>
@@ -170,8 +149,8 @@ const AMGT4CEM_CONFIG = {
         './vendor/proj4leaflet/proj4leaflet.js',
         './vendor/html2canvas/html2canvas.min.js',
         './src/buildInfo.js',
-        './data/urbis-topo/catalogue.js',
-        './data/plans-patrimoine/catalogue.js',
+        './config/urbis-topo/catalogue.js',
+        './config/plans-patrimoine/catalogue.js',
         './src/admin.js',
         './src/services.js',
         './src/layerOpacityStore.js',
@@ -184,7 +163,6 @@ const AMGT4CEM_CONFIG = {
         './src/metroLayer.js',
         './src/metroPublicLayer.js',
         './src/network.js',
-        './src/pointsStore.js',
         './src/auth/auth.js',
         './src/auth/authUi.js',
         './src/signalementsLayer.js',
@@ -233,8 +211,8 @@ const AMGT4CEM_CONFIG = {
         './vendor/proj4/proj4.js',
         './vendor/proj4leaflet/proj4leaflet.js',
         './src/buildInfo.js',
-        './data/urbis-topo/catalogue.js',
-        './data/plans-patrimoine/catalogue.js',
+        './config/urbis-topo/catalogue.js',
+        './config/plans-patrimoine/catalogue.js',
         './src/services.js',
         './src/layerOpacityStore.js',
         './src/crs.js',

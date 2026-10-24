@@ -9,8 +9,7 @@
  */
 (function () {
 const root = document.getElementById('admin-root');
-const plugin = (AMGT4CEM_CONFIG.plugins || []).find((p) => p.id === 'signalements') || {};
-AMGT4CEM_Auth.init(plugin.options || {});
+AMGT4CEM_Auth.init(AMGT4CEM_CONFIG.depot || {});
 
 const h = (tag, attrs, ...kids) => {
   const n = document.createElement(tag);

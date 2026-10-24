@@ -147,7 +147,7 @@ const AMGT4CEM_VirtualBoreTool = {
 
     const cfg = AMGT4CEM_CONFIG.nappe;
     if (!cfg || !cfg.sondage) {
-      this._renderPanel({ error: 'Sondage virtuel non configuré (data/nappe/parametres.json).', x, y });
+      this._renderPanel({ error: 'Sondage virtuel non configuré (config/nappe/parametres.json).', x, y });
       return;
     }
     const s = cfg.sondage;
@@ -236,7 +236,7 @@ const AMGT4CEM_VirtualBoreTool = {
       geo.links.push({ label: bg.libelle || 'Coupe géologique officielle (BrugeoTool)', url });
       geo.notes.push('Coupe fournie par Bruxelles Environnement (BrugeoTool) pour ces coordonnées ; elle s\'ouvre dans un nouvel onglet.');
     } else {
-      geo.notes.push('Coupe géologique non configurée (sondage.brugeotool dans data/nappe/parametres.json).');
+      geo.notes.push('Coupe géologique non configurée (sondage.brugeotool dans config/nappe/parametres.json).');
     }
     sections.push(geo);
 

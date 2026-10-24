@@ -8,7 +8,7 @@ sans backend).
 
 L'application est une page statique. Les géométries (shapefiles
 `data/shapefile/`), les référentiels (JSON de `data/metro/` et `data/plans-patrimoine/`) et la
-configuration des services (`data/fonds-de-plan/`) sont chargés via
+configuration des services (`config/fonds-de-plan/`) sont chargés via
 `fetch()`, ce qui **ne fonctionne pas** si vous ouvrez `home.html` directement
 en double-clic (`file://`) — c'est une restriction des navigateurs, pas un bug.
 Servez le dossier avec un petit serveur HTTP local :
@@ -26,7 +26,7 @@ Puis ouvrez l'une des deux interfaces de la page unique `home.html` :
 - http://localhost:8000/home.html?app=signal : **SIG4CEM**, saisie des signalements et demandes
   (menu, nouvelle entrée avec choix du point sur sa propre carte, enregistrement local ou envoi : voir `src/signal/README.md`) ;
 - http://localhost:8000/home.html?app=admin : **administration des intervenants** (référentiel, codes de première connexion,
-  emails d'accueil), réservée aux comptes administrateurs : voir `src/admin/` et `depot-signalements/README.md`.
+  emails d'accueil), réservée aux comptes administrateurs : voir `src/admin/` et `workers/depot/README.md`.
 
 *(Si vous n'avez pas Python, `npx serve` ou l'extension VS Code "Live Server"
 fonctionnent tout aussi bien.)*
@@ -93,8 +93,8 @@ bouton de secours : les données ne sont pas chargées).
    et demandes*), cliquez **Enregistrer** : l'interface de saisie SIG4CEM s'ouvre
    sur son formulaire, la position pointée déjà renseignée.
 10. Les entrées envoyées s'affichent dans la couche **Signalements et demandes** (case du menu **☰ Carte**, connexion
-    demandée). Cliquez sur un point pour consulter sa fiche. La couche est en lecture seule ; l'ancienne couche
-    « Points métier » (micro-base locale, points glissables) n'est plus affichée.
+    demandée). Cliquez sur un point pour consulter sa fiche. La couche est en lecture seule ; l'ancienne micro-base
+    locale « Points métier » (essais) a été supprimée, et ses données effacées des appareils.
 11. Icône **⚙** en haut à droite du menu **☰ Carte** : ouvre la fenêtre de paramètres, à trois
     onglets — **Sources** (corriger l'URL d'un service externe — fond UrbIS,
     orthophotos, géocodeur — si celui-ci change d'adresse, sans modifier le
@@ -176,13 +176,12 @@ bouton de secours : les données ne sont pas chargées).
     (un seul outil actif à la fois). Voir `src/measureTool.js` et
     `src/screenshotTool.js`.
 
-Voir section 6 ci-dessous pour le détail du stockage (micro-base de
-données) et sa mise en place.
+Voir section 6 ci-dessous pour le stockage des points métier.
 
 ## 3. Les fonds de plan
 
 Deux choix dans le menu **☰ Carte**, dont la configuration vit dans
-`data/fonds-de-plan/` (un fichier général `services.json` + un fichier par
+`config/fonds-de-plan/` (un fichier général `services.json` + un fichier par
 service, voir section 3bis) :
 
 ### UrbIS
@@ -200,10 +199,10 @@ poste.
 **Réglages (icône à droite de « Orthophotos » dans ☰ Carte, `src/orthoPicker.js`)** : tableau
 année × source (trois colonnes : Bruciel historique 1935-1996, Bruxelles UrbIS 2004-2024 et Flandre ; une année à plusieurs variantes — champ `variant` de `urbis-orthophotos.json` : N-S, E-O, IR — a plusieurs lignes dans la case). Chaque case porte la
 **résolution** de l'image quand elle est connue (champ facultatif `resolution` de chaque
-entrée de `data/fonds-de-plan/*.json`, texte libre : « 25 cm »…) et une **case à cocher** : seules
+entrée de `config/fonds-de-plan/*.json`, texte libre : « 25 cm »…) et une **case à cocher** : seules
 les orthophotos cochées sont proposées avec les chevrons ‹ ›. Enregistrement comme les autres
 sélecteurs : sélection de l'appareil, 💾 préférences locales, et sélection par défaut partagée
-(`data/fonds-de-plan/orthophotos-selection-par-defaut.json`, administrateur, via le relais).
+(`config/fonds-de-plan/orthophotos-selection-par-defaut.json`, administrateur, via le relais).
 Sélection vide = tout (une année ajoutée plus tard est proposée d'office). Résolutions connues :
 Flandre uniquement (25 cm jusqu'en 2021, 15 cm dès 2022) ; les autres restent à renseigner.
 
@@ -282,7 +281,7 @@ dans cette unique série, de façon transparente pour l'utilisateur :
 
 Aucun nom de couche ci-dessus n'est deviné. Pour ajouter un millésime plus
 récent quand il sera identifié, ajoutez une entrée dans
-`data/fonds-de-plan/urbis-orthophotos.json` (ou `bruciel.json` pour une année
+`config/fonds-de-plan/urbis-orthophotos.json` (ou `bruciel.json` pour une année
 historique), tableau `entries`.
 
 ### Recherche d'adresses (géocodage)
@@ -290,7 +289,7 @@ historique), tableau `entries`.
 La recherche (bouton **🔍**) inclut aussi les noms de rues, via le service
 officiel de géocodage UrbIS (CIRB/CIBG),
 `https://geoservices.irisnet.be/localization/Rest/Localize/getaddresses`
-(configuré dans `data/fonds-de-plan/services.json` et `geocodeur.json`, utilisé par `src/searchTool.js`).
+(configuré dans `config/fonds-de-plan/services.json` et `geocodeur.json`, utilisé par `src/searchTool.js`).
 Endpoint et format confirmés via le code source public du connecteur PHP
 `geo6/geocoder-php-urbis-provider` (pas deviné) ; il répond nativement en
 EPSG:31370, pas de conversion nécessaire côté client.
@@ -310,7 +309,7 @@ stations/tunnels/points restent disponibles normalement.
 Les couches Bruciel (les deux périodes) ne déclarent que
 `EPSG:31370`/`CRS:84` dans leurs `GetCapabilities` (pas `EPSG:3857`,
 contrairement au fond UrbIS) — la carte Leaflet fonctionnant par défaut en
-Web Mercator, ces couches précisent `crs: 'EPSG:31370'` dans `data/fonds-de-plan/bruciel.json` et `urbis-orthophotos.json`
+Web Mercator, ces couches précisent `crs: 'EPSG:31370'` dans `config/fonds-de-plan/bruciel.json` et `urbis-orthophotos.json`
 pour forcer Leaflet à les requêter dans leur CRS natif (via Proj4Leaflet,
 voir `src/basemap.js`), sous peine de tuiles vides ou d'erreur serveur.
 
@@ -350,18 +349,18 @@ Plans patrimoine, section 3ter) :
    sélecteur les enregistre (clé `amgt4cem.urbistopo-default.v1`) ; elles servent
    quand il n'y a pas de sélection courante (première visite, données du
    navigateur effacées) ;
-3. la **sélection par défaut partagée** : `data/urbis-topo/selection-par-defaut.json`,
+3. la **sélection par défaut partagée** : `config/urbis-topo/selection-par-defaut.json`,
    lue par tous. Sous la liste, le bouton **« 🔒 Modifier la sélection par défaut
    (administrateur) »** vérifie le code administrateur auprès du relais, puis fait
    modifier un *brouillon* de cette sélection (la carte et la sélection de l'appareil
    ne changent pas) ; **Enregistrer** l'envoie au relais (route
    `shared/urbis-topo/selection-par-defaut`), qui la commit ; **Annuler** l'abandonne.
 
-Voir `data/urbis-topo/catalogue.js` pour le catalogue complet,
+Voir `config/urbis-topo/catalogue.js` pour le catalogue complet,
 `src/selectionStore.js` (principe commun) et `src/urbisTopoSelectionStore.js` pour
 la sélection, `src/pickerDefaultBar.js` pour la barre « sélection par défaut »,
 `src/urbisTopoPicker.js` pour le sélecteur, `src/urbisTopoLayer.js` pour le chargement
-carte, et `data/urbis-topo/parametres.json` pour les réglages du service.
+carte, et `config/urbis-topo/parametres.json` pour les réglages du service.
 
 **Rien de tout cela n'est deviné.** Le service WFS officiel
 (`geoservices-urbis.irisnet.be/geoserver/urbistopo/wfs`) ne regroupe le
@@ -385,7 +384,7 @@ sont proposés dans le sélecteur. Le catalogue contient aussi des types en
 géométrie "texte" (étiquettes, ex. noms de rue, numéros de maison) et un
 type en "polygone" (zones de mise à jour par levé) : leur affichage carte
 n'est pas encore pris en charge, ils restent listés dans
-`data/urbis-topo/catalogue.js` mais ne sont pas sélectionnables.
+`config/urbis-topo/catalogue.js` mais ne sont pas sélectionnables.
 
 Chargement strictement **à la demande**, pour deux raisons :
 - rien n'est requêté tant qu'aucun type n'est sélectionné ;
@@ -393,7 +392,7 @@ Chargement strictement **à la demande**, pour deux raisons :
   visible sont demandés (`CQL_FILTER` avec `TYPE IN (...)` et `BBOX(...)`,
   au plus 2 requêtes quel que soit le nombre de types sélectionnés — une par
   géométrie), et seulement à partir d'un niveau de zoom minimal
-  (`minZoom` de `data/urbis-topo/parametres.json`, 16 par défaut, ajustable) — une seule
+  (`minZoom` de `config/urbis-topo/parametres.json`, 16 par défaut, ajustable) — une seule
   des 3 couches globales dépasse 450 000 objets au total, tous types
   confondus, il serait à la fois lent et inutile de tout charger d'un coup.
   La zone se met à jour (avec un léger délai) quand vous déplacez ou zoomez
@@ -416,21 +415,20 @@ mise à jour mensuelle du produit (section 9).
 Oui, à quelques exceptions près : les géométries (`data/shapefile/`, export
 AutoCAD) et les référentiels (`data/metro/`, `data/plans-patrimoine/`) — voir
 section 4 — sont fournis par l'utilisateur et servis localement, comme les
-fichiers « Plans patrimoine » (section 3ter) ; la micro-base de points métier vit
-uniquement dans le `localStorage` du navigateur (section 6). Tout le reste — fond
+fichiers « Plans patrimoine » (section 3ter) ; les points métier sont envoyés au serveur de dépôt (section 6). Tout le reste — fond
 UrbIS, orthophotos (Bruciel, UrbIS, Flandre), géocodeur d'adresses, UrbIS Topo —
 est interrogé en direct auprès de services externes (CIRB/CIBG, urban.brussels,
 Digitaal Vlaanderen), à chaque affichage, sans rien mettre en cache de façon
 permanente côté application.
 
 **Où est configuré chaque service.** Plus rien n'est en dur dans `config.js` :
-- `data/fonds-de-plan/services.json` — fichier **général** : adresse du relais et
+- `config/fonds-de-plan/services.json` — fichier **général** : adresse du relais et
   URL de chaque service (`urbis`, `bruciel`, `urbis-orthophotos`, `flandre`,
   `urbis-adm`, `geocodeur`, `urbis-topo`, `metro`) ;
 - un fichier par service pour ses réglages propres (couches, années, attribution,
-  format, CRS, notes de provenance) : `data/fonds-de-plan/urbis.json`, `bruciel.json`,
+  format, CRS, notes de provenance) : `config/fonds-de-plan/urbis.json`, `bruciel.json`,
   `urbis-orthophotos.json`, `flandre.json`, `geocodeur.json`, et
-  `data/urbis-topo/parametres.json` pour UrbIS Topo (avec sa sélection par défaut).
+  `config/urbis-topo/parametres.json` pour UrbIS Topo (avec sa sélection par défaut).
 
 `src/services.js` lit ces fichiers au démarrage, avant toute création de couche, et
 les assemble dans `AMGT4CEM_CONFIG` (`basemaps`, `geocoder`, `urbisTopo`) ; un fichier
@@ -448,7 +446,7 @@ en haut à droite du menu **☰ Carte** ouvre la fenêtre de paramètres ; son o
 - l'URL du géocodeur d'adresses.
 
 Ces valeurs sont des **paramètres généraux de l'application**, pas des réglages de
-l'appareil : **Enregistrer** les envoie au serveur (relais `relay/`, routes
+l'appareil : **Enregistrer** les envoie au serveur (relais `workers/relay/`, routes
 `shared/fonds-de-plan/services` et, si le nom de la couche UrbIS change,
 `shared/fonds-de-plan/urbis`), qui commit les fichiers dans le dépôt : tous les
 visiteurs les voient après le redéploiement de GitHub Pages (~1 min). Les adresses
@@ -472,12 +470,12 @@ l'utilisateur (export de son propre SIG patrimoine, jamais rechargées
 depuis un service externe — contrairement à UrbIS Topo). Même principe que
 UrbIS Topo : le choix des plans à afficher se fait via le lien
 **"(modifier la sélection)"**, qui ouvre un sélecteur plein écran listant
-le catalogue disponible (voir `data/plans-patrimoine/catalogue.js`) ; rien n'est
+le catalogue disponible (voir `config/plans-patrimoine/catalogue.js`) ; rien n'est
 présélectionné au départ. Mêmes commandes et mêmes trois niveaux de sélection que
 pour UrbIS Topo (section 3) : **💾** = préférences locales (clé
 `amgt4cem.patrimoine-default.v1`), case **« Tout (dé)sélectionner »** en haut, et
 sous la liste le bouton « Modifier la sélection par défaut (administrateur) » qui
-modifie `data/plans-patrimoine/selection-par-defaut.json` via le relais (voir
+modifie `config/plans-patrimoine/selection-par-defaut.json` via le relais (voir
 `src/patrimoineSelectionStore.js`).
 Le lien de sélection, comme le curseur d'opacité, ne s'affiche que
 lorsqu'on clique sur l'icône **curseurs** de la case Plans patrimoine — les
@@ -495,7 +493,7 @@ Familles actuelles :
 Lambert 72) : stations et tunnels, avec leurs noms FR/NL, sans planches ni
 référentiel (`src/metroPublicLayer.js`). Le navigateur interroge la Région
 **d'abord** ; si elle refuse (CORS), ne répond pas en 8 s ou renvoie un contenu
-inutilisable, il lit à la place la **copie de secours** `data/metro/region-metro.json`
+inutilisable, il lit à la place la **copie de secours** `config/secours/region-metro.json`
 (export d'origine de la même couche : 156 polygones, 69 stations et 87 tunnels). La
 source utilisée est écrite dans la console (« Couche métro publique : source ... »).
 Avec un compte connecté, la couche corrigée (shapefile + référentiel) et les planches
@@ -508,7 +506,7 @@ sélection ») et son sélecteur sont masqués (`AMGT4CEM_PatrimoineLayer.setAcc
 Il en va de même pour **« Points métier »** (signalements et demandes) : titre, ligne du
 menu et sélecteur masqués, et points métier locaux exclus de la recherche, tant que
 personne n'est connecté (`applyConnectionAccess` dans `src/app.js`).
-L'adresse et le nom de la couche de la Région sont dans `data/fonds-de-plan/services.json`
+L'adresse et le nom de la couche de la Région sont dans `config/fonds-de-plan/services.json`
 (clé `metro`).
 
 La couche **« Noms de station »** importée d'INFRAVIEW (206 textes, sans lien
@@ -520,7 +518,7 @@ l'infobulle de l'emprise de station (section 4).
 Les **plans d'ensemble au 1/500e** (36 planches) sont des polygones de genre
 `planche` de `data/shapefile/polygones.shp` ; leur étiquette est le `sheet_ref`
 du référentiel (géométrie et popups gérés par `src/metroLayer.js`, voir section
-4bis). Ils restent une entrée de ce sélecteur (`data/plans-patrimoine/catalogue.js`,
+4bis). Ils restent une entrée de ce sélecteur (`config/plans-patrimoine/catalogue.js`,
 `external: true`) : la case à cocher affiche/masque la couche déjà construite par
 `metroLayer.js` (voir `src/patrimoineLayer.js#registerExternalLayer`), sans
 proposer de couleur (couleur/opacité réglées avec le réseau métro, curseur
@@ -576,7 +574,7 @@ Annuler, Terminer) ; le suivi et l'enregistrement sont dans le panneau du bouton
 (identifiant `id` du référentiel, voir section 4) sont enregistrés dans
 `data/plans-patrimoine/etiquettes-troncons.json` (clé `numéro#rang`), via la route
 `/shared/plans-patrimoine/etiquettes-troncons` du relais (à redéployer une fois, voir
-`relay/README.md`), et remplacent le rattachement automatique pour cette étiquette. Limites du
+`workers/relay/README.md`), et remplacent le rattachement automatique pour cette étiquette. Limites du
 rattachement automatique : 3 numéros sur 86 à moins de 15 m d'écart entre
 les deux premiers tunnels, 4 à plus de 140 m de tout tunnel (243, 243-3,
 900, 1000), et 7 tunnels sans numéro — c'est ce que le choix manuel permet
@@ -600,7 +598,7 @@ catalogue à la fois.
 
 Case **Nappe phréatique** du menu **☰ Carte** (décochée au départ : rien n'est requêté tant qu'elle ne l'est pas ; l'icône
 curseurs donne l'opacité et le choix des éléments). Source : WFS « water » de **Bruxelles Environnement**
-(`https://ows.environnement.brussels/water`, clé `eaux-souterraines` de `data/fonds-de-plan/services.json`), licence
+(`https://ows.environnement.brussels/water`, clé `eaux-souterraines` de `config/fonds-de-plan/services.json`), licence
 **CC BY 4.0** (attribution affichée dans les crédits de la carte). Deux éléments :
 
 - **Isopièzes** de la nappe phréatique (couche `groundwater_model_phreatic_head`) : lignes de niveau à équidistance de 2 m,
@@ -610,12 +608,12 @@ curseurs donne l'opacité et le choix des éléments). Source : WFS « water » 
 - **Stations de mesure piézométriques** (couche `water_monitoring_groundwater_level`) : position et attributs de la station.
   Les chroniques (séries temporelles) ne sont pas servies par le WFS (outil Geodata de Bruxelles Environnement).
 
-Comme UrbIS Topo : requêtes limitées à l'emprise visible, en Lambert 72, à partir d'un zoom propre à chaque élément (stations dès 13, isopièzes dès 15 ; `minZoom` de chaque bloc de `data/nappe/parametres.json`), plafonnées à
+Comme UrbIS Topo : requêtes limitées à l'emprise visible, en Lambert 72, à partir d'un zoom propre à chaque élément (stations dès 13, isopièzes dès 15 ; `minZoom` de chaque bloc de `config/nappe/parametres.json`), plafonnées à
 `maxFeaturesPerQuery` (message « résultat tronqué » sous la case). Le nom publié exact des couches (avec son préfixe)
-est retrouvé dans le GetCapabilities. Réglages : `data/nappe/parametres.json` ; code : `src/nappeLayer.js`.
+est retrouvé dans le GetCapabilities. Réglages : `config/nappe/parametres.json` ; code : `src/nappeLayer.js`.
 
 **Fiabilité du service** (il répond parfois en HTTP 502) : les données sont copiées dans R2 (partie publique) par le Worker
-`nappe-sync/` (voir son README), qui les revérifie périodiquement ; la carte lit cette copie, la garde sur l'appareil
+`workers/sync/` (voir son README), qui les revérifie périodiquement ; la carte lit cette copie, la garde sur l'appareil
 (IndexedDB, comparée à l'empreinte de `etat.json`) et n'interroge le service régional qu'à défaut des deux. Tant que le
 Worker n'est pas déployé (clé `nappe-sync` vide dans `services.json`), l'ancien fonctionnement (requêtes par emprise) reste actif.
 
@@ -628,7 +626,7 @@ vertical lisible de bas en haut.
 `*.environnement.brussels` est bloqué, comme pour les autres services de la Région) : noms d'attributs (`gw_head`, `period`,
 `uh_rbc`... d'après le descriptif officiel), autorisation CORS du service, volume d'objets par emprise. Si le navigateur
 refuse (CORS), le service est signalé indisponible sous la case et la console donne la cause ; la parade serait de passer
-par le relais (`relay/`), comme pour d'autres échanges.
+par le relais (`workers/relay/`), comme pour d'autres échanges.
 
 ## 4. Architecture des données
 
@@ -708,15 +706,15 @@ identifiant. Les anciens identifiants (`ogc_fid`, `id_objet` comme
     l'application) et `reperes-troncons.legacy.json` (triangles et codes de transition entre
     tronçons, encore affichés avec les planches). **Aucune géométrie de tronçon n'existe
     encore** : à rattacher à `lignes.shp` plus tard ;
-- `data/urbis-topo/` : `catalogue.js` (catalogue des types d'objets : du code de configuration,
+- `config/urbis-topo/` : `catalogue.js` (catalogue des types d'objets : du code de configuration,
   chargé par `home.html`, interface carto), `parametres.json` (réglages du service WFS) et
   `selection-par-defaut.json` (sélection par défaut partagée, section 3) ;
-- `data/fonds-de-plan/` : configuration des services externes (section 3bis) ;
+- `config/fonds-de-plan/` : configuration des services externes (section 3bis) ;
 - `tools/` : `migrer-donnees.py` (migration unique, déjà exécutée),
   `verifier-donnees.py` (contrôle, voir plus bas), `rapport-migration.md`.
 
 **Contenu actuel de `polygones.shp`** (192 entités, `P000001` à `P000192`) :
-69 stations, 87 tunnels, 36 planches au 1/500. Voir `tools/rapport-migration.md`
+69 stations, 87 tunnels, 36 planches au 1/500. Voir `tools/archive/rapport-migration.md`
 pour les anomalies et ce qui n'a pas pu être migré (notamment : aucun nom de
 station rattaché, la source ayant été retirée).
 
@@ -766,7 +764,7 @@ Workflow de mise à jour :
 Origine historique : les polygones viennent de l'export WFS MobiGIS
 (`bm_public_transport:Metro`, `Metro.shp`) retravaillé dans Civil 3D, plus les
 planches INFRAVIEW ; ils ont été migrés une fois pour toutes dans la nouvelle
-structure (`tools/migrer-donnees.py`). `Metro_export_SHP/` et `Metro.json` ont été
+structure (`tools/archive/migrer-donnees.py`). `Metro_export_SHP/` et `Metro.json` ont été
 supprimés du dépôt ; ils restent récupérables via le tag de sauvegarde (section
 « Retour arrière »).
 
@@ -865,7 +863,7 @@ ronde claire) ; un point n'est ajouté que si aucun autre n'est à moins de
 5 m. La définition (`{ r1, a1, r2, a2 }`) est calculée à l'affichage par
 `AMGT4CEM_ScaledText` (taille de boîte mesurée dans le navigateur) et
 **enregistrée dans l'application** : `data/plans-patrimoine/etiquettes-planches.json`, lu pour
-tous les visiteurs (voir section 6 et `relay/README.md`).
+tous les visiteurs (voir section 6 et `workers/relay/README.md`).
 
 **Numéros d'interstation** (couche "Plans patrimoine") :
 leurs points sont les **centres** des textes du PDF ; le texte est donc
@@ -949,9 +947,9 @@ home.html, style.css         page unique : gabarits des deux interfaces (carto, 
 src/router.js                routeur : lit ?app=, copie le gabarit choisi, charge ses scripts dans l'ordre (liste `apps` de config.js)
 src/signal/                  interface de saisie SIG4CEM (home.html?app=signal), séparée de la carte, avec sa propre carte de choix du point
 src/auth/                    identification commune (session, écran de connexion / première connexion) ; src/admin/ : page ?app=admin
-config.js                    configuration (interfaces `apps`, CRS, chemins des données, clés de stockage) ; la configuration des services est dans data/fonds-de-plan/
+config.js                    configuration (interfaces `apps`, CRS, chemins des données, clés de stockage) ; la configuration des services est dans config/fonds-de-plan/
 src/admin.js                 accès administrateur (point de branchement du futur mot de passe)
-src/services.js              configuration des services externes (data/fonds-de-plan/, data/urbis-topo/parametres.json) : lecture au démarrage, enregistrement via le relais
+src/services.js              configuration des services externes (config/fonds-de-plan/, config/urbis-topo/parametres.json) : lecture au démarrage, enregistrement via le relais
 src/peLabelEditor/          mode édition des étiquettes (planches, interstations), chargé à la demande
 src/selectionStore.js        sélection des couches/objets : courante, préférences locales, défaut partagé
 src/pickerDefaultBar.js      barre « sélection par défaut » (administrateur) des sélecteurs
@@ -963,26 +961,33 @@ src/referentiel.js           chargement des géométries + référentiel JSON, j
 src/network.js               construction partagée du réseau (stations/tunnels/planches) pour carto et signal
 src/scaledText.js            texte HTML à taille réelle constante (zoom), pour les codes de tronçon et les références de planche
 src/metroLayer.js            construction des couches Leaflet Stations/Tunnels/Planches (+ repères legacy)
-src/metroPublicLayer.js      couche Métro publique (non connecté) : WFS de la Région, sinon copie de secours data/metro/region-metro.json
-data/shapefile/              famille 1 : polygones.* et lignes.* (shapefiles Lambert 72, champ `id` seul) + identifiants.json — voir section 4
-data/metro/                  famille 2 : référentiel stations/tunnels/tronçons (polygones.json, lignes.json, vocabulaires.json) + region-metro.json (copie de secours de la couche publique)
-data/plans-patrimoine/       référentiel des planches, étiquettes (écrites via le relais), sélection par défaut, fichiers legacy
-data/urbis-topo/             réglages du service UrbIS Topo, sélection par défaut partagée
-data/nappe/                  réglages de la couche Nappe phréatique (parametres.json)
-nappe-sync/                  Worker Cloudflare : copie des données de la nappe dans R2 (public/nappe/) + contrôle périodique
-data/fonds-de-plan/          services externes : services.json + un fichier par service
-data/points-metier/          (réservé : structure des points métier, phase B)
-data/signalements/           vocabulaire.json : natures, types, domaines techniques (public)
-data/suivi/                  famille 3 (suivi) : HORS DÉPÔT (.gitignore), phase B
-depot-signalements/          serveur de dépôt des signalements (Cloudflare Worker + R2) : référence AAAA-NNNN ; distinct de relay/
-tools/                       migrer-donnees.py (unique), verifier-donnees.py (après chaque export AutoCAD), rapport-migration.md
+src/metroPublicLayer.js      couche Métro publique (non connecté) : WFS de la Région, sinon copie de secours config/secours/region-metro.json
+config/                      réglages publics (restent dans le dépôt) :
+  fonds-de-plan/             services externes : services.json + un fichier par service, menus par défaut
+  urbis-topo/                réglages du service UrbIS Topo, catalogue, sélection par défaut partagée
+  nappe/                     réglages de la couche Nappe phréatique (parametres.json), sélection par défaut
+  metro/                     vocabulaires.json (genres stations/tunnels/tronçons)
+  plans-patrimoine/          catalogue, vocabulaires.json (genres des planches), sélection par défaut
+  secours/                   region-metro.json (copie de secours de la couche Métro publique)
+data/                        données destinées à R2 (quittent le dépôt à la bascule) :
+  shapefile/                 polygones.* (shapefiles Lambert 72, champ `id` seul) + identifiants.json — voir section 4
+  metro/                     référentiel stations/tunnels/tronçons (polygones.json, lignes.json)
+  plans-patrimoine/          référentiel des planches, étiquettes (écrites via le relais), fichiers legacy, temp-delta-mod
+  nappe/                     intervalles.json (bandes entre isopièzes, précalculées) → R2 public/nappe/
+  signalements/              vocabulaire.json : natures, types, domaines techniques → R2 privé
+workers/                     Workers Cloudflare :
+  depot/                     serveur de dépôt (comptes, signalements, R2) : référence AAAA-NNNN
+  relay/                     relais d'enregistrement des réglages dans le dépôt (config/, data/)
+  sync/                      copie des données de la nappe dans R2 (public/nappe/) + contrôle périodique
+tools/                       verifier-donnees.py (après chaque export AutoCAD), stamp-build.sh ;
+  archive/                   scripts déjà exécutés : migrer-donnees.py, renommer-ids-G-vers-P.py, rapport-migration.md
 src/basemap.js                fonds de plan (UrbIS, Orthophoto, Bruciel)
-data/urbis-topo/catalogue.js       catalogue complet des types d'objets UrbIS Topo (référence)
+config/urbis-topo/catalogue.js       catalogue complet des types d'objets UrbIS Topo (référence)
 src/urbisTopoSelectionStore.js sélection utilisateur des types UrbIS Topo affichés
 src/urbisTopoPicker.js        sélecteur plein écran (catalogue classé par thème)
 src/urbisTopoLayer.js        affichage carte des types UrbIS Topo sélectionnés
 src/nappeLayer.js            couche Nappe phréatique : isopièzes (mai 2013) et stations piézométriques, WFS Bruxelles Environnement
-data/plans-patrimoine/catalogue.js catalogue des couches "Plans patrimoine" (référence)
+config/plans-patrimoine/catalogue.js catalogue des couches "Plans patrimoine" (référence)
 src/patrimoineSelectionStore.js sélection utilisateur des couches Plans patrimoine affichées
 src/patrimoinePicker.js      sélecteur plein écran "Plans patrimoine"
 src/patrimoineLayer.js       affichage carte des couches Plans patrimoine sélectionnées
@@ -990,12 +995,11 @@ src/mapMenu.js                menu fond de plan / couches / réinitialisation
 src/orthoPicker.js            écran « ⚙ Orthophotos » : années × sources, résolution, cases à cocher
 src/orthoSelectionStore.js    sélection des orthophotos (appareil, préférences, défaut partagé)
 src/searchTool.js             recherche station/tunnel/point (remplace le zoom +/-)
-src/pointsStore.js           micro-base de données (localStorage, schéma ouvert)
 src/plugins.js               chargeur de plugins (applications séparées branchées sur la carte)
 src/accountButton.js          icône de connexion (menu ☰ Carte) : affiche ou masque « Ajouter un point » et « ⚙ Paramètres » selon le compte connecté
 src/addPointMenu.js          menu du bouton « ✚ Ajouter un point » : Point métier + entrées ajoutées par les plugins
-src/signalements/            plugin « Signalements » (voir son README.md)
-src/signalementsLayer.js      couche « Signalements et demandes » (lecture seule, GET /signalements du serveur de dépôt) ; remplace pointsLayer.js, retiré du chargement
+src/signalements/            modules de dépôt communs à SIG4CEM : photos, archive ZIP, envoi, PDF, révision (voir son README.md)
+src/signalementsLayer.js      couche « Signalements et demandes » (lecture seule, GET /signalements du serveur de dépôt) 
 src/addPointTool.js          « Ajouter un point » : pointe la position, choix du type de données, ouvre l'interface de saisie
 src/measureTool.js           outil "📏 Mesurer" (segment + cote + cercle, 4s puis disparition)
 src/screenshotTool.js        capture PNG auto au 2e relâchement (mémoire uniquement) + enregistrement ("💾")
@@ -1009,55 +1013,20 @@ vendor/proj4leaflet,
 vendor/html2canvas, vendor/jspdf  bibliothèques embarquées localement
 ```
 
-Les géométries et les référentiels (`data/shapefile/`, `data/metro/`, `data/plans-patrimoine/`) et la
-micro-base de points métier (`pointsStore.js`) sont deux sources totalement
-indépendantes : les premiers ne sont modifiés que par un export AutoCAD (jamais par
-l'application elle-même) ; la seconde peut être remplacée plus tard par un vrai
-backend sans toucher à la cartographie.
+Les géométries et les référentiels (`data/shapefile/`, `data/metro/`, `data/plans-patrimoine/`) et les
+points métier (serveur de dépôt) sont deux sources totalement indépendantes : les premiers ne sont modifiés
+que par un export AutoCAD (jamais par l'application elle-même) ; les seconds sont saisis dans SIG4CEM.
 
-## 6. Micro-base de données
+## 6. Points métier et relais d'enregistrement
 
-**Stockage actuel : `localStorage` du navigateur** (clé
-`amgt4cem.points.v1`), comme en toute première V1 — propre à chaque
-appareil, rien n'est partagé entre appareils, rien n'est envoyé à un
-serveur. Voir `src/pointsStore.js`.
+Les points métier sont les **signalements et demandes** saisis dans SIG4CEM (`home.html?app=signal`, voir
+`src/signal/README.md`), gardés sur l'appareil (IndexedDB) jusqu'à leur envoi au serveur de dépôt
+(`workers/depot/`), qui leur attribue une référence AAAA-NNNN. La carte les affiche dans la couche « Points
+métier » (lecture seule, comptes connectés).
 
-### Tentative abandonnée : GitHub comme base partagée
-
-Une piste a été essayée pour partager les points entre appareils sans
-backend dédié : les stocker dans un fichier JSON de ce dépôt, lu/écrit via
-l'API Contents de GitHub. **Ça ne fonctionne pas, et ce n'est pas
-réparable côté client** : dès qu'une requête vers cette API porte un
-en-tête `Authorization` (obligatoire pour écrire) ou
-`Content-Type: application/json` (nécessaire pour envoyer le nouveau
-contenu), le navigateur déclenche une vérification préalable CORS
-(« preflight ») que l'API Contents de GitHub ne gère pas — la requête est
-bloquée avant même de partir. Vérifié en conditions réelles avec un jeton
-volontairement invalide : le blocage est identique, ce qui prouve qu'il ne
-dépend pas de la validité du jeton. La lecture simple (sans jeton) fonctionne
-bien en revanche (pas de préflight nécessaire), mais ne sert à rien sans
-écriture possible.
-
-Pour repartir sur un vrai stockage partagé, deux pistes sérieuses :
-
-- **Petit relais serveur** (ex. Cloudflare Workers, gratuit) : le relais
-  appelle l'API GitHub lui-même (les appels serveur-à-serveur ne sont pas
-  soumis au CORS des navigateurs), et expose à l'application ses propres
-  endpoints simples. Garde `data/points.json` dans ce dépôt comme stockage
-  final. Un compte gratuit à créer.
-- **Service pensé pour être appelé directement depuis une app web** (ex.
-  Supabase, base Postgres gratuite) : pas de mur CORS, pas de jeton
-  unique à risque (sécurité par ligne via des règles d'accès). Remplace
-  `data/points.json` par une vraie base, avec une interface de gestion des
-  données comparable à phpMyAdmin. Un compte gratuit à créer.
-
-**Attention.** Ces pistes ont été étudiées avant la distinction des trois familles de
-données (section 4). La première (relais + fichier dans le dépôt) ne convient qu'à des
-données publiques et partageables (étiquettes, réglages, sélections par défaut), pas aux
-points métier ni au suivi.
-
-Le choix n'a pas encore été fait pour les points métier — voir la
-conversation de développement.
+L'ancienne micro-base locale (`pointsStore.js`, `localStorage`) et l'ancien outil de signalement de la carte
+(`src/signalements/signalements.js`, `store.js`) ont été **supprimés** : ce n'étaient que des essais. Leurs
+données sont effacées des appareils à l'ouverture de la carte ou de SIG4CEM, sans reprise.
 
 ### Premier usage du relais : définitions d'ancrage des références de planche
 
@@ -1071,10 +1040,10 @@ piste ci-dessus (petit relais serveur) :
   par `src/metroLayer.js` / `src/scaledText.js`) ; absent ou vide, aucune
   référence de planche n'est affichée ;
 - le plugin `src/peLabelEditor/` (administrateurs) l'enregistre via le
-  relais `relay/` (Cloudflare Worker, à déployer une fois : `relay/README.md`),
+  relais `workers/relay/` (Cloudflare Worker, à déployer une fois : `workers/relay/README.md`),
   qui commit le fichier dans le dépôt ; GitHub Pages le redéploie ;
 - tant qu'aucune adresse de relais n'est connue (clé `relais` de
-  `data/fonds-de-plan/services.json`), l'enregistrement est refusé avec un message
+  `config/fonds-de-plan/services.json`), l'enregistrement est refusé avec un message
   explicite.
 
 Le même relais enregistre les **paramètres des services** (fenêtre ⚙ Paramètres : routes
@@ -1086,41 +1055,20 @@ première fois, l'adresse du relais se saisit dans ⚙ Paramètres > Serveur ave
 administrateur ; elle est écrite dans `services.json`, d'où tous les visiteurs la lisent
 ensuite.
 
-Les points métier (`pointsStore.js`) restent en `localStorage`. **Le relais ne doit pas
+Les points métier passent par le serveur de dépôt. **Le relais ne doit pas
 être étendu à ces données** : il écrit dans le dépôt, qui est public, et les points
 métier relèvent du suivi (famille 3, section 4), qui n'entre jamais dans le dépôt. Un
 stockage partagé du suivi suppose une autre destination (par exemple le SharePoint de
 l'équipe) : le choix n'est pas fait.
 
-### Plugins et signalements
+### Plugins
 
 Des applications **séparées** se branchent sur la carte sous forme de **plugins** : chacune vit dans son
 dossier (`src/<plugin>/`, avec son README, ses styles et ses scripts), est déclarée dans la liste `plugins`
 de `config.js` et chargée par `src/plugins.js`. Le cœur ne connaît aucun plugin par son nom ; un plugin
 désactivé (`enabled: false`), absent ou en erreur ne gêne pas le reste. Le plugin d'édition des étiquettes
-(`src/peLabelEditor/`) se charge à la demande depuis ⚙ Paramètres ; le plugin **Signalements** se charge au
-démarrage.
-
-**Signalements** (`src/signalements/`, voir son README) : saisie des signalements et demandes avec
-domaine technique, photos, demandeur et référence chez le demandeur , même formulaire pour tous les types (amiante compris) ; enregistrés d'abord sur l'appareil, puis **envoyés au serveur de dépôt**
-(`depot-signalements/`, Cloudflare Worker + R2) qui leur attribue la référence `AAAA-NNNN` ; export d'un dépôt ZIP
-à la main possible. Ils n'utilisent pas le
-stockage des points métier du cœur (`amgt4cem.signalements.v1`, `amgt4cem.signalements.amiante.v1`) et ne
-doivent jamais passer par le relais d'enregistrement (dépôt public).
-
-### Exporter les points métier à la main (avant tout déploiement)
-
-Ils sont dans le `localStorage` de chaque navigateur, donc **hors dépôt** et hors
-de toute sauvegarde Git. L'application n'a **pas** de fonction d'export. Dans la
-console du navigateur (F12) de l'appareil concerné, sur la page de l'application :
-
-```js
-copy(localStorage.getItem('amgt4cem.points.v1'))   // copie le JSON dans le presse-papier : le coller dans un fichier .json
-```
-
-Pour restaurer : `localStorage.setItem('amgt4cem.points.v1', '<le JSON>')`, puis recharger.
-Les signalements du plugin ont leurs propres clés (`amgt4cem.signalements.v1` et `amgt4cem.signalements.amiante.v1`) ; leurs photos (IndexedDB) ne se récupèrent que par le bouton « Exporter le dépôt » de chaque signalement.
-La refonte des données n'y touche pas.
+(`src/peLabelEditor/`) se charge à la demande depuis ⚙ Paramètres. L'adresse du serveur de dépôt est dans
+`config.js`, bloc `depot`. Les points métier ne doivent jamais passer par le relais d'enregistrement (dépôt public).
 
 ## 7. Retour arrière
 

@@ -2,7 +2,7 @@
 
 Reçoit les signalements envoyés par le plugin `src/signalements/`, leur **attribue la référence officielle
 `AAAA-NNNN`** (ex. `2026-0001`, compteur unique, remis à 1 chaque année de Bruxelles) et range
-l'archive dans R2. **Distinct de `relay/`** : le relais écrit dans le dépôt GitHub (public) ; ce serveur n'y écrit
+l'archive dans R2. **Distinct de `workers/relay/`** : le relais écrit dans le dépôt GitHub (public) ; ce serveur n'y écrit
 jamais, car le suivi n'entre pas dans le dépôt.
 
 | Route | Accès | Rôle |

@@ -39,7 +39,7 @@
  * data/plans-patrimoine/etiquettes-troncons.json (dépôt, Lambert 72), lus par
  * l'application pour tous les visiteurs (peLabelAnchors.js, interstation.js).
  * « Enregistrer » envoie les deux (celui qui a des modifications) au relais
- * serveur (relay/, route /shared/plans-patrimoine/<fichier>) qui écrit le fichier
+ * serveur (workers/relay/, route /shared/plans-patrimoine/<fichier>) qui écrit le fichier
  * dans le dépôt ; il faut le code
  * administrateur du relais. Tant que le relais n'est pas déployé (config.js,
  * peLabelAnchorsRelayUrl), l'enregistrement est impossible : l'export JSON
@@ -1201,7 +1201,7 @@
       }
       if (!AMGT4CEM_PeLabelAnchors.isSaveConfigured()) {
         report(
-          "Enregistrement impossible : le relais n'est pas configuré (adresse à renseigner dans ⚙ Paramètres > Serveur, voir relay/README.md). " +
+          "Enregistrement impossible : le relais n'est pas configuré (adresse à renseigner dans ⚙ Paramètres > Serveur, voir workers/relay/README.md). " +
           'En attendant, « Exporter JSON » garde une copie.'
         );
         return false;

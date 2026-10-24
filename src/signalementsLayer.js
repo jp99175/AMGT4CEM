@@ -3,7 +3,7 @@
  * les agents connectés. Elle remplace l'ancienne couche « Points métier » (micro-base locale, abandonnée).
  *
  * Lecture seule : les données viennent de GET /signalements (index tenu par le serveur de dépôt, voir
- * depot-signalements/). Il faut une connexion (matricule + mot de passe, module src/auth/) ; sans elle la couche
+ * workers/depot/). Il faut une connexion (matricule + mot de passe, module src/auth/) ; sans elle la couche
  * reste vide et le menu propose de se connecter. Les entrées sans position sont comptées, pas dessinées.
  *
  * Les popups sont construites en DOM (textContent) : titre, lieu et description viennent de la saisie des agents.
@@ -25,12 +25,27 @@ const AMGT4CEM_SignalementsLayer = {
     this._statusEl = document.getElementById('amgt-signalements-status');
     try { this._hidden = new Set(JSON.parse(localStorage.getItem(this._storeKey) || '[]')); } catch (err) { this._hidden = new Set(); }
     document.getElementById('amgt-signalements-picker-close').addEventListener('click', () => this.closePicker());
-    const plugin = (AMGT4CEM_CONFIG.plugins || []).find((p) => p.id === 'signalements') || {};
-    this._options = plugin.options || {};
+    this._options = AMGT4CEM_CONFIG.depot || {};
     AMGT4CEM_Auth.init(this._options);
     map.on('zoomend', () => this._updateAmianteIcons());
     this.refresh();
     return this._group;
+  },
+
+  /**
+   * Recherche (src/searchTool.js) : entrées positionnées dont la référence, le titre ou le lieu contient le texte.
+   * @param {string} needle texte déjà normalisé ; @param {Function} normalize même normalisation que la recherche
+   */
+  search(needle, normalize) {
+    const results = [];
+    for (const s of this._data) {
+      if (s.x == null || s.y == null) continue;
+      const label = [s.reference, s.titre].filter(Boolean).join(' – ') || 'Entrée';
+      if (!normalize([s.reference, s.titre, s.lieu].filter(Boolean).join(' ')).includes(needle)) continue;
+      results.push({ kind: 'point', label, latlng: AMGT4CEM_CRS.lambertToLatLng([s.x, s.y]) });
+      if (results.length >= 8) break;
+    }
+    return results;
   },
 
   setOpacity(factor) {

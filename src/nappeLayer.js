@@ -1,13 +1,13 @@
 /**
  * Couche « Géotechnique » (nappe phréatique) : deux jeux de données du WFS « water » de Bruxelles Environnement
- * (adresse : data/fonds-de-plan/services.json, clé `eaux-souterraines` ; réglages : data/nappe/parametres.json) :
+ * (adresse : config/fonds-de-plan/services.json, clé `eaux-souterraines` ; réglages : config/nappe/parametres.json) :
  *
  *  - ISOPIÈZES de la nappe phréatique (lignes de niveau, équidistance 2 m, en m DNG) : résultat du modèle BPSM v1.0,
  *    état de MAI 2013. Valeur indicative, qui ne remplace pas une étude d'expert (mention reprise dans chaque fenêtre) ;
  *  - STATIONS de mesure piézométriques (points) du réseau de suivi régional. Les chroniques ne sont pas servies par le
  *    WFS : seule la position et les attributs de la station s'affichent ici.
  *
- * Source des données : une COPIE rangée dans R2 par le Worker nappe-sync/ (revérifiée périodiquement), gardée aussi sur
+ * Source des données : une COPIE rangée dans R2 par le Worker workers/sync/ (revérifiée périodiquement), gardée aussi sur
  * l'appareil (IndexedDB) ; le service régional, parfois en HTTP 502, n'est interrogé directement qu'à défaut (voir
  * « Jeux de données complets » plus bas). Rien n'est lu tant que la case est décochée ; seuls les objets de l'emprise
  * visible sont dessinés, et en dessous du zoom minimal de chaque élément rien n'est affiché. Une couche en échec
@@ -226,7 +226,7 @@ const AMGT4CEM_NappeLayer = {
     }
     this._group.addTo(this._map);
 
-    // Seuil de zoom propre à chaque élément (data/nappe/parametres.json) : stations dès 13, isopièzes dès 15.
+    // Seuil de zoom propre à chaque élément (config/nappe/parametres.json) : stations dès 13, isopièzes dès 15.
     const zoom = this._map.getZoom();
     const zIso = this._minZoom('isopieses', cfg), zSta = this._minZoom('stations', cfg);
     const wantIsopieses = this._showIsopieses && zoom >= zIso;
@@ -266,7 +266,7 @@ const AMGT4CEM_NappeLayer = {
 
   /**
    * Les isopièzes (modèle de 2013) ne bougent pas et le service régional répond parfois en HTTP 502 : la carte lit donc
-   * d'abord la COPIE rangée dans R2 par le Worker nappe-sync/ (clé `nappe-sync` de services.json), qui la revérifie
+   * d'abord la COPIE rangée dans R2 par le Worker workers/sync/ (clé `nappe-sync` de services.json), qui la revérifie
    * périodiquement. Son etat.json donne l'empreinte (sha256) de chaque jeu : si la copie gardée sur l'appareil
    * (IndexedDB) a la même, elle est utilisée telle quelle, sinon le jeu est retéléchargé. Le service n'est interrogé
    * directement (par emprise, comme avant) que si ni la copie R2 ni le cache de l'appareil ne sont disponibles.
@@ -943,7 +943,7 @@ const AMGT4CEM_NappeLayer = {
   /** Adresse du WFS d'un élément (isopièzes, stations) d'après services.json ; lève une Error si absente. */
   _serviceUrl(part, cfg) {
     const url = cfg.urls && cfg.urls[part.service];
-    if (!url) throw new Error(`service « ${part.service} » non configuré (data/fonds-de-plan/services.json)`);
+    if (!url) throw new Error(`service « ${part.service} » non configuré (config/fonds-de-plan/services.json)`);
     return url;
   },
 

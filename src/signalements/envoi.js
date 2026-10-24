@@ -1,5 +1,5 @@
 /**
- * Envoi des signalements au serveur de dépôt (depot-signalements/, Cloudflare Worker).
+ * Envoi des signalements au serveur de dépôt (workers/depot/, Cloudflare Worker).
  *
  * Le signalement reste d'abord sur l'appareil ; quand l'agent l'envoie, le serveur reçoit l'archive de
  * dépôt (la même que l'export ZIP), lui attribue la référence AAAA-NNNN et la range. Cette référence

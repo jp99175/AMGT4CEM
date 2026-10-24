@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-10-07",
-  "note": "Fichier GÉNÉRAL : adresse du relais d'enregistrement et URL de chaque service externe appelé par l'application. Les réglages propres à chaque service (couches, années, attribution, format) sont dans le fichier du même nom de ce dossier (data/urbis-topo/parametres.json pour UrbIS Topo). Modifiable depuis ⚙ Paramètres. Aucune URL ni nom de couche n'est deviné.",
+  "note": "Fichier GÉNÉRAL : adresse du relais d'enregistrement et URL de chaque service externe appelé par l'application. Les réglages propres à chaque service (couches, années, attribution, format) sont dans le fichier du même nom de ce dossier (config/urbis-topo/parametres.json pour UrbIS Topo). Modifiable depuis ⚙ Paramètres. Aucune URL ni nom de couche n'est deviné.",
   "relais": {
     "url": "https://amgt4cem-relay.jp99175.workers.dev"
   },
@@ -44,7 +44,7 @@
       "url": "https://ows.environnement.brussels/water"
     },
     "nappe-sync": {
-      "libelle": "AMGT4CEM — copie des données de la nappe dans R2 (Worker nappe-sync/)",
+      "libelle": "AMGT4CEM — copie des données de la nappe dans R2 (Worker workers/sync/)",
       "url": "https://amgt4cem-nappe-sync.jp99175.workers.dev"
     },
     "geologie": {

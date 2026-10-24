@@ -1,5 +1,5 @@
 /**
- * Identification des intervenants : session et appels au serveur de dépôt (depot-signalements/).
+ * Identification des intervenants : session et appels au serveur de dépôt (workers/depot/).
  *
  * Partagé par SIG4CEM (envoi des signalements) et la page d'administration. Le serveur détient le référentiel
  * (R2, jamais le dépôt public) et vérifie tout ; ici on ne garde que le jeton reçu après connexion, dans

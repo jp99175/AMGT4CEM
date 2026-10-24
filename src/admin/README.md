@@ -1,7 +1,7 @@
 # Administration des intervenants (`home.html?app=admin`)
 
 Page réservée aux comptes ayant le droit administrateur. Elle lit et modifie le référentiel des intervenants
-conservé sur le serveur de dépôt (R2, voir `depot-signalements/README.md`) ; rien n'est écrit dans le dépôt GitHub.
+conservé sur le serveur de dépôt (R2, voir `workers/depot/README.md`) ; rien n'est écrit dans le dépôt GitHub.
 
 - **Liste** filtrable (nom, matricule, service…) ; **fiche** : matricule (clé, non modifiable ensuite), prénom, nom, GSM
   (saisi `0475 12 34 56`, enregistré `+32475123456`, affiché `+32 475 12 34 56`), email, organisation / division / département /

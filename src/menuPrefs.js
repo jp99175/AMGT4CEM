@@ -4,8 +4,8 @@
  *  - DERNIERS RÉGLAGES UTILISÉS : enregistrés automatiquement sur l'appareil à chaque changement fait par
  *    l'utilisateur, et repris au démarrage.
  *  - AFFICHAGE PAR DÉFAUT PARTAGÉ (appareil sans réglage enregistré : première visite, données effacées) :
- *      · utilisateurs NON connectés : data/fonds-de-plan/menu-par-defaut.json ;
- *      · utilisateurs connectés     : data/fonds-de-plan/menu-par-defaut-connectes.json (à défaut, le précédent).
+ *      · utilisateurs NON connectés : config/fonds-de-plan/menu-par-defaut.json ;
+ *      · utilisateurs connectés     : config/fonds-de-plan/menu-par-defaut-connectes.json (à défaut, le précédent).
  *    La disquette à côté de « Réinitialiser la vue » enregistre l'affichage actuel : pour les non connectés après
  *    validation par le code administrateur ; pour un administrateur connecté, pour tous les utilisateurs connectés.
  *    L'écriture passe par le relais (code administrateur), le fichier est visible par tous après redéploiement du site.
@@ -14,8 +14,8 @@
 const AMGT4CEM_MenuPrefs = {
   _lastKey: 'amgt4cem.menu-prefs.v1',
   _files: {
-    public: { url: './data/fonds-de-plan/menu-par-defaut.json', route: 'shared/fonds-de-plan/menu-par-defaut' },
-    connectes: { url: './data/fonds-de-plan/menu-par-defaut-connectes.json', route: 'shared/fonds-de-plan/menu-par-defaut-connectes' },
+    public: { url: './config/fonds-de-plan/menu-par-defaut.json', route: 'shared/fonds-de-plan/menu-par-defaut' },
+    connectes: { url: './config/fonds-de-plan/menu-par-defaut-connectes.json', route: 'shared/fonds-de-plan/menu-par-defaut-connectes' },
   },
   _shared: { public: null, connectes: null },
 

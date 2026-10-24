@@ -142,10 +142,9 @@ SIG.MapPicker = {
     this._updateAmianteIcons();
   },
 
-  /** Zoom à partir duquel le pictogramme amiante remplace le losange (config.js : options.amiantePictoZoomMin). */
+  /** Zoom à partir duquel le pictogramme amiante remplace le losange (config.js : depot.amiantePictoZoomMin). */
   _pictoZoomMin() {
-    const plugin = (AMGT4CEM_CONFIG.plugins || []).find((p) => p.id === 'signalements') || {};
-    const z = Number((plugin.options || {}).amiantePictoZoomMin);
+    const z = Number((AMGT4CEM_CONFIG.depot || {}).amiantePictoZoomMin);
     return Number.isFinite(z) ? z : 17;
   },
 

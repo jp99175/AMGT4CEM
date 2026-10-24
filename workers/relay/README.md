@@ -66,7 +66,7 @@ Prérequis : un compte Cloudflare (gratuit), Node.js installé.
    (« Relais joignable, code administrateur accepté ») et **Enregistrer**.
    L'adresse (adresse **sans** `/shared/…` ni `/settings` : l'application
    ajoute la route) est alors écrite par le relais dans
-   `data/fonds-de-plan/services.json` (clé `relais`) : c'est un paramètre général, lu par tous les
+   `config/fonds-de-plan/services.json` (clé `relais`) : c'est un paramètre général, lu par tous les
    visiteurs après le redéploiement de GitHub Pages. Le code n'est gardé que
    le temps de l'onglet (`sessionStorage`), jamais sur disque.
 5. Dans le mode édition des étiquettes, **Enregistrer dans l'application**

@@ -4,7 +4,7 @@
  * MobiGIS. Persistée par appareil (localStorage) : un facteur par couche, de
  * 0 (invisible) à 1 (opacité normale de la couche). Le facteur s'applique en
  * multiplicateur sur l'opacité propre à chaque couche (voir mapMenu.js,
- * pointsLayer.js, urbisTopoLayer.js), jamais en remplacement absolu — sinon
+ * signalementsLayer.js, urbisTopoLayer.js), jamais en remplacement absolu — sinon
  * une couche déjà semi-transparente par nature (ex. les tunnels) deviendrait
  * plus opaque qu'à l'origine dès qu'on la remet à 100%.
  */
