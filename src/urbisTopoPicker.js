@@ -14,7 +14,7 @@
  * l'utilisateur, et une case « Tout (dé)sélectionner » agit sur tous les types
  * affichés. Sous la liste : la barre « sélection par défaut partagée »
  * (pickerDefaultBar.js), réservée aux administrateurs, qui fait modifier un
- * brouillon de la sélection par défaut du dépôt (data/urbis-topo/).
+ * brouillon de la sélection par défaut du dépôt (config/urbis-topo/).
  */
 const AMGT4CEM_UrbisTopoPicker = {
   _overlay: null,

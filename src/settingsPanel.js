@@ -6,7 +6,7 @@
  * passe administrateur — pas encore implémenté, accès ouvert pour l'instant.
  *
  * Ce sont des paramètres GÉNÉRAUX, pas des réglages de l'appareil : enregistrés
- * sur le serveur (data/fonds-de-plan/, via le relais d'enregistrement),
+ * sur le serveur (config/fonds-de-plan/, via le relais d'enregistrement),
  * communs à tous les visiteurs, appliqués au démarrage (voir services.js).
  * Rien n'est gardé dans le navigateur, hormis le code administrateur, le temps
  * de l'onglet (sessionStorage), pour s'identifier auprès du relais.

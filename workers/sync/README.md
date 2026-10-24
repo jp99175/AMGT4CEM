@@ -12,7 +12,7 @@ l'appareil (cache du navigateur) et ne s'adresse au service régional qu'à déf
 | `GET /nappe/sync` | secret `SYNC_CODE` (en-tête `X-Sync-Code`, ou `?code=…` dans l'adresse) | synchronisation immédiate de tous les jeux |
 
 - **Contrôle de fraîcheur** : le Worker passe toutes les 6 heures (`wrangler.toml`, `crons`). Un jeu n'est réinterrogé que
-  s'il est « échu » (`synchro.intervalleJours` dans `data/nappe/parametres.json` : 30 jours pour les isopièzes, 1 jour pour
+  s'il est « échu » (`synchro.intervalleJours` dans `config/nappe/parametres.json` : 30 jours pour les isopièzes, 1 jour pour
   les stations) **ou** si sa dernière tentative a échoué. Il n'est remplacé que si son **empreinte (SHA-256) change**.
 - **Service en panne** : jusqu'à 4 essais espacés (2 s, 6 s, 15 s) ; en cas d'échec, l'ancienne copie reste servie et
   l'erreur est notée dans `etat.json` (`derniereErreur`).
@@ -21,7 +21,7 @@ l'appareil (cache du navigateur) et ne s'adresse au service régional qu'à déf
 - **Temps processeur** : le GeoJSON n'est jamais décodé dans le Worker (contrôle par recherche de texte, empreinte calculée par
   le système) pour rester sous la limite de l'offre gratuite (erreur 1102).
 - **Limite** : seules les **positions et attributs** des stations sont copiés. Les niveaux mesurés (chroniques horaires) ne
-  sont pas dans ce WFS ; ils passent par BruWater (voir `data/nappe/parametres.json`).
+  sont pas dans ce WFS ; ils passent par BruWater (voir `config/nappe/parametres.json`).
 
 ## Déploiement (une seule fois)
 
@@ -36,7 +36,7 @@ Même bucket que le serveur de dépôt (`amgt4cem-depots`), préfixe `public/nap
    (ou, depuis le tableau de bord Cloudflare : importer le dépôt GitHub, dossier racine `nappe-sync`, puis ajouter le secret
    `SYNC_CODE` dans Settings > Variables et secrets.)
 2. Noter l'adresse affichée (`https://amgt4cem-nappe-sync.<compte>.workers.dev`) et la saisir dans
-   `data/fonds-de-plan/services.json`, clé `nappe-sync`, champ `url`.
+   `config/fonds-de-plan/services.json`, clé `nappe-sync`, champ `url`.
 3. Lancer la première synchronisation sans attendre le prochain passage (depuis un terminal) :
    ```
    curl -H "X-Sync-Code: <le secret>" https://amgt4cem-nappe-sync.<compte>.workers.dev/nappe/sync

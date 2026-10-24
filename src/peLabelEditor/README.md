@@ -183,7 +183,7 @@ numéros d'interstation dans `data/plans-patrimoine/etiquettes-troncons.json`
 voit les étiquettes à leur nouvelle place.
 
 - **💾** (panneau de suivi, bouton **✥ Mode édition**) envoie au
-  relais serveur `relay/` les définitions des planches et/ou des tronçons
+  relais serveur `workers/relay/` les définitions des planches et/ou des tronçons
   (seulement celles qui ont changé) ; le relais commit chaque fichier dans le
   dépôt. Il utilise l'**adresse du relais** et le **code administrateur** des
   paramètres généraux (⚙ Paramètres > Serveur ; le code est masqué, gardé le
@@ -194,7 +194,7 @@ voit les étiquettes à leur nouvelle place.
   enregistrées** ; **✓ Terminer** seul applique la modification à l'écran
   (perdue au rechargement tant qu'elle n'est pas enregistrée).
 - **Le relais est à déployer une fois** (compte Cloudflare gratuit, jeton
-  GitHub) : voir `relay/README.md`, puis renseigner son adresse dans
+  GitHub) : voir `workers/relay/README.md`, puis renseigner son adresse dans
   ⚙ Paramètres > Serveur (bouton **Tester** pour vérifier la connexion et le
   code ; l'adresse est enregistrée sur le serveur comme paramètre général).
   Tant que ce n'est pas fait, « Enregistrer » affiche un message explicite et

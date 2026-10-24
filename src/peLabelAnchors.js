@@ -18,7 +18,7 @@
  * Enregistrement (réservé aux administrateurs, voir le plugin
  * src/peLabelEditor/) : un navigateur ne peut pas écrire dans le dépôt
  * (l'API GitHub refuse les requêtes préparatoires CORS, voir README section
- * 6) ; l'écriture passe donc par un petit relais serveur (relay/, à déployer
+ * 6) ; l'écriture passe donc par un petit relais serveur (workers/relay/, à déployer
  * une fois) qui valide la demande et enregistre le fichier dans le dépôt.
  * `peLabelAnchorsRelayUrl` (config.js) vide = enregistrement non configuré.
  */
@@ -138,7 +138,7 @@ const AMGT4CEM_PeLabelAnchors = {
    */
   async putToRelay(relayUrl, route, body, adminCode) {
     if (!relayUrl) {
-      throw new Error("Enregistrement impossible : adresse du relais non renseignée (⚙ Paramètres > Serveur, voir relay/README.md).");
+      throw new Error("Enregistrement impossible : adresse du relais non renseignée (⚙ Paramètres > Serveur, voir workers/relay/README.md).");
     }
     if (!adminCode) throw new Error('Code administrateur non renseigné (⚙ Paramètres > Serveur).');
     let response;
@@ -159,7 +159,7 @@ const AMGT4CEM_PeLabelAnchors = {
         /* corps non JSON : le code HTTP suffit */
       }
       if (response.status === 404 && /Route inconnue/.test(detail)) {
-        throw new Error(`Le relais déployé ne connaît pas la route « ${route} » : il faut redéployer relay/worker.js (voir relay/README.md). ${detail}`);
+        throw new Error(`Le relais déployé ne connaît pas la route « ${route} » : il faut redéployer workers/relay/worker.js (voir workers/relay/README.md). ${detail}`);
       }
       throw new Error(response.status === 401 ? 'Code administrateur refusé.' : `Enregistrement refusé (HTTP ${response.status}) ${detail}`.trim());
     }

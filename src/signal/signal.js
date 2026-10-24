@@ -275,15 +275,9 @@ async function sendEntry(id) {
 (async function init() {
   screens.menu = h('section', { class: 'sig4cem-screen sig4cem-screen--menu' });
   root.append(screens.menu);
-  const plugin = (AMGT4CEM_CONFIG.plugins || []).find((p) => p.id === 'signalements') || {};
-  NS.Envoi.init(plugin.options || {});
+  NS.Envoi.init(AMGT4CEM_CONFIG.depot || {});
   await NS.Depot.load(); // vocabulaire (natures, types, domaines)
-  try {
-    const n = await SIG.Entries.migrateLegacy();
-    if (n) notice = `${n} signalement(s) saisi(s) avec l'ancien outil de la carte repris dans « Draft » ou « Mes dernières entrées ».`;
-  } catch (err) {
-    console.error('[SIG4CEM] Reprise des anciens signalements impossible :', err);
-  }
+  SIG.Entries.purgeLegacy(); // anciennes saisies d'essai de la carte (abandonnées)
   await renderMenu();
   // Session qui change (déconnexion depuis un autre onglet, jeton refusé) : le menu suit, sans toucher à un formulaire ouvert.
   AMGT4CEM_Auth.onChange(() => { if (!screens.menu.classList.contains('sig4cem-hidden')) renderMenu(); });

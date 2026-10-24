@@ -3,7 +3,7 @@
  *
  * Reçoit l'archive ZIP d'un signalement envoyée par SIG4CEM (src/signal/), lui attribue sa référence
  * officielle AAAA-NNNN et la range dans R2. Gère aussi les intervenants : référentiel (R2, jamais dans le dépôt
- * public), connexion, première connexion (code d'activation), administration. DISTINCT de relay/ : le relais
+ * public), connexion, première connexion (code d'activation), administration. DISTINCT de workers/relay/ : le relais
  * écrit dans le dépôt GitHub (public), ce serveur-ci ne touche jamais au dépôt.
  *
  * Routes (JSON ; sauf /depot : corps ZIP) :

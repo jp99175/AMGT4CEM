@@ -1,14 +1,11 @@
-# Plugin : Signalements
+# Modules de dépôt des signalements (communs à SIG4CEM)
 
-> **État : désactivé dans la carte** (`enabled: false` dans `config.js`). La saisie vit désormais dans
-> l'interface SIG4CEM (`home.html?app=signal`, `src/signal/`) ; ce dossier est conservé le temps que son code
-> (stockage, photos, dépôt, envoi) soit repris par cette interface. Ce qui suit décrit le plugin tel qu'il
-> fonctionnait dans la carte.
-
-Application séparée, branchée sur la carte par `src/plugins.js` (déclarée dans `plugins` de `config.js`).
-Elle ajoute au menu du bouton **✚ Ajouter un point ▾** les entrées **⚠ Signalement** et **⬆ Téléverser les fichiers sur le serveur** (à côté de **✚ Point métier**, l'outil d'origine), deux cases dans ☰ Carte, section Points métier (**Signalements et demandes**,
-**Amiante**) et son propre formulaire. Elle ne modifie aucun module du cœur et n'utilise pas
-le stockage des points métier (« ✚ Ajouter un point », inchangé). `enabled: false` dans `config.js` la retire.
+> **État** : l'ancien plugin de la carte (bouton, formulaire, stockage local `store.js`) a été **supprimé** ; ses
+> données d'essai sont effacées des appareils. Ce dossier ne garde que les modules repris par SIG4CEM
+> (`home.html?app=signal`, `src/signal/`) : photos (`pieces-store.js`), archive ZIP (`zip-writer.js`,
+> `zip-reader.js`), vocabulaire et noms de fichiers (`depot.js`), envoi (`envoi.js`), PDF (`pdf.js`), révision
+> (`importer.js`). L'adresse du serveur est dans `config.js`, bloc `depot`. Ce qui suit décrit les règles de
+> saisie et de dépôt, toujours valables dans SIG4CEM.
 
 ## Saisie
 
@@ -59,7 +56,7 @@ marqueur prend alors un contour vert et ne se déplace plus.
 1. Le signalement est d'abord **enregistré sur l'appareil** (localStorage, photos en IndexedDB) : il se saisit sans réseau.
 2. **⬆ Envoyer au serveur** (fenêtre du marqueur) ou **⬆ Téléverser les fichiers sur le serveur** (menu du bouton
    ✚ Ajouter un point, tous les signalements en attente, avec le nombre entre parenthèses) envoie l'archive de
-   dépôt au serveur `depot-signalements/` (voir son README). Le code d'accès est demandé une fois par onglet.
+   dépôt au serveur `workers/depot/` (voir son README). Le code d'accès est demandé une fois par onglet.
 3. Le serveur répond par la référence, inscrite sur le signalement local. Renvoyer un signalement déjà reçu redonne la
    même référence (pas de doublon). En cas d'échec, le signalement reste sur l'appareil et peut être renvoyé.
 
@@ -93,13 +90,10 @@ encore trouvables par la recherche de la carte.
 
 | Fichier | Rôle |
 |---|---|
-| `signalements.js` | plugin : bouton, couches, formulaire, placement, popup (enregistrement auprès de `AMGT4CEM_Plugins`) |
 | `depot.js` | vocabulaire, noms de fichiers, contenu et export du dépôt |
 | `envoi.js` | envoi de l'archive au serveur de dépôt, code d'accès (onglet) |
-| `store.js` | stockage local, un par flux |
 | `pieces-store.js` | photos (IndexedDB), réduction, empreintes |
 | `zip-writer.js` | écriture d'une archive ZIP sans dépendance |
-| `signalements.css` | styles propres au plugin |
 | `../../data/signalements/vocabulaire.json` | vocabulaire public |
 | `../../depot-signalements/` | serveur de dépôt (Cloudflare Worker + R2), attribue la référence |
 

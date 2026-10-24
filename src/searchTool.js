@@ -107,20 +107,8 @@ const AMGT4CEM_SearchTool = {
 
   async _searchPoints(query) {
     if (!AMGT4CEM_Auth.session()) return []; // les points métier sont réservés aux comptes connectés
-    const needle = this._normalize(query);
-    const results = [];
-    const points = await AMGT4CEM_PointsStore.getAll();
-    for (const point of points) {
-      if (this._normalize(point.label).includes(needle)) {
-        results.push({
-          kind: 'point',
-          label: point.label,
-          latlng: AMGT4CEM_CRS.lambertToLatLng([point.x, point.y]),
-        });
-        if (results.length >= 8) break;
-      }
-    }
-    return results;
+    if (typeof AMGT4CEM_SignalementsLayer === 'undefined') return []; // SIG4CEM : pas de couche des points métier
+    return AMGT4CEM_SignalementsLayer.search(this._normalize(query), (t) => this._normalize(t));
   },
 
   /**

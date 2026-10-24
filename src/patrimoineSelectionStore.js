@@ -1,7 +1,7 @@
 /**
- * Sélection des couches « Plans patrimoine » à afficher sur la carte (id de data/plans-patrimoine/catalogue.js
+ * Sélection des couches « Plans patrimoine » à afficher sur la carte (id de config/plans-patrimoine/catalogue.js
  * -> couleur) : même principe que UrbIS Topo (voir selectionStore.js) — sélection courante de l'appareil,
- * préférences locales 💾, sélection par défaut partagée data/plans-patrimoine/selection-par-defaut.json.
+ * préférences locales 💾, sélection par défaut partagée config/plans-patrimoine/selection-par-defaut.json.
  * Rien n'est présélectionné tant qu'un administrateur n'a pas enregistré de sélection par défaut.
  */
 const AMGT4CEM_PatrimoineSelectionStore = createSelectionStore({

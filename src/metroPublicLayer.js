@@ -2,12 +2,12 @@
  * Couche « Métro » PUBLIQUE : stations et tunnels affichés à une personne NON connectée.
  *
  * Source : service WFS de la Région (Bruxelles Mobilité, MobiGIS), couche `bm_public_transport:Metro`, en Lambert 72.
- * L'adresse et le nom de la couche sont dans data/fonds-de-plan/services.json (clé `metro`), lus par
+ * L'adresse et le nom de la couche sont dans config/fonds-de-plan/services.json (clé `metro`), lus par
  * src/services.js dans AMGT4CEM_CONFIG.metroPublic.
  *
  * « Région d'abord, copie de secours ensuite » : le navigateur interroge d'abord la Région ; si elle refuse (CORS),
  * ne répond pas dans le délai ou renvoie un contenu inutilisable, la copie de secours du dépôt
- * (data/metro/region-metro.json, export d'origine de la même couche) est lue à la place. La carte s'affiche dans les
+ * (config/secours/region-metro.json, export d'origine de la même couche) est lue à la place. La carte s'affiche dans les
  * deux cas ; la source utilisée est écrite dans la console (« [AMGT4CEM] Couche métro publique : ... »).
  *
  * Seuls les attributs de la Région sont disponibles (name_fr, name_nl, type MS station / MT tunnel). Les contours
@@ -36,7 +36,7 @@ const AMGT4CEM_MetroPublicLayer = {
 
   async _readFeatures() {
     const cfg = AMGT4CEM_CONFIG.metroPublic || {};
-    let reason = 'adresse non configurée (data/fonds-de-plan/services.json, clé « metro »)';
+    let reason = 'adresse non configurée (config/fonds-de-plan/services.json, clé « metro »)';
     if (cfg.wfsUrl && cfg.couche) {
       try {
         const features = await this._fetchFeatures(this._regionUrl(cfg), cfg.delaiMs);

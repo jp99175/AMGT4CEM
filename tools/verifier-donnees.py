@@ -25,7 +25,7 @@ Vérifie :
   - champs propres à chaque genre : nom (FR ou NL) des stations et tunnels, `sheet_ref` présent et
     unique pour les planches ; aucun caractère de contrôle dans les textes (encodage mal lu) ;
   - enregistrements marqués « supprimé » dans le .dbf (ils restent comptés dans le .shp) ;
-  - configuration des services (data/fonds-de-plan/, data/urbis-topo/) : JSON valides, URL en https, un fichier
+  - configuration des services (config/fonds-de-plan/, config/urbis-topo/) : JSON valides, URL en https, un fichier
     par service déclaré dans services.json ;
   - références des étiquettes (data/plans-patrimoine/) : chaque tronçon désigné par etiquettes-troncons.json
     est un `id` de genre « tunnel », chaque planche d'etiquettes-planches.json existe.
@@ -43,6 +43,7 @@ from collections import defaultdict
 RACINE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 GEO = os.path.join(RACINE, "data", "shapefile")
 DATA = os.path.join(RACINE, "data")
+CONFIG = os.path.join(RACINE, "config")  # réglages publics (ex-data/ : fonds de plan, UrbIS Topo, vocabulaires des genres)
 DOMAINES = ["metro", "plans-patrimoine"]  # dossiers portant un référentiel (polygones.json, lignes.json, vocabulaires.json)
 FORMAT_ID = re.compile(r"^[PLG]\d{6,}$")
 CONTROLE = re.compile("[\x00-\x1f\x7f-\x9f]")
@@ -147,7 +148,7 @@ def verifier_shapefile(nom, type_attendu, obligatoire):
 
 
 def charger_json(chemin, obligatoire):
-    rel = os.path.relpath(chemin, DATA)
+    rel = os.path.relpath(chemin, RACINE)
     if not os.path.exists(chemin):
         if obligatoire:
             err(f"{rel} absent")
@@ -180,7 +181,7 @@ def charger_referentiel(nom, obligatoire_pour):
 def charger_vocabulaires():
     genres = {}
     for d in DOMAINES:
-        v = charger_json(os.path.join(DATA, d, "vocabulaires.json"), True)
+        v = charger_json(os.path.join(CONFIG, d, "vocabulaires.json"), True)
         genres.update((v or {}).get("genres") or {})
     return {"genres": genres}
 
@@ -240,8 +241,8 @@ def verifier_etiquettes(ref_pol, ref_lig):
 
 
 def verifier_services():
-    """data/fonds-de-plan/services.json (URL https) et fichier de réglages de chaque service."""
-    chemin = os.path.join(DATA, "fonds-de-plan", "services.json")
+    """config/fonds-de-plan/services.json (URL https) et fichier de réglages de chaque service."""
+    chemin = os.path.join(CONFIG, "fonds-de-plan", "services.json")
     srv = charger_json(chemin, True)
     if srv is None:
         return
@@ -256,7 +257,7 @@ def verifier_services():
         s = (srv.get("services") or {}).get(cle)
         if not s or not url_ok.match(s.get("url", "")):
             err(f"services.json : service « {cle} » absent ou URL invalide (https attendu)")
-        charger_json(os.path.join(DATA, rel), True)
+        charger_json(os.path.join(CONFIG, rel), True)
     if not (srv.get("services") or {}).get("urbis-adm", {}).get("url", "").startswith("https://"):
         err("services.json : service « urbis-adm » absent ou URL invalide (https attendu)")
 

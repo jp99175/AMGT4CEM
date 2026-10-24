@@ -13,6 +13,6 @@ binding = "DEPOTS"
 bucket_name = "amgt4cem-depots"
 
 # Toutes les 6 heures : chaque jeu de données n'est réinterrogé que s'il est « échu » (intervalleJours de
-# data/nappe/parametres.json) ou si sa dernière tentative a échoué.
+# config/nappe/parametres.json) ou si sa dernière tentative a échoué.
 [triggers]
 crons = ["0 */6 * * *"]

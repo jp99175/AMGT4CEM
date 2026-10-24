@@ -3,8 +3,12 @@
  * couche Metro, signalements et demandes, outils de navigation et de création).
  */
 (async function () {
+  // Anciennes saisies d'essai, abandonnées (micro-base « Points métier », ancien outil de signalement) : effacées.
+  for (const key of ['amgt4cem.points.v1', 'amgt4cem.signalements.v1', 'amgt4cem.signalements.amiante.v1', 'amgt4cem.signal.legacy-migrated.v1']) {
+    try { localStorage.removeItem(key); } catch (err) { /* stockage indisponible : rien à effacer */ }
+  }
   // Configuration des services externes et adresse du serveur d'enregistrement
-  // (data/fonds-de-plan/, communes à tous, enregistrées sur le serveur — voir
+  // (config/fonds-de-plan/, communes à tous, enregistrées sur le serveur — voir
   // services.js) : lue et assemblée dans AMGT4CEM_CONFIG AVANT que
   // basemap.js/searchTool.js ne la lisent. load() ne rejette jamais (délai borné).
   await AMGT4CEM_Services.load();

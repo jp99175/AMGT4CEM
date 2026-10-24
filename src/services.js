@@ -2,11 +2,11 @@
  * Configuration des SERVICES externes (fonds de plan, géocodeur, UrbIS Topo) et du relais
  * d'enregistrement. Elle vit dans des fichiers du dépôt, lus par tous au démarrage, et non dans le code :
  *
- *  - data/fonds-de-plan/services.json : fichier GÉNÉRAL — adresse du relais et URL de chaque service
+ *  - config/fonds-de-plan/services.json : fichier GÉNÉRAL — adresse du relais et URL de chaque service
  *    (clés : urbis, bruciel, urbis-orthophotos, flandre, urbis-adm, geocodeur, urbis-topo) ;
  *  - un fichier par service pour ses réglages propres (couches, années, attribution, format...) :
- *    data/fonds-de-plan/{urbis,bruciel,urbis-orthophotos,flandre,geocodeur}.json et, pour les objets
- *    UrbIS Topo, data/urbis-topo/parametres.json (avec la sélection par défaut partagée).
+ *    config/fonds-de-plan/{urbis,bruciel,urbis-orthophotos,flandre,geocodeur}.json et, pour les objets
+ *    UrbIS Topo, config/urbis-topo/parametres.json (avec la sélection par défaut partagée).
  *
  * load() assemble ces fichiers dans AMGT4CEM_CONFIG (basemaps, geocoder, urbisTopo,
  * peLabelAnchorsRelayUrl), sous la forme lue par basemap.js, searchTool.js et urbisTopoLayer.js, AVANT que
@@ -15,7 +15,7 @@
  *
  * Modifiées par un administrateur depuis « ⚙ Paramètres » (settingsPanel.js) : save() réécrit services.json
  * (adresses) et, si le nom de la couche UrbIS change, urbis.json, via le relais (routes
- * shared/fonds-de-plan/<fichier>, voir relay/README.md). Il n'y a plus de valeurs « par défaut » dans le code :
+ * shared/fonds-de-plan/<fichier>, voir workers/relay/README.md). Il n'y a plus de valeurs « par défaut » dans le code :
  * les fichiers du dépôt font foi (historique Git pour revenir en arrière).
  *
  * Remplace data/app-settings.json et les blocs `basemaps` / `geocoder` / `urbisTopo` de config.js.
@@ -123,7 +123,7 @@ const AMGT4CEM_Services = {
     };
 
     // Nappe phréatique (Bruxelles Environnement) : adresses des WFS dans services.json (clés `eaux-souterraines` et `geologie`),
-    // réglages (couches, attributs, zoom minimal, mentions) dans data/nappe/parametres.json.
+    // réglages (couches, attributs, zoom minimal, mentions) dans config/nappe/parametres.json.
     config.nappe = { ...src('nappe'), urls: { 'eaux-souterraines': this._url('eaux-souterraines'), geologie: this._url('geologie') }, snapshotUrl: this._url('nappe-sync') };
 
     // Couche Métro publique (non connecté) : adresse et couche de la Région lues dans services.json (clé `metro`),

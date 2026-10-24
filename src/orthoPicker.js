@@ -1,7 +1,7 @@
 /**
  * Écran plein écran « ⚙ Orthophotos » (bouton à droite de « Orthophotos » dans le menu ☰ Carte) : un tableau
  * année × source (une colonne par source : Bruxelles, Flandre). Chaque case existante porte la résolution de
- * l'image quand elle est connue (champ `resolution` de data/fonds-de-plan/*.json) et une case à cocher qui
+ * l'image quand elle est connue (champ `resolution` de config/fonds-de-plan/*.json) et une case à cocher qui
  * choisit si cette orthophoto est proposée dans la navigation par année. Une année sans orthophoto pour une
  * source affiche « — ».
  *
@@ -199,7 +199,7 @@ const AMGT4CEM_OrthoPicker = {
     this._content.appendChild(table);
     const hint = document.createElement('p');
     hint.className = 'amgt-settings-hint';
-    hint.textContent = (this._notice ? this._notice + ' ' : '') + "Seules les orthophotos cochées sont proposées avec les flèches de la navigation par année. « indisponible » : le service ne répond pas pour cette couche (nom de couche à vérifier, ou service en panne) ; « résolution ? » : valeur pas encore renseignée (champ « resolution » de data/fonds-de-plan/*.json).";
+    hint.textContent = (this._notice ? this._notice + ' ' : '') + "Seules les orthophotos cochées sont proposées avec les flèches de la navigation par année. « indisponible » : le service ne répond pas pour cette couche (nom de couche à vérifier, ou service en panne) ; « résolution ? » : valeur pas encore renseignée (champ « resolution » de config/fonds-de-plan/*.json).";
     this._content.appendChild(hint);
   },
 };
