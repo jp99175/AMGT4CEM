@@ -17,6 +17,8 @@ jamais, car le suivi n'entre pas dans le dépôt.
 | `GET /sante` | jeton | vérifie l'adresse et la connexion |
 | `GET` · `POST /admin/intervenants` | droit `utilisateurs` | liste · création/modification d'une fiche (la création génère le code d'activation) |
 | `POST /admin/activation` | droit `utilisateurs` | nouveau code d'activation pour un matricule |
+| `GET` · `PUT /admin/securite` | droit `utilisateurs` | paramètres de sécurité (`prive/referentiels/securite.json`) : nombre de tours PBKDF2 des nouveaux mots de passe (10 000 à 100 000), délai après échec (base, plafond, fenêtre) |
+| `GET /admin/connexions-interrompues` | droit `utilisateurs` | opérations coupées par l'erreur 1102 (notes `journal/connexions/AAAAMMJJ/<id>.debut` restées plus d'une minute) : nombre sur 24 h et 7 jours, dernière ; purge des notes à 7 jours |
 | `GET /admin/compteurs` | droit `utilisateurs` ou `plans` | état des compteurs : prochains identifiants P, L, G et prochaines références par flux et par année |
 
 - **Idempotent** : renvoyer le même signalement (même `X-Signalement-Id`) redonne la même référence, sans doublon
@@ -82,3 +84,13 @@ Tableau de bord Cloudflare > R2 > `amgt4cem-depots`, ou `npx wrangler r2 object 
 ## Construction automatique (Cloudflare)
 
 Worker relié au dépôt GitHub : dossier racine `workers/depot`, chemins surveillés `workers/depot/*`. Chaque publication sur la branche déployée qui touche ce dossier reconstruit et redéploie le Worker.
+
+## Sécurité des connexions
+
+- **Nombre de tours** : réglé dans la page Sécurité de l'administration (défaut 100 000, plafond de Workers). Chaque empreinte
+  garde son propre nombre de tours ; un nouveau réglage ne s'applique qu'aux nouveaux mots de passe et codes d'activation.
+  Le réglage est relu au plus toutes les minutes. `PBKDF2_ITER` (variable) ne sert qu'aux essais locaux.
+- **Erreur 1102** (temps de calcul dépassé) : une note est déposée au début de chaque connexion, activation ou changement
+  de mot de passe et effacée à la fin ; une coupure 1102 la laisse en place. La page Sécurité les compte.
+- **Échecs** : après chaque échec, nouvel essai possible seulement après un délai qui double (5 s, 10 s, 20 s… jusqu'à
+  15 min) ; le compte repart de zéro après 30 min sans échec, ou à la première connexion réussie.

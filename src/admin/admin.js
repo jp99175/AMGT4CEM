@@ -53,6 +53,7 @@ let filtre = '';
 let message = '';
 let accueil = null; // { intervenant, code } : email d'accueil à envoyer (affiché une seule fois, le serveur ne garde pas le code en clair)
 let edition = null; // fiche en cours d'édition (null : aucune ; {} : nouvelle)
+let securite = null; // page Sécurité ouverte : { parametres, interrompues } (null : liste des intervenants)
 
 function lienActivation(matricule, code) {
   const base = new URL('home.html', location.href);
@@ -223,6 +224,65 @@ function panneauAccueil() {
     h('div', { class: 'adm-actions' }, fermer, copier, envoyer));
 }
 
+// ------------------------------------------------------------------ page Sécurité
+const quand = (iso) => {
+  const d = new Date(iso);
+  if (!iso || Number.isNaN(d.getTime())) return '';
+  return `${jour(iso)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+async function ouvrirSecurite() {
+  message = '';
+  try {
+    const [parametres, interrompues] = await Promise.all([AMGT4CEM_Auth.call('/admin/securite'), AMGT4CEM_Auth.call('/admin/connexions-interrompues')]);
+    securite = { parametres, interrompues };
+  } catch (err) { message = `Page Sécurité indisponible : ${err.message}`; securite = null; }
+  render();
+  window.scrollTo(0, 0);
+}
+
+function panneauSecurite() {
+  const { parametres: p, interrompues: i } = securite;
+  const nombre = (id, label, valeur, min, max, aide) => {
+    const input = h('input', { id, type: 'number', inputmode: 'numeric', min: String(min), max: String(max), step: '1' });
+    input.value = valeur;
+    return { input, row: h('div', { class: 'adm-row' }, h('label', { for: id, text: label }), input, aide ? h('p', { class: 'adm-note', text: aide }) : null) };
+  };
+  const tours = nombre('adm-tours', 'Nombre de tours du mot de passe (PBKDF2)', p.tours, p.toursMin, p.toursMax,
+    `Entre ${p.toursMin.toLocaleString('fr-BE')} et ${p.toursMax.toLocaleString('fr-BE')}. Plus il est élevé, plus un mot de passe volé est long à casser, mais plus la connexion coûte en calcul au serveur (risque d'erreur 1102). S'applique aux nouveaux mots de passe ; chaque compte garde le sien jusqu'à son prochain changement.`);
+  const base = nombre('adm-delai-base', 'Délai après un premier échec de connexion (secondes)', p.delaiBaseS, 1, 60, 'Il double à chaque nouvel échec : 5 s, 10 s, 20 s…');
+  const plafond = nombre('adm-delai-plafond', 'Délai maximal (secondes)', p.delaiPlafondS, 60, 86400, '900 s = 15 minutes.');
+  const fenetre = nombre('adm-fenetre', 'Oubli des échecs après (minutes sans échec)', p.fenetreMin, 5, 1440);
+  const comptes = Object.entries(p.comptes || {}).sort((a, b) => Number(b[0]) - Number(a[0])).map(([t, n]) => `${n} compte(s) à ${Number(t).toLocaleString('fr-BE')} tours`).join(' · ') || 'Aucun compte activé.';
+  const msg = h('p', { class: 'adm-msg', role: 'alert' });
+  const enregistrer = h('button', { type: 'button', class: 'adm-btn adm-btn--primary', text: 'Enregistrer' });
+  const fermer = h('button', { type: 'button', class: 'adm-btn', text: 'Fermer' });
+  fermer.addEventListener('click', () => { securite = null; render(); });
+  enregistrer.addEventListener('click', async () => {
+    msg.textContent = '';
+    enregistrer.disabled = true;
+    try {
+      securite.parametres = await AMGT4CEM_Auth.call('/admin/securite', { method: 'PUT', body: { tours: Number(tours.input.value), delaiBaseS: Number(base.input.value), delaiPlafondS: Number(plafond.input.value), fenetreMin: Number(fenetre.input.value) } });
+      message = 'Paramètres de sécurité enregistrés.';
+      render();
+    } catch (err) { msg.textContent = err.message; enregistrer.disabled = false; }
+  });
+  const lignes = (i.liste || []).map((n) => h('li', { text: `${quand(n.debut)} · ${n.operation || '?'} · ${n.matricule || 'matricule inconnu'}${n.tours ? ` · ${Number(n.tours).toLocaleString('fr-BE')} tours` : ''}` }));
+  return h('section', { class: 'adm-panel' },
+    h('h2', { text: 'Sécurité' }),
+    h('h3', { class: 'adm-sous-titre', text: 'Opérations interrompues (erreur 1102)' }),
+    h('p', { class: 'adm-note', text: 'Connexions, activations ou changements de mot de passe coupés par Cloudflare pour dépassement du temps de calcul. Si ce nombre augmente, réduisez le nombre de tours.' }),
+    h('p', { class: 'adm-stat', text: `24 heures : ${i.h24} · 7 jours : ${i.j7}${i.derniere ? ` · dernière : ${quand(i.derniere.debut)} (${i.derniere.operation}, ${i.derniere.matricule || 'matricule inconnu'})` : ''}` }),
+    lignes.length ? h('ul', { class: 'adm-liste' }, ...lignes) : null,
+    h('h3', { class: 'adm-sous-titre', text: 'Mots de passe' }),
+    tours.row,
+    h('p', { class: 'adm-note', text: comptes }),
+    h('h3', { class: 'adm-sous-titre', text: 'Échecs de connexion' }),
+    h('div', { class: 'adm-grid' }, base.row, plafond.row), fenetre.row,
+    p.modifieLe ? h('p', { class: 'adm-note', text: `Dernière modification : ${quand(p.modifieLe)} par ${p.modifiePar}.` }) : null,
+    msg, h('div', { class: 'adm-actions' }, fermer, enregistrer));
+}
+
 function render() {
   root.textContent = '';
   const s = AMGT4CEM_Auth.session();
@@ -239,6 +299,7 @@ function render() {
   if (message) root.append(h('p', { class: 'adm-notice', text: message }));
   if (accueil) { root.append(panneauAccueil()); return; }
   if (edition) { root.append(formulaire()); return; }
+  if (securite) { root.append(panneauSecurite()); return; }
 
   const nouveau = h('button', { type: 'button', class: 'adm-btn adm-btn--primary', text: '＋ Nouvel intervenant' });
   nouveau.addEventListener('click', () => { edition = {}; message = ''; render(); });
@@ -253,7 +314,9 @@ function render() {
     for (const u of sel) zone.append(carte(u));
   };
   chercher.addEventListener('input', () => { filtre = chercher.value; montrer(); });
-  root.append(h('div', { class: 'adm-bar' }, chercher, nouveau), zone,
+  const boutonSecurite = h('button', { type: 'button', class: 'adm-btn', text: 'Sécurité' });
+  boutonSecurite.addEventListener('click', ouvrirSecurite);
+  root.append(h('div', { class: 'adm-bar' }, chercher, nouveau, boutonSecurite), zone,
     h('p', { class: 'adm-note', text: `${liste.length} intervenant(s) · les mots de passe ne sont jamais visibles, ni ici ni sur le serveur (seule une empreinte est conservée).` }),
     h('p', { class: 'adm-build', text: `BUILD ${AMGT4CEM_BUILD_TIMESTAMP}` }));
   montrer();

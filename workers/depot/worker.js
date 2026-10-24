@@ -21,6 +21,8 @@
  *   POST /admin/activation    (jeton ; droit utilisateurs) { matricule }                  -> { intervenant, codeActivation }
  *   POST /admin/amorcer       { code, intervenant }  premier compte admin, une seule fois (secret ADMIN_BOOTSTRAP_CODE)
  *
+ *   GET|PUT /admin/securite   (jeton ; droit utilisateurs)  nombre de tours PBKDF2, délai croissant après échec
+ *   GET  /admin/connexions-interrompues (jeton ; droit utilisateurs)  opérations coupées (erreur 1102) sur 24 h et 7 jours
  *   GET  /admin/compteurs     (jeton ; droit utilisateurs ou plans)          -> état des compteurs (copie de compteurs.json)
  *
  * Jeton : « Authorization: Bearer … », signé (HMAC, secret SESSION_SECRET), valable 30 jours ; l'existence, l'état
@@ -58,8 +60,12 @@ const MAX_BYTES = 30 * 1024 * 1024;
 const REF_KEY = 'referentiel/intervenants.json';
 const TOKEN_TTL_S = 30 * 24 * 3600;
 const ACTIVATION_TTL_MS = 7 * 24 * 3600 * 1000;
-const MAX_ECHECS = 5;
-const BLOCAGE_MS = 15 * 60 * 1000;
+const SECURITE_KEY = 'prive/referentiels/securite.json';
+const JOURNAL_CONNEXIONS = 'journal/connexions/';
+// Paramètres de sécurité par défaut (modifiables dans la page Sécurité, droit utilisateurs).
+const SECURITE_DEFAUT = { tours: 100000, delaiBaseS: 5, delaiPlafondS: 900, fenetreMin: 30 };
+const TOURS_MIN = 10000;
+const TOURS_MAX = 100000; // plafond de PBKDF2 dans Workers
 const MDP_MIN = 8;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans I, O, 0, 1 : lisible au téléphone
 
@@ -186,9 +192,24 @@ async function sameSecret(a, b) {
   return sameBytes(new Uint8Array(ha), new Uint8Array(hb));
 }
 
-function iterations(env) {
-  const n = Number(env.PBKDF2_ITER);
-  return Number.isFinite(n) && n >= 1000 && n <= 100000 ? Math.floor(n) : 100000; // 100 000 : maximum accepté par Workers
+// ------------------------------------------------------------------ paramètres de sécurité (R2, mémorisés 1 min)
+let securiteMemo = null; // { valeur, lu }
+
+async function securite(env) {
+  if (securiteMemo && Date.now() - securiteMemo.lu < 60000) return securiteMemo.valeur;
+  let lu = {};
+  try { const o = await env.DEPOTS.get(SECURITE_KEY); if (o) lu = await o.json(); } catch (err) { console.error('securite.json', err); }
+  const valeur = { ...SECURITE_DEFAUT, ...lu };
+  securiteMemo = { valeur, lu: Date.now() };
+  return valeur;
+}
+
+/** Nombre de tours pour une NOUVELLE empreinte (chaque empreinte garde le sien) : réglage, sinon PBKDF2_ITER, sinon 100 000. */
+async function iterations(env) {
+  const test = Number(env.PBKDF2_ITER); // essais locaux uniquement
+  if (Number.isFinite(test) && test >= 1000 && test <= TOURS_MAX) return Math.floor(test);
+  const n = Number((await securite(env)).tours);
+  return Number.isFinite(n) && n >= TOURS_MIN && n <= TOURS_MAX ? Math.floor(n) : SECURITE_DEFAUT.tours;
 }
 
 async function pbkdf2(secret, saltBytes, iter) {
@@ -199,7 +220,7 @@ async function pbkdf2(secret, saltBytes, iter) {
 /** { s: sel, i: itérations, h: empreinte } */
 async function hacher(secret, env) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iter = iterations(env);
+  const iter = await iterations(env);
   return { s: b64u(salt), i: iter, h: b64u(await pbkdf2(secret, salt, iter)) };
 }
 
@@ -349,16 +370,35 @@ function mdpValide(mdp, matricule) {
 
 const ECHEC = 'Matricule ou mot de passe incorrect.';
 
-/** Décompte des échecs ; blocage temporaire après MAX_ECHECS. À appeler dans modifierRef. */
-function noterEchec(u) {
+/**
+ * Décompte des échecs avec délai croissant : après chaque échec, nouvel essai possible seulement après un délai qui
+ * double (base, 2×, 4×… jusqu'au plafond). Le compte repart de zéro quand aucun échec n'a eu lieu pendant la fenêtre
+ * (mesurée depuis le DERNIER échec : une suite d'essais espacés ne remet jamais le délai à sa base). À appeler dans modifierRef.
+ */
+function noterEchec(u, sec) {
+  const now = Date.now();
+  if (!u.dernierEchecLe || now - new Date(u.dernierEchecLe).getTime() > sec.fenetreMin * 60000) u.echecs = 0;
+  u.dernierEchecLe = new Date(now).toISOString();
+  delete u.premierEchecLe;
   u.echecs = (u.echecs || 0) + 1;
-  if (u.echecs >= MAX_ECHECS) { u.bloqueJusqua = new Date(Date.now() + BLOCAGE_MS).toISOString(); u.echecs = 0; }
+  const delaiS = Math.min(sec.delaiPlafondS, sec.delaiBaseS * 2 ** (u.echecs - 1));
+  u.bloqueJusqua = new Date(now + delaiS * 1000).toISOString();
+}
+
+function effacerEchecs(u) {
+  u.echecs = 0;
+  u.dernierEchecLe = null;
+  u.bloqueJusqua = null;
+}
+
+function attente(ms) {
+  const s = Math.ceil(ms / 1000);
+  return s < 60 ? `${s} s` : `${Math.ceil(s / 60)} min`;
 }
 
 function verifierBlocage(u) {
-  if (u.bloqueJusqua && new Date(u.bloqueJusqua).getTime() > Date.now()) {
-    throw new HttpError(429, 'Trop d’essais. Réessayez dans quelques minutes.');
-  }
+  const reste = u.bloqueJusqua ? new Date(u.bloqueJusqua).getTime() - Date.now() : 0;
+  if (reste > 0) throw new HttpError(429, `Trop d’essais : réessayez dans ${attente(reste)}.`);
 }
 
 // ------------------------------------------------------------------ authentification des appels
@@ -397,6 +437,59 @@ function verifierAdminRestant(ref) {
   }
 }
 
+// ------------------------------------------------------------------ suivi des opérations interrompues (erreur 1102)
+// Une connexion, une activation ou un changement de mot de passe calcule une empreinte coûteuse (PBKDF2). Si Cloudflare
+// coupe la demande pour dépassement du temps de calcul (erreur 1102), rien ne s'exécute après : la note de début déposée
+// ici n'est donc jamais effacée. Une note de plus d'une minute signale une opération interrompue.
+const OPERATIONS_SUIVIES = { '/auth/login': 'connexion', '/auth/activer': 'activation', '/auth/motdepasse': 'mot de passe' };
+
+function jourBruxelles(d) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d).replace(/-/g, '');
+}
+
+async function noterDebut(request, env, operation) {
+  let matricule = null;
+  try { matricule = String((await request.clone().json()).matricule || '').trim().toUpperCase().slice(0, 20) || null; } catch (err) { /* corps illisible : la route le refusera */ }
+  if (!matricule) { try { matricule = await lireJeton(env, request.headers.get('Authorization')); } catch (err) { matricule = null; } }
+  const cle = `${JOURNAL_CONNEXIONS}${jourBruxelles(new Date())}/${crypto.randomUUID()}.debut`;
+  try {
+    await env.DEPOTS.put(cle, JSON.stringify({ operation, matricule, debut: new Date().toISOString(), tours: await iterations(env) }), { httpMetadata: { contentType: 'application/json' } });
+    return cle;
+  } catch (err) { console.error('journal', err); return null; }
+}
+
+/** Nombre de tours des empreintes existantes (chaque compte garde le sien jusqu'au prochain changement de mot de passe). */
+async function toursDesComptes(env) {
+  const { ref } = await chargerRef(env);
+  const parTours = {};
+  for (const u of ref.intervenants) if (u.hash && u.hash.i) parTours[u.hash.i] = (parTours[u.hash.i] || 0) + 1;
+  return parTours;
+}
+
+async function connexionsInterrompues(env) {
+  const now = Date.now();
+  const notes = [];
+  let curseur;
+  do {
+    const page = await env.DEPOTS.list({ prefix: JOURNAL_CONNEXIONS, cursor: curseur });
+    for (const o of page.objects) notes.push(o.key);
+    curseur = page.truncated ? page.cursor : undefined;
+  } while (curseur);
+  const interrompues = [];
+  for (const cle of notes) {
+    const o = await env.DEPOTS.get(cle);
+    if (!o) continue;
+    let n = {};
+    try { n = await o.json(); } catch (err) { n = {}; }
+    const t = new Date(n.debut || 0).getTime();
+    if (now - t > 7 * 86400000) { await env.DEPOTS.delete(cle); continue; } // purge à 7 jours
+    if (now - t > 60000) interrompues.push(n);
+  }
+  interrompues.sort((a, b) => String(b.debut).localeCompare(String(a.debut)));
+  const depuis = (ms) => interrompues.filter((n) => now - new Date(n.debut).getTime() <= ms).length;
+  return { h24: depuis(86400000), j7: interrompues.length, derniere: interrompues[0] || null, liste: interrompues.slice(0, 20) };
+}
+
 // ------------------------------------------------------------------ routes
 async function lireJson(request) {
   try { return await request.json(); } catch (err) { throw new HttpError(400, 'Corps JSON invalide.'); }
@@ -411,16 +504,17 @@ async function routeAuth(request, env, url) {
     const { ref } = await chargerRef(env);
     const u = ref.intervenants.find((x) => x.matricule === matricule);
     if (!u || u.actif === false || !u.hash) {
-      await pbkdf2(mdp, new Uint8Array(16), iterations(env)); // même durée qu'un vrai essai : ne révèle pas si le matricule existe
+      await pbkdf2(mdp, new Uint8Array(16), await iterations(env)); // même durée qu'un vrai essai : ne révèle pas si le matricule existe
       throw new HttpError(401, ECHEC);
     }
     verifierBlocage(u);
     if (!(await verifierHash(mdp, u.hash))) {
-      await modifierRef(env, async (r) => { const c = r.intervenants.find((x) => x.matricule === matricule); if (c) noterEchec(c); });
+      const sec = await securite(env);
+      await modifierRef(env, async (r) => { const c = r.intervenants.find((x) => x.matricule === matricule); if (c) noterEchec(c, sec); });
       throw new HttpError(401, ECHEC);
     }
     if (u.echecs || u.bloqueJusqua) {
-      await modifierRef(env, async (r) => { const c = r.intervenants.find((x) => x.matricule === matricule); if (c) { c.echecs = 0; c.bloqueJusqua = null; } });
+      await modifierRef(env, async (r) => { const c = r.intervenants.find((x) => x.matricule === matricule); if (c) effacerEchecs(c); });
     }
     return { status: 200, body: { ...(await creerJeton(env, u.matricule)), utilisateur: vue(u) } };
   }
@@ -445,13 +539,14 @@ async function routeAuth(request, env, url) {
     }
     const u0 = ref.intervenants.find((x) => x.matricule === matricule);
     if (!u0 || u0.actif === false || !u0.activation) {
-      await pbkdf2(String(code || ''), new Uint8Array(16), iterations(env));
+      await pbkdf2(String(code || ''), new Uint8Array(16), await iterations(env));
       throw new HttpError(401, MAUVAIS);
     }
     verifierBlocage(u0);
     if (new Date(u0.activation.expire).getTime() < Date.now()) throw new HttpError(401, "Code d'activation expiré : demandez-en un nouveau à l'administrateur.");
     if (!(await verifierHash(normCode(code), u0.activation))) {
-      await modifierRef(env, async (r) => { const c = r.intervenants.find((x) => x.matricule === matricule); if (c) noterEchec(c); });
+      const sec = await securite(env);
+      await modifierRef(env, async (r) => { const c = r.intervenants.find((x) => x.matricule === matricule); if (c) noterEchec(c, sec); });
       throw new HttpError(401, MAUVAIS);
     }
     const hash = await hacher(motdepasse, env);
@@ -460,8 +555,7 @@ async function routeAuth(request, env, url) {
       if (!c || !c.activation) throw new HttpError(409, "Ce code d'activation vient d'être utilisé ou remplacé.");
       c.hash = hash;
       c.activation = null;
-      c.echecs = 0;
-      c.bloqueJusqua = null;
+      effacerEchecs(c);
       c.modifieLe = new Date().toISOString();
       return c;
     });
@@ -501,6 +595,40 @@ async function routeAdmin(request, env, url) {
       ref.intervenants.push({ ...fiche, hash: null, activation: act.activation, creeLe: now, modifieLe: now });
     });
     return { status: 200, body: { codeActivation: act.code, expire: act.activation.expire } };
+  }
+
+  if (request.method === 'GET' && p === '/admin/securite') {
+    await exigerDroit(request, env, 'utilisateurs');
+    securiteMemo = null;
+    const sec = await securite(env);
+    return { status: 200, body: { ...sec, toursMin: TOURS_MIN, toursMax: TOURS_MAX, comptes: await toursDesComptes(env) } };
+  }
+
+  if (request.method === 'PUT' && p === '/admin/securite') {
+    const moi = await exigerDroit(request, env, 'utilisateurs');
+    const b = await lireJson(request);
+    const entier = (v, min, max, nom) => {
+      const n = Number(v);
+      if (!Number.isInteger(n) || n < min || n > max) throw new HttpError(400, `${nom} : nombre entier entre ${min} et ${max} attendu.`);
+      return n;
+    };
+    const valeur = {
+      version: 1,
+      tours: entier(b.tours, TOURS_MIN, TOURS_MAX, 'Nombre de tours'),
+      delaiBaseS: entier(b.delaiBaseS, 1, 60, 'Délai après le premier échec (s)'),
+      delaiPlafondS: entier(b.delaiPlafondS, 60, 86400, 'Délai maximal (s)'),
+      fenetreMin: entier(b.fenetreMin, 5, 1440, 'Fenêtre (min)'),
+      modifieLe: new Date().toISOString(),
+      modifiePar: moi.matricule,
+    };
+    await env.DEPOTS.put(SECURITE_KEY, JSON.stringify(valeur, null, 2), { httpMetadata: { contentType: 'application/json' } });
+    securiteMemo = null;
+    return { status: 200, body: { ...valeur, toursMin: TOURS_MIN, toursMax: TOURS_MAX, comptes: await toursDesComptes(env) } };
+  }
+
+  if (request.method === 'GET' && p === '/admin/connexions-interrompues') {
+    await exigerDroit(request, env, 'utilisateurs');
+    return { status: 200, body: await connexionsInterrompues(env) };
   }
 
   if (request.method === 'GET' && p === '/admin/compteurs') {
@@ -544,8 +672,7 @@ async function routeAdmin(request, env, url) {
       const cible = ref.intervenants.find((x) => x.matricule === matricule);
       if (!cible) throw new HttpError(404, 'Intervenant inconnu.');
       cible.activation = act.activation; // le mot de passe actuel, s'il existe, reste valable jusqu'à l'activation
-      cible.echecs = 0;
-      cible.bloqueJusqua = null;
+      effacerEchecs(cible);
       cible.modifieLe = new Date().toISOString();
       return cible;
     });
@@ -826,6 +953,8 @@ export default {
     const allowed = (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
     if (origin && !allowed.includes(origin)) return reply(request, env, 403, { erreur: 'Origine non autorisée.' });
 
+    const operation = request.method === 'POST' ? OPERATIONS_SUIVIES[url.pathname] : null;
+    const note = operation ? await noterDebut(request, env, operation) : null;
     try {
       const out = (url.pathname.startsWith('/auth/') && (await routeAuth(request, env, url)))
         || (url.pathname.startsWith('/admin/') && (await routeAdmin(request, env, url)))
@@ -837,6 +966,9 @@ export default {
       if (err instanceof HttpError) return reply(request, env, err.status, { erreur: err.message });
       console.error(err);
       return reply(request, env, 500, { erreur: 'Erreur interne du serveur.' });
+    } finally {
+      // Fin normale (réussie ou refusée) : la note de début est effacée. Une coupure 1102 la laisse en place.
+      if (note) { try { await env.DEPOTS.delete(note); } catch (err) { console.error('journal', err); } }
     }
   },
 };

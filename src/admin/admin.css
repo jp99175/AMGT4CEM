@@ -42,3 +42,8 @@ html[data-app="admin"] body { background: #f4f6f8; color: #1f2933; font-family: 
 .adm-to { margin: 2px 0; font-size: 14px; }
 .adm-mail { white-space: pre-wrap; word-break: break-word; background: #f4f6f8; border: 1px solid #cbd2d9; border-radius: 6px; padding: 10px; font: 13px/1.4 system-ui, sans-serif; margin: 10px 0; }
 .adm-build { font-size: 11px; color: #9aa5b1; text-align: right; }
+
+.adm-sous-titre { font-size: 15px; margin: 16px 0 4px; }
+.adm-stat { font-size: 14px; font-weight: 600; margin: 4px 0; }
+.adm-liste { font-size: 13px; color: #444; margin: 4px 0 8px; padding-left: 18px; }
+.adm-row .adm-note { margin: 2px 0 0; font-size: 12px; }

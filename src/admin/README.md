@@ -12,3 +12,5 @@ conservé sur le serveur de dépôt (R2, voir `workers/depot/README.md`) ; rien 
 - **Mots de passe** : l'administrateur ne les connaît jamais.
 - **Premier administrateur** : il se crée par l'écran « Première connexion » (matricule + code d'amorçage du serveur), puis complète sa fiche ici.
 - Fichiers : `admin.js`, `admin.css` ; session et écran de connexion dans `../auth/`.
+
+- **Sécurité** (bouton à côté de « Nouvel intervenant ») : opérations interrompues par l'erreur 1102, nombre de tours des mots de passe, délai croissant après les échecs de connexion.
