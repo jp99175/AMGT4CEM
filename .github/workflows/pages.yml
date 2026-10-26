@@ -1,4 +1,4 @@
-# Publie le site (home.html et ses interfaces, dont ?app=dice) sur GitHub Pages.
+# Publie le site (home.html et ses interfaces) sur GitHub Pages.
 # Réglage requis une fois : Settings > Pages > Source = « GitHub Actions ».
 name: Pages
 

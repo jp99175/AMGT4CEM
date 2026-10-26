@@ -455,108 +455,11 @@
 
 </template>
 
-<!-- ========== Interface « signal » : SIG4CEM (saisie) ========== -->
-<template id="amgt-tpl-dice">
-  <header class="titlebar">
-    <h1>Jet de dés</h1>
-  </header>
-
-  <main class="stage">
-    <div id="total" class="total" role="status" aria-label="Total"></div>
-    <section class="history" aria-label="Historique des jets">
-      <div class="board-head">
-        <span>Heure</span><span>Dés</span><span>Résultat</span>
-        <button id="clear" type="button" class="link">Effacer</button>
-      </div>
-      <ol id="history"></ol>
-      <p id="empty" class="empty">Aucun jet pour l'instant.</p>
-    </section>
-  </main>
-
-  <footer class="strip">
-    <div class="plate">
-      <i class="hole h1"></i><i class="hole h2"></i><i class="hole h3"></i><i class="hole h4"></i>
-      <svg id="dial-count" class="dial d-count" viewBox="0 0 200 160"></svg>
-      <i class="sep s-a"></i>
-      <svg id="dial-kind" class="dial d-kind" viewBox="0 0 200 160"></svg>
-      <i class="sep s-b"></i>
-      <div class="pbs">
-        <button class="pb" id="pb-sound" type="button" aria-label="Sound" aria-pressed="false">
-          <span class="lens face">Sound</span><span class="lens led red" id="led-mute">Mute</span></button>
-        <button class="pb" id="pb-launch" type="button" aria-label="Launch">
-          <span class="lens face">Launch</span><span class="lens led green" id="led-run">Running</span></button>
-        <button class="pb" id="pb-exit" type="button" aria-label="Exit">
-          <span class="lens face">Exit</span><span class="lens led red lit">Program</span></button>
-      </div>
-    </div>
-  </footer>
-</template>
-
-<template id="amgt-tpl-dice2">
-  <div class="stack">
-    <section class="panel p-blocks">
-      <i class="screw s1"></i><i class="screw s2"></i><i class="screw s3"></i><i class="screw s4"></i>
-      <h1 class="engrave">Jet de dés</h1>
-      <div class="grid3" id="flips"></div>
-    </section>
-
-    <section class="panel p-screen" aria-label="Historique des jets">
-      <i class="screw s1"></i><i class="screw s2"></i><i class="screw s3"></i><i class="screw s4"></i>
-      <div class="window"><div class="lcd" id="lcd" role="log" aria-live="polite" aria-label="Historique des jets"></div></div>
-      <div class="clr"><span>Clear</span><button id="btn-clear" type="button" aria-label="Clear : effacer l'historique"></button></div>
-    </section>
-
-    <footer class="panel bot">
-      <i class="screw s1"></i><i class="screw s2"></i><i class="screw s3"></i><i class="screw s4"></i>
-      <div class="dials">
-        <svg id="dial-count" class="dial" viewBox="0 0 200 160"></svg>
-        <svg id="dial-kind" class="dial" viewBox="0 0 200 160"></svg>
-      </div>
-      <div class="ctrls">
-        <div class="pbs">
-          <button class="pb" id="pb-sound" type="button" aria-label="Sound" aria-pressed="false"><span class="lens face">Sound</span><span class="lens led red" id="led-mute">Mute</span></button>
-          <button class="pb" id="pb-launch" type="button" aria-label="Launch"><span class="lens face">Launch</span><span class="lens led green" id="led-run">Running</span></button>
-        </div>
-      </div>
-    </footer>
-  </div>
-</template>
-
-<template id="amgt-tpl-dice3">
-  <div class="stack">
-    <section class="panel p-blocks">
-      <i class="screw s1"></i><i class="screw s2"></i><i class="screw s3"></i><i class="screw s4"></i>
-      <h1 class="engrave">Jet de dés</h1>
-      <div class="grid3" id="flips"></div>
-      <div class="clr"><i class="sq"><i class="dome tl"></i><i class="dome tr"></i><i class="dome bl"></i><i class="dome br"></i></i><span>Release</span><button id="btn-release" type="button" aria-label="Release : relâcher tous les dés conservés"></button></div>
-    </section>
-
-    <section class="panel p-screen" aria-label="Historique des jets">
-      <i class="screw s1"></i><i class="screw s2"></i><i class="screw s3"></i><i class="screw s4"></i>
-      <div class="window"><i class="dome tl"></i><i class="dome tr"></i><i class="dome bl"></i><i class="dome br"></i><div class="lcd" id="lcd" role="log" aria-live="polite" aria-label="Historique des jets"></div></div>
-      <div class="clr"><i class="sq"><i class="dome tl"></i><i class="dome tr"></i><i class="dome bl"></i><i class="dome br"></i></i><span>Clear</span><button id="btn-clear" type="button" aria-label="Clear : effacer l'historique"></button></div>
-    </section>
-
-    <footer class="panel bot">
-      <i class="screw s1"></i><i class="screw s2"></i><i class="screw s3"></i><i class="screw s4"></i>
-      <div class="dials">
-        <div class="dialbox"><svg id="dial-count" class="dial" viewBox="0 0 200 160"></svg><i class="dome tl"></i><i class="dome tr"></i><i class="dome bl"></i><i class="dome br"></i></div>
-        <div class="dialbox"><svg id="dial-kind" class="dial" viewBox="0 0 200 160"></svg><i class="dome tl"></i><i class="dome tr"></i><i class="dome bl"></i><i class="dome br"></i></div>
-      </div>
-      <div class="ctrls">
-        <div class="guard"><i class="dome tl"></i><i class="dome tr"></i><i class="dome bl"></i><i class="dome br"></i><div class="pbs">
-          <button class="pb" id="pb-sound" type="button" aria-label="Sound" aria-pressed="false"><span class="lens face">Sound</span><span class="lens led red" id="led-mute">Mute</span></button>
-          <button class="pb" id="pb-launch" type="button" aria-label="Launch"><span class="lens face">Launch</span><span class="lens led green" id="led-run">Running</span></button>
-        </div></div>
-      </div>
-    </footer>
-  </div>
-</template>
-
 <template id="amgt-tpl-admin">
   <div id="admin-root"></div>
 </template>
 
+<!-- ========== Interface « signal » : SIG4CEM (saisie) ========== -->
 <template id="amgt-tpl-signal">
   <div id="sig4cem-root"></div>
 </template>

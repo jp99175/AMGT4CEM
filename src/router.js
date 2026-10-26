@@ -3,7 +3,7 @@
  *
  *   home.html?app=carto    AMGT4CEM : visualisation de toutes les données sur la carte (défaut)
  *   home.html?app=signal   SIG4CEM  : saisie des signalements et demandes
- *   home.html?app=dice     Dés      : simulateur de jets de dés (modules ES : `modules` dans config.js)
+ *   home.html?app=admin    Administration des intervenants
  *
  * Les interfaces sont déclarées dans `apps` de config.js (gabarit, styles, scripts). Le routeur copie
  * le gabarit choisi dans la page, charge les styles puis les scripts DANS L'ORDRE (un script dépend des
