@@ -29,7 +29,8 @@ html[data-page="carto"] #amgt-map-menu.amgt-hidden {
 @media (min-width: 900px) {
   html[data-page="carto"] #amgt-map-menu { top: var(--amgt-nav-h); bottom: 0; }
 }
-.amgt-couches-titre { margin: 0 0 10px; font-size: 18px; }
+.amgt-couches-logo { height: 40px; margin: 0 0 14px; }
+.amgt-couches-logo svg { display: block; height: 100%; width: auto; }
 
 /* Voile derrière le bandeau (clic = fermeture) */
 .amgt-couches-voile {
