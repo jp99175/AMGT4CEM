@@ -111,3 +111,8 @@ html.amgt-admin .amgt-defaut-disquette { display: inline-flex; }
 .amgt-defaut-zone p { margin: 0 0 8px; color: #333; }
 .amgt-defaut-zone .amgt-btn { margin: 6px 6px 0 0; }
 .amgt-defaut-zone__code { width: 100%; box-sizing: border-box; padding: 8px; font-size: 15px; }
+
+/* Pied du bandeau : « ↺ Défaut » (+ disquette) à gauche, « Réinitialiser la vue » à droite */
+.amgt-couches-pied { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.amgt-couches-pied__gauche { display: flex; align-items: center; gap: 8px; }
+.amgt-couches-pied #amgt-reset-view-btn { margin-top: 0; }

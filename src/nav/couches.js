@@ -167,19 +167,23 @@ const Couches = {
 
   // ---------------------------------------------------------------- Mon affichage
   _construireAffichage() {
-    const revenir = h('button', { type: 'button', class: 'amgt-link-btn amgt-couches__revenir', text: '↺ Revenir au défaut' });
+    // Pied du bandeau, même formalisme que les sélecteurs plein écran : à gauche « ↺ Défaut » et, avec le droit
+    // `utilisateurs`, la disquette (défaut pour tous) ; à droite « Réinitialiser la vue ».
+    const revenir = h('button', { type: 'button', class: 'amgt-btn', title: 'Reprendre l\'affichage par défaut', text: '↺ Défaut' });
     revenir.addEventListener('click', () => this.revenirAuDefaut());
-    this._dit = h('p', { class: 'amgt-couches__msg', role: 'status', hidden: '' });
+    const disquette = h('button', { type: 'button', class: 'amgt-btn amgt-btn--icon amgt-defaut-disquette', title: 'Enregistrer l\'affichage actuel comme défaut pour tous', 'aria-label': 'Enregistrer comme défaut pour tous' });
+    disquette.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/></svg>';
+    disquette.addEventListener('click', () => { if (this.admin()) this._ouvrirDefautPourTous(); });
 
+    this._dit = h('p', { class: 'amgt-couches__msg', role: 'status', hidden: '' });
     this._admin = h('div', { class: 'amgt-couches__admin' });
-    const bloc = h('div', { class: 'amgt-couches' },
-      h('h3', { text: 'Mon affichage' }),
-      h('p', { class: 'amgt-couches__aide', text: 'Vos couches et opacités sont gardées automatiquement sur cet appareil.' }),
-      revenir, this._dit, this._admin);
+    const reinit = document.getElementById('amgt-reset-view-btn');
+    const rangee = h('div', { class: 'amgt-couches-pied' }, h('div', { class: 'amgt-couches-pied__gauche' }, revenir, disquette), reinit);
+    const bloc = h('div', { class: 'amgt-couches' }, rangee, this._dit, this._admin);
 
     const pied = document.querySelector('.amgt-map-menu__footer');
     pied.parentNode.insertBefore(bloc, pied);
-    this._majAdmin();
+    pied.style.display = 'none'; // vidé : ses autres boutons sont masqués dans cette interface
   },
 
   _msg(texte, erreur) {
@@ -217,13 +221,7 @@ const Couches = {
 
   // ---------------------------------------------------------------- Défaut pour tous
   _majAdmin() {
-    if (!this._admin) return;
-    this._admin.textContent = '';
-    if (!this.admin()) return;
-    const ouvrir = h('button', { type: 'button', class: 'amgt-link-btn', text: 'Définir comme défaut pour tous…' });
-    // stopPropagation : le bouton est retiré de la page pendant le clic, le menu le prendrait pour un clic extérieur et se fermerait.
-    ouvrir.addEventListener('click', (e) => { e.stopPropagation(); this._ouvrirDefautPourTous(); });
-    this._admin.append(ouvrir);
+    if (this._admin) { this._admin.textContent = ''; this._msg(''); }
   },
 
   _ouvrirDefautPourTous() {
@@ -254,8 +252,9 @@ const Couches = {
         await AMGT4CEM_PeLabelAnchors.checkConnection(relais, c);
         AMGT4CEM_PeLabelAnchors.setAdminCode(c);
         await AMGT4CEM_MenuPrefs._saveShared(kind, c);
-        this._msg(`✓ Affichage enregistré pour ${kind === 'connectes' ? 'les utilisateurs connectés' : 'les visiteurs non connectés'} (visible après le redéploiement du site, environ 1 minute).`);
         this._majAdmin();
+        this._msg(`✓ Affichage enregistré pour ${kind === 'connectes' ? 'les utilisateurs connectés' : 'les visiteurs non connectés'} (visible après le redéploiement du site, environ 1 minute).`);
+        
       } catch (err) {
         AMGT4CEM_PeLabelAnchors.setAdminCode('');
         this._msg(err.message, true);
