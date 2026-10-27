@@ -282,10 +282,10 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
     scripts: [...app.scripts, ...NAV_SCRIPTS],
   });
   return {
-    // Carte : menu « Couches » adapté (src/nav/couches.js, chargé après la barre de navigation).
+    // Carte : menu « Couches » adapté (src/nav/couches.js) et outils de mesure (src/nav/mesure.js), chargés après la barre de navigation.
     carto: (() => {
       const p = avecNav(apps.carto);
-      return { ...p, styles: [...p.styles, './src/nav/couches.css'], scripts: [...p.scripts, './src/nav/couches.js'] };
+      return { ...p, styles: [...p.styles, './src/nav/couches.css', './src/nav/mesure.css'], scripts: [...p.scripts, './src/nav/couches.js', './src/nav/mesureIcones.js', './src/nav/mesure.js'] };
     })(),
     signal: avecNav(apps.signal),
     reglages: {

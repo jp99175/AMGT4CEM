@@ -1,0 +1,80 @@
+/* Outils de mesure de la page Carte (src/nav/mesure.js). Chargé seulement par home.html?page=carto. */
+
+/* Les anciens boutons (règle, 💾) restent dans la page mais ne servent plus : tout passe par la latte. */
+html[data-page="carto"] #amgt-measure-btn,
+html[data-page="carto"] #amgt-screenshot-btn { display: none !important; }
+
+/* Boutons ronds de 46 px, icône de 30 px (téléphone) */
+.mes-btn {
+  box-sizing: border-box;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: #0b5c75;
+  line-height: 0;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.mes-btn:hover { background: #e8f2f6; }
+.mes-btn.amgt-btn--active, .mes-btn.amgt-btn--active:hover { background: #0b5c75; color: #fff; }
+.mes-btn svg { display: block; pointer-events: none; }
+.mes-btn--latte svg, .mes-btn--outil svg { width: 30px; height: 30px; }
+.mes-btn--cmd svg { width: 26px; height: 26px; }
+.mes-cache { display: none !important; }
+
+/* Latte + plateau : au repos, les deux outils sont cachés sous la latte ; l'appui long la fait glisser
+   vers la gauche (0,3 s) et les outils se déploient. */
+.mes-bloc { position: relative; width: 46px; height: 46px; }
+.mes-bloc .mes-btn { position: absolute; top: 0; right: 0; transition: transform 0.3s, opacity 0.3s, visibility 0.3s; }
+.mes-bloc .mes-btn--outil { opacity: 0; visibility: hidden; }
+.mes-bloc .mes-btn--latte { z-index: 2; }
+.mes-bloc--ouvert .mes-btn--latte { transform: translateX(calc(-2 * var(--mes-glisse, 54px))); }
+.mes-bloc--ouvert .mes-btn--outil { opacity: 1; visibility: visible; }
+.mes-bloc--ouvert #mes-chaine { transform: translateX(calc(-1 * var(--mes-glisse, 54px))); }
+/* Le compas reste à la place d'origine de la latte. */
+
+/* Icônes d'outil : une variante par taille d'écran (téléphone / tablette / PC) */
+.mes-ic--tab, .mes-ic--pc { display: none !important; }
+@media (min-width: 600px) {
+  .mes-ic--tel { display: none !important; }
+  .mes-ic--tab { display: block !important; }
+}
+@media (min-width: 900px) {
+  .mes-ic--tab { display: none !important; }
+  .mes-ic--pc { display: block !important; }
+}
+.mes-btn--outil svg { width: 30px; height: 30px; }
+
+/* Commandes de l'outil actif : en colonne sous le forage virtuel */
+.mes-cmd { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.mes-cmd:empty { display: none; }
+
+/* Résultat de la chaîne : en bas de la carte, au-dessus de la barre de navigation */
+.mes-resume {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--amgt-nav-h, 56px) + var(--amgt-nav-safe, 0px) + 14px);
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #f50057;
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+  font: 600 14px system-ui, -apple-system, "Segoe UI", sans-serif;
+  text-align: center;
+}
+.mes-resume[hidden] { display: none; }
+@media (min-width: 900px) {
+  .mes-resume { bottom: 24px; }
+}
