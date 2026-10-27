@@ -34,8 +34,10 @@ const Couches = {
   init() {
     const bouton = document.getElementById('amgt-menu-btn');
     if (!bouton) return;
-    bouton.textContent = '☰ Couches';
-    bouton.title = 'Fonds de plan et couches';
+    bouton.textContent = '☰';
+    bouton.title = 'Couches';
+    bouton.setAttribute('aria-label', 'Couches');
+    this._bandeau(bouton);
 
     this._initial = AMGT4CEM_MenuPrefs.capture();
     this._construireAffichage();
@@ -48,6 +50,22 @@ const Couches = {
     this.appliquerAcces();
     AMGT4CEM_Auth.onChange(() => { this.appliquerAcces(); this._majAdmin(); });
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { this.appliquerAcces(); this._majAdmin(); } });
+  },
+
+  // ---------------------------------------------------------------- bandeau latéral
+  /** Titre du bandeau et voile : le voile suit l'ouverture du bandeau (la classe amgt-hidden est posée par mapMenu.js). */
+  _bandeau(bouton) {
+    const panneau = document.getElementById('amgt-map-menu');
+    panneau.prepend(h('h2', { class: 'amgt-couches-titre', text: 'Couches' }));
+    const voile = h('div', { class: 'amgt-couches-voile' });
+    document.body.append(voile);
+    const maj = () => {
+      const ouvert = !panneau.classList.contains('amgt-hidden');
+      voile.classList.toggle('amgt-couches-voile--on', ouvert);
+      bouton.setAttribute('aria-expanded', String(ouvert));
+    };
+    new MutationObserver(maj).observe(panneau, { attributes: true, attributeFilter: ['class'] });
+    maj();
   },
 
   // ---------------------------------------------------------------- accès visiteur

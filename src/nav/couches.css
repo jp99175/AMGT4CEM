@@ -1,5 +1,54 @@
 /* Menu « Couches » de la page Carte (src/nav/couches.js). Chargé seulement par home.html?page=carto. */
 
+/* Bandeau latéral : il arrive de la gauche en 0,3 s (comme la fermeture) ; un clic à l'extérieur ou sur l'icône ☰
+   le referme. Le bouton ☰ (barre d'outils, z-index 1000) reste au-dessus du bandeau pour pouvoir le refermer.
+   Il laisse libre la barre de navigation (en bas sur téléphone, en haut sur grand écran). */
+html[data-page="carto"] {
+  --couches-l: min(300px, 85vw);
+}
+html[data-page="carto"] #amgt-map-menu {
+  position: fixed;
+  top: 0;
+  bottom: calc(var(--amgt-nav-h) + var(--amgt-nav-safe));
+  left: 0;
+  z-index: 999;
+  box-sizing: border-box;
+  width: var(--couches-l);
+  max-height: none;
+  padding: 62px 16px 16px; /* 62 px : sous le bouton ☰ */
+  border-radius: 0;
+  overflow-y: auto;
+  visibility: visible;
+  transition: left 0.3s, visibility 0.3s;
+}
+html[data-page="carto"] #amgt-map-menu.amgt-hidden {
+  display: block !important; /* annule display:none de .amgt-hidden : sans cela, pas de glissement */
+  visibility: hidden;
+  left: calc(-1 * var(--couches-l) - 24px);
+}
+@media (min-width: 900px) {
+  html[data-page="carto"] #amgt-map-menu { top: var(--amgt-nav-h); bottom: 0; padding-top: 16px; }
+}
+.amgt-couches-titre { margin: 0 0 10px; font-size: 18px; }
+
+/* Voile derrière le bandeau (clic = fermeture) */
+.amgt-couches-voile {
+  position: fixed;
+  top: 0;
+  bottom: calc(var(--amgt-nav-h) + var(--amgt-nav-safe));
+  left: 0;
+  right: 0;
+  z-index: 998;
+  background: #000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+.amgt-couches-voile--on { opacity: 0.4; visibility: visible; }
+@media (min-width: 900px) { .amgt-couches-voile { top: var(--amgt-nav-h); bottom: 0; } }
+
+html[data-page="carto"] #amgt-menu-btn { font-size: 22px; line-height: 1; padding: 8px 13px; }
+
 /* Le compte est dans la barre de navigation, les réglages dans la page Réglages, le défaut dans « Mon affichage ». */
 html[data-page="carto"] #amgt-settings-btn,
 html[data-page="carto"] #amgt-account-btn,
