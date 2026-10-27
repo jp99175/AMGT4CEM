@@ -58,6 +58,9 @@ html.amgt-has-nav[data-app="carto"] body {
 html.amgt-has-nav:not([data-app="carto"]) body {
   padding-bottom: calc(var(--amgt-nav-h) + var(--amgt-nav-safe));
 }
+/* Page qui défile dans le document (Réglages) : le corps grandit avec son contenu, sinon la marge du bas ne
+   suit pas le contenu et la fin de la page reste cachée sous la barre. */
+html.amgt-has-nav[data-app="reglages"] body { height: auto; min-height: 100%; box-sizing: border-box; }
 
 /* Grand écran : la barre passe en haut. */
 @media (min-width: 900px) {

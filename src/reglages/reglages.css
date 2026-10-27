@@ -70,3 +70,28 @@ html[data-app="reglages"] body {
   cursor: pointer;
 }
 .rgl-btn--primary { background: #2c3e50; border-color: #2c3e50; color: #fff; }
+
+/* Champ de réglage dans une ligne (ex. durée d'une mesure) */
+.rgl-input { padding: 9px 10px; font-size: 16px; border: 1px solid #9aa5b1; border-radius: 6px; box-sizing: border-box; background: #fff; color: inherit; }
+.rgl-row__champ { display: flex; align-items: center; gap: 6px; flex: none; }
+.rgl-row__champ .rgl-input { width: 5.5em; text-align: right; }
+.rgl-row__unite { color: #52606d; }
+
+/* Sous-écrans */
+.rgl-principal[hidden], .rgl-sous[hidden] { display: none; }
+.rgl-retour { margin: 2px 0 8px; padding: 8px 4px; background: none; border: none; color: #1f5f99; font-size: 16px; cursor: pointer; }
+.rgl-ecran__titre { margin: 0 0 14px; font-size: 24px; }
+
+/* Formulaires (Services et relais) */
+.rgl-bloc--formulaire { padding-bottom: 6px; }
+.rgl-champ { display: flex; flex-direction: column; gap: 4px; padding: 8px 14px; font-size: 13px; font-weight: 600; }
+.rgl-input--large { width: 100%; font-weight: 400; }
+.rgl-aide { margin: 0; padding: 4px 14px 10px; font-size: 13px; color: #616e7c; }
+.rgl-statut { margin: 0 0 12px; padding: 10px 12px; border-radius: 6px; background: #e4e7eb; }
+.rgl-statut--ok { background: #e3f2e8; color: #1e6b3a; }
+.rgl-statut--erreur { background: #fde2e2; color: #9b1c1c; }
+.rgl-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* La page d'administration intégrée garde sa propre mise en page, sans son en-tête (déjà fourni par Réglages) */
+.rgl-ecran--utilisateurs .adm-head, .rgl-ecran--utilisateurs .adm-who { display: none; }
+.rgl-ecran--utilisateurs #admin-root { max-width: none; padding: 0; }
