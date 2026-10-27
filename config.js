@@ -266,3 +266,30 @@ const AMGT4CEM_CONFIG = {
   // --- Affichage ---
   maxZoom: 22,
 };
+
+// --- Nouvelle interface (home.html?page=…), à côté des interfaces actuelles (?app=…) jusqu'à la bascule ---
+// Chaque page reprend les fichiers de l'interface correspondante et y ajoute la barre de navigation (src/nav/).
+// Un fichier qui doit changer pour la nouvelle interface est COPIÉ (src/…/v2 ou nom distinct) et remplace
+// l'original dans la liste de la page seulement : les interfaces ?app= ne sont jamais touchées.
+AMGT4CEM_CONFIG.defaultPage = 'carto';
+AMGT4CEM_CONFIG.pages = (function (apps) {
+  const NAV_STYLES = ['./src/nav/nav.css'];
+  const NAV_SCRIPTS = ['./src/nav/nav.js'];
+  const avecNav = (app) => ({
+    ...app,
+    nav: true,
+    styles: [...(app.styles || []), ...NAV_STYLES],
+    scripts: [...app.scripts, ...NAV_SCRIPTS],
+  });
+  return {
+    carto: avecNav(apps.carto),
+    signal: avecNav(apps.signal),
+    reglages: {
+      title: 'AMGT4CEM – Réglages',
+      template: 'amgt-tpl-reglages',
+      nav: true,
+      styles: ['./src/auth/auth.css', ...NAV_STYLES, './src/reglages/reglages.css'],
+      scripts: ['./src/buildInfo.js', './src/auth/auth.js', './src/auth/authUi.js', ...NAV_SCRIPTS, './src/reglages/reglages.js'],
+    },
+  };
+})(AMGT4CEM_CONFIG.apps);

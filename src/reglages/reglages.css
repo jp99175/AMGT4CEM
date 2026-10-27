@@ -1,0 +1,72 @@
+/* Page « Réglages » (src/reglages/reglages.js) : colonne unique, pensée pour le téléphone. */
+html[data-app="reglages"] body {
+  background: #f4f6f8;
+  color: #1f2933;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+#reglages-root {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px 16px 32px;
+  box-sizing: border-box;
+}
+
+.rgl-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 0 16px;
+}
+.rgl-head__titres { flex: 1; min-width: 0; }
+.rgl-head h1 { margin: 0; font-size: 24px; }
+.rgl-head p { margin: 2px 0 0; color: #52606d; font-size: 14px; }
+
+.rgl-bloc {
+  margin: 0 0 14px;
+  background: #fff;
+  border: 1px solid #cbd2d9;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.rgl-bloc__titre {
+  margin: 0;
+  padding: 10px 14px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #52606d;
+}
+
+.rgl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: none;
+  border-top: 1px solid #e4e7eb;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  text-decoration: none;
+}
+.rgl-row--action { cursor: pointer; }
+.rgl-row--action:hover { background: #f5f7fa; }
+.rgl-row__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rgl-row__aide { font-size: 13px; color: #616e7c; }
+.rgl-row__chevron { font-size: 22px; color: #9aa5b1; line-height: 1; }
+
+.rgl-note { color: #52606d; }
+.rgl-btn {
+  padding: 12px 18px;
+  font-size: 16px;
+  border-radius: 6px;
+  border: 1px solid #cbd2d9;
+  background: #fff;
+  cursor: pointer;
+}
+.rgl-btn--primary { background: #2c3e50; border-color: #2c3e50; color: #fff; }

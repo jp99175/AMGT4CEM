@@ -1,0 +1,139 @@
+/* Barre de navigation de la nouvelle interface (src/nav/nav.js). Chargée uniquement par les pages ?page=. */
+:root {
+  --amgt-nav-h: 58px;
+  --amgt-nav-safe: env(safe-area-inset-bottom, 0px);
+}
+
+.amgt-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Sous les écrans plein cadre de la saisie (carte de choix du point : 10, éditeur de photo : 20) et sous les
+     fenêtres (connexion : 5000, sélecteurs) ; la carte de la page Carte est hors de sa zone. */
+  z-index: 5;
+  display: flex;
+  box-sizing: content-box;
+  height: calc(var(--amgt-nav-h) - 1px);
+  padding-bottom: var(--amgt-nav-safe);
+  background: #fff;
+  border-top: 1px solid #cbd2d9;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.amgt-nav__tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: #52606d;
+  font-size: 12px;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.amgt-nav__ic {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.amgt-nav__tab[aria-current="page"] {
+  color: #1f5f99;
+  font-weight: 600;
+}
+
+/* Place réservée à la barre. Carte : le corps de page rétrécit, tout ce qui y est positionné (carte, boutons,
+   bandeaux) reste au-dessus de la barre. Autres pages : simple marge en bas. */
+html.amgt-has-nav[data-app="carto"] body {
+  position: relative;
+  height: calc(100% - var(--amgt-nav-h) - var(--amgt-nav-safe));
+}
+html.amgt-has-nav:not([data-app="carto"]) body {
+  padding-bottom: calc(var(--amgt-nav-h) + var(--amgt-nav-safe));
+}
+
+/* Grand écran : la barre passe en haut. */
+@media (min-width: 900px) {
+  :root { --amgt-nav-h: 48px; --amgt-nav-safe: 0px; }
+  .amgt-nav {
+    top: 0;
+    bottom: auto;
+    border-top: none;
+    border-bottom: 1px solid #cbd2d9;
+    justify-content: center;
+    gap: 8px;
+  }
+  .amgt-nav__tab {
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 8px;
+    padding: 0 20px;
+    font-size: 14px;
+  }
+  .amgt-nav__tab[aria-current="page"] { box-shadow: inset 0 -3px 0 #1f5f99; }
+  html.amgt-has-nav[data-app="carto"] body { margin-top: var(--amgt-nav-h); }
+  html.amgt-has-nav:not([data-app="carto"]) body {
+    padding-bottom: 0;
+    padding-top: var(--amgt-nav-h);
+  }
+}
+
+/* Icône de compte (AMGT4CEM_Nav.compte) */
+.amgt-nav-account {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: #fff;
+  border: 1px solid #cbd2d9;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.amgt-nav-account .amgt-account__user {
+  fill: none;
+  stroke: #333;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.amgt-nav-account__badge {
+  display: none;
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+}
+.amgt-nav-account__badge svg { display: block; }
+.amgt-nav-account__badge circle { fill: #fff; stroke-width: 1.8; }
+.amgt-nav-account__badge path { fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.amgt-nav-account__ok circle, .amgt-nav-account__ok path { stroke: #0f9d6e; }
+.amgt-nav-account__out circle, .amgt-nav-account__out path { stroke: #d32f2f; }
+.amgt-nav-account__out { display: none !important; }
+.amgt-nav-account--on .amgt-nav-account__badge { display: block; }
+@media (hover: hover) {
+  .amgt-nav-account:hover { background: #f0f0f0; }
+  .amgt-nav-account--on:hover .amgt-nav-account__ok { display: none; }
+  .amgt-nav-account--on:hover .amgt-nav-account__out { display: block !important; }
+}
+
+/* Saisie : en haut à droite du menu de SIG4CEM, seulement quand le menu est affiché. */
+html.amgt-has-nav #sig4cem-root { position: relative; }
+.amgt-nav-account--signal {
+  position: absolute;
+  top: 18px;
+  right: 16px;
+}
+#sig4cem-root:has(> .sig4cem-screen--menu.sig4cem-hidden) > .amgt-nav-account--signal { display: none; }

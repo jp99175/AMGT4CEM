@@ -943,7 +943,9 @@ du réseau.
 
 ```
 home.html, style.css         page unique : gabarits des deux interfaces (carto, signal) ; index.html : simple renvoi vers home.html
-src/router.js                routeur : lit ?app=, copie le gabarit choisi, charge ses scripts dans l'ordre (liste `apps` de config.js)
+src/router.js                routeur : lit ?app= (interfaces actuelles, liste `apps`) ou ?page= (nouvelle interface, liste `pages`), copie le gabarit choisi, charge ses scripts dans l'ordre
+src/nav/                     barre de navigation Carte · Saisie · Réglages et icône de compte (pages ?page= seulement)
+src/reglages/                page Réglages (?page=reglages) : blocs déclarés par AMGT4CEM_Reglages.register, affichés selon le droit
 src/signal/                  interface de saisie SIG4CEM (home.html?app=signal), séparée de la carte, avec sa propre carte de choix du point
 src/auth/                    identification commune (session, écran de connexion / première connexion) ; src/admin/ : page ?app=admin
 config.js                    configuration (interfaces `apps`, CRS, chemins des données, clés de stockage) ; la configuration des services est dans config/fonds-de-plan/
@@ -1099,6 +1101,20 @@ Une seule page, `home.html`, deux interfaces choisies par le paramètre d'adress
 | `home.html?app=carto` (défaut) | AMGT4CEM | visualisation de toutes les données sur la carte, vues paramétrables |
 | `home.html?app=signal` | SIG4CEM | saisie des signalements et demandes : nouvelle entrée (carte puis formulaire), brouillons, file d'envoi (en cours de construction) |
 | `home.html?app=admin` | Administration | référentiel des intervenants (matricule, nom, GSM, email, service, droit admin), code de première connexion, email d'accueil (`mailto:`) |
+
+**Nouvelle interface, en construction (`home.html?page=`).** Elle vit à côté des interfaces ci-dessus, qui ne changent pas
+jusqu'à la bascule (décisions : document de projet `refonte-interface-reglages.md`). Barre de navigation Carte · Saisie ·
+Réglages (`src/nav/`), en bas sur téléphone, en haut sur grand écran ; Saisie et Réglages demandent la connexion.
+
+| Adresse | Contenu |
+|---|---|
+| `home.html?page=carto` | la carte, avec la barre de navigation |
+| `home.html?page=signal` | SIG4CEM, avec la barre et l'icône de compte en haut à droite |
+| `home.html?page=reglages` | réglages regroupés en blocs selon les droits (`src/reglages/`) |
+
+Les pages sont déclarées dans `pages` de `config.js` ; chacune reprend les fichiers de l'interface correspondante. Un
+fichier qui doit changer pour la nouvelle interface est copié et ne remplace l'original que dans la liste de la page.
+Depuis une page, `AMGT4CEM_Router.url('signal')` donne `?page=signal` ; depuis une interface actuelle, `?app=signal`.
 
 **Identification.** L'envoi au serveur exige une connexion personnelle (matricule + mot de passe, jeton gardé sur l'appareil
 30 jours ; le mot de passe est redemandé dans les 7 derniers jours pour prolonger la session). Le référentiel des intervenants vit dans R2, sur le serveur de dépôt, jamais dans ce dépôt public. L'administrateur
