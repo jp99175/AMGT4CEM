@@ -25,6 +25,21 @@ const h = (tag, attrs, ...kids) => {
   return n;
 };
 
+/** Icônes en trait fin (même trait, même taille), sans cadre de bouton : disquette, flèches, croix dans un carré. */
+const svgIcone = (contenu) => `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${contenu}</svg>`;
+const ICONES = {
+  disquette: svgIcone('<path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/>'),
+  horaire: svgIcone('<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/>'), // ↻ réinitialiser la vue
+  antihoraire: svgIcone('<g transform="matrix(-1 0 0 1 24 0)"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/></g>'), // ↺ défaut
+  fermer: svgIcone('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'),
+};
+/** Bouton réduit à son icône (sans cadre). */
+const boutonIcone = (icone, titre, classe) => {
+  const b = h('button', { type: 'button', class: `amgt-ic-btn ${classe || ''}`.trim(), title: titre, 'aria-label': titre });
+  b.innerHTML = ICONES[icone];
+  return b;
+};
+
 const Couches = {
   _initial: null, // affichage du gabarit, avant tout réglage : sert de base à « Revenir au défaut »
 
@@ -92,7 +107,6 @@ const Couches = {
    * Les fichiers des sélecteurs ne sont pas modifiés.
    */
   _selecteurs() {
-    const disquette = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/></svg>';
     const liste = [
       { id: 'amgt-topo-picker', nom: 'UrbIS Topo', store: () => AMGT4CEM_UrbisTopoSelectionStore, rafraichir: () => { AMGT4CEM_UrbisTopoPicker._zoomControl && AMGT4CEM_UrbisTopoPicker._zoomControl.refresh(); AMGT4CEM_UrbisTopoPicker._render(); } },
       { id: 'amgt-patrimoine-picker', nom: 'Plans patrimoine', store: () => AMGT4CEM_PatrimoineSelectionStore, rafraichir: () => AMGT4CEM_PatrimoinePicker._render() },
@@ -106,7 +120,7 @@ const Couches = {
       const zone = h('div', { class: 'amgt-defaut-zone', role: 'status', hidden: '' });
       const dire = (texte, erreur) => { zone.textContent = texte || ''; zone.hidden = !texte; zone.className = `amgt-defaut-zone${erreur ? ' amgt-defaut-zone--erreur' : ''}`; };
 
-      const revenir = h('button', { type: 'button', class: 'amgt-btn', title: 'Reprendre la sélection par défaut', text: '↺ Défaut' });
+      const revenir = boutonIcone('antihoraire', 'Revenir à la sélection par défaut');
       revenir.addEventListener('click', () => {
         store().resetToDefault();
         try { rafraichir(); } catch (err) { /* sélecteur fermé ou pas encore prêt */ }
@@ -137,8 +151,7 @@ const Couches = {
         zone.append(h('p', { text: 'Enregistrer la sélection en cours comme défaut de tous les utilisateurs connectés : code administrateur du relais.' }), champ, ok, non);
         champ.focus();
       };
-      const sauver = h('button', { type: 'button', class: 'amgt-btn amgt-btn--icon amgt-defaut-disquette', title: 'Enregistrer la sélection en cours comme défaut pour tous les utilisateurs connectés', 'aria-label': 'Enregistrer comme défaut pour tous' });
-      sauver.innerHTML = disquette;
+      const sauver = boutonIcone('disquette', 'Enregistrer la sélection en cours comme défaut pour tous les utilisateurs connectés', 'amgt-defaut-disquette');
       sauver.addEventListener('click', async () => {
         if (!this.admin()) return;
         if (!AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl) { dire('Adresse du relais non renseignée (Réglages > Avancé > Services et relais).', true); return; }
@@ -146,6 +159,8 @@ const Couches = {
         if (code) enregistrer(code); else demanderCode();
       });
       actions.prepend(revenir, sauver);
+      const fermer = ecran.querySelector('[id$="-picker-close"]');
+      if (fermer) { fermer.className = 'amgt-ic-btn'; fermer.innerHTML = ICONES.fermer; fermer.title = 'Fermer'; fermer.setAttribute('aria-label', 'Fermer'); }
       ecran.querySelector('.amgt-fs-picker-header').after(zone);
     }
   },
@@ -169,15 +184,18 @@ const Couches = {
   _construireAffichage() {
     // Pied du bandeau, même formalisme que les sélecteurs plein écran : à gauche « ↺ Défaut » et, avec le droit
     // `utilisateurs`, la disquette (défaut pour tous) ; à droite « Réinitialiser la vue ».
-    const revenir = h('button', { type: 'button', class: 'amgt-btn', title: 'Reprendre l\'affichage par défaut', text: '↺ Défaut' });
+    const revenir = boutonIcone('antihoraire', 'Revenir à l\'affichage par défaut');
     revenir.addEventListener('click', () => this.revenirAuDefaut());
-    const disquette = h('button', { type: 'button', class: 'amgt-btn amgt-btn--icon amgt-defaut-disquette', title: 'Enregistrer l\'affichage actuel comme défaut pour tous', 'aria-label': 'Enregistrer comme défaut pour tous' });
-    disquette.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/></svg>';
+    const disquette = boutonIcone('disquette', 'Enregistrer l\'affichage actuel comme défaut pour tous', 'amgt-defaut-disquette');
     disquette.addEventListener('click', () => { if (this.admin()) this._ouvrirDefautPourTous(); });
 
     this._dit = h('p', { class: 'amgt-couches__msg', role: 'status', hidden: '' });
     this._admin = h('div', { class: 'amgt-couches__admin' });
     const reinit = document.getElementById('amgt-reset-view-btn');
+    reinit.className = 'amgt-ic-btn';
+    reinit.innerHTML = ICONES.horaire;
+    reinit.title = 'Réinitialiser la vue';
+    reinit.setAttribute('aria-label', 'Réinitialiser la vue');
     const rangee = h('div', { class: 'amgt-couches-pied' }, h('div', { class: 'amgt-couches-pied__gauche' }, revenir, disquette), reinit);
     const bloc = h('div', { class: 'amgt-couches' }, rangee, this._dit, this._admin);
 

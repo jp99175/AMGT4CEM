@@ -104,8 +104,8 @@ html[data-page="carto"] #amgt-ortho-picker-save-default,
 html[data-page="carto"] #amgt-nappe-picker-save-default,
 html[data-page="carto"] #amgt-patrimoine-picker-save-default,
 html[data-page="carto"] .amgt-default-bar { display: none !important; }
-.amgt-defaut-disquette { display: none; align-items: center; justify-content: center; }
-html.amgt-admin .amgt-defaut-disquette { display: inline-flex; }
+.amgt-ic-btn.amgt-defaut-disquette { display: none; }
+html.amgt-admin .amgt-ic-btn.amgt-defaut-disquette { display: inline-flex; }
 .amgt-defaut-zone { margin: 8px 0 0; padding: 10px 12px; background: #e3f2e8; color: #1e6b3a; border-radius: 6px; font-size: 14px; }
 .amgt-defaut-zone--erreur { background: #fde2e2; color: #9b1c1c; }
 .amgt-defaut-zone p { margin: 0 0 8px; color: #333; }
@@ -116,3 +116,10 @@ html.amgt-admin .amgt-defaut-disquette { display: inline-flex; }
 .amgt-couches-pied { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .amgt-couches-pied__gauche { display: flex; align-items: center; gap: 8px; }
 .amgt-couches-pied #amgt-reset-view-btn { margin-top: 0; }
+
+/* Boutons réduits à leur icône : sans cadre ni fond, même trait fin et même taille */
+.amgt-ic-btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px; margin: 0; background: none; border: none; border-radius: 6px; color: #333; cursor: pointer; text-decoration: none; }
+.amgt-ic-btn:hover { background: #f0f2f4; }
+.amgt-ic-btn svg { display: block; }
+.amgt-couches-pied { gap: 4px; }
+.amgt-couches-pied__gauche { gap: 4px; }
