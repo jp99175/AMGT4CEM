@@ -1108,7 +1108,7 @@ Réglages (`src/nav/`), en bas sur téléphone, en haut sur grand écran ; Saisi
 
 | Adresse | Contenu |
 |---|---|
-| `home.html?page=carto` | la carte, avec la barre de navigation ; menu « Couches » adapté par `src/nav/couches.js` (sans ⚙, compte ni disquette ; Géotechnique et sondage virtuel absents pour un visiteur ; « Mon affichage » avec « Revenir au défaut » ; « Défaut pour tous » pour le droit `utilisateurs` ; sélecteurs plein écran sans 💾, avec « ↺ Défaut » et, pour un administrateur, « Modifier le défaut pour tous » et bandeau jaune) |
+| `home.html?page=carto` | la carte, avec la barre de navigation ; menu « Couches » adapté par `src/nav/couches.js` (sans ⚙, compte ni disquette ; Géotechnique et sondage virtuel absents pour un visiteur ; « Mon affichage » avec « Revenir au défaut » ; « Défaut pour tous » pour le droit `utilisateurs` ; sélecteurs plein écran sans 💾 : « ↺ Défaut » et, pour le droit `utilisateurs`, une disquette qui enregistre la sélection en cours comme défaut de tous les connectés) |
 | `home.html?page=signal` | SIG4CEM, avec la barre et l'icône de compte en haut à droite |
 | `home.html?page=reglages` | réglages regroupés en blocs selon les droits (`src/reglages/`) : Mon appareil (compte, durée d'affichage des mesures, version), Utilisateurs (page d'administration actuelle chargée à la demande dans un sous-écran), Avancé > Services et relais (`serveur.js`) |
 

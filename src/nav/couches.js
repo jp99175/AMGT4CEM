@@ -85,44 +85,68 @@ const Couches = {
 
   /**
    * Sélecteurs plein écran (UrbIS Topo, Plans patrimoine, Orthophotos, Géotechnique) :
-   *   - plus de 💾 (masqué par couches.css) : la sélection est gardée toute seule sur l'appareil ;
-   *   - « ↺ Revenir au défaut » : la sélection par défaut partagée s'applique de nouveau ;
-   *   - barre d'administration (pickerDefaultBar.js) : « Modifier le défaut pour tous », réservée au droit
-   *     `utilisateurs`, avec un bandeau jaune pendant la modification (la carte et la sélection ne changent pas).
-   * Les fichiers des sélecteurs ne sont pas modifiés : leurs textes passent par attach(), remplacé ici avant leur création.
+   *   - la sélection est gardée toute seule sur l'appareil (plus de 💾 ni de barre 🔒, masqués par couches.css) ;
+   *   - « ↺ Défaut » : la sélection par défaut partagée s'applique de nouveau ;
+   *   - à droite, une disquette réservée au droit `utilisateurs` : la sélection EN COURS devient le défaut de tous les
+   *     utilisateurs connectés (écriture par le relais, code administrateur gardé le temps de l'onglet).
+   * Les fichiers des sélecteurs ne sont pas modifiés.
    */
   _selecteurs() {
-    const original = AMGT4CEM_PickerDefaultBar.attach.bind(AMGT4CEM_PickerDefaultBar);
-    AMGT4CEM_PickerDefaultBar.attach = (conteneur, hooks) => original(conteneur, {
-      ...hooks,
-      labels: {
-        idle: 'Modifier le défaut pour tous',
-        save: 'Enregistrer le défaut pour tous',
-        done: '✓ Défaut enregistré pour tous (visible après le redéploiement du site, environ 1 minute).',
-        editing: 'Vous modifiez le défaut de TOUS les utilisateurs : la carte et votre sélection ne changent pas tant que vous n’enregistrez pas.',
-      },
-    });
-
+    const disquette = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/></svg>';
     const liste = [
-      { id: 'amgt-topo-picker', store: () => AMGT4CEM_UrbisTopoSelectionStore, rafraichir: () => { AMGT4CEM_UrbisTopoPicker._zoomControl && AMGT4CEM_UrbisTopoPicker._zoomControl.refresh(); AMGT4CEM_UrbisTopoPicker._render(); } },
-      { id: 'amgt-patrimoine-picker', store: () => AMGT4CEM_PatrimoineSelectionStore, rafraichir: () => AMGT4CEM_PatrimoinePicker._render() },
-      { id: 'amgt-ortho-picker', store: () => AMGT4CEM_OrthoSelectionStore, rafraichir: () => AMGT4CEM_OrthoPicker._render() },
-      { id: 'amgt-nappe-picker', store: () => AMGT4CEM_NappeSelectionStore, rafraichir: () => AMGT4CEM_NappeLayer._renderPicker() },
+      { id: 'amgt-topo-picker', nom: 'UrbIS Topo', store: () => AMGT4CEM_UrbisTopoSelectionStore, rafraichir: () => { AMGT4CEM_UrbisTopoPicker._zoomControl && AMGT4CEM_UrbisTopoPicker._zoomControl.refresh(); AMGT4CEM_UrbisTopoPicker._render(); } },
+      { id: 'amgt-patrimoine-picker', nom: 'Plans patrimoine', store: () => AMGT4CEM_PatrimoineSelectionStore, rafraichir: () => AMGT4CEM_PatrimoinePicker._render() },
+      { id: 'amgt-ortho-picker', nom: 'Orthophotos', store: () => AMGT4CEM_OrthoSelectionStore, rafraichir: () => AMGT4CEM_OrthoPicker._render() },
+      { id: 'amgt-nappe-picker', nom: 'Géotechnique', store: () => AMGT4CEM_NappeSelectionStore, rafraichir: () => AMGT4CEM_NappeLayer._renderPicker() },
     ];
-    for (const { id, store, rafraichir } of liste) {
+    for (const { id, nom, store, rafraichir } of liste) {
       const ecran = document.getElementById(id);
       if (!ecran) continue;
       const actions = ecran.querySelector('.amgt-fs-picker-header-actions');
+      const zone = h('div', { class: 'amgt-defaut-zone', role: 'status', hidden: '' });
+      const dire = (texte, erreur) => { zone.textContent = texte || ''; zone.hidden = !texte; zone.className = `amgt-defaut-zone${erreur ? ' amgt-defaut-zone--erreur' : ''}`; };
+
       const revenir = h('button', { type: 'button', class: 'amgt-btn', title: 'Reprendre la sélection par défaut', text: '↺ Défaut' });
       revenir.addEventListener('click', () => {
         store().resetToDefault();
         try { rafraichir(); } catch (err) { /* sélecteur fermé ou pas encore prêt */ }
+        dire('');
       });
-      actions.prepend(revenir);
 
-      // Bandeau jaune en haut de l'écran pendant la modification du défaut pour tous.
-      const banniere = h('div', { class: 'amgt-defaut-banniere', role: 'status', text: 'Vous modifiez le défaut de TOUS les utilisateurs : la carte et votre sélection ne changent pas tant que vous n’enregistrez pas.' });
-      ecran.querySelector('.amgt-fs-picker-header').after(banniere);
+      const enregistrer = async (code) => {
+        dire('Enregistrement…');
+        try {
+          await AMGT4CEM_PeLabelAnchors.checkConnection(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, code);
+          AMGT4CEM_PeLabelAnchors.setAdminCode(code);
+          await store().saveShared(store().getSelection(), code, store().getExtra());
+          dire(`✓ Sélection « ${nom} » enregistrée par défaut pour tous les utilisateurs connectés (visible après le redéploiement du site, environ 1 minute).`);
+        } catch (err) {
+          AMGT4CEM_PeLabelAnchors.setAdminCode('');
+          dire(err.message, true);
+        }
+      };
+      const demanderCode = () => {
+        zone.className = 'amgt-defaut-zone'; zone.hidden = false; zone.textContent = '';
+        const champ = h('input', { type: 'password', placeholder: 'Code administrateur du relais', autocomplete: 'off', class: 'amgt-defaut-zone__code' });
+        const ok = h('button', { type: 'button', class: 'amgt-btn amgt-btn--primary', text: 'Valider' });
+        const non = h('button', { type: 'button', class: 'amgt-btn', text: 'Annuler' });
+        const valider = () => (champ.value.trim() ? enregistrer(champ.value.trim()) : dire('Saisir le code administrateur.', true));
+        ok.addEventListener('click', valider);
+        champ.addEventListener('keydown', (e) => { if (e.key === 'Enter') valider(); });
+        non.addEventListener('click', () => dire(''));
+        zone.append(h('p', { text: 'Enregistrer la sélection en cours comme défaut de tous les utilisateurs connectés : code administrateur du relais.' }), champ, ok, non);
+        champ.focus();
+      };
+      const sauver = h('button', { type: 'button', class: 'amgt-btn amgt-btn--icon amgt-defaut-disquette', title: 'Enregistrer la sélection en cours comme défaut pour tous les utilisateurs connectés', 'aria-label': 'Enregistrer comme défaut pour tous' });
+      sauver.innerHTML = disquette;
+      sauver.addEventListener('click', async () => {
+        if (!this.admin()) return;
+        if (!AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl) { dire('Adresse du relais non renseignée (Réglages > Avancé > Services et relais).', true); return; }
+        const code = AMGT4CEM_PeLabelAnchors.getAdminCode();
+        if (code) enregistrer(code); else demanderCode();
+      });
+      actions.prepend(revenir, sauver);
+      ecran.querySelector('.amgt-fs-picker-header').after(zone);
     }
   },
 

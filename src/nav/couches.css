@@ -98,12 +98,16 @@ html[data-page="carto"] #amgt-menu-prefs-code { display: none !important; }
 .amgt-couches__code { width: 100%; box-sizing: border-box; margin: 6px 0; padding: 7px 8px; font-size: 14px; }
 .amgt-couches__actions { display: flex; gap: 8px; margin-top: 8px; }
 
-/* Sélecteurs plein écran : plus de 💾 ; barre d'administration seulement pour un administrateur ; bandeau jaune pendant la modification du défaut. */
+/* Sélecteurs plein écran : plus de 💾 ni de barre d'administration 🔒 ; « ↺ Défaut » et, pour le droit utilisateurs, une disquette. */
 html[data-page="carto"] #amgt-topo-picker-save-default,
 html[data-page="carto"] #amgt-ortho-picker-save-default,
 html[data-page="carto"] #amgt-nappe-picker-save-default,
-html[data-page="carto"] #amgt-patrimoine-picker-save-default { display: none !important; }
-html[data-page="carto"]:not(.amgt-admin) .amgt-default-bar { display: none; }
-.amgt-defaut-banniere { display: none; margin: 0; padding: 10px 14px; background: #fff3cd; color: #664d03; border-bottom: 1px solid #e6c963; font-size: 14px; }
-.amgt-fs-picker--editing-default .amgt-defaut-banniere { display: block; }
-.amgt-fs-picker--editing-default .amgt-default-bar-status:not(.amgt-default-bar-error) { display: none; } /* le bandeau jaune du haut dit déjà la même chose */
+html[data-page="carto"] #amgt-patrimoine-picker-save-default,
+html[data-page="carto"] .amgt-default-bar { display: none !important; }
+.amgt-defaut-disquette { display: none; align-items: center; justify-content: center; }
+html.amgt-admin .amgt-defaut-disquette { display: inline-flex; }
+.amgt-defaut-zone { margin: 8px 0 0; padding: 10px 12px; background: #e3f2e8; color: #1e6b3a; border-radius: 6px; font-size: 14px; }
+.amgt-defaut-zone--erreur { background: #fde2e2; color: #9b1c1c; }
+.amgt-defaut-zone p { margin: 0 0 8px; color: #333; }
+.amgt-defaut-zone .amgt-btn { margin: 6px 6px 0 0; }
+.amgt-defaut-zone__code { width: 100%; box-sizing: border-box; padding: 8px; font-size: 15px; }
