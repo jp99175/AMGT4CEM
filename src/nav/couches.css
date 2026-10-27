@@ -97,3 +97,13 @@ html[data-page="carto"] #amgt-menu-prefs-code { display: none !important; }
 .amgt-couches__msg--erreur { color: #b3261e; }
 .amgt-couches__code { width: 100%; box-sizing: border-box; margin: 6px 0; padding: 7px 8px; font-size: 14px; }
 .amgt-couches__actions { display: flex; gap: 8px; margin-top: 8px; }
+
+/* Sélecteurs plein écran : plus de 💾 ; barre d'administration seulement pour un administrateur ; bandeau jaune pendant la modification du défaut. */
+html[data-page="carto"] #amgt-topo-picker-save-default,
+html[data-page="carto"] #amgt-ortho-picker-save-default,
+html[data-page="carto"] #amgt-nappe-picker-save-default,
+html[data-page="carto"] #amgt-patrimoine-picker-save-default { display: none !important; }
+html[data-page="carto"]:not(.amgt-admin) .amgt-default-bar { display: none; }
+.amgt-defaut-banniere { display: none; margin: 0; padding: 10px 14px; background: #fff3cd; color: #664d03; border-bottom: 1px solid #e6c963; font-size: 14px; }
+.amgt-fs-picker--editing-default .amgt-defaut-banniere { display: block; }
+.amgt-fs-picker--editing-default .amgt-default-bar-status:not(.amgt-default-bar-error) { display: none; } /* le bandeau jaune du haut dit déjà la même chose */

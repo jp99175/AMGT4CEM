@@ -125,6 +125,17 @@ function createSelectionStore({ key, preferencesKey, sharedUrl, sharedRoute, pal
       localStorage.setItem(preferencesKey + '.extra', JSON.stringify(this.getExtra()));
     },
 
+    /**
+     * Revient au défaut : efface la sélection de l'appareil, les préférences locales et leurs réglages annexes ; la
+     * sélection par défaut partagée s'applique de nouveau (nouvelle interface, « Revenir au défaut »).
+     */
+    resetToDefault() {
+      for (const k of [key, key + '.extra', preferencesKey, preferencesKey + '.extra']) {
+        try { localStorage.removeItem(k); } catch (err) { /* stockage indisponible */ }
+      }
+      this._listeners.forEach((fn) => fn(this.getSelection()));
+    },
+
     _save(selection) {
       localStorage.setItem(key, JSON.stringify(selection));
       this._listeners.forEach((fn) => fn(selection));

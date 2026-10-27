@@ -38,6 +38,7 @@ const Couches = {
     bouton.title = 'Couches';
     bouton.setAttribute('aria-label', 'Couches');
     this._bandeau(bouton);
+    this._selecteurs();
 
     this._initial = AMGT4CEM_MenuPrefs.capture();
     this._construireAffichage();
@@ -48,8 +49,9 @@ const Couches = {
     AMGT4CEM_MenuPrefs.applyStartup = () => { demarrage(); this.appliquerAcces(); };
 
     this.appliquerAcces();
-    AMGT4CEM_Auth.onChange(() => { this.appliquerAcces(); this._majAdmin(); });
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) { this.appliquerAcces(); this._majAdmin(); } });
+    AMGT4CEM_Auth.onChange(() => { this.appliquerAcces(); this._majAdmin(); this._classeAdmin(); });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { this.appliquerAcces(); this._majAdmin(); this._classeAdmin(); } });
+    this._classeAdmin();
   },
 
   // ---------------------------------------------------------------- bandeau latéral
@@ -75,6 +77,53 @@ const Couches = {
     };
     new MutationObserver(maj).observe(panneau, { attributes: true, attributeFilter: ['class'] });
     maj();
+  },
+
+  // ---------------------------------------------------------------- sélecteurs plein écran
+  /** `amgt-admin` sur <html> : seuls les administrateurs voient « Modifier le défaut pour tous » dans les sélecteurs. */
+  _classeAdmin() { document.documentElement.classList.toggle('amgt-admin', this.admin()); },
+
+  /**
+   * Sélecteurs plein écran (UrbIS Topo, Plans patrimoine, Orthophotos, Géotechnique) :
+   *   - plus de 💾 (masqué par couches.css) : la sélection est gardée toute seule sur l'appareil ;
+   *   - « ↺ Revenir au défaut » : la sélection par défaut partagée s'applique de nouveau ;
+   *   - barre d'administration (pickerDefaultBar.js) : « Modifier le défaut pour tous », réservée au droit
+   *     `utilisateurs`, avec un bandeau jaune pendant la modification (la carte et la sélection ne changent pas).
+   * Les fichiers des sélecteurs ne sont pas modifiés : leurs textes passent par attach(), remplacé ici avant leur création.
+   */
+  _selecteurs() {
+    const original = AMGT4CEM_PickerDefaultBar.attach.bind(AMGT4CEM_PickerDefaultBar);
+    AMGT4CEM_PickerDefaultBar.attach = (conteneur, hooks) => original(conteneur, {
+      ...hooks,
+      labels: {
+        idle: 'Modifier le défaut pour tous',
+        save: 'Enregistrer le défaut pour tous',
+        done: '✓ Défaut enregistré pour tous (visible après le redéploiement du site, environ 1 minute).',
+        editing: 'Vous modifiez le défaut de TOUS les utilisateurs : la carte et votre sélection ne changent pas tant que vous n’enregistrez pas.',
+      },
+    });
+
+    const liste = [
+      { id: 'amgt-topo-picker', store: () => AMGT4CEM_UrbisTopoSelectionStore, rafraichir: () => { AMGT4CEM_UrbisTopoPicker._zoomControl && AMGT4CEM_UrbisTopoPicker._zoomControl.refresh(); AMGT4CEM_UrbisTopoPicker._render(); } },
+      { id: 'amgt-patrimoine-picker', store: () => AMGT4CEM_PatrimoineSelectionStore, rafraichir: () => AMGT4CEM_PatrimoinePicker._render() },
+      { id: 'amgt-ortho-picker', store: () => AMGT4CEM_OrthoSelectionStore, rafraichir: () => AMGT4CEM_OrthoPicker._render() },
+      { id: 'amgt-nappe-picker', store: () => AMGT4CEM_NappeSelectionStore, rafraichir: () => AMGT4CEM_NappeLayer._renderPicker() },
+    ];
+    for (const { id, store, rafraichir } of liste) {
+      const ecran = document.getElementById(id);
+      if (!ecran) continue;
+      const actions = ecran.querySelector('.amgt-fs-picker-header-actions');
+      const revenir = h('button', { type: 'button', class: 'amgt-btn', title: 'Reprendre la sélection par défaut', text: '↺ Défaut' });
+      revenir.addEventListener('click', () => {
+        store().resetToDefault();
+        try { rafraichir(); } catch (err) { /* sélecteur fermé ou pas encore prêt */ }
+      });
+      actions.prepend(revenir);
+
+      // Bandeau jaune en haut de l'écran pendant la modification du défaut pour tous.
+      const banniere = h('div', { class: 'amgt-defaut-banniere', role: 'status', text: 'Vous modifiez le défaut de TOUS les utilisateurs : la carte et votre sélection ne changent pas tant que vous n’enregistrez pas.' });
+      ecran.querySelector('.amgt-fs-picker-header').after(banniere);
+    }
   },
 
   // ---------------------------------------------------------------- accès visiteur
