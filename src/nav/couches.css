@@ -15,7 +15,7 @@ html[data-page="carto"] #amgt-map-menu {
   box-sizing: border-box;
   width: var(--couches-l);
   max-height: none;
-  padding: 62px 16px 16px; /* 62 px : sous le bouton ☰ */
+  padding: 16px 16px 16px;
   border-radius: 0;
   overflow-y: auto;
   visibility: visible;
@@ -27,7 +27,7 @@ html[data-page="carto"] #amgt-map-menu.amgt-hidden {
   left: calc(-1 * var(--couches-l) - 24px);
 }
 @media (min-width: 900px) {
-  html[data-page="carto"] #amgt-map-menu { top: var(--amgt-nav-h); bottom: 0; padding-top: 16px; }
+  html[data-page="carto"] #amgt-map-menu { top: var(--amgt-nav-h); bottom: 0; }
 }
 .amgt-couches-titre { margin: 0 0 10px; font-size: 18px; }
 
@@ -47,7 +47,40 @@ html[data-page="carto"] #amgt-map-menu.amgt-hidden {
 .amgt-couches-voile--on { opacity: 0.4; visibility: visible; }
 @media (min-width: 900px) { .amgt-couches-voile { top: var(--amgt-nav-h); bottom: 0; } }
 
-html[data-page="carto"] #amgt-menu-btn { font-size: 22px; line-height: 1; padding: 8px 13px; }
+/* Barre d'outils : le bouton des couches passe DERRIÈRE le bandeau (z-index sous celui du bandeau, la barre n'étant
+   plus un bloc d'empilement) ; « Ajouter un point » glisse à droite du bandeau, au même rythme. */
+html[data-page="carto"] #amgt-toolbar { z-index: auto; }
+html[data-page="carto"] #amgt-menu-btn { position: relative; z-index: 997; width: 46px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; }
+html[data-page="carto"] #amgt-menu-btn svg { display: block; pointer-events: none; } /* le clic doit viser le bouton lui-même (mapMenu.js compare la cible) */
+html[data-page="carto"] #amgt-add-point-btn { position: relative; z-index: 1000; transition: transform 0.3s; }
+html.amgt-couches-ouvert[data-page="carto"] #amgt-add-point-btn { transform: translateX(calc(var(--couches-l) - 54px)); }
+/* Écran étroit : pas la place à droite du bandeau (les boutons de recherche et de mesure y sont déjà) ; le bouton s'efface. */
+@media (max-width: 599px) {
+  html[data-page="carto"] #amgt-add-point-btn { transition: transform 0.3s, opacity 0.3s, visibility 0.3s; }
+  html.amgt-couches-ouvert[data-page="carto"] #amgt-add-point-btn { opacity: 0; visibility: hidden; }
+}
+
+/* Bouton de fermeture, en haut à droite du bandeau */
+.amgt-couches-fermer {
+  position: fixed;
+  top: 8px;
+  left: calc(-1 * var(--couches-l) - 24px);
+  z-index: 1001;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #111;
+  cursor: pointer;
+  visibility: hidden;
+  transition: left 0.3s, visibility 0.3s;
+}
+.amgt-couches-fermer--on { left: calc(var(--couches-l) - 52px); visibility: visible; }
+@media (min-width: 900px) { .amgt-couches-fermer { top: calc(var(--amgt-nav-h) + 8px); } }
 
 /* Le compte est dans la barre de navigation, les réglages dans la page Réglages, le défaut dans « Mon affichage ». */
 html[data-page="carto"] #amgt-settings-btn,

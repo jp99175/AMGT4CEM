@@ -34,7 +34,7 @@ const Couches = {
   init() {
     const bouton = document.getElementById('amgt-menu-btn');
     if (!bouton) return;
-    bouton.textContent = '☰';
+    bouton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"> <path d="M24 6 42 16 24 26 6 16Z"/> <path d="M6 24 24 34 42 24"/> <path d="M6 32 24 42 42 32"/> </svg>';
     bouton.title = 'Couches';
     bouton.setAttribute('aria-label', 'Couches');
     this._bandeau(bouton);
@@ -58,10 +58,16 @@ const Couches = {
     const panneau = document.getElementById('amgt-map-menu');
     panneau.prepend(h('h2', { class: 'amgt-couches-titre', text: 'Couches' }));
     const voile = h('div', { class: 'amgt-couches-voile' });
-    document.body.append(voile);
+    // Fermeture du bandeau, en haut à droite de celui-ci : même effet qu'un clic à côté.
+    const fermer = h('button', { type: 'button', class: 'amgt-couches-fermer', title: 'Fermer', 'aria-label': 'Fermer le menu' });
+    fermer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"> <rect x="6" y="6" width="36" height="36" rx="9"/> <path d="M15 15v18"/> <path d="M29 16 21 24l8 8"/> </svg>';
+    fermer.addEventListener('click', (e) => { e.stopPropagation(); panneau.classList.add('amgt-hidden'); });
+    document.body.append(voile, fermer);
     const maj = () => {
       const ouvert = !panneau.classList.contains('amgt-hidden');
       voile.classList.toggle('amgt-couches-voile--on', ouvert);
+      fermer.classList.toggle('amgt-couches-fermer--on', ouvert);
+      document.documentElement.classList.toggle('amgt-couches-ouvert', ouvert);
       bouton.setAttribute('aria-expanded', String(ouvert));
     };
     new MutationObserver(maj).observe(panneau, { attributes: true, attributeFilter: ['class'] });
