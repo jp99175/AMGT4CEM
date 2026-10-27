@@ -944,7 +944,7 @@ du réseau.
 ```
 home.html, style.css         page unique : gabarits des deux interfaces (carto, signal) ; index.html : simple renvoi vers home.html
 src/router.js                routeur : lit ?app= (interfaces actuelles, liste `apps`) ou ?page= (nouvelle interface, liste `pages`), copie le gabarit choisi, charge ses scripts dans l'ordre
-src/nav/                     barre de navigation Carte · Saisie · Réglages et icône de compte (pages ?page= seulement)
+src/nav/                     barre de navigation Carte · Saisie · Réglages, icône de compte, menu Couches (couches.js) (pages ?page= seulement)
 src/reglages/                page Réglages (?page=reglages) : blocs déclarés par AMGT4CEM_Reglages.register, affichés selon le droit ; serveur.js : services et relais
 src/signal/                  interface de saisie SIG4CEM (home.html?app=signal), séparée de la carte, avec sa propre carte de choix du point
 src/auth/                    identification commune (session, écran de connexion / première connexion) ; src/admin/ : page ?app=admin
@@ -1108,7 +1108,7 @@ Réglages (`src/nav/`), en bas sur téléphone, en haut sur grand écran ; Saisi
 
 | Adresse | Contenu |
 |---|---|
-| `home.html?page=carto` | la carte, avec la barre de navigation |
+| `home.html?page=carto` | la carte, avec la barre de navigation ; menu « Couches » adapté par `src/nav/couches.js` (sans ⚙, compte ni disquette ; Géotechnique et sondage virtuel absents pour un visiteur ; « Mon affichage » avec « Revenir au défaut » ; « Défaut pour tous » pour le droit `utilisateurs`) |
 | `home.html?page=signal` | SIG4CEM, avec la barre et l'icône de compte en haut à droite |
 | `home.html?page=reglages` | réglages regroupés en blocs selon les droits (`src/reglages/`) : Mon appareil (compte, durée d'affichage des mesures, version), Utilisateurs (page d'administration actuelle chargée à la demande dans un sous-écran), Avancé > Services et relais (`serveur.js`) |
 

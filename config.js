@@ -282,7 +282,11 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
     scripts: [...app.scripts, ...NAV_SCRIPTS],
   });
   return {
-    carto: avecNav(apps.carto),
+    // Carte : menu « Couches » adapté (src/nav/couches.js, chargé après la barre de navigation).
+    carto: (() => {
+      const p = avecNav(apps.carto);
+      return { ...p, styles: [...p.styles, './src/nav/couches.css'], scripts: [...p.scripts, './src/nav/couches.js'] };
+    })(),
     signal: avecNav(apps.signal),
     reglages: {
       title: 'AMGT4CEM – Réglages',
