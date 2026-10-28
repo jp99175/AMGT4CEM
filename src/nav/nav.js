@@ -34,7 +34,7 @@ const AMGT4CEM_Nav = {
       const a = document.createElement('a');
       a.className = 'amgt-nav__tab';
       a.href = AMGT4CEM_Router.url(o.id);
-      a.innerHTML = `<svg class="amgt-nav__ic" viewBox="0 0 24 24" aria-hidden="true">${o.icone}</svg><span>${o.libelle}</span>`;
+      a.innerHTML = `<svg class="amgt-nav__ic" viewBox="3 3 18 18" aria-hidden="true">${o.icone}</svg><span>${o.libelle}</span>`;
       if (o.id === courant) a.setAttribute('aria-current', 'page');
       a.addEventListener('click', (e) => this._onTab(e, o, a.href));
       nav.append(a);

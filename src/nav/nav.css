@@ -27,7 +27,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
   color: #52606d;
   font-size: 12px;
   text-decoration: none;
@@ -35,17 +35,20 @@
 }
 
 .amgt-nav__ic {
-  width: 24px;
-  height: 24px;
+  /* Même dimension et même trait que les dessins des boutons ronds de la carte (33 px de dessin, trait fin de 0,8 px),
+     même couleur #0b5c75. Le dessin occupe tout le cadre (viewBox rogné à 18 unités : 33 px / 18 = 1,83 px par unité). */
+  width: 33px;
+  height: 33px;
+  color: #0b5c75;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.7;
+  stroke-width: 0.44;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .amgt-nav__tab[aria-current="page"] {
-  color: #1f5f99;
+  color: #0b5c75;
   font-weight: 600;
 }
 
@@ -80,7 +83,7 @@ html.amgt-has-nav[data-app="reglages"] body { height: auto; min-height: 100%; bo
     padding: 0 20px;
     font-size: 14px;
   }
-  .amgt-nav__tab[aria-current="page"] { box-shadow: inset 0 -3px 0 #1f5f99; }
+  .amgt-nav__tab[aria-current="page"] { box-shadow: inset 0 -3px 0 #0b5c75; }
   html.amgt-has-nav[data-app="carto"] body { margin-top: var(--amgt-nav-h); }
   html.amgt-has-nav:not([data-app="carto"]) body {
     padding-bottom: 0;
