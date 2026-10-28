@@ -149,3 +149,27 @@ html.amgt-has-nav #sig4cem-root { position: relative; }
   right: 16px;
 }
 #sig4cem-root:has(> .sig4cem-screen--menu.sig4cem-hidden) > .amgt-nav-account--signal { display: none; }
+
+/* Fenêtre d'un signalement ou d'une demande (carte) : la croix « × » de Leaflet devient l'icône « fermer » (carré arrondi
+   et croix, 23 px, trait de 0,8 px, bleu des boutons). Nouvelles interfaces seulement (la barre de navigation y est). */
+html.amgt-has-nav .leaflet-container .amgt-sig-popup-wrap a.leaflet-popup-close-button {
+  top: 2px;
+  right: 2px;
+  width: 28px;
+  height: 28px;
+  font-size: 0;
+  color: #0b5c75;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+html.amgt-has-nav .leaflet-container .amgt-sig-popup-wrap a.leaflet-popup-close-button::before {
+  content: '';
+  display: block;
+  width: 23px;
+  height: 23px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='0.835' stroke-linecap='round' stroke-linejoin='round'><rect x='4' y='4' width='16' height='16' rx='3'/><path d='M9 9l6 6M15 9l-6 6'/></svg>") center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='0.835' stroke-linecap='round' stroke-linejoin='round'><rect x='4' y='4' width='16' height='16' rx='3'/><path d='M9 9l6 6M15 9l-6 6'/></svg>") center / 100% 100% no-repeat;
+}
+html.amgt-has-nav .leaflet-container .amgt-sig-popup-wrap a.leaflet-popup-close-button:hover { background: #e8f2f6; border-radius: 6px; }

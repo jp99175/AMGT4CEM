@@ -194,7 +194,7 @@ const AMGT4CEM_SignalementsLayer = {
       iconAnchor: [8, 8],
     });
     const marker = L.marker(AMGT4CEM_CRS.lambertToLatLng([s.x, s.y]), { icon: small, opacity: this._opacityFactor });
-    marker.bindPopup(this._popup(s, vocab));
+    marker.bindPopup(this._popup(s, vocab), { className: 'amgt-sig-popup-wrap' });
     marker.addTo(this._group);
     if (amiante) {
       const picto = L.divIcon({
