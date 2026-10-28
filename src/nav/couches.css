@@ -123,3 +123,34 @@ html.amgt-admin .amgt-ic-btn.amgt-defaut-disquette { display: inline-flex; }
 .amgt-ic-btn svg { display: block; }
 .amgt-couches-pied { gap: 4px; }
 .amgt-couches-pied__gauche { gap: 4px; }
+
+/* « Ajouter un point » : bouton rond de 55 px, même dessin fin que les boutons de mesure (cercle compris dans le dessin).
+   Le dessin est un masque (ajouter-point.png) coloré par la couleur du texte : bleu au repos, blanc quand l'outil est actif. */
+html[data-page="carto"] #amgt-add-point-btn {
+  box-sizing: border-box;
+  width: 55px;
+  height: 55px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: #0b5c75;
+  font-size: 0; /* le texte du bouton (ex. « Ajouter un élément » en mode édition) ne s'affiche pas */
+  line-height: 0;
+  align-items: center;
+  justify-content: center;
+}
+html[data-page="carto"] #amgt-add-point-btn:not(.amgt-hidden) { display: flex; }
+html[data-page="carto"] #amgt-add-point-btn::before {
+  content: '';
+  display: block;
+  width: 55px;
+  height: 55px;
+  background: currentColor;
+  -webkit-mask: url('./ajouter-point.png') center / contain no-repeat;
+  mask: url('./ajouter-point.png') center / contain no-repeat;
+  pointer-events: none;
+}
+html[data-page="carto"] #amgt-add-point-btn:hover { background: #e8f2f6; }
+html[data-page="carto"] #amgt-add-point-btn.amgt-btn--active,
+html[data-page="carto"] #amgt-add-point-btn.amgt-btn--active:hover { background: #0b5c75; color: #fff; }
