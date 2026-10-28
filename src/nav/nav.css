@@ -37,12 +37,20 @@
 .amgt-nav__ic {
   /* Dessin de 23 px de haut (largeur selon le dessin), trait fin de 0,8 px (épaisseur réglée dans nav.js), même couleur
      #0b5c75 que les boutons ronds de la carte et que le texte de l'onglet. */
-  height: 23px;
+  height: 24px;
   color: #0b5c75;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.amgt-nav__ic--img {
+  display: block;
+  background: currentColor;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
 }
 
 .amgt-nav__tab[aria-current="page"] {
