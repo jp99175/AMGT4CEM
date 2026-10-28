@@ -80,7 +80,7 @@ const Couches = {
     const voile = h('div', { class: 'amgt-couches-voile' });
     // Fermeture du bandeau, en haut à droite de celui-ci : même effet qu'un clic à côté.
     const fermer = h('button', { type: 'button', class: 'amgt-couches-fermer', title: 'Fermer', 'aria-label': 'Fermer le menu' });
-    fermer.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"> <rect x="6" y="6" width="36" height="36" rx="9"/> <path d="M15 15v18"/> <path d="M29 16 21 24l8 8"/> </svg>';
+    fermer.innerHTML = '<span class="amgt-couches-fermer__ic" aria-hidden="true"></span>';
     fermer.addEventListener('click', (e) => { e.stopPropagation(); panneau.classList.add('amgt-hidden'); });
     document.body.append(voile, fermer);
     const maj = () => {

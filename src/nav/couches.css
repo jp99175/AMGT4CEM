@@ -179,3 +179,34 @@ html[data-page="carto"] #amgt-menu-btn::before {
   pointer-events: none;
 }
 html[data-page="carto"] #amgt-menu-btn:hover { background: #e8f2f6; }
+
+/* Fermeture du bandeau : dessin de 23 px, trait de 0,8 px (masque icone-fermer-bandeau.png), bleu des boutons. */
+.amgt-couches-fermer { color: #0b5c75; }
+.amgt-couches-fermer__ic {
+  display: block;
+  width: 24px;
+  height: 24px;
+  background: currentColor;
+  -webkit-mask: url('./icone-fermer-bandeau.png') center / 100% 100% no-repeat;
+  mask: url('./icone-fermer-bandeau.png') center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+
+/* Curseurs (opacité des couches, réglages des orthophotos) : dessin de 23 px, trait de 0,8 px, points creux, bleu.
+   Page Carte seulement ; les anciennes interfaces gardent leur dessin. */
+html[data-page="carto"] .amgt-opacity-toggle-btn svg,
+html[data-page="carto"] #amgt-ortho-settings-btn svg { display: none; }
+html[data-page="carto"] .amgt-opacity-toggle-btn,
+html[data-page="carto"] #amgt-ortho-settings-btn { color: #0b5c75; padding: 4px; }
+html[data-page="carto"] .amgt-opacity-toggle-btn::before,
+html[data-page="carto"] #amgt-ortho-settings-btn::before {
+  content: '';
+  display: block;
+  width: 23px;
+  height: 23px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='0.557' stroke-linecap='round'><path d='M1 3h2.3M6.7 3H15M1 8h8.3M12.7 8H15M1 13h4.3M8.7 13H15'/><circle cx='5' cy='3' r='1.7'/><circle cx='11' cy='8' r='1.7'/><circle cx='7' cy='13' r='1.7'/></svg>") center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='0.557' stroke-linecap='round'><path d='M1 3h2.3M6.7 3H15M1 8h8.3M12.7 8H15M1 13h4.3M8.7 13H15'/><circle cx='5' cy='3' r='1.7'/><circle cx='11' cy='8' r='1.7'/><circle cx='7' cy='13' r='1.7'/></svg>") center / 100% 100% no-repeat;
+}
+html[data-page="carto"] .amgt-opacity-toggle-btn:hover,
+html[data-page="carto"] #amgt-ortho-settings-btn:hover { color: #0b5c75; background: #e8f2f6; }
