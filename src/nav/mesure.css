@@ -4,11 +4,11 @@
 html[data-page="carto"] #amgt-measure-btn,
 html[data-page="carto"] #amgt-screenshot-btn { display: none !important; }
 
-/* Boutons ronds de 46 px, icône de 30 px (téléphone) */
+/* Boutons ronds de 55 px ; l'icône (cercle compris) remplit le bouton */
 .mes-btn {
   box-sizing: border-box;
-  width: 46px;
-  height: 46px;
+  width: 55px;
+  height: 55px;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -26,32 +26,26 @@ html[data-page="carto"] #amgt-screenshot-btn { display: none !important; }
 .mes-btn:hover { background: #e8f2f6; }
 .mes-btn.amgt-btn--active, .mes-btn.amgt-btn--active:hover { background: #0b5c75; color: #fff; }
 .mes-btn svg { display: block; pointer-events: none; }
-.mes-btn--latte svg, .mes-btn--outil svg { width: 30px; height: 30px; }
+.mes-btn--latte svg, .mes-btn--outil svg { width: 55px; height: 55px; }
 .mes-btn--cmd svg { width: 26px; height: 26px; }
 .mes-cache { display: none !important; }
 
 /* Latte + plateau : au repos, les deux outils sont cachés sous la latte ; l'appui long la fait glisser
    vers la gauche (0,3 s) et les outils se déploient. */
-.mes-bloc { position: relative; width: 46px; height: 46px; }
+.mes-bloc { position: relative; width: 55px; height: 55px; }
 .mes-bloc .mes-btn { position: absolute; top: 0; right: 0; transition: transform 0.3s, opacity 0.3s, visibility 0.3s; }
 .mes-bloc .mes-btn--outil { opacity: 0; visibility: hidden; }
 .mes-bloc .mes-btn--latte { z-index: 2; }
-.mes-bloc--ouvert .mes-btn--latte { transform: translateX(calc(-2 * var(--mes-glisse, 54px))); }
+.mes-bloc--ouvert .mes-btn--latte { transform: translateX(calc(-2 * var(--mes-glisse, 63px))); }
 .mes-bloc--ouvert .mes-btn--outil { opacity: 1; visibility: visible; }
-.mes-bloc--ouvert #mes-chaine { transform: translateX(calc(-1 * var(--mes-glisse, 54px))); }
+.mes-bloc--ouvert #mes-chaine { transform: translateX(calc(-1 * var(--mes-glisse, 63px))); }
 /* Le compas reste à la place d'origine de la latte. */
 
-/* Icônes d'outil : une variante par taille d'écran (téléphone / tablette / PC) */
-.mes-ic--tab, .mes-ic--pc { display: none !important; }
-@media (min-width: 600px) {
-  .mes-ic--tel { display: none !important; }
-  .mes-ic--tab { display: block !important; }
-}
-@media (min-width: 900px) {
-  .mes-ic--tab { display: none !important; }
-  .mes-ic--pc { display: block !important; }
-}
-.mes-btn--outil svg { width: 30px; height: 30px; }
+/* Loupe et sondage virtuel : même taille que la latte (55 px), l'icône remplit le bouton */
+html[data-page="carto"] #amgt-search-toggle,
+html[data-page="carto"] #amgt-bore-btn { width: 55px; height: 55px; }
+html[data-page="carto"] #amgt-search-toggle svg,
+html[data-page="carto"] #amgt-bore-btn svg { width: 55px; height: 55px; display: block; pointer-events: none; }
 
 /* Commandes de l'outil actif : en colonne sous le forage virtuel */
 .mes-cmd { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
@@ -78,3 +72,6 @@ html[data-page="carto"] #amgt-screenshot-btn { display: none !important; }
 @media (min-width: 900px) {
   .mes-resume { bottom: 24px; }
 }
+
+html[data-page="carto"] #amgt-search-box { width: 55px; height: 55px; }
+html[data-page="carto"] #amgt-search-box.amgt-search--open { width: min(260px, calc(100vw - 20px)); }

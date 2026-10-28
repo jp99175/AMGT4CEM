@@ -21,7 +21,7 @@ if (!R || R.mode !== 'page' || R.app !== 'carto') return;
 const COULEUR = '#f50057';
 const CLE_DERNIER = 'amgt4cem.mesure.dernier.v1';
 const APPUI_LONG_MS = 500;
-const GLISSE_PX = 54; // largeur d'un bouton (46) + espace (8)
+const GLISSE_PX = 63; // largeur d'un bouton (55) + espace (8)
 
 const svgIcone = (contenu) => `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${contenu}</svg>`;
 const ICONES = {
@@ -29,17 +29,11 @@ const ICONES = {
   fermer: svgIcone('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'),
   annuler: svgIcone('<g transform="matrix(-1 0 0 1 24 0)"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/></g>'),
   terminer: svgIcone('<path d="M4.5 12.5l5 5 10-11"/>'),
-  latte: '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><g transform="rotate(-35 24 24)"><rect x="5" y="16" width="38" height="16" rx="1.8"/><line x1="11" y1="16" x2="11" y2="24"/><line x1="17" y1="16" x2="17" y2="21"/><line x1="23" y1="16" x2="23" y2="24"/><line x1="29" y1="16" x2="29" y2="21"/><line x1="35" y1="16" x2="35" y2="24"/></g></svg>',
 };
 
-/** Les trois variantes (téléphone, tablette, PC) d'une icône d'outil ; mesure.css n'en montre qu'une. */
+/** Icône harmonisée (src/nav/mesureIcones.js) : cercle, trait fin, 55 px de diamètre. */
 function iconeOutil(nom) {
-  const tous = window.AMGT4CEM_MESURE_ICONES || {};
-  return ['tel', 'tab', 'pc'].map((k) => {
-    const d = tous[`${nom}_${k}`];
-    if (!d) return '';
-    return `<svg class="mes-ic mes-ic--${k}" viewBox="${d.vb}" aria-hidden="true" focusable="false">${d.inner}</svg>`;
-  }).join('');
+  return (window.AMGT4CEM_MESURE_ICONES || {})[nom] || '';
 }
 
 const h = (tag, attrs, html) => {
@@ -274,11 +268,17 @@ const Mesure = {
     const ancienne = document.getElementById('amgt-measure-btn');
     if (!haut || !ancienne || typeof AMGT4CEM_MeasureTool === 'undefined') return;
 
+    // --- loupe et sondage virtuel : icônes harmonisées avec les outils de mesure
+    const loupe = document.getElementById('amgt-search-toggle');
+    if (loupe) loupe.innerHTML = iconeOutil('loupe');
+    const forage = document.getElementById('amgt-bore-btn');
+    if (forage) forage.innerHTML = iconeOutil('sondage');
+
     // --- bloc latte (+ plateau des deux outils) à la place de la règle
     const bloc = h('div', { id: 'mes-bloc', class: 'mes-bloc' });
     this._chaineBtn = bouton('mes-chaine', 'mes-btn--outil', 'Chaîne d\'arpenteur : longueurs et surface', iconeOutil('chaine'));
     this._compasBtn = bouton('mes-compas', 'mes-btn--outil', 'Compas : rayon', iconeOutil('compas'));
-    this._latte = bouton('mes-latte', 'mes-btn--latte', 'Mesurer (appui long : choisir l\'outil)', ICONES.latte);
+    this._latte = bouton('mes-latte', 'mes-btn--latte', 'Mesurer (appui long : choisir l\'outil)', iconeOutil('latte'));
     bloc.append(this._chaineBtn, this._compasBtn, this._latte);
     ancienne.after(bloc);
     this._bloc = bloc;
