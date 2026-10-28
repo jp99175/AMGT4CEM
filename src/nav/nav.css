@@ -28,21 +28,19 @@
   align-items: center;
   justify-content: center;
   gap: 1px;
-  color: #52606d;
+  color: #0b5c75;
   font-size: 12px;
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
 }
 
 .amgt-nav__ic {
-  /* Même dimension et même trait que les dessins des boutons ronds de la carte (33 px de dessin, trait fin de 0,8 px),
-     même couleur #0b5c75. Le dessin occupe tout le cadre (viewBox rogné à 18 unités : 33 px / 18 = 1,83 px par unité). */
-  width: 33px;
-  height: 33px;
+  /* Dessin de 23 px de haut (largeur selon le dessin), trait fin de 0,8 px (épaisseur réglée dans nav.js), même couleur
+     #0b5c75 que les boutons ronds de la carte et que le texte de l'onglet. */
+  height: 23px;
   color: #0b5c75;
   fill: none;
   stroke: currentColor;
-  stroke-width: 0.44;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
