@@ -147,8 +147,8 @@ html[data-page="carto"] #amgt-add-point-btn::before {
   width: 55px;
   height: 55px;
   background: currentColor;
-  -webkit-mask: url('./ajouter-point.png') center / contain no-repeat;
-  mask: url('./ajouter-point.png') center / contain no-repeat;
+  -webkit-mask: url('./ajouter-point.png') center / 93.2% no-repeat;
+  mask: url('./ajouter-point.png') center / 93.2% no-repeat;
   pointer-events: none;
 }
 html[data-page="carto"] #amgt-add-point-btn:hover { background: #e8f2f6; }
@@ -174,8 +174,8 @@ html[data-page="carto"] #amgt-menu-btn::before {
   width: 55px;
   height: 55px;
   background: currentColor;
-  -webkit-mask: url('./couches-bouton.png') center / contain no-repeat;
-  mask: url('./couches-bouton.png') center / contain no-repeat;
+  -webkit-mask: url('./couches-bouton.png') center / 93.2% no-repeat;
+  mask: url('./couches-bouton.png') center / 93.2% no-repeat;
   pointer-events: none;
 }
 html[data-page="carto"] #amgt-menu-btn:hover { background: #e8f2f6; }
