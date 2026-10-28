@@ -154,3 +154,28 @@ html[data-page="carto"] #amgt-add-point-btn::before {
 html[data-page="carto"] #amgt-add-point-btn:hover { background: #e8f2f6; }
 html[data-page="carto"] #amgt-add-point-btn.amgt-btn--active,
 html[data-page="carto"] #amgt-add-point-btn.amgt-btn--active:hover { background: #0b5c75; color: #fff; }
+
+/* Bouton « Couches » : rond, 55 px, même dessin fin que les autres boutons ronds de la carte (cercle compris).
+   Le dessin est un masque (couches-bouton.png) coloré par la couleur du texte. */
+html[data-page="carto"] #amgt-menu-btn {
+  box-sizing: border-box;
+  width: 55px;
+  height: 55px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: #0b5c75;
+}
+html[data-page="carto"] #amgt-menu-btn svg { display: none; }
+html[data-page="carto"] #amgt-menu-btn::before {
+  content: '';
+  display: block;
+  width: 55px;
+  height: 55px;
+  background: currentColor;
+  -webkit-mask: url('./couches-bouton.png') center / contain no-repeat;
+  mask: url('./couches-bouton.png') center / contain no-repeat;
+  pointer-events: none;
+}
+html[data-page="carto"] #amgt-menu-btn:hover { background: #e8f2f6; }
