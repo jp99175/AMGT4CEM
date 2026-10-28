@@ -118,7 +118,7 @@ html.amgt-admin .amgt-ic-btn.amgt-defaut-disquette { display: inline-flex; }
 .amgt-couches-pied #amgt-reset-view-btn { margin-top: 0; }
 
 /* Boutons réduits à leur icône : sans cadre ni fond, même trait fin et même taille */
-.amgt-ic-btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px; margin: 0; background: none; border: none; border-radius: 6px; color: #333; cursor: pointer; text-decoration: none; }
+.amgt-ic-btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px; margin: 0; background: none; border: none; border-radius: 6px; color: #0b5c75; cursor: pointer; text-decoration: none; }
 .amgt-ic-btn:hover { background: #f0f2f4; }
 .amgt-ic-btn svg { display: block; }
 .amgt-couches-pied { gap: 4px; }

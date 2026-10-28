@@ -25,8 +25,8 @@ const h = (tag, attrs, ...kids) => {
   return n;
 };
 
-/** Icônes en trait fin (même trait, même taille), sans cadre de bouton : disquette, flèches, croix dans un carré. */
-const svgIcone = (contenu) => `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${contenu}</svg>`;
+/** Icônes de 23 px, trait de 0,8 px (0,835 unité sur 24), bleu des boutons (même trait, même taille), sans cadre de bouton : disquette, flèches, croix dans un carré. */
+const svgIcone = (contenu) => `<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round">${contenu}</svg>`;
 const ICONES = {
   disquette: svgIcone('<path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/>'),
   horaire: svgIcone('<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/>'), // ↻ réinitialiser la vue
