@@ -193,7 +193,7 @@ const Chaine = {
     const map = this.map();
     this._curseurLatLng = latlng;
     if (!this._curseur) {
-      const icone = AMGT4CEM_MeasureTool.iconeReticule(); // même pointeur que le compas
+      const icone = AMGT4CEM_MeasureTool.iconeReticule();
       this._curseur = L.marker(latlng, { icon: icone, interactive: false, keyboard: false, pane: 'amgtMeasurePane' }).addTo(map);
       this._elastique = L.polyline([], { pane: 'amgtMeasurePane', color: COULEUR, weight: 2, dashArray: '5,5', interactive: false }).addTo(map);
     }

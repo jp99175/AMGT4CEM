@@ -62,7 +62,7 @@
  * uniformément souris, tactile et stylet.
  *
  * Au doigt, le CENTRE est posé avec le décalage réglable (_touchOffsetPx) et le RAYON part du centre en suivant le
- * déplacement du doigt (_relatif) ; un pointeur (cercle et croix) montre où l'on mesure.
+ * déplacement du doigt (_relatif) ; un seul réticule, au centre (le bout du rayon n'en a pas).
  *
  * Au doigt, le point réellement positionné (_eventToLatLng) est décalé
  * vers le haut par rapport au point de contact : sinon le doigt cache
@@ -103,7 +103,6 @@ const AMGT4CEM_MeasureTool = {
   // (1 pour 1, point de contact quelconque) : { doigt0, origine } en pixels de la carte, posé à l'appui du rayon.
   // Repli sur le décalage si le centre n'est plus à l'écran.
   _relatif: null,
-  _reticule: null,
   // Décalage (px écran) entre le bord du cercle et le point d'ancrage de la
   // cote, pour qu'elle ne soit jamais visuellement coupée par le cercle.
   _labelMarginPx: 14,
@@ -183,7 +182,6 @@ const AMGT4CEM_MeasureTool = {
     this._map.off('popupopen', this._onPopupOpen);
     this._pointerId = null;
     this._relatif = null;
-    this._effacerReticule();
     this._state = 'idle';
     this._clearMeasurement();
     AMGT4CEM_ScreenshotTool.invalidateBackground();
@@ -210,17 +208,13 @@ const AMGT4CEM_MeasureTool = {
         this._relatif = { doigt0: this._map.mouseEventToContainerPoint(e), origine };
       }
     }
-    const latlng = this._eventToLatLng(e);
-    this._handlePress(latlng);
-    this._montrerReticule(e, latlng);
+    this._handlePress(this._eventToLatLng(e));
   },
 
   _onPointerMove(e) {
     if (e.pointerId !== this._pointerId) return;
     e.preventDefault();
-    const latlng = this._eventToLatLng(e);
-    this._handleMove(latlng);
-    this._montrerReticule(e, latlng);
+    this._handleMove(this._eventToLatLng(e));
   },
 
   /** @param {boolean} annule - pointercancel : le navigateur reprend le geste ; ses coordonnées ne sont pas
@@ -233,7 +227,6 @@ const AMGT4CEM_MeasureTool = {
     // retard sur un appareil moins réactif) : la cote et le cercle doivent
     // se figer pile là où on relâche, pas à une position intermédiaire.
     if (!annule) this._handleMove(this._eventToLatLng(e));
-    this._effacerReticule();
     this._handleRelease();
     this._relatif = null;
   },
@@ -248,7 +241,8 @@ const AMGT4CEM_MeasureTool = {
     return this._map.containerPointToLatLng(point);
   },
 
-  /** Même pointeur que la chaîne d'arpenteur (cercle et croix), au doigt seulement. */
+  /** Pointeur (cercle et croix) de la chaîne d'arpenteur ; le compas, lui, garde son propre réticule au centre
+   *  (_buildDotMarker) : un seul réticule, pour le premier point ; le bout du rayon n'en a pas. */
   iconeReticule() {
     return L.divIcon({
       className: 'mes-curseur',
@@ -257,17 +251,7 @@ const AMGT4CEM_MeasureTool = {
       iconAnchor: [12, 12],
     });
   },
-  _montrerReticule(e, latlng) {
-    if (e.pointerType !== 'touch') return;
-    if (!this._reticule) {
-      this._reticule = L.marker(latlng, { icon: this.iconeReticule(), interactive: false, keyboard: false, pane: 'amgtMeasurePane' }).addTo(this._map);
-    } else {
-      this._reticule.setLatLng(latlng);
-    }
-  },
-  _effacerReticule() {
-    if (this._reticule) { this._map.removeLayer(this._reticule); this._reticule = null; }
-  },
+
 
   _handlePress(latlng) {
     if (this._state === 'idle') {
