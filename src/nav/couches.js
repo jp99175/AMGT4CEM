@@ -289,5 +289,6 @@ const Couches = {
 };
 
 Couches.init();
+Couches.ICONES = ICONES; // réutilisées par le sondage virtuel
 window.AMGT4CEM_Couches = Couches;
 })();

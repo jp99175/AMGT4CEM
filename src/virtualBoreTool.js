@@ -330,14 +330,16 @@ const AMGT4CEM_VirtualBoreTool = {
 
   _openPanel() {
     if (this._panel) return;
+    const ic = (typeof AMGT4CEM_Couches !== 'undefined' && AMGT4CEM_Couches.ICONES) || {};
     const panel = document.createElement('div');
     panel.className = 'amgt-bore-panel';
     panel.innerHTML =
       '<div class="amgt-bore-panel__head">' +
         '<strong>Sondage virtuel</strong>' +
         '<span class="amgt-bore-panel__actions">' +
-          '<button type="button" class="amgt-bore-panel__btn" data-act="save" title="Enregistrer le sondage (fichier HTML)" aria-label="Enregistrer" disabled>💾</button>' +
-          '<button type="button" class="amgt-bore-panel__btn" data-act="close" title="Fermer" aria-label="Fermer">✕</button>' +
+          // Mêmes icônes que les écrans plein écran de la nouvelle interface (src/nav/couches.js)
+          `<button type="button" class="amgt-bore-panel__btn amgt-ic-btn" data-act="save" title="Enregistrer le sondage (fichier HTML)" aria-label="Enregistrer" disabled>${ic.disquette || '💾'}</button>` +
+          `<button type="button" class="amgt-bore-panel__btn amgt-ic-btn" data-act="close" title="Fermer" aria-label="Fermer">${ic.fermer || '✕'}</button>` +
         '</span>' +
       '</div>' +
       '<div class="amgt-bore-panel__body"></div>';
@@ -394,7 +396,7 @@ const AMGT4CEM_VirtualBoreTool = {
       for (const l of section.links || []) {
         const p = document.createElement('p');
         const a = document.createElement('a');
-        a.href = l.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = '🡕 ' + l.label;
+        a.href = l.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = l.label;
         p.appendChild(a); body.appendChild(p);
       }
       for (const note of section.notes) body.appendChild(text('p', 'amgt-bore-note', note));

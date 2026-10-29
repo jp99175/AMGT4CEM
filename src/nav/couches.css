@@ -120,6 +120,11 @@ html.amgt-admin .amgt-ic-btn.amgt-defaut-disquette { display: inline-flex; }
 /* Boutons réduits à leur icône : sans cadre ni fond, même trait fin et même taille */
 .amgt-ic-btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px; margin: 0; background: none; border: none; border-radius: 6px; color: #0b5c75; cursor: pointer; text-decoration: none; }
 .amgt-ic-btn:hover { background: #f0f2f4; }
+.amgt-ic-btn:disabled { opacity: 0.4; cursor: default; }
+.amgt-ic-btn:disabled:hover { background: none; }
+/* Boutons du panneau du sondage virtuel : icône seule, sans le cadre de l'ancien style */
+html.amgt-has-nav .amgt-bore-panel__btn.amgt-ic-btn { border: none; background: none; min-width: 0; height: auto; }
+html.amgt-has-nav .amgt-bore-panel__btn.amgt-ic-btn:hover:not(:disabled) { background: #f0f2f4; }
 .amgt-ic-btn svg { display: block; }
 .amgt-couches-pied { gap: 4px; }
 .amgt-couches-pied__gauche { gap: 4px; }
