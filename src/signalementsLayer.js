@@ -248,7 +248,7 @@ const AMGT4CEM_SignalementsLayer = {
       trash.className = 'amgt-sig-popup__trash';
       trash.title = 'Supprimer cette entrée';
       trash.setAttribute('aria-label', 'Supprimer cette entrée');
-      trash.textContent = '🗑';
+      trash.innerHTML = '<span class="amgt-sig-popup__trash-ic" aria-hidden="true"></span>';
       trash.addEventListener('click', async () => {
         if (!confirm(`Supprimer l'entrée ${s.reference} « ${s.titre || ''} » du système ? Elle disparaît de la carte et des listes de tous les agents.`)) return;
         trash.disabled = true;

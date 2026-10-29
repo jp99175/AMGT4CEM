@@ -145,7 +145,9 @@ SIG.List = {
     });
     const n = this.selected.size;
     const btn = (text, onClick, primary) => {
-      const b = h('button', { type: 'button', class: `sig4cem-btn sig4cem-btn--small${primary ? ' sig4cem-btn--primary' : ''}`, text });
+      const b = h('button', { type: 'button', class: `sig4cem-btn sig4cem-btn--small${primary ? ' sig4cem-btn--primary' : ''}` });
+      b.textContent = text;
+      if (text.startsWith('🗑 ')) b.innerHTML = `<span class="sig4cem-ic sig4cem-ic--poubelle" aria-hidden="true"></span> ${text.slice(3)}`; // icône poubelle à la place de l'émoji
       b.disabled = n === 0 || this.busy;
       b.addEventListener('click', onClick);
       return b;

@@ -137,7 +137,8 @@ SIG.Form = {
       const thumb = h('span', { class: 'sig4cem-photo' }, h('img', { src: URL.createObjectURL(record.blob), alt: `Photo ${i + 1}` }));
       if (record.annot) thumb.append(h('img', { class: 'sig4cem-photo__overlay', src: URL.createObjectURL(record.annot), alt: '' }));
       thumb.append(rm);
-      const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: record.annot ? '✏️ Modifier les annotations' : '✏️ Annoter' });
+      const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', });
+      edit.innerHTML = `${'<span class="sig4cem-ic sig4cem-ic--crayon" aria-hidden="true"></span>'} ${record.annot ? 'Modifier les annotations' : 'Annoter'}`;
       edit.addEventListener('click', () => {
         SIG.PhotoEditor.open(record.blob, record.traits || [], async (traits) => {
           const png = await SIG.PhotoEditor.overlayPng(traits, meta.largeur, meta.hauteur);

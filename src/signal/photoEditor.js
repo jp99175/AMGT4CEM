@@ -11,7 +11,8 @@
 const NS = window.SIG4CEM;
 const h = NS.h;
 const COULEURS = ['#e53935', '#fdd835', '#1e88e5', '#212121'];
-const OUTILS = [['pen', '✏️ Crayon'], ['arrow', '↗ Flèche'], ['ellipse', '◯ Cercle'], ['text', 'T Texte']];
+// [outil, icône, libellé] : les boutons sont réduits à leur icône (libellé en infobulle).
+const OUTILS = [['pen', 'crayon', 'Crayon'], ['arrow', 'fleche', 'Flèche'], ['ellipse', 'cercle', 'Cercle'], ['text', 'texte', 'Texte']];
 const OVERLAY_SIDE = 1000; // grand côté du calque PNG (la photo, elle, garde sa définition)
 
 /** Dessine les traits (coordonnées relatives) sur un contexte de W×H pixels (`sansTexte` : l'éditeur affiche les textes en zones modifiables). */
@@ -87,8 +88,9 @@ NS.PhotoEditor = {
     const img = h('img', { class: 'sig4cem-pe__img', src: url, alt: 'Photo à annoter', draggable: 'false' });
     const canvas = h('canvas', { class: 'sig4cem-pe__canvas' });
     const stage = h('div', { class: 'sig4cem-pe__stage' }, img, canvas);
-    const toolBtns = OUTILS.map(([k, label]) => {
-      const b = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: label });
+    const toolBtns = OUTILS.map(([k, icone, label]) => {
+      const b = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small sig4cem-btn--ico', title: label, 'aria-label': label });
+      b.innerHTML = `<span class="sig4cem-ic sig4cem-ic--${icone}" aria-hidden="true"></span>`;
       b.addEventListener('click', () => { tool = k; refresh(); });
       b.dataset.tool = k;
       return b;
@@ -96,10 +98,15 @@ NS.PhotoEditor = {
     const colorBtns = COULEURS.map((c) => {
       const b = h('button', { type: 'button', class: 'sig4cem-pe__color', title: 'Couleur', 'aria-label': 'Couleur' });
       b.style.background = c;
-      b.addEventListener('click', () => { color = c; if (selected) { selected.item.c = c; layoutText(selected); } refresh(); });
+      b.addEventListener('click', () => { color = c; if (selected) { selected.item.c = c; layoutText(selected); } nuancier.hidden = true; refresh(); });
       b.dataset.color = c;
       return b;
     });
+    // Choix de la couleur : un bouton palette (pastille = couleur en cours) qui déploie les quatre couleurs.
+    const nuancier = h('span', { class: 'sig4cem-pe__nuancier', hidden: '' }, ...colorBtns);
+    const btnPalette = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small sig4cem-btn--ico sig4cem-pe__palette', title: 'Couleur', 'aria-label': 'Choisir la couleur' });
+    btnPalette.innerHTML = '<span class="sig4cem-ic sig4cem-ic--palette" aria-hidden="true"></span><span class="sig4cem-pe__pastille"></span>';
+    btnPalette.addEventListener('click', () => { nuancier.hidden = !nuancier.hidden; });
     const btnSmaller = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', title: 'Texte plus petit', 'aria-label': 'Texte plus petit', text: 'A−' });
     const btnBigger = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', title: 'Texte plus grand', 'aria-label': 'Texte plus grand', text: 'A+' });
     const hint = h('span', { class: 'sig4cem-pe__hint' });
@@ -108,7 +115,7 @@ NS.PhotoEditor = {
     const btnCancel = h('button', { type: 'button', class: 'sig4cem-btn', text: 'Annuler' });
     const btnOk = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--primary', text: 'Valider' });
     const root = h('section', { class: 'sig4cem-screen sig4cem-screen--editor' },
-      h('div', { class: 'sig4cem-pe__bar' }, ...toolBtns, ...colorBtns),
+      h('div', { class: 'sig4cem-pe__bar' }, ...toolBtns, btnPalette, nuancier),
       h('div', { class: 'sig4cem-pe__body' }, stage),
       h('div', { class: 'sig4cem-pe__bar' }, btnUndo, btnClear, btnSmaller, btnBigger, hint),
       h('div', { class: 'sig4cem-map__actions' }, btnCancel, btnOk));
@@ -126,6 +133,7 @@ NS.PhotoEditor = {
     function refresh() {
       for (const b of toolBtns) b.classList.toggle('sig4cem-btn--primary', b.dataset.tool === tool);
       for (const b of colorBtns) b.classList.toggle('sig4cem-pe__color--on', b.dataset.color === color);
+      btnPalette.querySelector('.sig4cem-pe__pastille').style.background = color;
       btnUndo.disabled = btnClear.disabled = !list.length;
       btnSmaller.disabled = btnBigger.disabled = !selected;
       hint.textContent = tool === 'text'

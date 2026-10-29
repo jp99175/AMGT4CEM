@@ -1095,6 +1095,7 @@ html, body {
 .amgt-sig-popup__actions .amgt-sig-popup__edit { margin-top: 0; }
 .amgt-sig-popup__trash { padding: 2px 6px; font-size: 18px; line-height: 1; background: none; border: none; cursor: pointer; }
 .amgt-sig-popup__trash:disabled { opacity: 0.4; }
+.amgt-sig-popup__trash-ic { display: block; width: 20px; height: 23px; background: #0b5c75; -webkit-mask: url(src/signal/icone-poubelle.png) center / contain no-repeat; mask: url(src/signal/icone-poubelle.png) center / contain no-repeat; }
 
 /* --- Écran « Orthophotos » (orthoPicker.js) : tableau années × sources --- */
 .amgt-ortho-table {

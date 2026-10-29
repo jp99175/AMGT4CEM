@@ -243,3 +243,19 @@ html[data-app="signal"] body {
 .sig4cem-photo__text { margin: 0; font-size: 14px; white-space: pre-wrap; }
 
 .sig4cem-identity { margin: 0 0 6px; font-size: 13px; color: #52606d; }
+
+/* Icônes de l'éditeur de photo et corbeilles : masques PNG au trait de 0,8 px, couleur du texte du bouton (blanc si actif) */
+.sig4cem-ic--fleche { width: 24px; height: 22.5px; -webkit-mask-image: url(icone-fleche.png); mask-image: url(icone-fleche.png); }
+.sig4cem-ic--cercle { width: 22.5px; height: 23px; -webkit-mask-image: url(icone-cercle.png); mask-image: url(icone-cercle.png); }
+.sig4cem-ic--palette { width: 22.5px; height: 22.75px; -webkit-mask-image: url(icone-palette.png); mask-image: url(icone-palette.png); }
+.sig4cem-ic--texte { width: 24.5px; height: 23px; -webkit-mask-image: url(icone-texte.png); mask-image: url(icone-texte.png); }
+.sig4cem-ic--crayon { width: 22.75px; height: 22.5px; -webkit-mask-image: url(icone-crayon.png); mask-image: url(icone-crayon.png); }
+.sig4cem-ic--poubelle { width: 20px; height: 23px; -webkit-mask-image: url(icone-poubelle.png); mask-image: url(icone-poubelle.png); }
+.sig4cem-btn--primary .sig4cem-ic { background: #fff; }
+.sig4cem-btn .sig4cem-ic, .sig4cem-trash .sig4cem-ic { display: inline-block; vertical-align: middle; }
+.sig4cem-btn--ico { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; }
+.sig4cem-trash { padding: 4px 6px; }
+.sig4cem-pe__palette { position: relative; }
+.sig4cem-pe__pastille { position: absolute; right: 4px; bottom: 4px; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #fff; box-shadow: 0 0 0 0.8px #9aa5b1; }
+.sig4cem-pe__nuancier { display: inline-flex; gap: 6px; align-items: center; }
+.sig4cem-pe__nuancier[hidden] { display: none; }
