@@ -125,7 +125,7 @@ const AMGT4CEM_VirtualBoreTool = {
 
   _buildMarker(latlng) {
     return L.marker(latlng, {
-      icon: L.divIcon({ className: 'amgt-measure-dot-icon', pane: 'amgtMeasurePane', html: AMGT4CEM_MeasureTool._buildReticleSvg() }),
+      icon: L.divIcon({ className: 'amgt-measure-dot-icon', iconSize: [0, 0], pane: 'amgtMeasurePane', html: AMGT4CEM_MeasureTool._buildReticleSvg() }),
       interactive: false,
       pane: 'amgtMeasurePane',
     }).addTo(this._map);

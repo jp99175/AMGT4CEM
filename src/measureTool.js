@@ -107,10 +107,9 @@ const AMGT4CEM_MeasureTool = {
   // cote, pour qu'elle ne soit jamais visuellement coupée par le cercle.
   _labelMarginPx: 14,
   // Rayon (px écran) autour du centre dans lequel le segment n'est jamais
-  // tracé, pour ne pas traverser le réticule du point de départ (icône de
-  // 14px, encre la plus éloignée du centre à 6px — voir _buildReticleSvg) ;
-  // une petite marge au-delà de ces 6px.
-  _lineClearancePx: 7,
+  // tracé, pour ne pas traverser le réticule du point de départ (croix jusqu'à
+  // 11px du centre — voir iconeReticule).
+  _lineClearancePx: 11,
 
   init(map) {
     this._map = map;
@@ -451,29 +450,27 @@ const AMGT4CEM_MeasureTool = {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Point de départ : anneau + réticule, même géométrie que _buildReticleSvg
-    // (rayon 5, réticule jusqu'à 6px du centre, espace 1px de chaque côté
-    // à l'intersection) — rendu identique en direct et à la capture.
-    // ctx.lineCap reste 'butt' (défaut) pour la même raison que dans
-    // _buildReticleSvg : un capuchon rond repeindrait le pixel transparent
-    // voulu à l'intersection.
+    // Point de départ : même réticule que la chaîne d'arpenteur (iconeReticule : anneau de rayon 7,
+    // croix de 3 à 11 px du centre) — rendu identique en direct et à la capture.
     ctx.save();
     ctx.shadowColor = '#fff';
     ctx.shadowBlur = 2;
     ctx.lineWidth = 1.6;
     ctx.strokeStyle = color;
     ctx.beginPath();
-    ctx.arc(centerPt.x, centerPt.y, 5, 0, Math.PI * 2);
+    ctx.arc(centerPt.x, centerPt.y, 7, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.lineWidth = 1.2;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(centerPt.x - 6, centerPt.y);
-    ctx.lineTo(centerPt.x - 1, centerPt.y);
-    ctx.moveTo(centerPt.x + 1, centerPt.y);
-    ctx.lineTo(centerPt.x + 6, centerPt.y);
-    ctx.moveTo(centerPt.x, centerPt.y - 6);
-    ctx.lineTo(centerPt.x, centerPt.y - 1);
-    ctx.moveTo(centerPt.x, centerPt.y + 1);
-    ctx.lineTo(centerPt.x, centerPt.y + 6);
+    ctx.moveTo(centerPt.x - 11, centerPt.y);
+    ctx.lineTo(centerPt.x - 3, centerPt.y);
+    ctx.moveTo(centerPt.x + 3, centerPt.y);
+    ctx.lineTo(centerPt.x + 11, centerPt.y);
+    ctx.moveTo(centerPt.x, centerPt.y - 11);
+    ctx.lineTo(centerPt.x, centerPt.y - 3);
+    ctx.moveTo(centerPt.x, centerPt.y + 3);
+    ctx.lineTo(centerPt.x, centerPt.y + 11);
     ctx.stroke();
     ctx.restore();
 
@@ -512,7 +509,7 @@ const AMGT4CEM_MeasureTool = {
 
   _buildDotMarker(latlng) {
     return L.marker(latlng, {
-      icon: L.divIcon({ className: 'amgt-measure-dot-icon', pane: 'amgtMeasurePane', html: this._buildReticleSvg() }),
+      icon: this.iconeReticule(), // même réticule que la chaîne d'arpenteur, ancré en son centre
       interactive: false,
       pane: 'amgtMeasurePane',
     }).addTo(this._map);
