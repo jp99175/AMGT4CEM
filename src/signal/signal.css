@@ -243,17 +243,3 @@ html[data-app="signal"] body {
 .sig4cem-photo__text { margin: 0; font-size: 14px; white-space: pre-wrap; }
 
 .sig4cem-identity { margin: 0 0 6px; font-size: 13px; color: #52606d; }
-
-/* Champ date : l'icône du sélecteur natif est remplacée par l'icône calendrier + crayon (23 px de haut, trait de 0,8 px). */
-.sig4cem-row input[type="date"] { position: relative; }
-.sig4cem-row input[type="date"]::-webkit-calendar-picker-indicator {
-  width: 23px;
-  height: 23px;
-  padding: 0;
-  margin: 0 0 0 6px;
-  opacity: 1;
-  cursor: pointer;
-  background: #0b5c75;
-  -webkit-mask: url(icone-date.png) center / contain no-repeat;
-  mask: url(icone-date.png) center / contain no-repeat;
-}
