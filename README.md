@@ -944,7 +944,7 @@ du réseau.
 ```
 home.html, style.css         page unique : gabarits des deux interfaces (carto, signal) ; index.html : simple renvoi vers home.html
 src/router.js                routeur : lit ?app= (interfaces actuelles, liste `apps`) ou ?page= (nouvelle interface, liste `pages`), copie le gabarit choisi, charge ses scripts dans l'ordre
-src/nav/                     barre de navigation Carte · Saisie · Réglages, icône de compte, menu Couches (couches.js) (pages ?page= seulement)
+src/nav/                     barre de navigation Carte · Saisie · Réglages (nav.js), icône de compte, menu Couches (couches.js), outils de mesure (mesure.js, mesureIcones.js), images d'icônes (*.png) (pages ?page= seulement)
 src/reglages/                page Réglages (?page=reglages) : blocs déclarés par AMGT4CEM_Reglages.register, affichés selon le droit ; serveur.js : services et relais
 src/signal/                  interface de saisie SIG4CEM (home.html?app=signal), séparée de la carte, avec sa propre carte de choix du point
 src/auth/                    identification commune (session, écran de connexion / première connexion) ; src/admin/ : page ?app=admin
@@ -1108,9 +1108,26 @@ Réglages (`src/nav/`), en bas sur téléphone, en haut sur grand écran ; Saisi
 
 | Adresse | Contenu |
 |---|---|
-| `home.html?page=carto` | la carte, avec la barre de navigation ; menu « Couches » adapté par `src/nav/couches.js` (sans ⚙, compte ni disquette ; Géotechnique et sondage virtuel absents pour un visiteur ; pied du bandeau : « ↺ Défaut » et, pour le droit `utilisateurs`, une disquette (défaut pour tous, au choix connectés ou visiteurs) à gauche, « Réinitialiser la vue » à droite ; sélecteurs plein écran sans 💾 : « ↺ Défaut » et, pour le droit `utilisateurs`, une disquette qui enregistre la sélection en cours comme défaut de tous les connectés) ; outils de mesure par `src/nav/mesure.js` (+ `mesure.css`, `mesureIcones.js` : icônes harmonisées, 55 px) : un bouton latte (appui court = dernier outil, appui long = choix chaîne d'arpenteur / compas ; délai d'affichage réglable dans Réglages > Mon appareil) |
+| `home.html?page=carto` | la carte, avec la barre de navigation ; menu « Couches » adapté par `src/nav/couches.js` (sans ⚙, compte ni disquette ; Géotechnique et sondage virtuel absents pour un visiteur ; pied du bandeau : « ↺ Défaut » et, pour le droit `utilisateurs`, une disquette (défaut pour tous, au choix connectés ou visiteurs) à gauche, « Réinitialiser la vue » à droite ; sélecteurs plein écran sans 💾 : « ↺ Défaut » et, pour le droit `utilisateurs`, une disquette qui enregistre la sélection en cours comme défaut de tous les connectés) ; outils de mesure par `src/nav/mesure.js` (+ `mesure.css`, `mesureIcones.js` : icônes harmonisées, 55 px) : un bouton latte (appui court = dernier outil, appui long = latte dépliée : chaîne d'arpenteur, compas et roue dentée qui ouvre Réglages ; au doigt, un pointeur décalé au-dessus du doigt pose les points ; délai d'affichage et décalage du pointeur réglables dans Réglages > Mon appareil) |
 | `home.html?page=signal` | SIG4CEM, avec la barre et l'icône de compte en haut à droite |
-| `home.html?page=reglages` | réglages regroupés en blocs selon les droits (`src/reglages/`) : Mon appareil (compte, durée d'affichage des mesures, version), Utilisateurs (page d'administration actuelle chargée à la demande dans un sous-écran), Avancé > Services et relais (`serveur.js`) |
+| `home.html?page=reglages` | réglages regroupés en blocs selon les droits (`src/reglages/`) : Mon appareil (compte, durée d'affichage des mesures, décalage du pointeur de mesure, version), Utilisateurs (page d'administration actuelle chargée à la demande dans un sous-écran), Avancé > Services et relais (`serveur.js`) |
+
+**Icônes de la nouvelle interface.** Une seule famille de dessins, en trait fin de 0,8 px, bleu `#0b5c75` (couleur des
+boutons et du texte des onglets), sans cadre autour des icônes seules :
+
+| Élément | Taille du dessin | Réalisation |
+|---|---|---|
+| Onglets Carte, Saisie, Réglages | 23 px de haut | Carte : tracé SVG dans `nav.js` ; Saisie et Réglages : images `icone-saisie.png`, `icone-reglages.png` (masque coloré par CSS) |
+| Boutons ronds de la carte : loupe, latte, chaîne, compas, sondage | bouton de 55 px, cercle de 51 px (liseré blanc de 2 px) | SVG dans `mesureIcones.js` |
+| Boutons ronds Couches et Ajouter un point | idem (dessin réduit à 93,2 %) | masques `couches-bouton.png`, `ajouter-point.png` (CSS de `couches.css`) |
+| Pied du bandeau Couches : disquette, flèches circulaires, fermeture des sélecteurs | 23 px | SVG dans `couches.js` (`svgIcone`) |
+| Fermeture du bandeau, curseurs d'opacité et de réglages, croix de la fenêtre d'un signalement | 23 px | `icone-fermer-bandeau.png` ; curseurs et croix : masques en SVG dans `couches.css` et `nav.css` |
+| Logo du bandeau | 40 px de haut | SVG dans `couches.js` : cœur plein, pétales à contour et hachures de 0,8 px |
+
+Les images masque sont des `.png` à fond transparent : la couleur vient du CSS (`background: currentColor`), ce qui permet
+l'inversion (blanc sur bleu quand l'outil est actif). Les dessins viennent des tracés de Jph, remis à une épaisseur
+uniforme par un traitement hors dépôt. Il reste des symboles texte (💾 ✕ ✓ ✥ 🗑 …) dans les fenêtres de réglages, la saisie
+et les éditeurs : ils seront harmonisés par lots (voir `refonte-interface-reglages.md`).
 
 Les pages sont déclarées dans `pages` de `config.js` ; chacune reprend les fichiers de l'interface correspondante. Un
 fichier qui doit changer pour la nouvelle interface est copié et ne remplace l'original que dans la liste de la page.
