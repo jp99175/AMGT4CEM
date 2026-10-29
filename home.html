@@ -12,7 +12,7 @@
 <body>
 
 <!-- Point d'entrée UNIQUE de l'application. Sans paramètre : nouvelle interface (carte). ?page=carto|signal|reglages choisit la page ;
-       l'ancienne interface reste atteignable par ?app=carto|signal|admin (repli, à retirer).
+       les anciennes adresses ?app= sont redirigées vers la page équivalente (admin → reglages).
      Le routeur (src/router.js) copie ici le gabarit de l'interface choisie, puis charge ses
      scripts (liste `apps` de config.js). Les deux interfaces partagent config.js et les
      modules du socle commun ; elles ne se chargent jamais l'une l'autre. -->

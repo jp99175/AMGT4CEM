@@ -1,7 +1,8 @@
 /**
  * Routeur de home.html : choisit l'interface selon le paramètre d'adresse.
  *
- * Interfaces actuelles (`apps` de config.js), inchangées jusqu'à la bascule :
+ * Ancienne interface RETIRÉE (29/10) : ?app= est redirigé vers ?page= (admin → reglages). `apps` de config.js
+ * ne sert plus que de socle (gabarits, styles, scripts) aux pages. Anciennes adresses, pour mémoire :
  *   home.html?app=carto    AMGT4CEM : visualisation de toutes les données sur la carte (défaut)
  *   home.html?app=signal   SIG4CEM  : saisie des signalements et demandes
  *   home.html?app=admin    Administration des intervenants
@@ -47,8 +48,17 @@ const AMGT4CEM_Router = {
   async start() {
     const config = AMGT4CEM_CONFIG;
     const query = new URLSearchParams(location.search);
-    // Bascule : sans paramètre, c'est la nouvelle interface (?page=). L'ancienne (?app=) reste accessible.
-    const parPage = query.has('page') || !query.has('app');
+    // Sans paramètre : page carte.
+    // Retrait de l'ancienne interface : une ancienne adresse ?app= est redirigée vers la page équivalente
+    // (l'administration devient Réglages), en gardant les autres paramètres.
+    if (query.has('app') && !query.has('page')) {
+      const ancien = query.get('app');
+      query.delete('app');
+      query.set('page', ancien === 'admin' ? 'reglages' : ancien);
+      location.replace(`home.html?${query.toString()}${location.hash}`);
+      return;
+    }
+    const parPage = true;
     const registry = parPage ? (config.pages || {}) : config.apps;
     const requested = parPage ? query.get('page') : query.get('app');
     const id = requested || (parPage ? config.defaultPage : config.defaultApp);

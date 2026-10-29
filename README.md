@@ -19,7 +19,7 @@ python3 -m http.server 8000
 ```
 
 Puis ouvrez `http://localhost:8000/home.html` : c'est la **nouvelle interface** (Carte · Saisie · Réglages, `?page=`),
-par défaut depuis la bascule. L'**ancienne interface** reste atteignable, en repli, jusqu'à son retrait :
+par défaut depuis la bascule. L'**ancienne interface est retirée** : les anciennes adresses `?app=` sont redirigées vers la page équivalente (`admin` vers `reglages`). Anciennes adresses, pour mémoire :
 
 - http://localhost:8000/home.html?app=carto : ancienne carte AMGT4CEM ;
 - http://localhost:8000/home.html?app=signal : **SIG4CEM**, saisie des signalements et demandes

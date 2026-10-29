@@ -267,7 +267,7 @@ const AMGT4CEM_CONFIG = {
   maxZoom: 22,
 };
 
-// --- Nouvelle interface (home.html?page=…), à côté des interfaces actuelles (?app=…) jusqu'à la bascule ---
+// --- Interface (home.html?page=…). L'ancienne entrée ?app=… est retirée : le routeur la redirige vers la page équivalente ---
 // Chaque page reprend les fichiers de l'interface correspondante et y ajoute la barre de navigation (src/nav/).
 // Un fichier qui doit changer pour la nouvelle interface est COPIÉ (src/…/v2 ou nom distinct) et remplace
 // l'original dans la liste de la page seulement : les interfaces ?app= ne sont jamais touchées.
