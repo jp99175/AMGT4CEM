@@ -61,6 +61,9 @@
  * fonctionnait de ce fait qu'à la souris. Les événements Pointer couvrent
  * uniformément souris, tactile et stylet.
  *
+ * Au doigt, le CENTRE est posé avec le décalage réglable (_touchOffsetPx) et le RAYON part du centre en suivant le
+ * déplacement du doigt (_relatif) ; un pointeur (cercle et croix) montre où l'on mesure.
+ *
  * Au doigt, le point réellement positionné (_eventToLatLng) est décalé
  * vers le haut par rapport au point de contact : sinon le doigt cache
  * lui-même le centre/la cote/le bord du cercle pendant qu'on les
@@ -96,6 +99,11 @@ const AMGT4CEM_MeasureTool = {
   // Décalage (px écran) au-dessus du point de contact tactile, pour que le
   // doigt ne cache pas ce qu'il est en train de positionner.
   _touchOffsetPx: 60,
+  // Au doigt, le CENTRE se pose avec ce décalage ; le RAYON, lui, part du centre et suit le déplacement du doigt
+  // (1 pour 1, point de contact quelconque) : { doigt0, origine } en pixels de la carte, posé à l'appui du rayon.
+  // Repli sur le décalage si le centre n'est plus à l'écran.
+  _relatif: null,
+  _reticule: null,
   // Décalage (px écran) entre le bord du cercle et le point d'ancrage de la
   // cote, pour qu'elle ne soit jamais visuellement coupée par le cercle.
   _labelMarginPx: 14,
@@ -174,6 +182,8 @@ const AMGT4CEM_MeasureTool = {
     document.getElementById('amgt-measure-btn').classList.remove('amgt-btn--active');
     this._map.off('popupopen', this._onPopupOpen);
     this._pointerId = null;
+    this._relatif = null;
+    this._effacerReticule();
     this._state = 'idle';
     this._clearMeasurement();
     AMGT4CEM_ScreenshotTool.invalidateBackground();
@@ -192,13 +202,25 @@ const AMGT4CEM_MeasureTool = {
       try { container.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     }
     e.preventDefault();
-    this._handlePress(this._eventToLatLng(e));
+    this._relatif = null;
+    if (e.pointerType === 'touch' && this._state === 'idleAwaitingRadius' && this._center) {
+      const origine = this._map.latLngToContainerPoint(this._center);
+      const taille = this._map.getSize();
+      if (origine.x >= 0 && origine.y >= 0 && origine.x <= taille.x && origine.y <= taille.y) {
+        this._relatif = { doigt0: this._map.mouseEventToContainerPoint(e), origine };
+      }
+    }
+    const latlng = this._eventToLatLng(e);
+    this._handlePress(latlng);
+    this._montrerReticule(e, latlng);
   },
 
   _onPointerMove(e) {
     if (e.pointerId !== this._pointerId) return;
     e.preventDefault();
-    this._handleMove(this._eventToLatLng(e));
+    const latlng = this._eventToLatLng(e);
+    this._handleMove(latlng);
+    this._montrerReticule(e, latlng);
   },
 
   /** @param {boolean} annule - pointercancel : le navigateur reprend le geste ; ses coordonnées ne sont pas
@@ -211,16 +233,40 @@ const AMGT4CEM_MeasureTool = {
     // retard sur un appareil moins réactif) : la cote et le cercle doivent
     // se figer pile là où on relâche, pas à une position intermédiaire.
     if (!annule) this._handleMove(this._eventToLatLng(e));
+    this._effacerReticule();
     this._handleRelease();
+    this._relatif = null;
   },
 
   /** Position réelle à utiliser (voir _touchOffsetPx en tête de fichier). */
   _eventToLatLng(e) {
     let point = this._map.mouseEventToContainerPoint(e);
     if (e.pointerType === 'touch') {
-      point = point.subtract([0, this._touchOffsetPx]);
+      if (this._relatif) point = this._relatif.origine.add(point.subtract(this._relatif.doigt0));
+      else point = point.subtract([0, this._touchOffsetPx]);
     }
     return this._map.containerPointToLatLng(point);
+  },
+
+  /** Même pointeur que la chaîne d'arpenteur (cercle et croix), au doigt seulement. */
+  iconeReticule() {
+    return L.divIcon({
+      className: 'mes-curseur',
+      html: '<svg viewBox="-12 -12 24 24" width="24" height="24" fill="none" stroke="#f50057" stroke-width="1.6" stroke-linecap="round"><circle r="7"/><path d="M0 -11V-3M0 3V11M-11 0H-3M3 0H11" stroke-width="1.2"/></svg>',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+  },
+  _montrerReticule(e, latlng) {
+    if (e.pointerType !== 'touch') return;
+    if (!this._reticule) {
+      this._reticule = L.marker(latlng, { icon: this.iconeReticule(), interactive: false, keyboard: false, pane: 'amgtMeasurePane' }).addTo(this._map);
+    } else {
+      this._reticule.setLatLng(latlng);
+    }
+  },
+  _effacerReticule() {
+    if (this._reticule) { this._map.removeLayer(this._reticule); this._reticule = null; }
   },
 
   _handlePress(latlng) {

@@ -7,7 +7,8 @@
  *      · chaîne d'arpenteur : on pose les points un à un ; longueur de chaque tronçon, longueur cumulée, et surface
  *        si l'on referme la ligne sur son premier point. À la souris, un clic pose un point (la carte reste
  *        déplaçable). Au doigt, un pointeur apparaît au-dessus du doigt (décalage réglable) : on le glisse, le
- *        point est posé au relâchement ; la carte se déplace et se zoome avec deux doigts ;
+ *        point est posé au relâchement ; pour les points suivants, le pointeur part du point précédent et suit le
+ *        déplacement du doigt (1 pour 1), le doigt se posant n'importe où ; la carte se déplace et se zoome avec deux doigts ;
  *      · compas : le rayon, outil existant (src/measureTool.js) ; même décalage réglable au doigt.
  *  - Le résultat reste affiché le délai réglé dans Réglages > Mon appareil (0 = jusqu'à « Fermer »).
  *  - Disquette : enregistre une image de la carte avec la mesure (src/screenshotTool.js, inchangé) ;
@@ -127,6 +128,7 @@ const Chaine = {
     window.removeEventListener('pointerup', this._onUp);
     window.removeEventListener('pointercancel', this._onCancel);
     this._effacerCurseur();
+    this._relatif = null;
     this._doigts.clear();
     map.dragging.enable();
     c.style.touchAction = '';
@@ -139,7 +141,10 @@ const Chaine = {
   /** Point visé (pixels de la carte) : au doigt, décalé vers le haut du réglage « Décalage du pointeur ». */
   _visee(e) {
     let p = this.map().mouseEventToContainerPoint(e);
-    if (e.pointerType === 'touch') p = p.subtract([0, Reglages().decalagePx()]);
+    if (e.pointerType === 'touch') {
+      if (this._relatif) p = this._relatif.origine.add(p.subtract(this._relatif.doigt0));
+      else p = p.subtract([0, Reglages().decalagePx()]);
+    }
     return this.map().containerPointToLatLng(p);
   },
 
@@ -148,8 +153,18 @@ const Chaine = {
     this._dernierTactile = Date.now();
     this._doigts.add(e.pointerId);
     this.map().dragging.disable(); // un doigt pilote le pointeur ; deux doigts déplacent et zooment la carte (Leaflet)
-    if (this._doigts.size > 1) { this._effacerCurseur(); this._curseurId = null; return; }
+    if (this._doigts.size > 1) { this._effacerCurseur(); this._curseurId = null; this._relatif = null; return; }
     this._curseurId = e.pointerId;
+    // Premier point : décalage du réglage. Points suivants : le pointeur part du point précédent et suit le doigt
+    // (1 pour 1). Repli sur le décalage si le point précédent n'est plus à l'écran.
+    this._relatif = null;
+    if (this.pts.length >= 1 && !this.fini) {
+      const origine = this.map().latLngToContainerPoint(this.pts[this.pts.length - 1]);
+      const t = this.map().getSize();
+      if (origine.x >= 0 && origine.y >= 0 && origine.x <= t.x && origine.y <= t.y) {
+        this._relatif = { doigt0: this.map().mouseEventToContainerPoint(e), origine };
+      }
+    }
     this._montrerCurseur(this._visee(e));
   },
 
@@ -166,6 +181,7 @@ const Chaine = {
     const posable = e.pointerId === this._curseurId;
     if (posable) {
       this._curseurId = null;
+      this._relatif = null;
       const latlng = this._curseurLatLng;
       this._effacerCurseur();
       if (!annule && latlng) this.clic(latlng);
@@ -177,12 +193,7 @@ const Chaine = {
     const map = this.map();
     this._curseurLatLng = latlng;
     if (!this._curseur) {
-      const icone = L.divIcon({
-        className: 'mes-curseur',
-        html: '<svg viewBox="-12 -12 24 24" width="24" height="24" fill="none" stroke="#f50057" stroke-width="1.6" stroke-linecap="round"><circle r="7"/><path d="M0 -11V-3M0 3V11M-11 0H-3M3 0H11" stroke-width="1.2"/></svg>',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-      });
+      const icone = AMGT4CEM_MeasureTool.iconeReticule(); // même pointeur que le compas
       this._curseur = L.marker(latlng, { icon: icone, interactive: false, keyboard: false, pane: 'amgtMeasurePane' }).addTo(map);
       this._elastique = L.polyline([], { pane: 'amgtMeasurePane', color: COULEUR, weight: 2, dashArray: '5,5', interactive: false }).addTo(map);
     }
