@@ -108,6 +108,35 @@ const AMGT4CEM_ScreenshotTool = {
     AMGT4CEM_MeasureTool.drawOverlayOnContext(ctx);
     ctx.restore();
 
+    // Bandeau du résultat en bas de l'image (hook posé par src/nav/mesure.js : texte de la mesure), sous la carte,
+    // à la place où l'écran affiche le menu du bas. Sans texte : image inchangée.
+    const texte = typeof this.texteBandeau === 'function' ? this.texteBandeau() : '';
+    if (texte) {
+      const bandeau = Math.round(56 * scale);
+      const final = document.createElement('canvas');
+      final.width = composite.width;
+      final.height = composite.height + bandeau;
+      const fc = final.getContext('2d');
+      fc.drawImage(composite, 0, 0);
+      fc.fillStyle = '#fff';
+      fc.fillRect(0, composite.height, final.width, bandeau);
+      fc.fillStyle = '#d5dbe1';
+      fc.fillRect(0, composite.height, final.width, Math.max(1, scale));
+      fc.fillStyle = '#f50057';
+      fc.font = `600 ${15 * scale}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+      fc.textAlign = 'center';
+      fc.textBaseline = 'middle';
+      // Trop long pour une ligne : coupé au séparateur « · » (longueur · périmètre · surface), sur deux lignes.
+      const lignes = fc.measureText(texte).width > final.width - 24 * scale ? texte.split(' · ').reduce((acc, t, i, tous) => {
+        const moitie = Math.ceil(tous.length / 2);
+        (i < moitie ? (acc[0] = (acc[0] ? `${acc[0]} · ` : '') + t) : (acc[1] = (acc[1] ? `${acc[1]} · ` : '') + t));
+        return acc;
+      }, []) : [texte];
+      const interligne = 19 * scale;
+      lignes.forEach((l, i) => fc.fillText(l, final.width / 2, composite.height + bandeau / 2 + (i - (lignes.length - 1) / 2) * interligne));
+      return new Promise((resolve) => final.toBlob(resolve, 'image/png'));
+    }
+
     return new Promise((resolve) => composite.toBlob(resolve, 'image/png'));
   },
 

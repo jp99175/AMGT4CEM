@@ -35,6 +35,16 @@ const ICONES = {
   terminer: svgIcone('<path d="M4.5 12.5l5 5 10-11"/>'),
 };
 
+/** Icônes du lecteur (23 px, trait de 0,8 px), comme celles des menus. */
+const svg23 = (contenu) => `<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round">${contenu}</svg>`;
+const ICONES_LECTEUR = {
+  pause: svg23('<rect x="7" y="5" width="3.6" height="14" rx="1"/><rect x="13.4" y="5" width="3.6" height="14" rx="1"/>'),
+  lecture: svg23('<path d="M8 5.2l11 6.8-11 6.8z"/>'),
+  replier: svg23('<path d="M6 9l6 6 6-6"/>'),
+  disquette: svg23('<path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/>'),
+  fermer: svg23('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'),
+};
+
 /** Roue dentée (8 dents, trait de 0,8 px) posée en bas à droite de la latte dépliée : diamètre de 16 px, comme le globe de
  *  l'icône Couches. Le fond (disque) masque le trait de la latte dessous ; sa couleur suit celle de la latte (repos / actif). */
 const ROUE = '<svg viewBox="-12.2 -12.2 24.4 24.4" width="28" height="28" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="0.727" stroke-linecap="round" stroke-linejoin="round">'
@@ -254,8 +264,7 @@ const Chaine = {
     Mesure.majControles();
     AMGT4CEM_ScreenshotTool.capture();
     clearTimeout(this._timer);
-    const delai = Reglages().delaiMesureMs();
-    if (delai > 0) this._timer = setTimeout(() => this.vider(), delai);
+    Lecteur.demarrer(() => this.vider()); // le temps s'écoule dans la barre « lecteur »
   },
 
   /** Longueur de chaque tronçon (le dernier ferme la ligne si elle est refermée). */
@@ -341,9 +350,7 @@ const Chaine = {
       const m = a.add(b).divideBy(2);
       boite(fmtDist(t.m), m.x, m.y, 'centre');
     }
-    const texte = this.texteResultat();
-    if (texte) boite(texte, 10, 10, 'coin');
-    ctx.restore();
+    ctx.restore(); // le résultat (longueur, périmètre, surface) est dans le bandeau du bas de l'image (screenshotTool)
   },
 };
 
@@ -369,6 +376,142 @@ const Reglages = () => ({
 });
 
 // ------------------------------------------------------------------ boutons et pilotage des deux outils
+// ------------------------------------------------------------------ barre « lecteur »
+/** Barre de commande du résultat, façon lecteur de musique : pause / lecture, curseur du temps restant, disquette,
+ *  fermer, et « replier » pour la capture d'écran du téléphone (la barre et le menu du bas sont remplacés par le
+ *  résultat, un toucher sur le bandeau rétablit tout). Le temps de départ est la durée réglée dans Réglages
+ *  (0 : démarre en pause). Le temps est commun à la chaîne et au compas. */
+const Lecteur = {
+  actif: false,
+  plie: false,
+  _p: 0, // avancement, de 0 à 1
+  _dureeMs: 5000,
+  _lecture: false,
+  _t0: 0,
+  _raf: null,
+  _onFin: null,
+
+  monter() {
+    const bouton = (classe, titre, html) => h('button', { type: 'button', class: `mes-lect__btn ${classe}`, title: titre, 'aria-label': titre }, html);
+    this._replier = bouton('mes-lect__replier', 'Replier la barre (pour une capture d\'écran)', ICONES_LECTEUR.replier);
+    this._lire = bouton('mes-lect__lire', 'Pause', ICONES_LECTEUR.pause);
+    this._piste = h('div', { class: 'mes-lect__piste', role: 'slider', 'aria-label': 'Temps restant avant la disparition de la mesure', tabindex: '0' }, '<div class="mes-lect__rail"><div class="mes-lect__fait"></div></div><div class="mes-lect__bouton"></div>');
+    this._temps = h('span', { class: 'mes-lect__temps' });
+    this._sauver = bouton('mes-lect__sauver', 'Enregistrer une image de la mesure', ICONES_LECTEUR.disquette);
+    this._efface = bouton('mes-lect__fermer', 'Effacer la mesure', ICONES_LECTEUR.fermer);
+    this._barre = h('div', { id: 'mes-lecteur', class: 'mes-lecteur', hidden: '' });
+    this._barre.append(this._replier, this._lire, this._piste, this._temps, this._sauver, this._efface);
+    this._bandeau = h('div', { id: 'mes-bandeau', class: 'mes-bandeau', hidden: '', role: 'button', title: 'Toucher pour rétablir la barre et le menu' });
+    document.body.append(this._barre, this._bandeau);
+
+    this._lire.addEventListener('click', () => this.basculer());
+    this._replier.addEventListener('click', () => this.replier());
+    this._bandeau.addEventListener('click', () => this.deplier());
+    this._sauver.addEventListener('click', () => document.getElementById('amgt-screenshot-btn').click());
+    this._efface.addEventListener('click', () => this.finir());
+    // Curseur : toucher ou glisser règle le temps écoulé (à droite : la mesure disparaît plus vite).
+    const regler = (e) => {
+      const r = this._piste.getBoundingClientRect();
+      this._p = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+      if (this._lecture) this._t0 = performance.now() - this._p * this._dureeMs;
+      if (this._p >= 1) { this.finir(); return; }
+      this.maj();
+    };
+    this._piste.addEventListener('pointerdown', (e) => { this._piste.setPointerCapture(e.pointerId); this._glisse = true; regler(e); });
+    this._piste.addEventListener('pointermove', (e) => { if (this._glisse) regler(e); });
+    for (const ev of ['pointerup', 'pointercancel']) this._piste.addEventListener(ev, () => { this._glisse = false; });
+  },
+
+  /** Une mesure vient d'être terminée : la barre apparaît, le temps s'écoule (ou démarre en pause si la durée réglée est 0). */
+  demarrer(onFin) {
+    this._onFin = onFin;
+    const delai = Reglages().delaiMesureMs();
+    this._dureeMs = delai > 0 ? delai : 5000;
+    this._p = 0;
+    this.actif = true;
+    this.plie = false;
+    document.documentElement.classList.remove('mes-plie');
+    this._barre.hidden = false;
+    document.documentElement.classList.add('mes-avec-lecteur');
+    this._bandeau.hidden = true;
+    if (delai > 0) this._jouer(); else this._pause();
+    Mesure.majResume();
+  },
+
+  /** La mesure a disparu (ou l'outil s'arrête) : tout est remis à zéro. */
+  arreter() {
+    if (!this.actif) return;
+    this.actif = false;
+    this.plie = false;
+    this._pause();
+    this._onFin = null;
+    this._barre.hidden = true;
+    this._bandeau.hidden = true;
+    document.documentElement.classList.remove('mes-avec-lecteur', 'mes-plie');
+    Mesure.majResume();
+  },
+
+  /** Fin du temps (ou ✕) : la mesure est effacée, comme à l'expiration du délai. */
+  finir() {
+    const fin = this._onFin;
+    this.arreter();
+    if (fin) fin();
+  },
+
+  basculer() { if (this._lecture) this._pause(); else this._jouer(); },
+
+  _jouer() {
+    if (this._p >= 1) this._p = 0;
+    this._lecture = true;
+    this._t0 = performance.now() - this._p * this._dureeMs;
+    cancelAnimationFrame(this._raf);
+    const tick = () => {
+      if (!this._lecture) return;
+      this._p = (performance.now() - this._t0) / this._dureeMs;
+      if (this._p >= 1) { this.finir(); return; }
+      this.maj();
+      this._raf = requestAnimationFrame(tick);
+    };
+    this._raf = requestAnimationFrame(tick);
+    this.maj();
+  },
+
+  _pause() {
+    this._lecture = false;
+    cancelAnimationFrame(this._raf);
+    this._raf = null;
+    if (this._barre) this.maj();
+  },
+
+  /** Replier : pour la capture d'écran du téléphone. Le temps est mis en pause ; le résultat prend la place du menu. */
+  replier() {
+    this._pause();
+    this.plie = true;
+    this._barre.hidden = true;
+    this._bandeau.textContent = Mesure.texteResultat();
+    this._bandeau.hidden = false;
+    document.documentElement.classList.add('mes-plie');
+    Mesure.majResume();
+  },
+
+  deplier() {
+    this.plie = false;
+    this._bandeau.hidden = true;
+    this._barre.hidden = !this.actif;
+    document.documentElement.classList.remove('mes-plie');
+    Mesure.majResume();
+  },
+
+  maj() {
+    const p = Math.min(1, Math.max(0, this._p));
+    this._piste.style.setProperty('--mes-p', `${(p * 100).toFixed(2)}%`);
+    this._piste.setAttribute('aria-valuenow', String(Math.round(p * 100)));
+    this._lire.innerHTML = this._lecture ? ICONES_LECTEUR.pause : ICONES_LECTEUR.lecture;
+    this._lire.title = this._lecture ? 'Pause' : 'Reprendre';
+    this._temps.textContent = this._lecture ? `${Math.ceil((this._dureeMs * (1 - p)) / 1000)} s` : '∞';
+  },
+};
+
 const Mesure = {
   outil: null, // 'chaine' | 'compas' | null
   _bloc: null,
@@ -425,6 +568,9 @@ const Mesure = {
     this._disquette.addEventListener('click', () => document.getElementById('amgt-screenshot-btn').click());
     document.addEventListener('pointerdown', (e) => { if (!bloc.contains(e.target)) this.fermerPlateau(); });
 
+    Lecteur.monter();
+    // Bandeau du bas de l'image enregistrée : le résultat de la mesure (voir src/screenshotTool.js).
+    AMGT4CEM_ScreenshotTool.texteBandeau = () => this.texteResultat();
     this._envelopper();
     this.majControles();
   },
@@ -445,7 +591,9 @@ const Mesure = {
       const delai = Reglages().delaiMesureMs();
       M._hideDelayMs = delai > 0 ? delai : 4000;
       relache();
-      if (delai === 0) { clearTimeout(M._clearTimer); M._clearTimer = null; }
+      clearTimeout(M._clearTimer); // le temps est géré par la barre « lecteur »
+      M._clearTimer = null;
+      if (M._state === 'idle' && M._circle) Lecteur.demarrer(() => M._clearMeasurement());
       Mesure.majControles();
     };
     const vide = M._clearMeasurement.bind(M);
@@ -542,8 +690,16 @@ const Mesure = {
     return false;
   },
 
+  /** Texte du résultat affiché : chaîne (longueur, périmètre, surface) ou rayon du compas. */
+  texteResultat() {
+    if (this.outil === 'chaine') return Chaine.texteResultat();
+    if (this.outil === 'compas' && this.aResultat()) return `Rayon : ${fmtDist(AMGT4CEM_MeasureTool._circle.getRadius())}`;
+    return '';
+  },
+
   majControles() {
     if (!this._bloc) return;
+    if (!this.aResultat()) Lecteur.arreter();
     const o = this.outil;
     // Latte dépliée : elle devient le bouton des réglages, active seulement quand on la touche (mes-presse).
     this._latte.classList.toggle('amgt-btn--active', !!o && !this._bloc.classList.contains('mes-bloc--ouvert'));
@@ -551,7 +707,7 @@ const Mesure = {
     this._compasBtn.classList.toggle('amgt-btn--active', o === 'compas');
     const montre = (b, oui) => b.classList.toggle('mes-cache', !oui);
     montre(this._fermer, !!o);
-    montre(this._disquette, this.aResultat());
+    montre(this._disquette, false); // la disquette est dans la barre « lecteur »
     montre(this._terminer, o === 'chaine' && !Chaine.fini && Chaine.pts.length >= 2);
     montre(this._annuler, o === 'chaine' && Chaine.pts.length >= 1);
     this.majResume();
@@ -559,9 +715,9 @@ const Mesure = {
 
   majResume() {
     if (!this._resume) return;
-    const texte = this.outil === 'chaine' ? Chaine.texteResultat() : '';
+    const texte = this.texteResultat();
     this._resume.textContent = texte;
-    this._resume.hidden = !texte;
+    this._resume.hidden = !texte || Lecteur.plie;
   },
 };
 

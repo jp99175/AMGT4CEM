@@ -111,3 +111,60 @@ html[data-page="carto"] #amgt-bore-btn svg { width: 55px; height: 55px; display:
 
 html[data-page="carto"] #amgt-search-box { width: 55px; height: 55px; }
 html[data-page="carto"] #amgt-search-box.amgt-search--open { width: min(260px, calc(100vw - 20px)); }
+
+/* ---- Barre « lecteur » du résultat : pause / lecture, curseur du temps, disquette, fermer ---- */
+.mes-lecteur {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--amgt-nav-h, 56px) + var(--amgt-nav-safe, 0px) + 10px);
+  z-index: 1000;
+  box-sizing: border-box;
+  width: min(560px, calc(100vw - 20px));
+  height: 46px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  color: #0b5c75;
+}
+.mes-lecteur[hidden] { display: none; }
+.mes-lect__btn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; padding: 0; margin: 0; background: none; border: 0; border-radius: 50%; color: #0b5c75; cursor: pointer; touch-action: manipulation; }
+.mes-lect__btn:hover { background: #e8f2f6; }
+.mes-lect__btn svg { display: block; pointer-events: none; }
+.mes-lect__piste { position: relative; flex: 1; min-width: 60px; height: 38px; margin: 0 8px; touch-action: none; cursor: pointer; --mes-p: 0%; }
+.mes-lect__rail { position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; background: #cfd8de; border-radius: 2px; overflow: hidden; }
+.mes-lect__fait { width: var(--mes-p); height: 100%; background: #0b5c75; }
+.mes-lect__bouton { position: absolute; top: 50%; left: var(--mes-p); width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #0b5c75; box-shadow: 0 0 0 2px #fff; }
+.mes-lect__temps { flex: none; min-width: 34px; text-align: right; margin-right: 4px; font: 600 13px system-ui, -apple-system, "Segoe UI", sans-serif; color: #0b5c75; }
+@media (min-width: 900px) { .mes-lecteur { bottom: 24px; } }
+
+/* Le résultat se pose juste au-dessus de la barre */
+html.mes-avec-lecteur .mes-resume { bottom: calc(var(--amgt-nav-h, 56px) + var(--amgt-nav-safe, 0px) + 66px); }
+@media (min-width: 900px) { html.mes-avec-lecteur .mes-resume { bottom: 80px; } }
+
+/* Barre repliée (capture d'écran du téléphone) : le bandeau du résultat prend la place du menu du bas */
+.mes-bandeau {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2000;
+  box-sizing: border-box;
+  min-height: calc(var(--amgt-nav-h, 56px) + var(--amgt-nav-safe, 0px));
+  padding: 6px 16px calc(6px + var(--amgt-nav-safe, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-top: 1px solid #d5dbe1;
+  color: #f50057;
+  font: 600 15px system-ui, -apple-system, "Segoe UI", sans-serif;
+  text-align: center;
+  cursor: pointer;
+}
+.mes-bandeau[hidden] { display: none; }
+html.mes-plie .amgt-nav { visibility: hidden; }
