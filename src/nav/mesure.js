@@ -457,27 +457,34 @@ const Mesure = {
   _brancherLatte() {
     const b = this._latte;
     const annule = () => { clearTimeout(this._timerAppui); this._timerAppui = null; };
+    // Latte dépliée : l'icône (latte + roue) est le bouton des réglages ; elle n'est « active » que le temps du toucher.
+    const presse = (oui) => b.classList.toggle('mes-presse', oui && this._bloc.classList.contains('mes-bloc--ouvert'));
     b.addEventListener('pointerdown', (e) => {
       if (e.button > 0) return;
+      presse(true);
       this._appuiLong = false;
       annule();
       this._timerAppui = setTimeout(() => { this._appuiLong = true; this._timerAppui = null; this.ouvrirPlateau(); }, APPUI_LONG_MS);
     });
     b.addEventListener('pointerup', () => {
+      presse(false);
       const long = this._appuiLong;
       const enCours = this._timerAppui !== null;
       annule();
       if (!long && enCours) this.toucher();
     });
-    b.addEventListener('pointercancel', annule);
-    b.addEventListener('pointerleave', annule);
+    b.addEventListener('pointercancel', () => { annule(); presse(false); });
+    b.addEventListener('pointerleave', () => { annule(); presse(false); });
+    // La roue dessinée sur la latte appartient au même bouton visuel.
+    this._roue.addEventListener('pointerdown', () => presse(true));
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) this._roue.addEventListener(ev, () => presse(false));
     b.addEventListener('contextmenu', (e) => e.preventDefault()); // l'appui long ne doit pas ouvrir le menu du navigateur
     b.addEventListener('click', (e) => { if (e.detail === 0) this.toucher(); }); // clavier
   },
 
   /** Appui court. */
   toucher() {
-    if (this._bloc.classList.contains('mes-bloc--ouvert')) { this.fermerPlateau(); return; }
+    if (this._bloc.classList.contains('mes-bloc--ouvert')) { this.ouvrirReglages(); return; } // latte dépliée : la latte + roue ouvre les réglages
     if (this.outil) this.arreter();
     else this.demarrer(this.dernier());
   },
@@ -485,8 +492,9 @@ const Mesure = {
   ouvrirPlateau() {
     this._bloc.classList.add('mes-bloc--ouvert');
     this._bloc.style.setProperty('--mes-glisse', `${GLISSE_PX}px`);
+    this.majControles();
   },
-  fermerPlateau() { this._bloc.classList.remove('mes-bloc--ouvert'); },
+  fermerPlateau() { this._bloc.classList.remove('mes-bloc--ouvert'); this._latte.classList.remove('mes-presse'); this.majControles(); },
 
   /** Roue dentée : Réglages > Mon appareil (même chemin que l'onglet Réglages : connexion demandée si besoin). */
   ouvrirReglages() {
@@ -537,7 +545,8 @@ const Mesure = {
   majControles() {
     if (!this._bloc) return;
     const o = this.outil;
-    this._latte.classList.toggle('amgt-btn--active', !!o);
+    // Latte dépliée : elle devient le bouton des réglages, active seulement quand on la touche (mes-presse).
+    this._latte.classList.toggle('amgt-btn--active', !!o && !this._bloc.classList.contains('mes-bloc--ouvert'));
     this._chaineBtn.classList.toggle('amgt-btn--active', o === 'chaine');
     this._compasBtn.classList.toggle('amgt-btn--active', o === 'compas');
     const montre = (b, oui) => b.classList.toggle('mes-cache', !oui);

@@ -68,6 +68,9 @@ html[data-page="carto"] #amgt-screenshot-btn { display: none !important; }
 .mes-btn--latte:hover ~ .mes-roue .mes-roue__fond { fill: #e8f2f6; }
 .mes-btn--latte.amgt-btn--active ~ .mes-roue { color: #fff; }
 .mes-btn--latte.amgt-btn--active ~ .mes-roue .mes-roue__fond { fill: #0b5c75; }
+.mes-bloc--ouvert .mes-btn--latte.mes-presse { background: #0b5c75; color: #fff; }
+.mes-btn--latte.mes-presse ~ .mes-roue { color: #fff; }
+.mes-btn--latte.mes-presse ~ .mes-roue .mes-roue__fond { fill: #0b5c75; }
 .mes-bloc--ouvert .mes-roue { opacity: 1; visibility: visible; transform: translateX(calc(-2 * var(--mes-glisse, 63px))); }
 
 /* Pointeur décalé de la chaîne (au doigt) */
