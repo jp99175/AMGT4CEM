@@ -104,6 +104,44 @@ function charger(type, url) {
 }
 Reglages.charger = charger;
 
+// ------------------------------------------------------------------ changement de mot de passe
+/** Sous-écran « Mot de passe » : ancien + nouveau (8 caractères au moins), par POST /auth/motdepasse. */
+function monterMotDePasse(conteneur) {
+  const champ = (libelle, autocomplete) => {
+    const input = h('input', { type: 'password', class: 'rgl-input rgl-input--large', autocomplete, autocapitalize: 'none', spellcheck: 'false' });
+    return { input, ligne: h('label', { class: 'rgl-champ' }, h('span', { text: libelle }), input) };
+  };
+  const ancien = champ('Mot de passe actuel', 'current-password');
+  const nouveau = champ('Nouveau mot de passe (8 caractères au moins)', 'new-password');
+  const confirm = champ('Nouveau mot de passe, une seconde fois', 'new-password');
+  const statut = h('p', { class: 'rgl-statut', role: 'status', hidden: '' });
+  const dire = (texte, genre) => {
+    statut.textContent = texte;
+    statut.hidden = !texte;
+    statut.className = `rgl-statut${genre ? ` rgl-statut--${genre}` : ''}`;
+  };
+  const envoyer = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: 'Changer le mot de passe' });
+  envoyer.addEventListener('click', async () => {
+    if (!ancien.input.value) { dire('Saisissez votre mot de passe actuel.', 'erreur'); return; }
+    if (nouveau.input.value.length < 8) { dire('Le nouveau mot de passe doit faire 8 caractères au moins.', 'erreur'); return; }
+    if (nouveau.input.value !== confirm.input.value) { dire('Les deux saisies du nouveau mot de passe ne sont pas identiques.', 'erreur'); return; }
+    if (nouveau.input.value === ancien.input.value) { dire('Le nouveau mot de passe doit être différent de l\'actuel.', 'erreur'); return; }
+    dire('Enregistrement…');
+    envoyer.disabled = true;
+    try {
+      await AMGT4CEM_Auth.call('/auth/motdepasse', { method: 'POST', body: { ancien: ancien.input.value, nouveau: nouveau.input.value } });
+      for (const c of [ancien, nouveau, confirm]) c.input.value = '';
+      dire('Mot de passe changé. Utilisez-le à votre prochaine connexion.', 'ok');
+    } catch (err) {
+      dire(err.message, 'erreur');
+    } finally { envoyer.disabled = false; }
+  });
+  conteneur.append(
+    h('section', { class: 'rgl-bloc rgl-bloc--formulaire' }, ancien.ligne, nouveau.ligne, confirm.ligne),
+    statut,
+    h('div', { class: 'rgl-actions' }, envoyer));
+}
+
 // ------------------------------------------------------------------ blocs
 Reglages.register({
   id: 'appareil',
@@ -122,6 +160,7 @@ Reglages.register({
       aide: 'Distance entre le doigt et le point mesuré, pour que le doigt ne le cache pas (chaîne d\'arpenteur et compas). 0 : pas de décalage. Réglage propre à cet appareil.',
       champ: { unite: 'px', min: 0, max: 200, valeur: () => Reglages.decalageMesurePx(), enregistrer: (n) => Reglages.fixerDecalageMesurePx(n) },
     },
+    { texte: 'Mot de passe', aide: 'Changer le mot de passe de votre compte.', ecran: { id: 'motdepasse', titre: 'Mot de passe', monter: monterMotDePasse } },
     { texte: `Version de l'application : ${typeof AMGT4CEM_BUILD_TIMESTAMP !== 'undefined' ? AMGT4CEM_BUILD_TIMESTAMP : 'inconnue'}` },
   ],
 });
