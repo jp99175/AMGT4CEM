@@ -113,6 +113,9 @@ const Couches = {
       { id: 'amgt-ortho-picker', nom: 'Orthophotos', store: () => AMGT4CEM_OrthoSelectionStore, rafraichir: () => AMGT4CEM_OrthoPicker._render() },
       { id: 'amgt-nappe-picker', nom: 'Géotechnique', store: () => AMGT4CEM_NappeSelectionStore, rafraichir: () => AMGT4CEM_NappeLayer._renderPicker() },
     ];
+    // Sélecteur des signalements : pas de défaut partagé, mais la même icône « fermer » que les autres.
+    const fermerSig = document.getElementById('amgt-signalements-picker-close');
+    if (fermerSig) { fermerSig.className = 'amgt-ic-btn'; fermerSig.innerHTML = ICONES.fermer; fermerSig.title = 'Fermer'; fermerSig.setAttribute('aria-label', 'Fermer'); }
     for (const { id, nom, store, rafraichir } of liste) {
       const ecran = document.getElementById(id);
       if (!ecran) continue;
