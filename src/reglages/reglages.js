@@ -73,6 +73,20 @@ Reglages.delaiMesureMs = function () {
 Reglages.fixerDelaiMesureMs = function (ms) {
   try { localStorage.setItem(CLE_DELAI_MESURE, String(Math.max(0, Math.round(ms)))); } catch (err) { /* valable pour la session seulement */ }
 };
+/** Décalage du pointeur au-dessus du doigt (chaîne d'arpenteur et compas), en pixels. 0 = aucun décalage. */
+const CLE_DECALAGE_MESURE = 'amgt4cem.mesure.decalagePx.v1';
+const DECALAGE_MESURE_DEFAUT = 60;
+Reglages.decalageMesurePx = function () {
+  try {
+    const brut = localStorage.getItem(CLE_DECALAGE_MESURE);
+    const v = Number(brut);
+    if (brut !== null && Number.isFinite(v) && v >= 0) return v;
+  } catch (err) { /* réglage local indisponible : valeur par défaut */ }
+  return DECALAGE_MESURE_DEFAUT;
+};
+Reglages.fixerDecalageMesurePx = function (px) {
+  try { localStorage.setItem(CLE_DECALAGE_MESURE, String(Math.max(0, Math.round(px)))); } catch (err) { /* valable pour la session seulement */ }
+};
 
 // ------------------------------------------------------------------ chargement à la demande
 const dejaCharge = new Map();
@@ -102,6 +116,11 @@ Reglages.register({
       texte: 'Durée d\'affichage d\'une mesure',
       aide: 'Le résultat d\'une mesure reste affiché ce nombre de secondes (0 : jusqu\'à ce que vous touchiez « Fermer »). Réglage propre à cet appareil.',
       champ: { unite: 's', min: 0, max: 600, valeur: () => Reglages.delaiMesureMs() / 1000, enregistrer: (n) => Reglages.fixerDelaiMesureMs(n * 1000) },
+    },
+    {
+      texte: 'Décalage du pointeur de mesure',
+      aide: 'Distance entre le doigt et le point mesuré, pour que le doigt ne le cache pas (chaîne d\'arpenteur et compas). 0 : pas de décalage. Réglage propre à cet appareil.',
+      champ: { unite: 'px', min: 0, max: 200, valeur: () => Reglages.decalageMesurePx(), enregistrer: (n) => Reglages.fixerDecalageMesurePx(n) },
     },
     { texte: `Version de l'application : ${typeof AMGT4CEM_BUILD_TIMESTAMP !== 'undefined' ? AMGT4CEM_BUILD_TIMESTAMP : 'inconnue'}` },
   ],

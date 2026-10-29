@@ -41,6 +41,39 @@ html[data-page="carto"] #amgt-screenshot-btn { display: none !important; }
 .mes-bloc--ouvert #mes-chaine { transform: translateX(calc(-1 * var(--mes-glisse, 63px))); }
 /* Le compas reste à la place d'origine de la latte. */
 
+/* Roue dentée : en bas à droite de la latte, visible seulement quand la latte est dépliée ; elle suit la latte.
+   Zone tactile de 28 px centrée sur la roue (diamètre dessiné : 16 px, trait de 0,8 px). */
+.mes-roue {
+  position: absolute;
+  top: 22px;
+  right: 5px;
+  z-index: 3;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #0b5c75;
+  line-height: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: transform 0.3s, opacity 0.3s, visibility 0.3s;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.mes-roue svg { display: block; pointer-events: none; }
+.mes-roue__fond { fill: #fff; }
+.mes-btn--latte:hover ~ .mes-roue .mes-roue__fond { fill: #e8f2f6; }
+.mes-btn--latte.amgt-btn--active ~ .mes-roue { color: #fff; }
+.mes-btn--latte.amgt-btn--active ~ .mes-roue .mes-roue__fond { fill: #0b5c75; }
+.mes-bloc--ouvert .mes-roue { opacity: 1; visibility: visible; transform: translateX(calc(-2 * var(--mes-glisse, 63px))); }
+
+/* Pointeur décalé de la chaîne (au doigt) */
+.mes-curseur { background: none; border: 0; }
+.mes-curseur svg { display: block; }
+
 /* Loupe et sondage virtuel : même taille que la latte (55 px), l'icône remplit le bouton */
 html[data-page="carto"] #amgt-search-toggle,
 html[data-page="carto"] #amgt-bore-btn { width: 55px; height: 55px; }

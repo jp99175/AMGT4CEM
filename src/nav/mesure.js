@@ -2,10 +2,13 @@
  * Outils de mesure de la page Carte (home.html?page=carto) : un seul bouton « latte » en haut à droite.
  *
  *  - Appui court : l'outil utilisé en dernier (la chaîne d'arpenteur au premier usage) ; un nouvel appui l'arrête.
- *  - Appui long (500 ms) : la latte glisse vers la gauche et laisse apparaître les deux outils :
- *      · chaîne d'arpenteur : on touche la carte point après point (la carte reste déplaçable) ; longueur de chaque
- *        tronçon, longueur cumulée, et surface si l'on referme la ligne sur son premier point ;
- *      · compas : le rayon, outil existant (src/measureTool.js, inchangé).
+ *  - Appui long (500 ms) : la latte glisse vers la gauche et laisse apparaître les deux outils, ainsi qu'une
+ *    roue dentée qui ouvre Réglages > Mon appareil (durée d'affichage, décalage du pointeur) :
+ *      · chaîne d'arpenteur : on pose les points un à un ; longueur de chaque tronçon, longueur cumulée, et surface
+ *        si l'on referme la ligne sur son premier point. À la souris, un clic pose un point (la carte reste
+ *        déplaçable). Au doigt, un pointeur apparaît au-dessus du doigt (décalage réglable) : on le glisse, le
+ *        point est posé au relâchement ; la carte se déplace et se zoome avec deux doigts ;
+ *      · compas : le rayon, outil existant (src/measureTool.js) ; même décalage réglable au doigt.
  *  - Le résultat reste affiché le délai réglé dans Réglages > Mon appareil (0 = jusqu'à « Fermer »).
  *  - Disquette : enregistre une image de la carte avec la mesure (src/screenshotTool.js, inchangé) ;
  *    croix : ferme l'outil.
@@ -30,6 +33,13 @@ const ICONES = {
   annuler: svgIcone('<g transform="matrix(-1 0 0 1 24 0)"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/></g>'),
   terminer: svgIcone('<path d="M4.5 12.5l5 5 10-11"/>'),
 };
+
+/** Roue dentée (8 dents, trait de 0,8 px) posée en bas à droite de la latte dépliée : diamètre de 16 px, comme le globe de
+ *  l'icône Couches. Le fond (disque) masque le trait de la latte dessous ; sa couleur suit celle de la latte (repos / actif). */
+const ROUE = '<svg viewBox="-12.2 -12.2 24.4 24.4" width="28" height="28" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="0.727" stroke-linecap="round" stroke-linejoin="round">'
+  + '<circle class="mes-roue__fond" r="8.6" stroke="none"/>'
+  + '<path d="M5.75 -1.33L7.33 -1.03L7.33 1.03L5.75 1.33A5.9 5.9 0 0 1 5.00 3.13L5.91 4.45L4.45 5.91L3.13 5.00A5.9 5.9 0 0 1 1.33 5.75L1.03 7.33L-1.03 7.33L-1.33 5.75A5.9 5.9 0 0 1 -3.13 5.00L-4.45 5.91L-5.91 4.45L-5.00 3.13A5.9 5.9 0 0 1 -5.75 1.33L-7.33 1.03L-7.33 -1.03L-5.75 -1.33A5.9 5.9 0 0 1 -5.00 -3.13L-5.91 -4.45L-4.45 -5.91L-3.13 -5.00A5.9 5.9 0 0 1 -1.33 -5.75L-1.03 -7.33L1.03 -7.33L1.33 -5.75A5.9 5.9 0 0 1 3.13 -5.00L4.45 -5.91L5.91 -4.45L5.00 -3.13A5.9 5.9 0 0 1 5.75 -1.33Z"/>'
+  + '<circle r="2.5"/></svg>';
 
 /** Icône harmonisée (src/nav/mesureIcones.js) : cercle, trait fin, 55 px de diamètre. */
 function iconeOutil(nom) {
@@ -79,25 +89,113 @@ const Chaine = {
 
   demarrer() {
     const map = this.map();
+    const c = map.getContainer();
     this.actif = true;
     AMGT4CEM_ScreenshotTool.invalidateBackground();
-    this._onClic = (e) => this.clic(e.latlng);
+    this._onClic = (e) => {
+      if (Date.now() - this._dernierTactile < 700) return; // le toucher est déjà traité par les événements pointeur
+      this.clic(e.latlng);
+    };
     this._onPopup = (e) => e.popup.close(); // un clic sur une station ou un tunnel n'ouvre pas sa fiche pendant la mesure
+    this._onDown = (e) => this.appui(e);
+    this._onMove = (e) => this.deplace(e);
+    this._onUp = (e) => this.relache(e, false);
+    this._onCancel = (e) => this.relache(e, true);
+    this._doigts = new Set();
+    this._curseurId = null;
+    this._dernierTactile = 0;
     map.on('click', this._onClic);
     map.on('popupopen', this._onPopup);
-    map.getContainer().classList.add('amgt-placing-mode');
+    c.addEventListener('pointerdown', this._onDown, true);
+    window.addEventListener('pointermove', this._onMove);
+    window.addEventListener('pointerup', this._onUp);
+    window.addEventListener('pointercancel', this._onCancel);
+    c.style.touchAction = 'none'; // le geste tactile est géré ici (un doigt) ou par Leaflet (deux doigts)
+    c.classList.add('amgt-placing-mode');
     this.vider();
   },
 
   arreter() {
     if (!this.actif) return;
     const map = this.map();
+    const c = map.getContainer();
     this.actif = false;
     map.off('click', this._onClic);
     map.off('popupopen', this._onPopup);
-    map.getContainer().classList.remove('amgt-placing-mode');
+    c.removeEventListener('pointerdown', this._onDown, true);
+    window.removeEventListener('pointermove', this._onMove);
+    window.removeEventListener('pointerup', this._onUp);
+    window.removeEventListener('pointercancel', this._onCancel);
+    this._effacerCurseur();
+    this._doigts.clear();
+    map.dragging.enable();
+    c.style.touchAction = '';
+    c.classList.remove('amgt-placing-mode');
     this.vider();
     AMGT4CEM_ScreenshotTool.invalidateBackground();
+  },
+
+  // ---- au doigt : pointeur décalé, point posé au relâchement
+  /** Point visé (pixels de la carte) : au doigt, décalé vers le haut du réglage « Décalage du pointeur ». */
+  _visee(e) {
+    let p = this.map().mouseEventToContainerPoint(e);
+    if (e.pointerType === 'touch') p = p.subtract([0, Reglages().decalagePx()]);
+    return this.map().containerPointToLatLng(p);
+  },
+
+  appui(e) {
+    if (e.pointerType === 'mouse') return; // souris : clic ordinaire, la carte reste déplaçable
+    this._dernierTactile = Date.now();
+    this._doigts.add(e.pointerId);
+    this.map().dragging.disable(); // un doigt pilote le pointeur ; deux doigts déplacent et zooment la carte (Leaflet)
+    if (this._doigts.size > 1) { this._effacerCurseur(); this._curseurId = null; return; }
+    this._curseurId = e.pointerId;
+    this._montrerCurseur(this._visee(e));
+  },
+
+  deplace(e) {
+    if (e.pointerId !== this._curseurId) return;
+    this._dernierTactile = Date.now();
+    this._montrerCurseur(this._visee(e));
+  },
+
+  relache(e, annule) {
+    if (!this._doigts || !this._doigts.has(e.pointerId)) return;
+    this._doigts.delete(e.pointerId);
+    this._dernierTactile = Date.now();
+    const posable = e.pointerId === this._curseurId;
+    if (posable) {
+      this._curseurId = null;
+      const latlng = this._curseurLatLng;
+      this._effacerCurseur();
+      if (!annule && latlng) this.clic(latlng);
+    }
+    if (this._doigts.size === 0) this.map().dragging.enable();
+  },
+
+  _montrerCurseur(latlng) {
+    const map = this.map();
+    this._curseurLatLng = latlng;
+    if (!this._curseur) {
+      const icone = L.divIcon({
+        className: 'mes-curseur',
+        html: '<svg viewBox="-12 -12 24 24" width="24" height="24" fill="none" stroke="#f50057" stroke-width="1.6" stroke-linecap="round"><circle r="7"/><path d="M0 -11V-3M0 3V11M-11 0H-3M3 0H11" stroke-width="1.2"/></svg>',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+      this._curseur = L.marker(latlng, { icon: icone, interactive: false, keyboard: false, pane: 'amgtMeasurePane' }).addTo(map);
+      this._elastique = L.polyline([], { pane: 'amgtMeasurePane', color: COULEUR, weight: 2, dashArray: '5,5', interactive: false }).addTo(map);
+    }
+    this._curseur.setLatLng(latlng);
+    const dernier = this.fini ? null : this.pts[this.pts.length - 1];
+    this._elastique.setLatLngs(dernier ? [dernier, latlng] : []);
+  },
+
+  _effacerCurseur() {
+    const map = this.map();
+    if (this._curseur) { map.removeLayer(this._curseur); this._curseur = null; }
+    if (this._elastique) { map.removeLayer(this._elastique); this._elastique = null; }
+    this._curseurLatLng = null;
   },
 
   /** Efface le tracé (pas l'outil). */
@@ -248,6 +346,15 @@ const Reglages = () => ({
     } catch (err) { /* réglage local indisponible : valeur par défaut */ }
     return 5000;
   },
+  /** Décalage du pointeur au-dessus du doigt (px) : Réglages > Mon appareil (clé de src/reglages/reglages.js). */
+  decalagePx() {
+    try {
+      const brut = localStorage.getItem('amgt4cem.mesure.decalagePx.v1');
+      const v = Number(brut);
+      if (brut !== null && Number.isFinite(v) && v >= 0) return v;
+    } catch (err) { /* réglage local indisponible : valeur par défaut */ }
+    return 60;
+  },
 });
 
 // ------------------------------------------------------------------ boutons et pilotage des deux outils
@@ -279,7 +386,8 @@ const Mesure = {
     this._chaineBtn = bouton('mes-chaine', 'mes-btn--outil', 'Chaîne d\'arpenteur : longueurs et surface', iconeOutil('chaine'));
     this._compasBtn = bouton('mes-compas', 'mes-btn--outil', 'Compas : rayon', iconeOutil('compas'));
     this._latte = bouton('mes-latte', 'mes-btn--latte', 'Mesurer (appui long : choisir l\'outil)', iconeOutil('latte'));
-    bloc.append(this._chaineBtn, this._compasBtn, this._latte);
+    this._roue = h('button', { type: 'button', id: 'mes-roue', class: 'mes-roue', title: 'Réglages de l\'appareil : durée d\'affichage, décalage du pointeur', 'aria-label': 'Réglages de la mesure' }, ROUE);
+    bloc.append(this._chaineBtn, this._compasBtn, this._latte, this._roue);
     ancienne.after(bloc);
     this._bloc = bloc;
 
@@ -299,6 +407,7 @@ const Mesure = {
     this._brancherLatte();
     this._chaineBtn.addEventListener('click', () => this.choisir('chaine'));
     this._compasBtn.addEventListener('click', () => this.choisir('compas'));
+    this._roue.addEventListener('click', () => this.ouvrirReglages());
     this._fermer.addEventListener('click', () => this.arreter());
     this._terminer.addEventListener('click', () => Chaine.terminer());
     this._annuler.addEventListener('click', () => Chaine.annuler());
@@ -368,6 +477,13 @@ const Mesure = {
   },
   fermerPlateau() { this._bloc.classList.remove('mes-bloc--ouvert'); },
 
+  /** Roue dentée : Réglages > Mon appareil (même chemin que l'onglet Réglages : connexion demandée si besoin). */
+  ouvrirReglages() {
+    this.fermerPlateau();
+    const onglet = [...document.querySelectorAll('.amgt-nav__tab')].find((a) => /[?&]page=reglages\b/.test(a.getAttribute('href') || ''));
+    if (onglet) onglet.click();
+  },
+
   choisir(o) {
     this.fermerPlateau();
     this.demarrer(o);
@@ -386,6 +502,7 @@ const Mesure = {
     if (o === 'chaine') Chaine.demarrer();
     else {
       AMGT4CEM_MeasureTool._hideDelayMs = Reglages().delaiMesureMs() || 4000;
+      AMGT4CEM_MeasureTool._touchOffsetPx = Reglages().decalagePx();
       AMGT4CEM_MeasureTool.activate();
     }
     this.majControles();
