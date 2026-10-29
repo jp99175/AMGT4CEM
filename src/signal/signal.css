@@ -152,7 +152,10 @@ html[data-app="signal"] body {
 .sig4cem-form__pos { flex: 1; cursor: pointer; font-variant-numeric: tabular-nums; }
 .sig4cem-photo-buttons { display: flex; gap: 8px; align-items: center; }
 .sig4cem-link { padding: 8px 0; background: none; border: none; color: #1565c0; font-size: 16px; text-decoration: underline; cursor: pointer; }
-.sig4cem-btn--icon { padding: 4px; font-size: 18px; line-height: 1; background: transparent; border: none; cursor: pointer; }
+.sig4cem-ic { display: block; flex: none; background: #0b5c75; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+.sig4cem-ic--punaise { width: 11.5px; height: 23px; margin: 0 2px; cursor: pointer; -webkit-mask-image: url(icone-punaise.png); mask-image: url(icone-punaise.png); }
+.sig4cem-ic--objectif { width: 23px; height: 22.75px; -webkit-mask-image: url(icone-objectif.png); mask-image: url(icone-objectif.png); }
+.sig4cem-btn--icon { box-shadow: none; padding: 4px; font-size: 18px; line-height: 1; background: transparent; border: none; cursor: pointer; }
 .sig4cem-photos { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
 .sig4cem-photo-card { display: flex; gap: 10px; align-items: flex-start; }
 .sig4cem-photo-card__side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }

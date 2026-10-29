@@ -49,15 +49,17 @@ SIG.Form = {
     f.description = h('textarea', { id: 'sig4cem-f-description', rows: '4', maxlength: '2000' });
     f.camera = h('input', { type: 'file', accept: 'image/*', capture: 'environment', class: 'sig4cem-hidden', id: 'sig4cem-f-camera' });
     f.files = h('input', { type: 'file', accept: 'image/*', multiple: '', class: 'sig4cem-hidden', id: 'sig4cem-f-files' });
-    f.btnCamera = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--icon', title: 'Prendre une photo', 'aria-label': 'Prendre une photo', text: '\u{1F4F7}' });
+    f.btnCamera = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--icon', title: 'Prendre une photo', 'aria-label': 'Prendre une photo', });
+    f.btnCamera.innerHTML = '<span class="sig4cem-ic sig4cem-ic--objectif" aria-hidden="true"></span>';
     f.btnFiles = h('button', { type: 'button', class: 'sig4cem-link', text: 'Joindre des fichiers' });
     f.photoList = h('div', { class: 'sig4cem-photos' });
+    f.pin = h('span', { class: 'sig4cem-ic sig4cem-ic--punaise', 'aria-hidden': 'true' });
     f.fields = h('div', { class: 'sig4cem-hidden' },
       h('div', { class: 'sig4cem-row sig4cem-row--titre' }, f.titre),
       this._row('Type', f.type, 'sig4cem-f-type'),
       f.domaineRow,
       this._row("Date d'observation", f.date, 'sig4cem-f-date'),
-      this._row('Localisation', h('div', { class: 'sig4cem-posfield' }, f.pos, f.clearPos), 'sig4cem-f-pos'),
+      this._row('Localisation', h('div', { class: 'sig4cem-posfield' }, f.pin, f.pos, f.clearPos), 'sig4cem-f-pos'),
       this._row('Précision du lieu (station, niveau, local, PK…)', f.lieu, 'sig4cem-f-lieu'),
       this._row('Demandeur', f.demandeur, 'sig4cem-f-demandeur'),
       this._row('Référence chez le demandeur', f.refDemandeur, 'sig4cem-f-refdem'),
@@ -77,6 +79,7 @@ SIG.Form = {
     f.type.addEventListener('change', () => this._onType());
     f.btnCamera.addEventListener('click', () => f.camera.click());
     f.btnFiles.addEventListener('click', () => f.files.click());
+    f.pin.addEventListener('click', () => f.pos.click()); // la punaise ouvre aussi le choix du point
     for (const input of [f.camera, f.files]) {
       input.addEventListener('change', async (e) => {
         const chosen = Array.from(e.target.files);
@@ -152,7 +155,7 @@ SIG.Form = {
   _showPosition() {
     const p = this.position;
     this.f.pos.value = p ? `X ${AMGT4CEM_CRS.formatCoord(p.x)} · Y ${AMGT4CEM_CRS.formatCoord(p.y)}` : '';
-    this.f.pos.placeholder = '📍 Pointer sur la carte (facultatif, fortement conseillé)';
+    this.f.pos.placeholder = 'Pointer sur la carte (facultatif, fortement conseillé)';
     this.f.clearPos.classList.toggle('sig4cem-hidden', !p);
   },
 
