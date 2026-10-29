@@ -121,11 +121,19 @@ const AMGT4CEM_ScreenshotTool = {
    * par html2canvas : c'est cette nouvelle requête qui faisait disparaître
    * le fond de plan de l'image (voir en-tête). Le reste (couches vectorielles,
    * étiquettes, contrôles) passe toujours par html2canvas, sans les tuiles. */
-  async _ensureBackground() {
-    if (this._backgroundCanvas) return this._backgroundCanvas;
+  _ensureBackground() {
+    if (this._backgroundCanvas) return Promise.resolve(this._backgroundCanvas);
+    // Un seul calcul à la fois : deux captures qui se chevauchent relisaient l'état « masqué » de la pane
+    // comme état d'origine et la laissaient masquée pour de bon (plus aucun tracé, ni rayon ni chaîne).
+    if (!this._backgroundPromise) {
+      const calcul = this._buildBackground().finally(() => { if (this._backgroundPromise === calcul) this._backgroundPromise = null; });
+      this._backgroundPromise = calcul;
+    }
+    return this._backgroundPromise;
+  },
 
+  async _buildBackground() {
     const pane = this._map.getPane('amgtMeasurePane');
-    const prevDisplay = pane ? pane.style.display : null;
     if (pane) pane.style.display = 'none';
     await this._waitForPaint();
     try {
@@ -137,7 +145,7 @@ const AMGT4CEM_ScreenshotTool = {
         this._backgroundCanvas = await html2canvas(this._map.getContainer(), { useCORS: true, logging: false });
       }
     } finally {
-      if (pane) pane.style.display = prevDisplay || '';
+      if (pane) pane.style.display = ''; // la pane n'a jamais d'affichage propre en dehors de la capture
     }
     return this._backgroundCanvas;
   },
@@ -215,6 +223,7 @@ const AMGT4CEM_ScreenshotTool = {
    * (seule période où la vue est garantie inchangée). */
   invalidateBackground() {
     this._backgroundCanvas = null;
+    this._backgroundPromise = null;
   },
 
   /** Deux requestAnimationFrame : technique standard pour attendre qu'un
