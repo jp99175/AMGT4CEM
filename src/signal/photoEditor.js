@@ -110,15 +110,22 @@ NS.PhotoEditor = {
     const btnSmaller = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', title: 'Texte plus petit', 'aria-label': 'Texte plus petit', text: 'A−' });
     const btnBigger = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', title: 'Texte plus grand', 'aria-label': 'Texte plus grand', text: 'A+' });
     const hint = h('span', { class: 'sig4cem-pe__hint' });
-    const btnUndo = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: '↶ Annuler le dernier' });
+    // Commandes du bas : icônes en trait fin (mêmes dessins que le menu Couches) : annuler, refaire, enregistrer ; la croix quitte sans enregistrer.
+    const icone = (contenu) => `<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round">${contenu}</svg>`;
+    const FLECHE = '<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/>';
+    const btnIc = (titre, svg) => { const b = h('button', { type: 'button', class: 'sig4cem-pe__ic', title: titre, 'aria-label': titre }); b.innerHTML = svg; return b; };
+    const btnUndo = btnIc('Annuler le dernier ajout', icone(`<g transform="matrix(-1 0 0 1 24 0)">${FLECHE}</g>`));
+    const btnRedo = btnIc('Refaire', icone(FLECHE));
     const btnClear = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: 'Tout effacer' });
-    const btnCancel = h('button', { type: 'button', class: 'sig4cem-btn', text: 'Annuler' });
-    const btnOk = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--primary', text: 'Valider' });
+    const btnCancel = btnIc('Fermer sans enregistrer', icone('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'));
+    const btnOk = btnIc('Enregistrer les annotations', icone('<path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/>'));
+    btnCancel.classList.add('sig4cem-pe__ic--droite');
+    const redoStack = []; // éléments annulés, que « Refaire » remet dans l'ordre inverse
     const root = h('section', { class: 'sig4cem-screen sig4cem-screen--editor' },
       h('div', { class: 'sig4cem-pe__bar' }, ...toolBtns, btnPalette, nuancier),
       h('div', { class: 'sig4cem-pe__body' }, stage),
-      h('div', { class: 'sig4cem-pe__bar' }, btnUndo, btnClear, btnSmaller, btnBigger, hint),
-      h('div', { class: 'sig4cem-map__actions' }, btnCancel, btnOk));
+      h('div', { class: 'sig4cem-pe__bar' }, btnClear, btnSmaller, btnBigger, hint),
+      h('div', { class: 'sig4cem-pe__actions' }, btnUndo, btnRedo, btnCancel, btnOk));
     document.getElementById('sig4cem-root').append(root);
 
     function fit() {
@@ -135,6 +142,7 @@ NS.PhotoEditor = {
       for (const b of colorBtns) b.classList.toggle('sig4cem-pe__color--on', b.dataset.color === color);
       btnPalette.querySelector('.sig4cem-pe__pastille').style.background = color;
       btnUndo.disabled = btnClear.disabled = !list.length;
+      btnRedo.disabled = !redoStack.length;
       btnSmaller.disabled = btnBigger.disabled = !selected;
       hint.textContent = tool === 'text'
         ? 'Touchez la photo pour poser un texte. ✥ le déplace, ✕ le supprime.'
@@ -235,7 +243,7 @@ NS.PhotoEditor = {
       const t = draft;
       draft = null;
       const vide = t.t !== 'pen' && Math.hypot(t.b[0] - t.a[0], t.b[1] - t.a[1]) < 0.01;
-      if (!vide) list.push(t);
+      if (!vide) { list.push(t); redoStack.length = 0; }
       refresh();
       redraw();
     };
@@ -244,17 +252,27 @@ NS.PhotoEditor = {
       const p = pos(e);
       const item = { t: 'text', c: color, s: 0.045, x: Math.min(0.9, p[0]), y: Math.min(0.9, p[1]), txt: '' };
       list.push(item);
+      redoStack.length = 0;
       addBox(item, true);
     });
     canvas.addEventListener('pointerup', end);
     canvas.addEventListener('pointercancel', end);
     btnUndo.addEventListener('click', () => {
       const last = list[list.length - 1];
+      if (!last) return;
       const b = boxes.find((o) => o.item === last);
       if (b) removeBox(b); else list.pop();
+      redoStack.push(last);
       refresh(); redraw();
     });
-    btnClear.addEventListener('click', () => { for (const b of boxes.slice()) b.el.remove(); boxes.length = 0; selected = null; list = []; refresh(); redraw(); });
+    btnRedo.addEventListener('click', () => {
+      const item = redoStack.pop();
+      if (!item) return;
+      list.push(item);
+      if (item.t === 'text') addBox(item, false);
+      refresh(); redraw();
+    });
+    btnClear.addEventListener('click', () => { for (const b of boxes.slice()) b.el.remove(); boxes.length = 0; selected = null; list = []; redoStack.length = 0; refresh(); redraw(); });
 
     const close = () => { root.remove(); URL.revokeObjectURL(url); };
     btnCancel.addEventListener('click', close);
