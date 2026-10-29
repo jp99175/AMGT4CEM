@@ -18,10 +18,10 @@ cd AMGT4CEM
 python3 -m http.server 8000
 ```
 
-Puis ouvrez l'une des deux interfaces de la page unique `home.html` :
+Puis ouvrez `http://localhost:8000/home.html` : c'est la **nouvelle interface** (Carte · Saisie · Réglages, `?page=`),
+par défaut depuis la bascule. L'**ancienne interface** reste atteignable, en repli, jusqu'à son retrait :
 
-- http://localhost:8000/home.html?app=carto : **AMGT4CEM**, visualisation de toutes les données sur la carte
-  (interface par défaut, aussi atteinte par `index.html` et par `home.html` sans paramètre) ;
+- http://localhost:8000/home.html?app=carto : ancienne carte AMGT4CEM ;
 - http://localhost:8000/home.html?app=signal : **SIG4CEM**, saisie des signalements et demandes
   (menu, nouvelle entrée avec choix du point sur sa propre carte, enregistrement local ou envoi : voir `src/signal/README.md`) ;
 - http://localhost:8000/home.html?app=admin : **administration des intervenants** (référentiel, codes de première connexion,
@@ -1092,18 +1092,19 @@ plus jamais être modifiée. Elle contient l'ancienne structure (`Metro_export_S
 
 
 
-## Interfaces : carte et saisie (home.html?app=)
+## Interfaces : carte et saisie (home.html)
 
-Une seule page, `home.html`, deux interfaces choisies par le paramètre d'adresse `app` :
+**Bascule faite** : sans paramètre, `home.html` (et `index.html`) ouvre la nouvelle interface `?page=carto`. Les adresses `?app=` ci-dessous sont l'ancienne interface, gardée en repli puis retirée ; seule l'administration (`?app=admin`) n'a pas encore d'équivalent en page (elle est dans Réglages > Utilisateurs).
+
+Ancienne interface, paramètre d'adresse `app` :
 
 | Adresse | Interface | Contenu |
 |---|---|---|
-| `home.html?app=carto` (défaut) | AMGT4CEM | visualisation de toutes les données sur la carte, vues paramétrables |
+| `home.html?app=carto` | AMGT4CEM | visualisation de toutes les données sur la carte, vues paramétrables |
 | `home.html?app=signal` | SIG4CEM | saisie des signalements et demandes : nouvelle entrée (carte puis formulaire), brouillons, file d'envoi (en cours de construction) |
 | `home.html?app=admin` | Administration | référentiel des intervenants (matricule, nom, GSM, email, service, droit admin), code de première connexion, email d'accueil (`mailto:`) |
 
-**Nouvelle interface, en construction (`home.html?page=`).** Elle vit à côté des interfaces ci-dessus, qui ne changent pas
-jusqu'à la bascule (décisions : document de projet `refonte-interface-reglages.md`). Barre de navigation Carte · Saisie ·
+**Nouvelle interface (`home.html?page=`, par défaut).** Les interfaces ci-dessus ne changent pas, en repli (décisions : document de projet `refonte-interface-reglages.md`). Barre de navigation Carte · Saisie ·
 Réglages (`src/nav/`), en bas sur téléphone, en haut sur grand écran ; Saisie et Réglages demandent la connexion.
 
 | Adresse | Contenu |

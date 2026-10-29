@@ -138,9 +138,9 @@ const AMGT4CEM_PeLabelAnchors = {
    */
   async putToRelay(relayUrl, route, body, adminCode) {
     if (!relayUrl) {
-      throw new Error("Enregistrement impossible : adresse du relais non renseignée (⚙ Paramètres > Serveur, voir workers/relay/README.md).");
+      throw new Error("Enregistrement impossible : adresse du relais non renseignée (Réglages > Avancé > Services et relais, voir workers/relay/README.md).");
     }
-    if (!adminCode) throw new Error('Code administrateur non renseigné (⚙ Paramètres > Serveur).');
+    if (!adminCode) throw new Error('Code administrateur non renseigné (Réglages > Avancé > Services et relais).');
     let response;
     try {
       response = await fetch(`${relayUrl.replace(/\/+$/, '')}/${route}`, {

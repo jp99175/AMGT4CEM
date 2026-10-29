@@ -11,7 +11,7 @@
  *   home.html?page=signal    saisie, avec la même barre
  *   home.html?page=reglages  réglages, regroupés par droit
  * Une page reprend le plus souvent les fichiers de l'interface correspondante ; seuls les fichiers qui
- * changent sont copiés (voir config.js). Sans paramètre, home.html ouvre toujours l'ancienne carte.
+ * changent sont copiés (voir config.js). Sans paramètre, home.html ouvre la nouvelle carte (bascule faite) ; l'ancienne reste atteignable par ?app=.
  *
  * Les interfaces sont déclarées avec un gabarit, des styles et des scripts. Le routeur copie le gabarit
  * choisi dans la page, charge les styles puis les scripts DANS L'ORDRE (un script dépend des précédents),
@@ -47,7 +47,8 @@ const AMGT4CEM_Router = {
   async start() {
     const config = AMGT4CEM_CONFIG;
     const query = new URLSearchParams(location.search);
-    const parPage = query.has('page');
+    // Bascule : sans paramètre, c'est la nouvelle interface (?page=). L'ancienne (?app=) reste accessible.
+    const parPage = query.has('page') || !query.has('app');
     const registry = parPage ? (config.pages || {}) : config.apps;
     const requested = parPage ? query.get('page') : query.get('app');
     const id = requested || (parPage ? config.defaultPage : config.defaultApp);

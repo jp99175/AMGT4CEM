@@ -41,7 +41,7 @@ const AMGT4CEM_PickerDefaultBar = {
       status.classList.toggle('amgt-default-bar-error', Boolean(isError));
     };
     const relayError = () =>
-      AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl ? '' : "Adresse du relais non renseignée (⚙ Paramètres > Serveur) : enregistrement impossible.";
+      AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl ? '' : "Adresse du relais non renseignée (Réglages > Avancé > Services et relais) : enregistrement impossible.";
 
     const showIdle = () => {
       row.innerHTML = '';

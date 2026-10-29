@@ -57,7 +57,7 @@ let securite = null; // page Sécurité ouverte : { parametres, interrompues } (
 
 function lienActivation(matricule, code) {
   const base = new URL('home.html', location.href);
-  base.search = new URLSearchParams({ app: 'signal', m: matricule, code }).toString();
+  base.search = new URLSearchParams({ page: 'signal', m: matricule, code }).toString();
   return base.toString();
 }
 

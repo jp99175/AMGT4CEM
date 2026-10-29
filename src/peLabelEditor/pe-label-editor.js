@@ -1201,15 +1201,15 @@
       }
       if (!AMGT4CEM_PeLabelAnchors.isSaveConfigured()) {
         report(
-          "Enregistrement impossible : le relais n'est pas configuré (adresse à renseigner dans ⚙ Paramètres > Serveur, voir workers/relay/README.md). " +
+          "Enregistrement impossible : le relais n'est pas configuré (adresse à renseigner dans Réglages > Avancé > Services et relais, voir workers/relay/README.md). " +
           'En attendant, « Exporter JSON » garde une copie.'
         );
         return false;
       }
-      // Code saisi dans ⚙ Paramètres > Serveur (champ masqué, gardé le temps de l'onglet). Pas de boîte de saisie ici : elle afficherait le code en clair.
+      // Code saisi dans Réglages > Avancé > Services et relais (champ masqué, gardé le temps de l'onglet). Pas de boîte de saisie ici : elle afficherait le code en clair.
       const code = AMGT4CEM_PeLabelAnchors.getAdminCode();
       if (!code) {
-        report("Code administrateur manquant : le saisir dans ⚙ Paramètres > Serveur, puis réessayer.");
+        report("Code administrateur manquant : le saisir dans Réglages > Avancé > Services et relais, puis réessayer.");
         return false;
       }
       const names = { pe: 'planches', ist: 'tronçons' };

@@ -132,7 +132,7 @@ const AMGT4CEM_MenuPrefs = {
     };
 
     const save = async (code) => {
-      const problem = AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl ? '' : 'Adresse du relais non renseignée (⚙ Paramètres > Serveur) : enregistrement impossible.';
+      const problem = AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl ? '' : 'Adresse du relais non renseignée (Réglages > Avancé > Services et relais) : enregistrement impossible.';
       if (problem) return say(problem, true);
       say('Vérification…');
       try {

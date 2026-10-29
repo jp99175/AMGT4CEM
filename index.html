@@ -8,11 +8,11 @@
 <!-- Ancienne adresse conservée : renvoie vers l'interface unique home.html (carte par défaut),
      en gardant les éventuels paramètres reçus. -->
 <script>
-  location.replace('home.html' + (location.search || '?app=carto') + location.hash);
+  location.replace('home.html' + (location.search || '?page=carto') + location.hash);
 </script>
-<noscript><meta http-equiv="refresh" content="0; url=home.html?app=carto" /></noscript>
+<noscript><meta http-equiv="refresh" content="0; url=home.html?page=carto" /></noscript>
 </head>
 <body>
-<p><a href="home.html?app=carto">Ouvrir AMGT4CEM (carte)</a> &middot; <a href="home.html?app=signal">Ouvrir SIG4CEM (saisie)</a></p>
+<p><a href="home.html?page=carto">Ouvrir AMGT4CEM (carte)</a> &middot; <a href="home.html?page=signal">Ouvrir SIG4CEM (saisie)</a></p>
 </body>
 </html>
