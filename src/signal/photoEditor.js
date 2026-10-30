@@ -101,13 +101,26 @@ function render(ctx, W, H, traits, sansTexte) {
     } else if (t.t === 'text' && !sansTexte) {
       ctx.setLineDash([]);
       const size = Math.max(10, t.s * W);
-      ctx.font = `bold ${size}px sans-serif`;
+      ctx.font = `${t.i ? 'italic ' : ''}${t.b === false ? '' : 'bold '}${size}px sans-serif`;
       ctx.textBaseline = 'top';
-      ctx.lineWidth = Math.max(2, t.s * W / 8);
-      String(t.txt || '').split('\n').forEach((ligne, i) => {
+      const lignes = String(t.txt || '').split('\n');
+      const largeurs = lignes.map((l) => ctx.measureText(l).width);
+      const maxL = Math.max(0, ...largeurs);
+      const k = t.al === 'c' ? 0.5 : t.al === 'd' ? 1 : 0;
+      lignes.forEach((ligne, i) => {
+        const x = t.x * W + (maxL - largeurs[i]) * k, y = t.y * H + i * size * 1.2;
+        ctx.lineWidth = Math.max(2, t.s * W / 8);
         ctx.strokeStyle = '#fff';
-        ctx.strokeText(ligne, t.x * W, t.y * H + i * size * 1.2);
-        ctx.fillText(ligne, t.x * W, t.y * H + i * size * 1.2);
+        ctx.strokeText(ligne, x, y);
+        ctx.fillText(ligne, x, y);
+        if (t.u && ligne) {
+          ctx.lineWidth = Math.max(1.5, size / 14);
+          ctx.strokeStyle = t.c;
+          ctx.beginPath();
+          ctx.moveTo(x, y + size * 1.02);
+          ctx.lineTo(x + largeurs[i], y + size * 1.02);
+          ctx.stroke();
+        }
       });
     }
   }
@@ -169,6 +182,7 @@ NS.PhotoEditor = {
       h('label', { class: 'sig4cem-pe__opa' }, h('span', { text: 'Opacité' }), opaRange, opaVal));
     const btnPalette = btnIc('Couleur et opacité', maskIc('palette'));
     btnPalette.addEventListener('click', (e) => { e.stopPropagation(); nuancier.hidden = !nuancier.hidden; });
+    const sepTexte = [];
     // Options de ligne 2 : chaque bouton fait défiler ses choix, son icône montre le choix en cours.
     const ligneIc = (y, w, dash) => `<path d="M3 ${y}h18" stroke-width="${w}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
     const finIc = (k, fin) => {
@@ -189,6 +203,18 @@ NS.PhotoEditor = {
     btnTy.addEventListener('click', () => { const r = reg[tool]; if (r) { r.ty = suivant(TYPES, r.ty); refresh(); } });
     btnDeb.addEventListener('click', () => { const r = reg[tool]; if (r && r.d) { r.d = suivant(TERMINAISONS, r.d); refresh(); } });
     btnFin.addEventListener('click', () => { const r = reg[tool]; if (r && r.f) { r.f = suivant(TERMINAISONS, r.f); refresh(); } });
+    const btnG = btnIc('Gras', '<span class="sig4cem-pe__t"><b>G</b></span>');
+    const btnI = btnIc('Italique', '<span class="sig4cem-pe__t"><i style="font-family:serif">I</i></span>');
+    const btnU = btnIc('Souligné', svgIc('<path d="M7 4v7.5a5 5 0 0 0 10 0V4"/><path d="M5 20h14"/>'));
+    const btnAl = btnIc('Alignement du texte', '');
+    const ALIGN = { g: '<path d="M4 6h16M4 10.5h10M4 15h16M4 19.5h10"/>', c: '<path d="M4 6h16M7 10.5h10M4 15h16M7 19.5h10"/>', d: '<path d="M4 6h16M10 10.5h10M4 15h16M10 19.5h10"/>' };
+    const NOM_AL = { g: 'gauche', c: 'centré', d: 'droite' };
+    const stT = { b: true, i: false, u: false, al: 'g' }; // style des prochains textes
+    const styleTexte = (cle, val) => { stT[cle] = val; if (selected) { if (cle === 'b') selected.item.b = val; else selected.item[cle] = val; layoutText(selected); } refresh(); };
+    btnG.addEventListener('click', () => styleTexte('b', !(selected ? selected.item.b !== false : stT.b)));
+    btnI.addEventListener('click', () => styleTexte('i', !(selected ? !!selected.item.i : stT.i)));
+    btnU.addEventListener('click', () => styleTexte('u', !(selected ? !!selected.item.u : stT.u)));
+    btnAl.addEventListener('click', () => styleTexte('al', suivant(['g', 'c', 'd'], selected ? selected.item.al || 'g' : stT.al)));
     const btnSmaller = btnIc('Texte plus petit', '<span class="sig4cem-pe__t">A<small>−</small></span>');
     const btnBigger = btnIc('Texte plus grand', '<span class="sig4cem-pe__t">A<small>+</small></span>');
     const hint = h('div', { class: 'sig4cem-pe__hint', hidden: '' });
@@ -199,8 +225,9 @@ NS.PhotoEditor = {
     const btnOk = btnIc('Enregistrer les annotations', svgIc('<path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/>'), 'sig4cem-pe__ic--droite');
     const btnCancel = btnIc('Fermer sans enregistrer', svgIc('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'));
     const sep = () => h('span', { class: 'sig4cem-pe__sep' });
+    const sep2 = () => { const e = sep(); sepTexte.push(e); return e; };
     const redoStack = []; // éléments annulés, que « Refaire » remet dans l'ordre inverse
-    const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnPalette, sep(), btnEp, btnDeb, btnTy, btnFin, btnSmaller, btnBigger, nuancier);
+    const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnPalette, sep(), btnEp, btnDeb, btnTy, btnFin, btnG, btnI, btnU, btnAl, sep2(), btnSmaller, btnBigger, nuancier);
     const root = h('section', { class: 'sig4cem-screen sig4cem-screen--editor' },
       h('div', { class: 'sig4cem-pe__bar' }, btnUndo, btnRedo, btnClear, sep(), ...toolBtns, btnOk, btnCancel),
       ligne2,
@@ -245,7 +272,15 @@ NS.PhotoEditor = {
           btnFin.title = `Terminaison de la fin (${TITRES_T[r.f]})`;
         }
       }
-      btnSmaller.hidden = btnBigger.hidden = !texte;
+      btnSmaller.hidden = btnBigger.hidden = btnG.hidden = btnI.hidden = btnU.hidden = btnAl.hidden = !texte;
+      sepTexte.forEach((e) => { e.hidden = !texte; });
+      const it = selected ? selected.item : null;
+      const gras = it ? it.b !== false : stT.b, ital = it ? !!it.i : stT.i, sou = it ? !!it.u : stT.u, al = it ? it.al || 'g' : stT.al;
+      btnG.classList.toggle('sig4cem-pe__ic--on', gras);
+      btnI.classList.toggle('sig4cem-pe__ic--on', ital);
+      btnU.classList.toggle('sig4cem-pe__ic--on', sou);
+      btnAl.innerHTML = svgIc(ALIGN[al]);
+      btnAl.title = `Alignement du texte (${NOM_AL[al]})`;
       btnSmaller.disabled = btnBigger.disabled = !selected;
       hint.hidden = !texte;
       hint.textContent = texte ? 'Touchez la photo pour poser un texte. ✥ le déplace, ✕ le supprime.' : '';
@@ -260,6 +295,10 @@ NS.PhotoEditor = {
       b.el.style.fontSize = `${Math.max(10, b.item.s * stage.clientWidth)}px`;
       b.el.style.color = b.item.c;
       b.body.style.opacity = b.item.o == null ? 1 : b.item.o;
+      b.el.style.fontWeight = b.item.b === false ? '400' : '700';
+      b.el.style.fontStyle = b.item.i ? 'italic' : 'normal';
+      b.el.style.textDecoration = b.item.u ? 'underline' : 'none';
+      b.body.style.textAlign = b.item.al === 'c' ? 'center' : b.item.al === 'd' ? 'right' : 'left';
       b.el.classList.toggle('sig4cem-pe__text--low', b.item.y < 0.07);
     }
     function select(b) {
@@ -359,6 +398,7 @@ NS.PhotoEditor = {
       const p = pos(e);
       const item = { t: 'text', c: color, s: 0.045, x: Math.min(0.9, p[0]), y: Math.min(0.9, p[1]), txt: '' };
       if (opacity < 1) item.o = opacity;
+      item.b = stT.b; if (stT.i) item.i = true; if (stT.u) item.u = true; if (stT.al !== 'g') item.al = stT.al;
       list.push(item);
       redoStack.length = 0;
       addBox(item, true);
