@@ -26,6 +26,7 @@ const OVERLAY_SIDE = 1000; // grand côté du calque PNG (la photo, elle, garde 
 
 const EPAISSEURS = [0.004, 0.008, 0.014];
 const TYPES = ['plein', 'tirets', 'points'];
+const TYPES_FORMES = ['plein', 'tirets', 'points', 'nuage'];
 const TERMINAISONS = ['aucune', 'fleche', 'barre', 'rond'];
 
 /** Terminaison au point (x, y) ; `ang` = direction du trait, orientée vers l'extérieur. */
@@ -56,6 +57,54 @@ function tirets(ctx, type, lw) {
   if (type === 'tirets') ctx.setLineDash([lw * 3.5, lw * 2.5]);
   else if (type === 'points') ctx.setLineDash([0.1, lw * 2.2]);
   else ctx.setLineDash([]);
+}
+
+/** Géométrie d'un rectangle / d'une ellipse en pixels d'un canvas W×H : centre, demi-côtés, rotation. */
+function geom(t, W, H) {
+  return { cx: ((t.a[0] + t.b[0]) / 2) * W, cy: ((t.a[1] + t.b[1]) / 2) * H, hw: Math.abs(t.b[0] - t.a[0]) * W / 2, hh: Math.abs(t.b[1] - t.a[1]) * H / 2, r: t.r || 0 };
+}
+const tourne = (x, y, r) => [x * Math.cos(r) - y * Math.sin(r), x * Math.sin(r) + y * Math.cos(r)];
+/** Contour d'une forme (points en pixels) : rectangle, ellipse (polygone fin) ou ligne brisée. */
+function contour(t, W, H) {
+  if (t.t === 'poly') return t.p.map(([x, y]) => [x * W, y * H]);
+  const g = geom(t, W, H);
+  const loc = t.t === 'rect'
+    ? [[-g.hw, -g.hh], [g.hw, -g.hh], [g.hw, g.hh], [-g.hw, g.hh]]
+    : Array.from({ length: 96 }, (_, i) => [g.hw * Math.cos(i / 96 * Math.PI * 2), g.hh * Math.sin(i / 96 * Math.PI * 2)]);
+  return loc.map(([x, y]) => { const q = tourne(x, y, g.r); return [g.cx + q[0], g.cy + q[1]]; });
+}
+/** Nuage de révision : arcs qui bombent vers l'extérieur le long du contour. */
+function nuage(ctx, pts, ferme, lw) {
+  const P = ferme ? pts.concat([pts[0]]) : pts;
+  const step = Math.max(16, lw * 6);
+  const out = [P[0]];
+  let reste = step;
+  for (let i = 1; i < P.length; i++) {
+    let [x0, y0] = P[i - 1];
+    const [x1, y1] = P[i];
+    let L = Math.hypot(x1 - x0, y1 - y0);
+    while (L >= reste && L > 0) {
+      const f = reste / L;
+      x0 += (x1 - x0) * f; y0 += (y1 - y0) * f;
+      out.push([x0, y0]);
+      L = Math.hypot(x1 - x0, y1 - y0);
+      reste = step;
+    }
+    reste -= L;
+  }
+  if (!ferme || Math.hypot(out[out.length - 1][0] - P[0][0], out[out.length - 1][1] - P[0][1]) > step * 0.3) out.push(P[P.length - 1]);
+  let aire = 0;
+  for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; aire += a[0] * b[1] - b[0] * a[1]; }
+  const sens = ferme && aire < 0 ? -1 : 1;
+  ctx.beginPath();
+  ctx.moveTo(out[0][0], out[0][1]);
+  for (let i = 1; i < out.length; i++) {
+    const [ax, ay] = out[i - 1], [bx, by] = out[i];
+    const L = Math.hypot(bx - ax, by - ay) || 1;
+    const nx = sens * (by - ay) / L, ny = sens * -(bx - ax) / L;
+    ctx.quadraticCurveTo((ax + bx) / 2 + nx * L * 0.75, (ay + by) / 2 + ny * L * 0.75, bx, by);
+  }
+  ctx.stroke();
 }
 
 /** Dessine les traits (coordonnées relatives) sur un contexte de W×H pixels (`sansTexte` : l'éditeur affiche les textes en zones modifiables). */
@@ -92,12 +141,33 @@ function render(ctx, W, H, traits, sansTexte) {
       ctx.stroke();
       terminaison(ctx, ax, ay, ang + Math.PI, t.ed, lw);
       terminaison(ctx, bx, by, ang, t.ef == null ? 'fleche' : t.ef, lw);
-    } else if (t.t === 'ellipse') {
-      const cx = ((t.a[0] + t.b[0]) / 2) * W, cy = ((t.a[1] + t.b[1]) / 2) * H;
-      const rx = Math.abs(t.b[0] - t.a[0]) * W / 2, ry = Math.abs(t.b[1] - t.a[1]) * H / 2;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, Math.max(1, rx), Math.max(1, ry), 0, 0, Math.PI * 2);
-      ctx.stroke();
+    } else if (t.t === 'ellipse' || t.t === 'rect' || t.t === 'poly') {
+      const pts = contour(t, W, H);
+      const ferme = t.t !== 'poly' || !!t.cl;
+      if (pts.length > 1) {
+        if (t.fc && ferme) {
+          ctx.save();
+          ctx.setLineDash([]);
+          ctx.fillStyle = t.fc;
+          ctx.beginPath();
+          pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+        if (t.ty === 'nuage') nuage(ctx, pts, ferme, lw);
+        else {
+          ctx.beginPath();
+          pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+          if (ferme) ctx.closePath();
+          ctx.stroke();
+        }
+        if (t.t === 'poly' && !ferme && pts.length > 1) {
+          const n = pts.length;
+          terminaison(ctx, pts[0][0], pts[0][1], Math.atan2(pts[0][1] - pts[1][1], pts[0][0] - pts[1][0]), t.ed, lw);
+          terminaison(ctx, pts[n - 1][0], pts[n - 1][1], Math.atan2(pts[n - 1][1] - pts[n - 2][1], pts[n - 1][0] - pts[n - 2][0]), t.ef, lw);
+        }
+      }
     } else if (t.t === 'text' && !sansTexte) {
       ctx.setLineDash([]);
       const size = Math.max(10, t.s * W);
@@ -151,8 +221,13 @@ NS.PhotoEditor = {
     let tool = 'pen';
     let color = COULEURS[0];
     let opacity = 1;
+    let fillColor = null; // remplissage des formes fermées (null = aucun)
+    let cible = 'trait'; // ce que modifie la palette : 'trait' ou 'fond'
+    let edit = null; // forme en cours d'édition (poignées) tant qu'elle n'est pas confirmée
+    let polyDraft = null; // sommets d'une ligne brisée en cours de pose
+    let guide = null; // repère en pointillés : { type: 'med' | 'diag', sx, sy }
     // Réglages propres à chaque outil (épaisseur, type de trait, terminaisons).
-    const reg = { pen: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune' }, arrow: { ep: 1, ty: 'plein', d: 'aucune', f: 'fleche' }, ellipse: { ep: 1, ty: 'plein' } };
+    const reg = { pen: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune' }, arrow: { ep: 1, ty: 'plein', d: 'aucune', f: 'fleche' }, ellipse: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune', kind: 'ellipse' } };
     let draft = null;
     const W = 800; // résolution du dessin à l'écran : relative, les traits sont stockés en 0..1
 
@@ -162,26 +237,42 @@ NS.PhotoEditor = {
     const btnIc = (titre, svg, extra) => { const b = h('button', { type: 'button', class: 'sig4cem-pe__ic' + (extra ? ' ' + extra : ''), title: titre, 'aria-label': titre }); b.innerHTML = svg; return b; };
     const toolBtns = OUTILS.map(([k, label, ic]) => {
       const b = btnIc(label, ic);
-      b.addEventListener('click', () => { tool = k; nuancier.hidden = true; refresh(); });
+      b.addEventListener('click', () => { finaliserTout(); tool = k; nuancier.hidden = true; refresh(); });
       b.dataset.tool = k;
       return b;
     });
     const colorBtns = COULEURS.map((c) => {
       const b = h('button', { type: 'button', class: 'sig4cem-pe__color', title: 'Couleur', 'aria-label': 'Couleur' });
       b.style.background = c;
-      b.addEventListener('click', () => { color = c; if (selected) { selected.item.c = c; layoutText(selected); } refresh(); });
+      b.addEventListener('click', () => {
+        if (cible === 'fond') { fillColor = c; if (edit) edit.fc = c; } else { color = c; if (edit) edit.c = c; if (selected) { selected.item.c = c; layoutText(selected); } }
+        redraw(); refresh();
+      });
       b.dataset.color = c;
       return b;
     });
+    const btnAucun = h('button', { type: 'button', class: 'sig4cem-pe__color sig4cem-pe__color--aucun', title: 'Aucun remplissage', 'aria-label': 'Aucun remplissage' });
+    btnAucun.innerHTML = '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#e53935" stroke-width="1.6"><path d="M5 19L19 5"/></svg>';
+    btnAucun.addEventListener('click', () => { fillColor = null; if (edit) delete edit.fc; redraw(); refresh(); });
     // Palette : couleurs + opacité, dans une fenêtre sous la ligne 2.
     const opaVal = h('span', { class: 'sig4cem-pe__opaval' });
     const opaRange = h('input', { type: 'range', min: '10', max: '100', step: '5', value: '100', 'aria-label': 'Opacité' });
-    opaRange.addEventListener('input', () => { opacity = Number(opaRange.value) / 100; if (selected) { selected.item.o = opacity === 1 ? undefined : opacity; layoutText(selected); } refresh(); });
+    opaRange.addEventListener('input', () => { opacity = Number(opaRange.value) / 100; if (selected) { selected.item.o = opacity === 1 ? undefined : opacity; layoutText(selected); } if (edit) { if (opacity === 1) delete edit.o; else edit.o = opacity; redraw(); } refresh(); });
     const nuancier = h('div', { class: 'sig4cem-pe__nuancier', hidden: '' },
-      h('div', { class: 'sig4cem-pe__nuancier-c' }, ...colorBtns),
+      h('div', { class: 'sig4cem-pe__nuancier-c' }, ...colorBtns, btnAucun),
       h('label', { class: 'sig4cem-pe__opa' }, h('span', { text: 'Opacité' }), opaRange, opaVal));
     const btnPalette = btnIc('Couleur et opacité', maskIc('palette'));
-    btnPalette.addEventListener('click', (e) => { e.stopPropagation(); nuancier.hidden = !nuancier.hidden; });
+    btnPalette.addEventListener('click', (e) => { e.stopPropagation(); cible = 'trait'; nuancier.hidden = !nuancier.hidden; refresh(); });
+    const btnTF = btnIc('Couleur du trait / du remplissage', '');
+    btnTF.addEventListener('click', (e) => { e.stopPropagation(); cible = cible === 'trait' ? 'fond' : 'trait'; nuancier.hidden = false; refresh(); });
+    const tfSvg = () => `<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke-linejoin="round"><rect x="9.5" y="9.5" width="11.5" height="11.5" rx="1" fill="${fillColor || 'none'}" stroke="#0b5c75" stroke-width=".835"/><rect x="3" y="3" width="12" height="12" rx="1" stroke="${color}" stroke-width="2.4"/><rect x="3" y="3" width="12" height="12" rx="1" stroke="#0b5c75" stroke-width=".835"/></svg>`;
+    const KINDS = [['ellipse', 'Ellipse', '<ellipse cx="12" cy="12" rx="9" ry="6"/>'], ['rect', 'Rectangle', '<rect x="4" y="6.5" width="16" height="11" rx="1.2"/>'], ['poly', 'Ligne brisée', '<path d="M4 17.5l5-9.5 5.5 6.5L20 6"/>']];
+    const btnKinds = KINDS.map(([k, titre, dessin]) => {
+      const b = btnIc(titre, svgIc(dessin));
+      b.dataset.kind = k;
+      b.addEventListener('click', () => { finaliserTout(); reg.ellipse.kind = k; refresh(); });
+      return b;
+    });
     const sepTexte = [];
     // Options de ligne 2 : chaque bouton fait défiler ses choix, son icône montre le choix en cours.
     const ligneIc = (y, w, dash) => `<path d="M3 ${y}h18" stroke-width="${w}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
@@ -199,10 +290,10 @@ NS.PhotoEditor = {
     const btnTy = btnIc('Type de trait', '');
     const btnFin = btnIc('Terminaison de la fin', '');
     const suivant = (liste, v) => liste[(liste.indexOf(v) + 1) % liste.length];
-    btnEp.addEventListener('click', () => { const r = reg[tool]; if (r) { r.ep = (r.ep + 1) % EPAISSEURS.length; refresh(); } });
-    btnTy.addEventListener('click', () => { const r = reg[tool]; if (r) { r.ty = suivant(TYPES, r.ty); refresh(); } });
-    btnDeb.addEventListener('click', () => { const r = reg[tool]; if (r && r.d) { r.d = suivant(TERMINAISONS, r.d); refresh(); } });
-    btnFin.addEventListener('click', () => { const r = reg[tool]; if (r && r.f) { r.f = suivant(TERMINAISONS, r.f); refresh(); } });
+    btnEp.addEventListener('click', () => { const r = reg[tool]; if (r) { r.ep = (r.ep + 1) % EPAISSEURS.length; if (edit) edit.w = EPAISSEURS[r.ep]; redraw(); refresh(); } });
+    btnTy.addEventListener('click', () => { const r = reg[tool]; if (r) { r.ty = suivant(tool === 'ellipse' ? TYPES_FORMES : TYPES, r.ty); if (edit) { if (r.ty === 'plein') delete edit.ty; else edit.ty = r.ty; } redraw(); refresh(); } });
+    btnDeb.addEventListener('click', () => { const r = reg[tool]; if (r && r.d) { r.d = suivant(TERMINAISONS, r.d); if (edit && edit.t === 'poly') edit.ed = r.d; redraw(); refresh(); } });
+    btnFin.addEventListener('click', () => { const r = reg[tool]; if (r && r.f) { r.f = suivant(TERMINAISONS, r.f); if (edit && edit.t === 'poly') edit.ef = r.f; redraw(); refresh(); } });
     const btnG = btnIc('Gras', '<span class="sig4cem-pe__t"><b>G</b></span>');
     const btnI = btnIc('Italique', '<span class="sig4cem-pe__t"><i style="font-family:serif">I</i></span>');
     const btnU = btnIc('Souligné', svgIc('<path d="M7 4v7.5a5 5 0 0 0 10 0V4"/><path d="M5 20h14"/>'));
@@ -227,7 +318,7 @@ NS.PhotoEditor = {
     const sep = () => h('span', { class: 'sig4cem-pe__sep' });
     const sep2 = () => { const e = sep(); sepTexte.push(e); return e; };
     const redoStack = []; // éléments annulés, que « Refaire » remet dans l'ordre inverse
-    const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnPalette, sep(), btnEp, btnDeb, btnTy, btnFin, btnG, btnI, btnU, btnAl, sep2(), btnSmaller, btnBigger, nuancier);
+    const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnPalette, btnTF, sep(), ...btnKinds, btnEp, btnDeb, btnTy, btnFin, btnG, btnI, btnU, btnAl, sep2(), btnSmaller, btnBigger, nuancier);
     const root = h('section', { class: 'sig4cem-screen sig4cem-screen--editor' },
       h('div', { class: 'sig4cem-pe__bar' }, btnUndo, btnRedo, btnClear, sep(), ...toolBtns, btnOk, btnCancel),
       ligne2,
@@ -245,11 +336,33 @@ NS.PhotoEditor = {
       redraw();
     }
     function redraw() {
-      render(canvas.getContext('2d'), canvas.width, canvas.height, draft ? list.concat([draft]) : list, true);
+      const ctx = canvas.getContext('2d');
+      const poly = polyDraft && polyDraft.length > 1 ? [{ t: 'poly', c: color, w: EPAISSEURS[reg.ellipse.ep], p: polyDraft, cl: false, ed: reg.ellipse.d, ef: reg.ellipse.f }] : [];
+      render(ctx, canvas.width, canvas.height, (draft ? list.concat([draft]) : list).concat(poly), true);
+      const cw = canvas.width, ch = canvas.height, k = cw / (canvas.clientWidth || cw);
+      ctx.save();
+      ctx.strokeStyle = '#1e88e5';
+      ctx.fillStyle = '#1e88e5';
+      ctx.lineWidth = 1.4 * k;
+      ctx.setLineDash([5 * k, 4 * k]);
+      const cible_ = draft && (draft.t === 'rect' || draft.t === 'ellipse') ? draft : edit;
+      if (guide && cible_ && cible_.a) {
+        const g = geom(cible_, cw, ch);
+        const ligne = (x0, y0, x1, y1) => { const A = tourne(x0, y0, g.r), B = tourne(x1, y1, g.r); ctx.beginPath(); ctx.moveTo(g.cx + A[0], g.cy + A[1]); ctx.lineTo(g.cx + B[0], g.cy + B[1]); ctx.stroke(); };
+        if (guide.type === 'med') { ligne(0, -g.hh, 0, g.hh); ligne(-g.hw, 0, g.hw, 0); } else ligne(-guide.sx * g.hw, -guide.sy * g.hh, guide.sx * g.hw, guide.sy * g.hh);
+      }
+      if (polyDraft && polyDraft.length) {
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(polyDraft[0][0] * cw, polyDraft[0][1] * ch, 6 * k, 0, Math.PI * 2);
+        ctx.fill();
+        if (polyDraft.length === 1) { ctx.beginPath(); ctx.arc(polyDraft[0][0] * cw, polyDraft[0][1] * ch, 2 * k, 0, 7); ctx.fill(); }
+      }
+      ctx.restore();
+      placePoignees();
     }
     function refresh() {
       for (const b of toolBtns) b.classList.toggle('sig4cem-pe__ic--on', b.dataset.tool === tool);
-      for (const b of colorBtns) b.classList.toggle('sig4cem-pe__color--on', b.dataset.color === color);
       opaVal.textContent = `${Math.round(opacity * 100)} %`;
       btnUndo.disabled = !list.length;
       btnClear.disabled = !list.length;
@@ -258,12 +371,21 @@ NS.PhotoEditor = {
       const texte = tool === 'text';
       const r = reg[tool];
       btnEp.hidden = btnTy.hidden = !r;
-      btnDeb.hidden = btnFin.hidden = !(r && r.d);
+      const formes = tool === 'ellipse';
+      btnDeb.hidden = btnFin.hidden = !(r && r.d && (!formes || r.kind === 'poly'));
+      btnTF.hidden = !formes;
+      btnTF.innerHTML = tfSvg();
+      btnTF.title = `Couleur du trait / du remplissage (on modifie : ${cible === 'fond' ? 'le remplissage' : 'le trait'})`;
+      btnAucun.hidden = cible !== 'fond';
+      for (const b of colorBtns) b.classList.toggle('sig4cem-pe__color--on', b.dataset.color === (cible === 'fond' ? fillColor : color));
+      btnAucun.classList.toggle('sig4cem-pe__color--on', cible === 'fond' && !fillColor);
+      btnKinds.forEach((b) => { b.hidden = !formes; b.classList.toggle('sig4cem-pe__ic--on', b.dataset.kind === reg.ellipse.kind); });
+      btnUndo.disabled = !list.length && !polyDraft;
       if (r) {
         const epw = [0.9, 2.2, 3.8][r.ep];
         btnEp.innerHTML = svgIc(ligneIc(12, epw));
         btnEp.title = `Épaisseur du trait (${['fine', 'moyenne', 'épaisse'][r.ep]})`;
-        btnTy.innerHTML = svgIc(r.ty === 'tirets' ? ligneIc(12, 1.6, '4 3') : r.ty === 'points' ? ligneIc(12, 1.8, '0.1 3.2') : ligneIc(12, 1.6)).replace('<svg ', '<svg stroke-linecap="round" ');
+        btnTy.innerHTML = svgIc(r.ty === 'nuage' ? '<path d="M7.5 18.5a3.6 3.6 0 0 1-.6-7.1 4.2 4.2 0 0 1 7.6-2.2 3.9 3.9 0 0 1 5.3 3.7 2.8 2.8 0 0 1-1.7 5.6z"/>' : r.ty === 'tirets' ? ligneIc(12, 1.6, '4 3') : r.ty === 'points' ? ligneIc(12, 1.8, '0.1 3.2') : ligneIc(12, 1.6)).replace('<svg ', '<svg stroke-linecap="round" ');
         btnTy.title = `Type de trait (${r.ty})`;
         if (r.d) {
           btnDeb.innerHTML = svgIc(finIc(r.d, false));
@@ -362,34 +484,246 @@ NS.PhotoEditor = {
       return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))];
     };
 
+    // ---- Formes : rectangle, ellipse, ligne brisée. Elles restent modifiables (poignées) jusqu'à confirmation (✓) ou changement d'outil.
+    const poign = h('div', { class: 'sig4cem-pe__poign' });
+    stage.append(poign);
+    const okPoly = h('span', { class: 'sig4cem-pe__hd sig4cem-pe__hd--ok', hidden: '', title: 'Terminer la ligne brisée' });
+    okPoly.innerHTML = '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"/></svg>';
+    okPoly.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); terminerPoly(false, true); });
+    poign.append(okPoly);
+    let poigns = []; // { el, kind: 'h' | 'rot' | 'move' | 'ok' | 'v', sx, sy, i }
+    const cl = (t) => JSON.parse(JSON.stringify(t));
+    const toPx = (p) => [p[0] * canvas.width, p[1] * canvas.height];
+    const fromPx = (x, y) => [x / canvas.width, y / canvas.height];
+    function setEdit(t) {
+      edit = t;
+      guide = null;
+      poigns.forEach((o) => o.el.remove());
+      poigns = [];
+      if (t) {
+        const mk = (kind, extra) => { const el = h('span', { class: `sig4cem-pe__hd sig4cem-pe__hd--${kind}` }); const o = Object.assign({ el, kind }, extra); poigns.push(o); poign.append(el); return o; };
+        if (t.t === 'poly') t.p.forEach((_, i) => mk('v', { i }));
+        else for (const [sx, sy] of [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]]) mk('h', { sx, sy });
+        if (t.t !== 'poly') mk('rot');
+        mk('move');
+        mk('ok');
+      }
+      for (const o of poigns) liePoignee(o);
+      redraw();
+      refresh();
+    }
+    function finaliserTout() {
+      if (polyDraft) { terminerPoly(false, true); }
+      if (edit) setEdit(null);
+    }
+    function terminerPoly(ferme, silencieux) {
+      const pts = polyDraft;
+      polyDraft = null;
+      if (pts && pts.length >= 2) {
+        const r = reg.ellipse;
+        const t = { t: 'poly', c: color, w: EPAISSEURS[r.ep], p: pts, cl: !!ferme };
+        if (ferme && fillColor) t.fc = fillColor;
+        if (opacity < 1) t.o = opacity;
+        if (r.ty !== 'plein') t.ty = r.ty;
+        if (!ferme) { t.ed = r.d; t.ef = r.f; }
+        list.push(t);
+        redoStack.length = 0;
+        if (ferme && !silencieux) { setEdit(t); return; }
+      }
+      redraw(); refresh();
+    }
+    // Position des poignées (px écran) : coins/côtés (carrés pleins), sommets, rotation, déplacement, ✓.
+    function placePoignees() {
+      const f = canvas.clientWidth / canvas.width;
+      const put = (el, x, y) => { el.style.left = `${x * f}px`; el.style.top = `${y * f}px`; };
+      // ✓ d'une ligne brisée ouverte en cours de pose, près du dernier sommet
+      okPoly.hidden = !(polyDraft && polyDraft.length > 1);
+      if (!okPoly.hidden) { const q = toPx(polyDraft[polyDraft.length - 1]); put(okPoly, Math.min(canvas.width - 20 / f, q[0] + 26 / f), Math.max(20 / f, q[1] - 26 / f)); }
+      if (!edit) return;
+      let haut = [Infinity, Infinity];
+      if (edit.t === 'poly') {
+        const P = contour(edit, canvas.width, canvas.height);
+        for (const o of poigns) if (o.kind === 'v' && P[o.i]) put(o.el, P[o.i][0], P[o.i][1]);
+        const xs = P.map((q) => q[0]), ys = P.map((q) => q[1]);
+        haut = [Math.min(...xs), Math.min(...ys)];
+      } else {
+        const g = geom(edit, canvas.width, canvas.height);
+        const pt = (lx, ly) => { const q = tourne(lx, ly, g.r); return [g.cx + q[0], g.cy + q[1]]; };
+        for (const o of poigns) if (o.kind === 'h') { const q = pt(o.sx * g.hw, o.sy * g.hh); put(o.el, q[0], q[1]); o.el.dataset.rot = g.r; }
+        haut = pt(-g.hw, -g.hh);
+      }
+      // rotation (diagonale à 45° du coin haut-gauche), déplacement puis ✓ juste à côté ; ramenés dans l'image
+      const k = 1 / f, dec = 28 * k, pas = 30 * k;
+      let x0 = haut[0] - dec, y0 = haut[1] - dec;
+      const rot = poigns.find((o) => o.kind === 'rot');
+      const n = rot ? 3 : 2;
+      x0 = Math.max(16 * k, Math.min(canvas.width - (n - 1) * pas - 16 * k, x0));
+      y0 = Math.max(16 * k, Math.min(canvas.height - 16 * k, y0));
+      let i = 0;
+      for (const o of poigns) if (o.kind === 'rot' || o.kind === 'move' || o.kind === 'ok') put(o.el, x0 + pas * i++, y0);
+    }
+    function liePoignee(o) {
+      const el = o.el;
+      if (o.kind === 'ok') { el.innerHTML = '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"/></svg>'; el.title = 'Valider la forme'; }
+      else if (o.kind === 'rot') { el.innerHTML = '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/></svg>'; el.title = 'Faire pivoter'; }
+      else if (o.kind === 'move') { el.innerHTML = '<span class="sig4cem-ic sig4cem-ic--deplacer"></span>'; el.title = 'Déplacer'; }
+      else {
+        const nom = o.kind === 'v' ? 'deplacer' : (o.sx && o.sy ? (o.sx * o.sy > 0 ? 'redim-diag2' : 'redim-diag1') : 'redim-vert');
+        el.innerHTML = `<i class="sig4cem-pe__sq"></i><span class="sig4cem-ic sig4cem-ic--${nom} sig4cem-pe__ar" style="${o.sx && !o.sy && o.kind === 'h' ? 'transform:rotate(90deg)' : ''}"></span>`;
+      }
+      el.addEventListener('pointerdown', (e) => demarrerPoignee(o, e));
+    }
+    function dansForme(t, p) {
+      const [x, y] = toPx(p);
+      const k = canvas.width / (canvas.clientWidth || canvas.width);
+      if (t.t === 'poly') {
+        const P = contour(t, canvas.width, canvas.height);
+        let dedans = false;
+        for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > y) !== (P[j][1] > y) && x < (P[j][0] - P[i][0]) * (y - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) dedans = !dedans;
+        return dedans;
+      }
+      const g = geom(t, canvas.width, canvas.height);
+      const q = tourne(x - g.cx, y - g.cy, -g.r);
+      const m = 8 * k;
+      return t.t === 'rect' ? Math.abs(q[0]) <= g.hw + m && Math.abs(q[1]) <= g.hh + m : (q[0] / (g.hw + m)) ** 2 + (q[1] / (g.hh + m)) ** 2 <= 1;
+    }
+    let drag = null;
+    function deplacerForme(orig, dx, dy) {
+      if (edit.t === 'poly') edit.p = orig.p.map(([x, y]) => [x + dx, y + dy]);
+      else { edit.a = [orig.a[0] + dx, orig.a[1] + dy]; edit.b = [orig.b[0] + dx, orig.b[1] + dy]; }
+    }
+    function demarrerPoignee(o, e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (o.kind === 'ok') { setEdit(null); return; }
+      o.el.setPointerCapture(e.pointerId);
+      o.el.classList.add('sig4cem-pe__hd--act');
+      const p0 = pos(e);
+      drag = { mode: o.kind, o, p0, orig: cl(edit) };
+      if (o.kind === 'rot') { const g = geom(edit, canvas.width, canvas.height); const q = toPx(p0); drag.a0 = Math.atan2(q[1] - g.cy, q[0] - g.cx); }
+      const bouge = (ev) => { ev.preventDefault(); suivre(ev); };
+      const fin = () => { o.el.classList.remove('sig4cem-pe__hd--act'); o.el.removeEventListener('pointermove', bouge); o.el.removeEventListener('pointerup', fin); o.el.removeEventListener('pointercancel', fin); drag = null; guide = null; redraw(); refresh(); };
+      o.el.addEventListener('pointermove', bouge);
+      o.el.addEventListener('pointerup', fin);
+      o.el.addEventListener('pointercancel', fin);
+    }
+    // Déplacement / redimensionnement / rotation en cours (pointeur `e`).
+    function suivre(e) {
+      if (!drag || !edit) return;
+      const p = pos(e);
+      const orig = drag.orig;
+      if (drag.mode === 'move') { deplacerForme(orig, p[0] - drag.p0[0], p[1] - drag.p0[1]); }
+      else if (drag.mode === 'v') { edit.p[drag.o.i] = p; }
+      else if (drag.mode === 'rot') {
+        const g = geom(orig, canvas.width, canvas.height), q = toPx(p);
+        let r = (orig.r || 0) + Math.atan2(q[1] - g.cy, q[0] - g.cx) - drag.a0;
+        const pas = Math.PI / 4, reste = ((r % pas) + pas) % pas;
+        if (Math.min(reste, pas - reste) < 0.045) r = Math.round(r / pas) * pas; // aimant à 0 / 45 / 90°
+        edit.r = r;
+      } else if (drag.mode === 'h') {
+        const g = geom(orig, canvas.width, canvas.height), q = toPx(p);
+        const l = tourne(q[0] - g.cx, q[1] - g.cy, -g.r);
+        const { sx, sy } = drag.o;
+        let left = -g.hw, right = g.hw, top = -g.hh, bottom = g.hh;
+        if (sx === 1) right = l[0]; else if (sx === -1) left = l[0];
+        if (sy === 1) bottom = l[1]; else if (sy === -1) top = l[1];
+        guide = null;
+        if (sx && sy) {
+          const w0 = g.hw * 2, h0 = g.hh * 2, asp0 = w0 / h0;
+          let nw = Math.abs(right - left), nh = Math.abs(bottom - top);
+          const tol = 0.06;
+          if (Math.abs(asp0 - 1) > tol && nh > 1 && Math.abs(nw / nh - asp0) / asp0 < tol) {
+            const f = Math.max(nw / w0, nh / h0);
+            nw = w0 * f; nh = h0 * f;
+            guide = { type: 'diag', sx, sy };
+          } else if (Math.abs(nw - nh) < tol * Math.max(nw, nh)) {
+            nh = nw;
+            guide = { type: 'med' };
+          }
+          if (guide) {
+            if (sx === 1) right = left + nw; else left = right - nw;
+            if (sy === 1) bottom = top + nh; else top = bottom - nh;
+          }
+        }
+        const lc = [(left + right) / 2, (top + bottom) / 2];
+        const w = tourne(lc[0], lc[1], g.r);
+        const cx = g.cx + w[0], cy = g.cy + w[1], hw = Math.abs(right - left) / 2, hh = Math.abs(bottom - top) / 2;
+        edit.a = fromPx(cx - hw, cy - hh);
+        edit.b = fromPx(cx + hw, cy + hh);
+      }
+      redraw();
+    }
     canvas.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       const p = pos(e);
       select(null);
+      if (nuancier) nuancier.hidden = true;
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       if (tool === 'text') return; // la zone de texte se pose au clic (pour que le clavier s'ouvre sur mobile)
       canvas.setPointerCapture(e.pointerId);
       const r = reg[tool];
-      const w = EPAISSEURS[r.ep];
-      draft = tool === 'pen' ? { t: 'pen', c: color, w, p: [p] } : { t: tool, c: color, w, a: p, b: p };
-      if (opacity < 1) draft.o = opacity;
-      if (r.ty !== 'plein') draft.ty = r.ty;
-      if (r.d) { draft.ed = r.d; draft.ef = r.f; }
+      if (tool === 'ellipse') {
+        if (edit && dansForme(edit, p)) { drag = { mode: 'move', p0: p, orig: cl(edit), corps: true }; return; }
+        if (edit) setEdit(null);
+        if (r.kind === 'poly') { drag = { mode: 'tap', p0: p }; return; }
+        draft = { t: r.kind, c: color, w: EPAISSEURS[r.ep], a: p, b: p };
+        if (fillColor) draft.fc = fillColor;
+        drag = { mode: 'creer', p0: p };
+      } else {
+        const w = EPAISSEURS[r.ep];
+        draft = tool === 'pen' ? { t: 'pen', c: color, w, p: [p] } : { t: tool, c: color, w, a: p, b: p };
+      }
+      if (draft) {
+        if (opacity < 1) draft.o = opacity;
+        if (r.ty !== 'plein') draft.ty = r.ty;
+        if (r.d && tool !== 'ellipse') { draft.ed = r.d; draft.ef = r.f; }
+      }
       redraw();
     });
     canvas.addEventListener('pointermove', (e) => {
+      if (drag && drag.mode === 'move' && drag.corps) { e.preventDefault(); suivre(e); return; }
+      if (drag && drag.mode === 'tap') { const p = pos(e); if (Math.hypot(p[0] - drag.p0[0], p[1] - drag.p0[1]) > 0.02) drag = null; return; }
       if (!draft) return;
       e.preventDefault();
-      const p = pos(e);
-      if (draft.t === 'pen') draft.p.push(p); else draft.b = p;
+      let p = pos(e);
+      if (draft.t === 'pen') draft.p.push(p);
+      else {
+        guide = null;
+        if (drag && drag.mode === 'creer') {
+          // aimant léger vers le carré / le cercle
+          const dx = (p[0] - draft.a[0]) * canvas.width, dy = (p[1] - draft.a[1]) * canvas.height;
+          if (Math.abs(Math.abs(dx) - Math.abs(dy)) < 0.06 * Math.max(Math.abs(dx), Math.abs(dy)) && Math.abs(dx) > 8) {
+            const m = Math.max(Math.abs(dx), Math.abs(dy));
+            p = [draft.a[0] + Math.sign(dx) * m / canvas.width, draft.a[1] + Math.sign(dy) * m / canvas.height];
+            guide = { type: 'med' };
+          }
+        }
+        draft.b = p;
+      }
       redraw();
     });
-    const end = () => {
+    const end = (e) => {
+      if (drag && drag.mode === 'move') { drag = null; redraw(); refresh(); return; }
+      if (drag && drag.mode === 'tap') {
+        const p = drag.p0;
+        drag = null;
+        const [x, y] = toPx(p);
+        if (polyDraft && polyDraft.length >= 3) {
+          const [fx, fy] = toPx(polyDraft[0]);
+          if (Math.hypot(x - fx, y - fy) < 18 * canvas.width / (canvas.clientWidth || canvas.width)) { terminerPoly(true); return; }
+        }
+        polyDraft = (polyDraft || []).concat([p]);
+        redraw(); refresh();
+        return;
+      }
+      drag = null;
       if (!draft) return;
       const t = draft;
       draft = null;
       const vide = t.t !== 'pen' && Math.hypot(t.b[0] - t.a[0], t.b[1] - t.a[1]) < 0.01;
       if (!vide) { list.push(t); redoStack.length = 0; }
+      if (!vide && (t.t === 'rect' || t.t === 'ellipse')) { setEdit(t); return; }
+      guide = null;
       refresh();
       redraw();
     };
@@ -406,7 +740,9 @@ NS.PhotoEditor = {
     canvas.addEventListener('pointerup', end);
     canvas.addEventListener('pointercancel', end);
     btnUndo.addEventListener('click', () => {
+      if (polyDraft) { polyDraft.pop(); if (!polyDraft.length) polyDraft = null; redraw(); refresh(); return; }
       const last = list[list.length - 1];
+      if (last && last === edit) setEdit(null);
       if (!last) return;
       const b = boxes.find((o) => o.item === last);
       if (b) removeBox(b); else list.pop();
@@ -420,7 +756,7 @@ NS.PhotoEditor = {
       if (item.t === 'text') addBox(item, false);
       refresh(); redraw();
     });
-    btnClear.addEventListener('click', () => { for (const b of boxes.slice()) b.el.remove(); boxes.length = 0; selected = null; list = []; redoStack.length = 0; refresh(); redraw(); });
+    btnClear.addEventListener('click', () => { polyDraft = null; if (edit) setEdit(null); for (const b of boxes.slice()) b.el.remove(); boxes.length = 0; selected = null; list = []; redoStack.length = 0; refresh(); redraw(); });
 
     const close = () => { root.remove(); URL.revokeObjectURL(url); };
     btnCancel.addEventListener('click', () => {
