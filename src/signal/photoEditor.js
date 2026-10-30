@@ -24,6 +24,40 @@ const OUTILS = [
 ];
 const OVERLAY_SIDE = 1000; // grand côté du calque PNG (la photo, elle, garde sa définition)
 
+const EPAISSEURS = [0.004, 0.008, 0.014];
+const TYPES = ['plein', 'tirets', 'points'];
+const TERMINAISONS = ['aucune', 'fleche', 'barre', 'rond'];
+
+/** Terminaison au point (x, y) ; `ang` = direction du trait, orientée vers l'extérieur. */
+function terminaison(ctx, x, y, ang, kind, lw) {
+  if (!kind || kind === 'aucune') return;
+  const head = Math.max(12, lw * 5);
+  ctx.save();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  if (kind === 'fleche') {
+    ctx.moveTo(x - head * Math.cos(ang - 0.45), y - head * Math.sin(ang - 0.45));
+    ctx.lineTo(x, y);
+    ctx.lineTo(x - head * Math.cos(ang + 0.45), y - head * Math.sin(ang + 0.45));
+    ctx.stroke();
+  } else if (kind === 'barre') {
+    const d = head * 0.55;
+    ctx.moveTo(x - d * Math.sin(ang), y + d * Math.cos(ang));
+    ctx.lineTo(x + d * Math.sin(ang), y - d * Math.cos(ang));
+    ctx.stroke();
+  } else if (kind === 'rond') {
+    ctx.arc(x, y, Math.max(3, lw * 1.6), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+/** Pointillé selon le type de trait. */
+function tirets(ctx, type, lw) {
+  if (type === 'tirets') ctx.setLineDash([lw * 3.5, lw * 2.5]);
+  else if (type === 'points') ctx.setLineDash([0.1, lw * 2.2]);
+  else ctx.setLineDash([]);
+}
+
 /** Dessine les traits (coordonnées relatives) sur un contexte de W×H pixels (`sansTexte` : l'éditeur affiche les textes en zones modifiables). */
 function render(ctx, W, H, traits, sansTexte) {
   ctx.clearRect(0, 0, W, H);
@@ -33,24 +67,31 @@ function render(ctx, W, H, traits, sansTexte) {
   for (const t of traits) {
     ctx.strokeStyle = ctx.fillStyle = t.c;
     ctx.globalAlpha = t.o == null ? 1 : t.o;
-    ctx.lineWidth = Math.max(2, t.w * W);
+    const lw = Math.max(2, t.w * W);
+    ctx.lineWidth = lw;
+    tirets(ctx, t.ty, lw);
     if (t.t === 'pen') {
       ctx.beginPath();
       t.p.forEach(([x, y], i) => (i ? ctx.lineTo(x * W, y * H) : ctx.moveTo(x * W, y * H)));
       if (t.p.length === 1) ctx.lineTo(t.p[0][0] * W + 0.1, t.p[0][1] * H);
       ctx.stroke();
+      const n = t.p.length;
+      if (n > 1) {
+        const P = t.p.map(([x, y]) => [x * W, y * H]);
+        const loin = (i0, sens) => { for (let i = i0 + sens; i >= 0 && i < n; i += sens) if (Math.hypot(P[i][0] - P[i0][0], P[i][1] - P[i0][1]) > lw * 2) return P[i]; return P[n - 1 - i0 === 0 ? 0 : n - 1]; };
+        const q0 = loin(0, 1), q1 = loin(n - 1, -1);
+        terminaison(ctx, P[0][0], P[0][1], Math.atan2(P[0][1] - q0[1], P[0][0] - q0[0]), t.ed, lw);
+        terminaison(ctx, P[n - 1][0], P[n - 1][1], Math.atan2(P[n - 1][1] - q1[1], P[n - 1][0] - q1[0]), t.ef, lw);
+      }
     } else if (t.t === 'arrow') {
       const [ax, ay, bx, by] = [t.a[0] * W, t.a[1] * H, t.b[0] * W, t.b[1] * H];
       const ang = Math.atan2(by - ay, bx - ax);
-      const head = Math.max(12, t.w * W * 5);
       ctx.beginPath();
       ctx.moveTo(ax, ay);
       ctx.lineTo(bx, by);
-      ctx.moveTo(bx, by);
-      ctx.lineTo(bx - head * Math.cos(ang - 0.45), by - head * Math.sin(ang - 0.45));
-      ctx.moveTo(bx, by);
-      ctx.lineTo(bx - head * Math.cos(ang + 0.45), by - head * Math.sin(ang + 0.45));
       ctx.stroke();
+      terminaison(ctx, ax, ay, ang + Math.PI, t.ed, lw);
+      terminaison(ctx, bx, by, ang, t.ef == null ? 'fleche' : t.ef, lw);
     } else if (t.t === 'ellipse') {
       const cx = ((t.a[0] + t.b[0]) / 2) * W, cy = ((t.a[1] + t.b[1]) / 2) * H;
       const rx = Math.abs(t.b[0] - t.a[0]) * W / 2, ry = Math.abs(t.b[1] - t.a[1]) * H / 2;
@@ -58,6 +99,7 @@ function render(ctx, W, H, traits, sansTexte) {
       ctx.ellipse(cx, cy, Math.max(1, rx), Math.max(1, ry), 0, 0, Math.PI * 2);
       ctx.stroke();
     } else if (t.t === 'text' && !sansTexte) {
+      ctx.setLineDash([]);
       const size = Math.max(10, t.s * W);
       ctx.font = `bold ${size}px sans-serif`;
       ctx.textBaseline = 'top';
@@ -69,6 +111,8 @@ function render(ctx, W, H, traits, sansTexte) {
       });
     }
   }
+  ctx.globalAlpha = 1;
+  ctx.setLineDash([]);
 }
 
 NS.PhotoEditor = {
@@ -94,6 +138,8 @@ NS.PhotoEditor = {
     let tool = 'pen';
     let color = COULEURS[0];
     let opacity = 1;
+    // Réglages propres à chaque outil (épaisseur, type de trait, terminaisons).
+    const reg = { pen: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune' }, arrow: { ep: 1, ty: 'plein', d: 'aucune', f: 'fleche' }, ellipse: { ep: 1, ty: 'plein' } };
     let draft = null;
     const W = 800; // résolution du dessin à l'écran : relative, les traits sont stockés en 0..1
 
@@ -123,6 +169,26 @@ NS.PhotoEditor = {
       h('label', { class: 'sig4cem-pe__opa' }, h('span', { text: 'Opacité' }), opaRange, opaVal));
     const btnPalette = btnIc('Couleur et opacité', maskIc('palette'));
     btnPalette.addEventListener('click', (e) => { e.stopPropagation(); nuancier.hidden = !nuancier.hidden; });
+    // Options de ligne 2 : chaque bouton fait défiler ses choix, son icône montre le choix en cours.
+    const ligneIc = (y, w, dash) => `<path d="M3 ${y}h18" stroke-width="${w}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
+    const finIc = (k, fin) => {
+      const x = fin ? 20 : 4, dx = fin ? -1 : 1;
+      const corps = `<path d="M${fin ? 4 : 8} 12h${fin ? 12 : 12}"/>`;
+      if (k === 'fleche') return `<path d="M4 12h16"/><path d="${fin ? 'M14.5 7.5L20 12l-5.5 4.5' : 'M9.5 7.5L4 12l5.5 4.5'}"/>`;
+      if (k === 'barre') return `<path d="M4 12h16"/><path d="M${x} 7v10"/>`;
+      if (k === 'rond') return `<path d="M4 12h16"/><circle cx="${x + dx * 1.5}" cy="12" r="2.4" fill="currentColor"/>`;
+      return '<path d="M4 12h16"/>';
+    };
+    const TITRES_T = { aucune: 'aucune', fleche: 'flèche', barre: 'barre', rond: 'rond' };
+    const btnEp = btnIc('Épaisseur du trait', '');
+    const btnDeb = btnIc('Terminaison du début', '');
+    const btnTy = btnIc('Type de trait', '');
+    const btnFin = btnIc('Terminaison de la fin', '');
+    const suivant = (liste, v) => liste[(liste.indexOf(v) + 1) % liste.length];
+    btnEp.addEventListener('click', () => { const r = reg[tool]; if (r) { r.ep = (r.ep + 1) % EPAISSEURS.length; refresh(); } });
+    btnTy.addEventListener('click', () => { const r = reg[tool]; if (r) { r.ty = suivant(TYPES, r.ty); refresh(); } });
+    btnDeb.addEventListener('click', () => { const r = reg[tool]; if (r && r.d) { r.d = suivant(TERMINAISONS, r.d); refresh(); } });
+    btnFin.addEventListener('click', () => { const r = reg[tool]; if (r && r.f) { r.f = suivant(TERMINAISONS, r.f); refresh(); } });
     const btnSmaller = btnIc('Texte plus petit', '<span class="sig4cem-pe__t">A<small>−</small></span>');
     const btnBigger = btnIc('Texte plus grand', '<span class="sig4cem-pe__t">A<small>+</small></span>');
     const hint = h('div', { class: 'sig4cem-pe__hint', hidden: '' });
@@ -134,7 +200,7 @@ NS.PhotoEditor = {
     const btnCancel = btnIc('Fermer sans enregistrer', svgIc('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'));
     const sep = () => h('span', { class: 'sig4cem-pe__sep' });
     const redoStack = []; // éléments annulés, que « Refaire » remet dans l'ordre inverse
-    const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnPalette, sep(), btnSmaller, btnBigger, nuancier);
+    const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnPalette, sep(), btnEp, btnDeb, btnTy, btnFin, btnSmaller, btnBigger, nuancier);
     const root = h('section', { class: 'sig4cem-screen sig4cem-screen--editor' },
       h('div', { class: 'sig4cem-pe__bar' }, btnUndo, btnRedo, btnClear, sep(), ...toolBtns, btnOk, btnCancel),
       ligne2,
@@ -163,6 +229,22 @@ NS.PhotoEditor = {
       btnRedo.disabled = !redoStack.length;
       btnOk.disabled = propre() === etatInitial;
       const texte = tool === 'text';
+      const r = reg[tool];
+      btnEp.hidden = btnTy.hidden = !r;
+      btnDeb.hidden = btnFin.hidden = !(r && r.d);
+      if (r) {
+        const epw = [0.9, 2.2, 3.8][r.ep];
+        btnEp.innerHTML = svgIc(ligneIc(12, epw));
+        btnEp.title = `Épaisseur du trait (${['fine', 'moyenne', 'épaisse'][r.ep]})`;
+        btnTy.innerHTML = svgIc(r.ty === 'tirets' ? ligneIc(12, 1.6, '4 3') : r.ty === 'points' ? ligneIc(12, 1.8, '0.1 3.2') : ligneIc(12, 1.6)).replace('<svg ', '<svg stroke-linecap="round" ');
+        btnTy.title = `Type de trait (${r.ty})`;
+        if (r.d) {
+          btnDeb.innerHTML = svgIc(finIc(r.d, false));
+          btnFin.innerHTML = svgIc(finIc(r.f, true));
+          btnDeb.title = `Terminaison du début (${TITRES_T[r.d]})`;
+          btnFin.title = `Terminaison de la fin (${TITRES_T[r.f]})`;
+        }
+      }
       btnSmaller.hidden = btnBigger.hidden = !texte;
       btnSmaller.disabled = btnBigger.disabled = !selected;
       hint.hidden = !texte;
@@ -248,9 +330,12 @@ NS.PhotoEditor = {
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       if (tool === 'text') return; // la zone de texte se pose au clic (pour que le clavier s'ouvre sur mobile)
       canvas.setPointerCapture(e.pointerId);
-      const w = 0.008;
+      const r = reg[tool];
+      const w = EPAISSEURS[r.ep];
       draft = tool === 'pen' ? { t: 'pen', c: color, w, p: [p] } : { t: tool, c: color, w, a: p, b: p };
       if (opacity < 1) draft.o = opacity;
+      if (r.ty !== 'plein') draft.ty = r.ty;
+      if (r.d) { draft.ed = r.d; draft.ef = r.f; }
       redraw();
     });
     canvas.addEventListener('pointermove', (e) => {

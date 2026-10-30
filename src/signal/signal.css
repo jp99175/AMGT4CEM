@@ -257,9 +257,9 @@ html[data-app="signal"] body {
 .sig4cem-btn--ico { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; }
 .sig4cem-trash { padding: 4px 6px; }
 /* Éditeur de photo : deux lignes de commandes en haut (icônes en trait fin sans cadre), la photo dessous */
-.sig4cem-pe__bar { gap: 2px; padding: 5px 8px; flex-wrap: nowrap; }
+.sig4cem-pe__bar { gap: 0; padding: 5px 6px; flex-wrap: nowrap; }
 .sig4cem-pe__bar--2 { position: relative; background: #f4f6f8; }
-.sig4cem-pe__ic { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 40px; height: 44px; padding: 0; background: none; border: 0; border-radius: 8px; color: #0b5c75; cursor: pointer; touch-action: manipulation; }
+.sig4cem-pe__ic { display: inline-flex; align-items: center; justify-content: center; flex: 0 1 40px; min-width: 30px; width: 40px; height: 44px; padding: 0; background: none; border: 0; border-radius: 8px; color: #0b5c75; cursor: pointer; touch-action: manipulation; }
 .sig4cem-pe__ic:hover:not(:disabled) { background: #e8f2f6; }
 .sig4cem-pe__ic:disabled { opacity: 0.35; cursor: default; }
 .sig4cem-pe__ic[hidden] { display: none; }
