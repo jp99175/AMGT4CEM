@@ -346,10 +346,12 @@ NS.PhotoEditor = {
       ctx.lineWidth = 1.4 * k;
       ctx.setLineDash([5 * k, 4 * k]);
       const cible_ = draft && (draft.t === 'rect' || draft.t === 'ellipse') ? draft : edit;
-      if (guide && cible_ && cible_.a) {
+      let rep_ = guide;
+      if (!rep_ && cible_ && cible_.a) { const g0 = geom(cible_, cw, ch); if (g0.hw > 4 && Math.abs(g0.hw - g0.hh) < 1.5) rep_ = { type: 'med' }; } // carré / cercle : médianes, quelle que soit l'orientation
+      if (rep_ && cible_ && cible_.a) {
         const g = geom(cible_, cw, ch);
         const ligne = (x0, y0, x1, y1) => { const A = tourne(x0, y0, g.r), B = tourne(x1, y1, g.r); ctx.beginPath(); ctx.moveTo(g.cx + A[0], g.cy + A[1]); ctx.lineTo(g.cx + B[0], g.cy + B[1]); ctx.stroke(); };
-        if (guide.type === 'med') { ligne(0, -g.hh, 0, g.hh); ligne(-g.hw, 0, g.hw, 0); } else ligne(-guide.sx * g.hw, -guide.sy * g.hh, guide.sx * g.hw, guide.sy * g.hh);
+        if (rep_.type === 'med') { ligne(0, -g.hh, 0, g.hh); ligne(-g.hw, 0, g.hw, 0); } else ligne(-rep_.sx * g.hw, -rep_.sy * g.hh, rep_.sx * g.hw, rep_.sy * g.hh);
       }
       if (polyDraft && polyDraft.length) {
         ctx.setLineDash([]);
@@ -366,9 +368,7 @@ NS.PhotoEditor = {
       for (const b of toolBtns) { b.classList.toggle('sig4cem-pe__ic--on', b.dataset.tool === tool); b.disabled = verrou && b.dataset.tool !== tool; }
       opaVal.textContent = `${Math.round(opacity * 100)} %`;
       btnUndo.disabled = !list.length;
-      btnClear.disabled = !list.length;
-      btnRedo.disabled = !redoStack.length;
-      btnOk.disabled = propre() === etatInitial;
+      btnRedo.disabled = !redoStack.length || verrou;
       const texte = tool === 'text';
       const r = reg[tool];
       btnEp.hidden = btnTy.hidden = !r;
@@ -382,6 +382,9 @@ NS.PhotoEditor = {
       btnAucun.classList.toggle('sig4cem-pe__color--on', cible === 'fond' && !fillColor);
       btnKinds.forEach((b) => { b.hidden = !formes; b.disabled = verrou && b.dataset.kind !== reg.ellipse.kind; b.classList.toggle('sig4cem-pe__ic--on', b.dataset.kind === reg.ellipse.kind); });
       btnUndo.disabled = !list.length && !polyDraft;
+      btnClear.disabled = verrou || !list.length;
+      btnOk.disabled = verrou || propre() === etatInitial;
+      btnCancel.disabled = verrou;
       if (r) {
         const epw = [0.9, 2.2, 3.8][r.ep];
         btnEp.innerHTML = svgIc(ligneIc(12, epw));
@@ -555,8 +558,13 @@ NS.PhotoEditor = {
       } else {
         const g = geom(edit, canvas.width, canvas.height);
         const pt = (lx, ly) => { const q = tourne(lx, ly, g.r); return [g.cx + q[0], g.cy + q[1]]; };
-        for (const o of poigns) if (o.kind === 'h') { const q = pt(o.sx * g.hw, o.sy * g.hh); put(o.el, q[0], q[1]); o.el.dataset.rot = g.r; }
+        for (const o of poigns) if (o.kind === 'h') { const q = pt(o.sx * g.hw, o.sy * g.hh); put(o.el, q[0], q[1]); const ar = o.el.querySelector('.sig4cem-pe__ar'); if (ar) ar.style.transform = `rotate(${g.r + (o.sx && !o.sy ? Math.PI / 2 : 0)}rad)`; }
+        const dec = 28 / f;
+        const d = tourne(-dec, -dec, g.r);
         haut = pt(-g.hw, -g.hh);
+        haut = [haut[0] + d[0] + dec, haut[1] + d[1] + dec];
+        const rotEl = poigns.find((o) => o.kind === 'rot');
+        if (rotEl) { const sv = rotEl.el.querySelector('svg'); if (sv) sv.style.transform = `rotate(${g.r}rad)`; }
       }
       // rotation : sur la diagonale à 45° du coin haut-gauche (déplacer : toucher l'intérieur de la forme)
       const k = 1 / f, dec = 28 * k;

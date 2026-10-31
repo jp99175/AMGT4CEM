@@ -281,9 +281,9 @@ html[data-app="signal"] body {
 
 /* Éditeur de photo : poignées des formes (carrés pleins ; la flèche apparaît au survol / pendant le geste, centrée sur la poignée) */
 .sig4cem-pe__poign { position: absolute; inset: 0; pointer-events: none; line-height: 0; }
-.sig4cem-pe__hd { position: absolute; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; margin: -17px 0 0 -17px; pointer-events: auto; touch-action: none; color: #1e88e5; cursor: pointer; }
+.sig4cem-pe__hd { position: absolute; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin: -15px 0 0 -15px; pointer-events: auto; touch-action: none; color: #1e88e5; cursor: pointer; }
 .sig4cem-pe__hd[hidden] { display: none; }
-.sig4cem-pe__sq { display: block; width: 10px; height: 10px; background: #1e88e5; box-shadow: 0 0 0 1px #fff; }
+.sig4cem-pe__sq { display: block; width: 7px; height: 7px; background: #1e88e5; box-shadow: 0 0 0 1px #fff; }
 .sig4cem-pe__ar { display: none; background: #1e88e5; }
 .sig4cem-pe__hd--h:hover .sig4cem-pe__sq, .sig4cem-pe__hd--v:hover .sig4cem-pe__sq, .sig4cem-pe__hd--act .sig4cem-pe__sq { display: none; }
 .sig4cem-pe__hd--h:hover .sig4cem-pe__ar, .sig4cem-pe__hd--v:hover .sig4cem-pe__ar, .sig4cem-pe__hd--act .sig4cem-pe__ar { display: block; }
