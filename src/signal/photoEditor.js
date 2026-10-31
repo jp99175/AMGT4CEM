@@ -356,6 +356,7 @@ NS.PhotoEditor = {
     const btnCancel = btnIc('Fermer sans enregistrer', svgIc('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'));
     const sep = () => h('span', { class: 'sig4cem-pe__sep' });
     const sep2 = () => { const e = sep(); sepTexte.push(e); return e; };
+    const effaces = []; // dessins effacés par « feuille blanche », que « Annuler » restaure
     const redoStack = []; // éléments annulés, que « Refaire » remet dans l'ordre inverse
     const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnTF, sep(), btnOutil, btnEp, btnDeb, btnTy, btnFin, btnG, btnI, btnU, btnAl, sep2(), btnSmaller, btnBigger, menuEl, nuancier);
     const root = h('section', { class: 'sig4cem-screen sig4cem-screen--editor' },
@@ -409,7 +410,7 @@ NS.PhotoEditor = {
       const verrou = !!(edit || polyDraft);
       for (const b of toolBtns) { const actif = b.dataset.tool === 'text' ? tool === 'text' : tool !== 'text'; b.classList.toggle('sig4cem-pe__ic--on', actif); b.disabled = verrou && !actif; }
       opaVal.textContent = `${Math.round(opacity * 100)} %`;
-      btnUndo.disabled = !list.length;
+      btnUndo.disabled = !list.length && !effaces.length;
       btnRedo.disabled = !redoStack.length || verrou;
       const texte = tool === 'text';
       const r = reg[tool];
@@ -427,7 +428,7 @@ NS.PhotoEditor = {
       btnOutil.disabled = verrou;
       const so = SOUS_OUTILS.find((k) => k[0] === sousOutil());
       if (so) { btnOutil.innerHTML = so[2]; btnOutil.title = `Outil : ${so[1]}`; }
-      btnUndo.disabled = !list.length && !polyDraft;
+      btnUndo.disabled = !list.length && !polyDraft && !effaces.length;
       btnClear.disabled = verrou || !list.length;
       btnOk.disabled = verrou || propre() === etatInitial;
       btnCancel.disabled = verrou;
@@ -795,7 +796,10 @@ NS.PhotoEditor = {
       if (polyDraft) { polyDraft.pop(); if (!polyDraft.length) polyDraft = null; redraw(); refresh(); return; }
       const last = list[list.length - 1];
       if (last && last === edit) setEdit(null);
-      if (!last) return;
+      if (!last) {
+        if (effaces.length) { const items = effaces.pop(); toutRestaurer(items); redoStack.push({ tout: items }); refresh(); redraw(); }
+        return;
+      }
       const b = boxes.find((o) => o.item === last);
       if (b) removeBox(b); else list.pop();
       redoStack.push(last);
@@ -804,11 +808,14 @@ NS.PhotoEditor = {
     btnRedo.addEventListener('click', () => {
       const item = redoStack.pop();
       if (!item) return;
+      if (item.tout) { effaces.push(toutEffacer()); refresh(); redraw(); return; }
       list.push(item);
       if (item.t === 'text') addBox(item, false);
       refresh(); redraw();
     });
-    btnClear.addEventListener('click', () => { polyDraft = null; if (edit) setEdit(null); for (const b of boxes.slice()) b.el.remove(); boxes.length = 0; selected = null; list = []; redoStack.length = 0; refresh(); redraw(); });
+    const toutEffacer = () => { const items = list; polyDraft = null; if (edit) setEdit(null); for (const b of boxes.slice()) b.el.remove(); boxes.length = 0; selected = null; list = []; return items; };
+    const toutRestaurer = (items) => { list = items; for (const it of items) if (it.t === 'text') addBox(it, false); };
+    btnClear.addEventListener('click', () => { const items = toutEffacer(); if (items.length) effaces.push(items); redoStack.length = 0; refresh(); redraw(); });
 
     const close = () => { root.remove(); URL.revokeObjectURL(url); };
     btnCancel.addEventListener('click', () => {
