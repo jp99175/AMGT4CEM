@@ -237,7 +237,7 @@ NS.PhotoEditor = {
     const btnIc = (titre, svg, extra) => { const b = h('button', { type: 'button', class: 'sig4cem-pe__ic' + (extra ? ' ' + extra : ''), title: titre, 'aria-label': titre }); b.innerHTML = svg; return b; };
     const toolBtns = OUTILS.map(([k, label, ic]) => {
       const b = btnIc(label, ic);
-      b.addEventListener('click', () => { if (edit || polyDraft) return; tool = k; nuancier.hidden = true; refresh(); });
+      b.addEventListener('click', () => { if (edit || polyDraft) return; tool = k; nuancier.hidden = true; fermerMenu(); refresh(); });
       b.dataset.tool = k;
       return b;
     });
@@ -261,18 +261,18 @@ NS.PhotoEditor = {
     const nuancier = h('div', { class: 'sig4cem-pe__nuancier', hidden: '' },
       h('div', { class: 'sig4cem-pe__nuancier-c' }, ...colorBtns, btnAucun),
       h('label', { class: 'sig4cem-pe__opa' }, h('span', { text: 'Opacité' }), opaRange, opaVal));
-    const btnPalette = btnIc('Couleur et opacité', maskIc('palette'));
-    btnPalette.addEventListener('click', (e) => { e.stopPropagation(); cible = 'trait'; nuancier.hidden = !nuancier.hidden; refresh(); });
     const btnTF = btnIc('Couleur du trait / du remplissage', '');
-    btnTF.addEventListener('click', (e) => { e.stopPropagation(); cible = cible === 'trait' ? 'fond' : 'trait'; nuancier.hidden = false; refresh(); });
-    const tfSvg = () => `<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke-linejoin="round"><rect x="9.5" y="9.5" width="11.5" height="11.5" rx="1" fill="${fillColor || 'none'}" stroke="#0b5c75" stroke-width=".835"/><rect x="3" y="3" width="12" height="12" rx="1" stroke="${color}" stroke-width="2.4"/><rect x="3" y="3" width="12" height="12" rx="1" stroke="#0b5c75" stroke-width=".835"/></svg>`;
-    const KINDS = [['ellipse', 'Ellipse', '<ellipse cx="12" cy="12" rx="9" ry="6"/>'], ['rect', 'Rectangle', '<rect x="4" y="6.5" width="16" height="11" rx="1.2"/>'], ['poly', 'Ligne brisée', '<path d="M4 17.5l5-9.5 5.5 6.5L20 6"/>']];
-    const btnKinds = KINDS.map(([k, titre, dessin]) => {
-      const b = btnIc(titre, svgIc(dessin));
-      b.dataset.kind = k;
-      b.addEventListener('click', () => { if (edit || polyDraft) return; reg.ellipse.kind = k; refresh(); });
-      return b;
+    btnTF.addEventListener('click', (e) => {
+      e.stopPropagation();
+      fermerMenu();
+      // Pour les formes, un 2e toucher passe du trait au remplissage ; ailleurs seul le trait se règle.
+      if (tool === 'ellipse' && !nuancier.hidden) cible = cible === 'trait' ? 'fond' : 'trait';
+      else { cible = 'trait'; nuancier.hidden = !nuancier.hidden; }
+      refresh();
     });
+    const tfSvg = () => `<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke-linejoin="round">${tool === 'ellipse' ? `<rect x="9.5" y="9.5" width="11.5" height="11.5" rx="1" fill="${fillColor || 'none'}" stroke="#0b5c75" stroke-width=".835"/>` : ''}<rect x="3" y="3" width="12" height="12" rx="1" stroke="${color}" stroke-width="2.4"/><rect x="3" y="3" width="12" height="12" rx="1" stroke="#0b5c75" stroke-width=".835"/></svg>`;
+    const KINDS = [['ellipse', 'Ellipse', '<ellipse cx="12" cy="12" rx="9" ry="6"/>'], ['rect', 'Rectangle', '<rect x="4" y="6.5" width="16" height="11" rx="1.2"/>'], ['poly', 'Ligne brisée', '<path d="M4 17.5l5-9.5 5.5 6.5L20 6"/>']];
+    const btnForme = btnIc('Forme', '');
     const sepTexte = [];
     // Options de ligne 2 : chaque bouton fait défiler ses choix, son icône montre le choix en cours.
     const ligneIc = (y, w, dash) => `<path d="M3 ${y}h18" stroke-width="${w}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
@@ -290,10 +290,33 @@ NS.PhotoEditor = {
     const btnTy = btnIc('Type de trait', '');
     const btnFin = btnIc('Terminaison de la fin', '');
     const suivant = (liste, v) => liste[(liste.indexOf(v) + 1) % liste.length];
-    btnEp.addEventListener('click', () => { const r = reg[tool]; if (r) { r.ep = (r.ep + 1) % EPAISSEURS.length; if (edit) edit.w = EPAISSEURS[r.ep]; redraw(); refresh(); } });
-    btnTy.addEventListener('click', () => { const r = reg[tool]; if (r) { r.ty = suivant(tool === 'ellipse' ? TYPES_FORMES : TYPES, r.ty); if (edit) { if (r.ty === 'plein') delete edit.ty; else edit.ty = r.ty; } redraw(); refresh(); } });
-    btnDeb.addEventListener('click', () => { const r = reg[tool]; if (r && r.d) { r.d = suivant(TERMINAISONS, r.d); if (edit && edit.t === 'poly') edit.ed = r.d; redraw(); refresh(); } });
-    btnFin.addEventListener('click', () => { const r = reg[tool]; if (r && r.f) { r.f = suivant(TERMINAISONS, r.f); if (edit && edit.t === 'poly') edit.ef = r.f; redraw(); refresh(); } });
+    const NUAGE = '<path d="M7.5 18.5a3.6 3.6 0 0 1-.6-7.1 4.2 4.2 0 0 1 7.6-2.2 3.9 3.9 0 0 1 5.3 3.7 2.8 2.8 0 0 1-1.7 5.6z"/>';
+    const icEp = (i) => svgIc(ligneIc(12, [0.9, 2.2, 3.8][i]));
+    const icTy = (t) => svgIc(t === 'nuage' ? NUAGE : t === 'tirets' ? ligneIc(12, 1.6, '4 3') : t === 'points' ? ligneIc(12, 1.8, '0.1 3.2') : ligneIc(12, 1.6)).replace('<svg ', '<svg stroke-linecap="round" ');
+    const NOM_EP = ['fine', 'moyenne', 'épaisse'];
+    // Menus déroulants (vers le bas) : l'icône montre le choix en cours, un toucher déploie tous les choix.
+    const menuEl = h('div', { class: 'sig4cem-pe__menu', hidden: '' });
+    let menuBtn = null;
+    function fermerMenu() { menuEl.hidden = true; menuBtn = null; }
+    function ouvrirMenu(btn, choix, courant, choisir) {
+      if (menuBtn === btn) { fermerMenu(); return; }
+      nuancier.hidden = true;
+      menuEl.textContent = '';
+      for (const c of choix) {
+        const b = btnIc(c.titre, c.ic, c.val === courant ? 'sig4cem-pe__ic--on' : '');
+        b.addEventListener('click', (e) => { e.stopPropagation(); choisir(c.val); fermerMenu(); });
+        menuEl.append(b);
+      }
+      menuEl.style.left = `${btn.offsetLeft}px`;
+      menuEl.hidden = false;
+      menuBtn = btn;
+    }
+    for (const b of [btnForme, btnEp, btnDeb, btnTy, btnFin]) b.classList.add('sig4cem-pe__ic--menu');
+    btnForme.addEventListener('click', (e) => { e.stopPropagation(); if (edit || polyDraft) return; ouvrirMenu(btnForme, KINDS.map(([k, titre, d]) => ({ val: k, titre, ic: svgIc(d) })), reg.ellipse.kind, (k) => { reg.ellipse.kind = k; refresh(); }); });
+    btnEp.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool]; if (r) ouvrirMenu(btnEp, [0, 1, 2].map((i) => ({ val: i, titre: `Épaisseur ${NOM_EP[i]}`, ic: icEp(i) })), r.ep, (v) => { r.ep = v; if (edit) edit.w = EPAISSEURS[v]; redraw(); refresh(); }); });
+    btnTy.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool]; if (r) ouvrirMenu(btnTy, (tool === 'ellipse' ? TYPES_FORMES : TYPES).map((t) => ({ val: t, titre: `Trait ${t}`, ic: icTy(t) })), r.ty, (v) => { r.ty = v; if (edit) { if (v === 'plein') delete edit.ty; else edit.ty = v; } redraw(); refresh(); }); });
+    btnDeb.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool]; if (r && r.d) ouvrirMenu(btnDeb, TERMINAISONS.map((k) => ({ val: k, titre: `Début : ${TITRES_T[k]}`, ic: svgIc(finIc(k, false)) })), r.d, (v) => { r.d = v; if (edit && edit.t === 'poly') edit.ed = v; redraw(); refresh(); }); });
+    btnFin.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool]; if (r && r.f) ouvrirMenu(btnFin, TERMINAISONS.map((k) => ({ val: k, titre: `Fin : ${TITRES_T[k]}`, ic: svgIc(finIc(k, true)) })), r.f, (v) => { r.f = v; if (edit && edit.t === 'poly') edit.ef = v; redraw(); refresh(); }); });
     const btnG = btnIc('Gras', '<span class="sig4cem-pe__t"><b>G</b></span>');
     const btnI = btnIc('Italique', '<span class="sig4cem-pe__t"><i style="font-family:serif">I</i></span>');
     const btnU = btnIc('Souligné', svgIc('<path d="M7 4v7.5a5 5 0 0 0 10 0V4"/><path d="M5 20h14"/>'));
@@ -318,14 +341,17 @@ NS.PhotoEditor = {
     const sep = () => h('span', { class: 'sig4cem-pe__sep' });
     const sep2 = () => { const e = sep(); sepTexte.push(e); return e; };
     const redoStack = []; // éléments annulés, que « Refaire » remet dans l'ordre inverse
-    const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnPalette, btnTF, sep(), ...btnKinds, btnEp, btnDeb, btnTy, btnFin, btnG, btnI, btnU, btnAl, sep2(), btnSmaller, btnBigger, nuancier);
+    const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnTF, sep(), btnForme, btnEp, btnDeb, btnTy, btnFin, btnG, btnI, btnU, btnAl, sep2(), btnSmaller, btnBigger, menuEl, nuancier);
     const root = h('section', { class: 'sig4cem-screen sig4cem-screen--editor' },
       h('div', { class: 'sig4cem-pe__bar' }, btnUndo, btnRedo, btnClear, sep(), ...toolBtns, btnOk, btnCancel),
       ligne2,
       hint,
       h('div', { class: 'sig4cem-pe__body' }, stage));
     document.getElementById('sig4cem-root').append(root);
-    root.addEventListener('pointerdown', (e) => { if (!nuancier.hidden && !nuancier.contains(e.target) && !btnPalette.contains(e.target)) nuancier.hidden = true; });
+    root.addEventListener('pointerdown', (e) => {
+      if (!nuancier.hidden && !nuancier.contains(e.target) && !btnTF.contains(e.target)) nuancier.hidden = true;
+      if (!menuEl.hidden && !menuEl.contains(e.target) && !(menuBtn && menuBtn.contains(e.target))) fermerMenu();
+    });
     const propre = () => JSON.stringify(list.filter((t) => t.t !== 'text' || (t.txt || '').trim()));
     const etatInitial = propre();
 
@@ -374,22 +400,24 @@ NS.PhotoEditor = {
       btnEp.hidden = btnTy.hidden = !r;
       const formes = tool === 'ellipse';
       btnDeb.hidden = btnFin.hidden = !(r && r.d && (!formes || r.kind === 'poly'));
-      btnTF.hidden = !formes;
       btnTF.innerHTML = tfSvg();
       btnTF.title = `Couleur du trait / du remplissage (on modifie : ${cible === 'fond' ? 'le remplissage' : 'le trait'})`;
       btnAucun.hidden = cible !== 'fond';
       for (const b of colorBtns) b.classList.toggle('sig4cem-pe__color--on', b.dataset.color === (cible === 'fond' ? fillColor : color));
       btnAucun.classList.toggle('sig4cem-pe__color--on', cible === 'fond' && !fillColor);
-      btnKinds.forEach((b) => { b.hidden = !formes; b.disabled = verrou && b.dataset.kind !== reg.ellipse.kind; b.classList.toggle('sig4cem-pe__ic--on', b.dataset.kind === reg.ellipse.kind); });
+      btnForme.hidden = !formes;
+      btnForme.disabled = verrou;
+      const kd = KINDS.find((k) => k[0] === reg.ellipse.kind);
+      btnForme.innerHTML = svgIc(kd[2]);
+      btnForme.title = `Forme : ${kd[1]}`;
       btnUndo.disabled = !list.length && !polyDraft;
       btnClear.disabled = verrou || !list.length;
       btnOk.disabled = verrou || propre() === etatInitial;
       btnCancel.disabled = verrou;
       if (r) {
-        const epw = [0.9, 2.2, 3.8][r.ep];
-        btnEp.innerHTML = svgIc(ligneIc(12, epw));
-        btnEp.title = `Épaisseur du trait (${['fine', 'moyenne', 'épaisse'][r.ep]})`;
-        btnTy.innerHTML = svgIc(r.ty === 'nuage' ? '<path d="M7.5 18.5a3.6 3.6 0 0 1-.6-7.1 4.2 4.2 0 0 1 7.6-2.2 3.9 3.9 0 0 1 5.3 3.7 2.8 2.8 0 0 1-1.7 5.6z"/>' : r.ty === 'tirets' ? ligneIc(12, 1.6, '4 3') : r.ty === 'points' ? ligneIc(12, 1.8, '0.1 3.2') : ligneIc(12, 1.6)).replace('<svg ', '<svg stroke-linecap="round" ');
+        btnEp.innerHTML = icEp(r.ep);
+        btnEp.title = `Épaisseur du trait (${NOM_EP[r.ep]})`;
+        btnTy.innerHTML = icTy(r.ty);
         btnTy.title = `Type de trait (${r.ty})`;
         if (r.d) {
           btnDeb.innerHTML = svgIc(finIc(r.d, false));
