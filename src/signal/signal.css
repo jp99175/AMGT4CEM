@@ -295,3 +295,5 @@ html[data-app="signal"] body {
 .sig4cem-ic--redim-vert { width: 8.5px; height: 21px; -webkit-mask-image: url(icone-redim-vert.png); mask-image: url(icone-redim-vert.png); }
 .sig4cem-pe__color--aucun { background: #fff; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 .sig4cem-pe__color--aucun[hidden] { display: none; }
+.sig4cem-pe__pill { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 5; display: flex; gap: 4px; padding: 3px 8px; background: rgba(255, 255, 255, 0.95); border-radius: 23px; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35); line-height: 0; }
+.sig4cem-pe__pill[hidden] { display: none; }

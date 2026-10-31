@@ -110,7 +110,12 @@ html[data-page="carto"] #amgt-bore-btn svg { width: 55px; height: 55px; display:
 }
 
 html[data-page="carto"] #amgt-search-box { width: 55px; height: 55px; }
-html[data-page="carto"] #amgt-search-box.amgt-search--open { width: min(260px, calc(100vw - 20px)); }
+/* Ouverte : même hauteur que la loupe (55 px) ; elle s'arrête 10 px avant « Ajouter un point » (bord droit à 133 px) au lieu de le recouvrir. */
+html[data-page="carto"] #amgt-search-box.amgt-search--open { width: min(420px, calc(100vw - 153px)); }
+html[data-page="carto"] #amgt-search-input { height: 55px; border-radius: 27.5px; padding: 0 16px 0 66px; font-size: 15px; }
+html[data-page="carto"] .amgt-search-result { align-items: center; padding: 8px 10px; }
+html[data-page="carto"] .amgt-search-texte { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+html[data-page="carto"] .amgt-search-detail { font-size: 12px; color: #52606d; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---- Barre « lecteur » du résultat : pause / lecture, curseur du temps, disquette, fermer ---- */
 .mes-lecteur {

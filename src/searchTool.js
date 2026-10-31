@@ -144,7 +144,8 @@ const AMGT4CEM_SearchTool = {
 
         return {
           kind: 'address',
-          label: parts.join(', ') || query,
+          label: parts[0] || query,
+          detail: parts[1] || '',
           latlng: bounds ? null : AMGT4CEM_CRS.lambertToLatLng([entry.point.x, entry.point.y]),
           bounds,
         };
@@ -181,7 +182,16 @@ const AMGT4CEM_SearchTool = {
       labelSpan.className = 'amgt-search-label';
       labelSpan.textContent = result.label;
 
-      li.append(kindTag, labelSpan);
+      const texte = document.createElement('span');
+      texte.className = 'amgt-search-texte';
+      texte.append(labelSpan);
+      if (result.detail) {
+        const detail = document.createElement('span');
+        detail.className = 'amgt-search-detail';
+        detail.textContent = result.detail;
+        texte.append(detail);
+      }
+      li.append(kindTag, texte);
       li.addEventListener('click', () => {
         if (result.bounds) {
           this._map.fitBounds(result.bounds, { maxZoom: 19, padding: [40, 40] });
