@@ -113,9 +113,10 @@ html[data-page="carto"] #amgt-search-box { width: 55px; height: 55px; }
 /* Ouverte : même hauteur que la loupe (55 px) ; elle s'arrête 10 px avant « Ajouter un point » (bord droit à 133 px) au lieu de le recouvrir. */
 html[data-page="carto"] #amgt-search-box.amgt-search--open { width: min(420px, calc(100vw - 153px)); }
 html[data-page="carto"] #amgt-search-input { height: 55px; border-radius: 27.5px; padding: 0 16px 0 66px; font-size: 15px; }
-html[data-page="carto"] .amgt-search-result { flex-direction: column; align-items: stretch; gap: 3px; padding: 8px 12px; line-height: 1.25; }
-html[data-page="carto"] .amgt-search-ligne1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
-html[data-page="carto"] .amgt-search-result > .amgt-search-label { white-space: normal; }
+html[data-page="carto"] .amgt-search-groupe { padding: 8px 12px 2px; line-height: 1; }
+html[data-page="carto"] .amgt-search-groupe:not(:first-child) { margin-top: 4px; border-top: 1px solid #e3e8ec; padding-top: 10px; }
+html[data-page="carto"] .amgt-search-result { padding: 7px 12px 7px 20px; line-height: 1.25; }
+html[data-page="carto"] .amgt-search-result .amgt-search-label { white-space: normal; }
 
 /* ---- Barre « lecteur » du résultat : pause / lecture, curseur du temps, disquette, fermer ---- */
 .mes-lecteur {

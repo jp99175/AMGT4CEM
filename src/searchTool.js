@@ -169,33 +169,36 @@ const AMGT4CEM_SearchTool = {
       return;
     }
 
-    for (const result of results) {
-      const li = document.createElement('li');
-      li.className = 'amgt-search-result';
-
+    // Résultats regroupés par type : la pastille sert de titre au groupe, puis un résultat par ligne.
+    const ordre = ['station', 'tunnel', 'planche', 'point', 'address'];
+    const rang = (k) => (ordre.indexOf(k) < 0 ? 99 : ordre.indexOf(k));
+    const types = [...new Set(results.map((r) => r.kind))].sort((x, y) => rang(x) - rang(y));
+    for (const k of types) {
+      const titre = document.createElement('li');
+      titre.className = 'amgt-search-groupe';
       const kindTag = document.createElement('span');
-      kindTag.className = `amgt-search-kind amgt-search-kind--${result.kind}`;
-      kindTag.textContent = this._kindLabel(result.kind);
+      kindTag.className = `amgt-search-kind amgt-search-kind--${k}`;
+      kindTag.textContent = this._kindLabel(k);
+      titre.append(kindTag);
+      resultsEl.appendChild(titre);
 
-      const labelSpan = document.createElement('span');
-      labelSpan.className = 'amgt-search-label';
-      labelSpan.textContent = result.label;
-
-      // Ligne 1 : la pastille de type (suivie du nom pour une station, un tunnel, une planche, un point) ; ligne 2 : l'adresse complète.
-      const ligne1 = document.createElement('span');
-      ligne1.className = 'amgt-search-ligne1';
-      ligne1.append(kindTag);
-      if (result.kind === 'address') li.append(ligne1, labelSpan);
-      else { ligne1.append(labelSpan); li.append(ligne1); }
-      li.addEventListener('click', () => {
-        if (result.bounds) {
-          this._map.fitBounds(result.bounds, { maxZoom: 19, padding: [40, 40] });
-        } else if (result.latlng) {
-          this._map.setView(result.latlng, 19);
-        }
-        close();
-      });
-      resultsEl.appendChild(li);
+      for (const result of results.filter((r) => r.kind === k)) {
+        const li = document.createElement('li');
+        li.className = 'amgt-search-result';
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'amgt-search-label';
+        labelSpan.textContent = result.label;
+        li.append(labelSpan);
+        li.addEventListener('click', () => {
+          if (result.bounds) {
+            this._map.fitBounds(result.bounds, { maxZoom: 19, padding: [40, 40] });
+          } else if (result.latlng) {
+            this._map.setView(result.latlng, 19);
+          }
+          close();
+        });
+        resultsEl.appendChild(li);
+      }
     }
   },
 };
