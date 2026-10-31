@@ -144,8 +144,7 @@ const AMGT4CEM_SearchTool = {
 
         return {
           kind: 'address',
-          label: parts[0] || query,
-          detail: parts[1] || '',
+          label: parts.join(', ') || query,
           latlng: bounds ? null : AMGT4CEM_CRS.lambertToLatLng([entry.point.x, entry.point.y]),
           bounds,
         };
@@ -182,16 +181,12 @@ const AMGT4CEM_SearchTool = {
       labelSpan.className = 'amgt-search-label';
       labelSpan.textContent = result.label;
 
+      // Ligne 1 : la pastille de type (suivie du nom pour une station, un tunnel, une planche, un point) ; ligne 2 : l'adresse complète.
       const ligne1 = document.createElement('span');
-      ligne1.className = 'amgt-search-l1';
-      ligne1.append(kindTag, labelSpan);
-      li.append(ligne1);
-      if (result.detail) {
-        const detail = document.createElement('span');
-        detail.className = 'amgt-search-detail';
-        detail.textContent = result.detail;
-        li.append(detail);
-      }
+      ligne1.className = 'amgt-search-ligne1';
+      ligne1.append(kindTag);
+      if (result.kind === 'address') li.append(ligne1, labelSpan);
+      else { ligne1.append(labelSpan); li.append(ligne1); }
       li.addEventListener('click', () => {
         if (result.bounds) {
           this._map.fitBounds(result.bounds, { maxZoom: 19, padding: [40, 40] });
