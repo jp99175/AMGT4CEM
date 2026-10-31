@@ -237,7 +237,7 @@ NS.PhotoEditor = {
     const btnIc = (titre, svg, extra) => { const b = h('button', { type: 'button', class: 'sig4cem-pe__ic' + (extra ? ' ' + extra : ''), title: titre, 'aria-label': titre }); b.innerHTML = svg; return b; };
     const toolBtns = OUTILS.map(([k, label, ic]) => {
       const b = btnIc(label, ic);
-      b.addEventListener('click', () => { finaliserTout(); tool = k; nuancier.hidden = true; refresh(); });
+      b.addEventListener('click', () => { if (edit || polyDraft) return; tool = k; nuancier.hidden = true; refresh(); });
       b.dataset.tool = k;
       return b;
     });
@@ -270,7 +270,7 @@ NS.PhotoEditor = {
     const btnKinds = KINDS.map(([k, titre, dessin]) => {
       const b = btnIc(titre, svgIc(dessin));
       b.dataset.kind = k;
-      b.addEventListener('click', () => { finaliserTout(); reg.ellipse.kind = k; refresh(); });
+      b.addEventListener('click', () => { if (edit || polyDraft) return; reg.ellipse.kind = k; refresh(); });
       return b;
     });
     const sepTexte = [];
@@ -362,7 +362,8 @@ NS.PhotoEditor = {
       placePoignees();
     }
     function refresh() {
-      for (const b of toolBtns) b.classList.toggle('sig4cem-pe__ic--on', b.dataset.tool === tool);
+      const verrou = !!(edit || polyDraft);
+      for (const b of toolBtns) { b.classList.toggle('sig4cem-pe__ic--on', b.dataset.tool === tool); b.disabled = verrou && b.dataset.tool !== tool; }
       opaVal.textContent = `${Math.round(opacity * 100)} %`;
       btnUndo.disabled = !list.length;
       btnClear.disabled = !list.length;
@@ -379,7 +380,7 @@ NS.PhotoEditor = {
       btnAucun.hidden = cible !== 'fond';
       for (const b of colorBtns) b.classList.toggle('sig4cem-pe__color--on', b.dataset.color === (cible === 'fond' ? fillColor : color));
       btnAucun.classList.toggle('sig4cem-pe__color--on', cible === 'fond' && !fillColor);
-      btnKinds.forEach((b) => { b.hidden = !formes; b.classList.toggle('sig4cem-pe__ic--on', b.dataset.kind === reg.ellipse.kind); });
+      btnKinds.forEach((b) => { b.hidden = !formes; b.disabled = verrou && b.dataset.kind !== reg.ellipse.kind; b.classList.toggle('sig4cem-pe__ic--on', b.dataset.kind === reg.ellipse.kind); });
       btnUndo.disabled = !list.length && !polyDraft;
       if (r) {
         const epw = [0.9, 2.2, 3.8][r.ep];
@@ -488,6 +489,10 @@ NS.PhotoEditor = {
     const poign = h('div', { class: 'sig4cem-pe__poign' });
     stage.append(poign);
     const okPoly = h('span', { class: 'sig4cem-pe__hd sig4cem-pe__hd--ok', hidden: '', title: 'Terminer la ligne brisée' });
+    const annulPoly = h('span', { class: 'sig4cem-pe__hd sig4cem-pe__hd--cancel', hidden: '', title: 'Annuler la ligne brisée' });
+    annulPoly.innerHTML = '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+    annulPoly.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); polyDraft = null; redraw(); refresh(); });
+    poign.append(annulPoly);
     okPoly.innerHTML = '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"/></svg>';
     okPoly.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); terminerPoly(false, true); });
     poign.append(okPoly);
@@ -507,6 +512,7 @@ NS.PhotoEditor = {
         if (t.t !== 'poly') mk('rot');
         mk('move');
         mk('ok');
+        mk('cancel');
       }
       for (const o of poigns) liePoignee(o);
       redraw();
@@ -538,7 +544,12 @@ NS.PhotoEditor = {
       const put = (el, x, y) => { el.style.left = `${x * f}px`; el.style.top = `${y * f}px`; };
       // ✓ d'une ligne brisée ouverte en cours de pose, près du dernier sommet
       okPoly.hidden = !(polyDraft && polyDraft.length > 1);
-      if (!okPoly.hidden) { const q = toPx(polyDraft[polyDraft.length - 1]); put(okPoly, Math.min(canvas.width - 20 / f, q[0] + 26 / f), Math.max(20 / f, q[1] - 26 / f)); }
+      annulPoly.hidden = !(polyDraft && polyDraft.length > 0);
+      if (polyDraft && polyDraft.length) {
+        const q = toPx(polyDraft[polyDraft.length - 1]);
+        put(annulPoly, Math.min(canvas.width - 20 / f, q[0] + 60 / f), Math.max(20 / f, q[1] - 26 / f));
+        put(okPoly, Math.min(canvas.width - 54 / f, q[0] + 26 / f), Math.max(20 / f, q[1] - 26 / f));
+      }
       if (!edit) return;
       let haut = [Infinity, Infinity];
       if (edit.t === 'poly') {
@@ -556,15 +567,16 @@ NS.PhotoEditor = {
       const k = 1 / f, dec = 28 * k, pas = 30 * k;
       let x0 = haut[0] - dec, y0 = haut[1] - dec;
       const rot = poigns.find((o) => o.kind === 'rot');
-      const n = rot ? 3 : 2;
+      const n = rot ? 4 : 3;
       x0 = Math.max(16 * k, Math.min(canvas.width - (n - 1) * pas - 16 * k, x0));
       y0 = Math.max(16 * k, Math.min(canvas.height - 16 * k, y0));
       let i = 0;
-      for (const o of poigns) if (o.kind === 'rot' || o.kind === 'move' || o.kind === 'ok') put(o.el, x0 + pas * i++, y0);
+      for (const o of poigns) if (o.kind === 'rot' || o.kind === 'move' || o.kind === 'ok' || o.kind === 'cancel') put(o.el, x0 + pas * i++, y0);
     }
     function liePoignee(o) {
       const el = o.el;
-      if (o.kind === 'ok') { el.innerHTML = '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"/></svg>'; el.title = 'Valider la forme'; }
+      if (o.kind === 'cancel') { el.innerHTML = '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>'; el.title = 'Annuler cette forme'; }
+      else if (o.kind === 'ok') { el.innerHTML = '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"/></svg>'; el.title = 'Valider la forme'; }
       else if (o.kind === 'rot') { el.innerHTML = '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/></svg>'; el.title = 'Faire pivoter'; }
       else if (o.kind === 'move') { el.innerHTML = '<span class="sig4cem-ic sig4cem-ic--deplacer"></span>'; el.title = 'Déplacer'; }
       else {
@@ -596,6 +608,7 @@ NS.PhotoEditor = {
       e.preventDefault();
       e.stopPropagation();
       if (o.kind === 'ok') { setEdit(null); return; }
+      if (o.kind === 'cancel') { const j = list.indexOf(edit); if (j >= 0) list.splice(j, 1); setEdit(null); return; }
       o.el.setPointerCapture(e.pointerId);
       o.el.classList.add('sig4cem-pe__hd--act');
       const p0 = pos(e);
@@ -664,7 +677,7 @@ NS.PhotoEditor = {
       const r = reg[tool];
       if (tool === 'ellipse') {
         if (edit && dansForme(edit, p)) { drag = { mode: 'move', p0: p, orig: cl(edit), corps: true }; return; }
-        if (edit) setEdit(null);
+        if (edit) { drag = null; return; } // la forme en cours ne se quitte que par ✓ ou ✗
         if (r.kind === 'poly') { drag = { mode: 'tap', p0: p }; return; }
         draft = { t: r.kind, c: color, w: EPAISSEURS[r.ep], a: p, b: p };
         if (fillColor) draft.fc = fillColor;

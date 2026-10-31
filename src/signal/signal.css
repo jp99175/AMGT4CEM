@@ -287,7 +287,7 @@ html[data-app="signal"] body {
 .sig4cem-pe__ar { display: none; background: #1e88e5; }
 .sig4cem-pe__hd--h:hover .sig4cem-pe__sq, .sig4cem-pe__hd--v:hover .sig4cem-pe__sq, .sig4cem-pe__hd--act .sig4cem-pe__sq { display: none; }
 .sig4cem-pe__hd--h:hover .sig4cem-pe__ar, .sig4cem-pe__hd--v:hover .sig4cem-pe__ar, .sig4cem-pe__hd--act .sig4cem-pe__ar { display: block; }
-.sig4cem-pe__hd--rot, .sig4cem-pe__hd--move, .sig4cem-pe__hd--ok { background: rgba(255, 255, 255, 0.85); border-radius: 8px; }
+.sig4cem-pe__hd--rot, .sig4cem-pe__hd--move, .sig4cem-pe__hd--ok, .sig4cem-pe__hd--cancel { background: rgba(255, 255, 255, 0.85); border-radius: 8px; }
 .sig4cem-pe__hd--move .sig4cem-ic { background: #1e88e5; }
 .sig4cem-ic--deplacer { width: 21px; height: 20.25px; -webkit-mask-image: url(icone-deplacer.png); mask-image: url(icone-deplacer.png); }
 .sig4cem-ic--redim-diag1 { width: 18px; height: 18px; -webkit-mask-image: url(icone-redim-diag1.png); mask-image: url(icone-redim-diag1.png); }
