@@ -432,7 +432,7 @@ NS.PhotoEditor = {
       btnOk.disabled = verrou || propre() === etatInitial;
       btnCancel.disabled = verrou;
       if (r) {
-        btnEp.innerHTML = icEp(r.ep);
+        btnEp.innerHTML = maskIc('epaisseur');
         btnEp.title = `Épaisseur du trait (${NOM_EP[r.ep]})`;
         btnTy.innerHTML = icTy(r.ty);
         btnTy.title = `Type de trait (${r.ty})`;

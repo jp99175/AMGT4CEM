@@ -245,12 +245,13 @@ html[data-app="signal"] body {
 .sig4cem-identity { margin: 0 0 6px; font-size: 13px; color: #52606d; }
 
 /* Icônes de l'éditeur de photo et corbeilles : masques PNG au trait de 0,8 px, couleur du texte du bouton (blanc si actif) */
-.sig4cem-ic--fleche { width: 24px; height: 22.5px; -webkit-mask-image: url(icone-fleche.png); mask-image: url(icone-fleche.png); }
+.sig4cem-ic--fleche { width: 21.5px; height: 10px; -webkit-mask-image: url(icone-fleche.png); mask-image: url(icone-fleche.png); }
 .sig4cem-ic--cercle { width: 22.5px; height: 23px; -webkit-mask-image: url(icone-cercle.png); mask-image: url(icone-cercle.png); }
 .sig4cem-ic--palette { width: 22.5px; height: 22.75px; -webkit-mask-image: url(icone-palette.png); mask-image: url(icone-palette.png); }
 .sig4cem-ic--texte { width: 24.5px; height: 23px; -webkit-mask-image: url(icone-texte.png); mask-image: url(icone-texte.png); }
 .sig4cem-ic--pinceau { width: 22px; height: 16.75px; -webkit-mask-image: url(icone-pinceau.png); mask-image: url(icone-pinceau.png); }
-.sig4cem-ic--crayon { width: 22.75px; height: 22.5px; -webkit-mask-image: url(icone-crayon.png); mask-image: url(icone-crayon.png); }
+.sig4cem-ic--epaisseur { width: 22px; height: 16px; -webkit-mask-image: url(icone-epaisseur.png); mask-image: url(icone-epaisseur.png); }
+.sig4cem-ic--crayon { width: 22.5px; height: 22.5px; -webkit-mask-image: url(icone-crayon.png); mask-image: url(icone-crayon.png); }
 .sig4cem-ic--poubelle { width: 20px; height: 23px; -webkit-mask-image: url(icone-poubelle.png); mask-image: url(icone-poubelle.png); }
 .sig4cem-btn--primary .sig4cem-ic { background: #fff; }
 .sig4cem-btn .sig4cem-ic, .sig4cem-trash .sig4cem-ic { display: inline-block; vertical-align: middle; }
