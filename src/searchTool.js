@@ -182,16 +182,16 @@ const AMGT4CEM_SearchTool = {
       labelSpan.className = 'amgt-search-label';
       labelSpan.textContent = result.label;
 
-      const texte = document.createElement('span');
-      texte.className = 'amgt-search-texte';
-      texte.append(labelSpan);
+      const ligne1 = document.createElement('span');
+      ligne1.className = 'amgt-search-l1';
+      ligne1.append(kindTag, labelSpan);
+      li.append(ligne1);
       if (result.detail) {
         const detail = document.createElement('span');
         detail.className = 'amgt-search-detail';
         detail.textContent = result.detail;
-        texte.append(detail);
+        li.append(detail);
       }
-      li.append(kindTag, texte);
       li.addEventListener('click', () => {
         if (result.bounds) {
           this._map.fitBounds(result.bounds, { maxZoom: 19, padding: [40, 40] });
