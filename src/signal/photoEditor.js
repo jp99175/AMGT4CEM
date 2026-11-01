@@ -24,6 +24,7 @@ const OUTILS = [
 // Outils de dessin du menu de la ligne 2 : [clé, libellé, icône].
 const SOUS_OUTILS = [
   ['pen', 'Crayon (dessin libre)', maskIc('crayon')],
+  ['gomme', 'Gomme (efface le dessin libre)', maskIc('gomme')],
   ['arrow', 'Trait (flèches, cotes)', maskIc('fleche')],
   ['poly', 'Ligne brisée', svgIc('<path d="M4 17.5l5-9.5 5.5 6.5L20 6"/>')],
   ['rect', 'Rectangle', svgIc('<rect x="4" y="6.5" width="16" height="11" rx="1.2"/>')],
@@ -32,6 +33,7 @@ const SOUS_OUTILS = [
 const OVERLAY_SIDE = 1000; // grand côté du calque PNG (la photo, elle, garde sa définition)
 
 const EPAISSEURS = [0.004, 0.008, 0.014];
+const GOMMES = [0.008, 0.016, 0.03]; // rayon de la gomme (fraction de la largeur)
 const TYPES = ['plein', 'tirets', 'points'];
 const TYPES_FORMES = ['plein', 'tirets', 'points', 'nuage'];
 const TERMINAISONS = ['aucune', 'fleche', 'barre', 'rond'];
@@ -184,6 +186,7 @@ function render(ctx, W, H, traits, sansTexte, exclure) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   for (const t of traits) {
+    if (t.t === 'gomme') continue; // marqueur d'une passe de gomme (sert à annuler), sans dessin
     ctx.strokeStyle = ctx.fillStyle = t.c;
     ctx.globalAlpha = t.o == null ? 1 : t.o;
     const lw = Math.max(2, t.w * W);
@@ -300,8 +303,9 @@ NS.PhotoEditor = {
     let polyDraft = null; // sommets d'une ligne brisée en cours de pose
     let guide = null; // repère en pointillés : { type: 'med' | 'diag', sx, sy }
     // Réglages propres à chaque outil (épaisseur, type de trait, terminaisons).
-    const reg = { pen: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune' }, arrow: { ep: 1, ty: 'plein', d: 'aucune', f: 'fleche' }, ellipse: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune', kind: 'ellipse', tx: false } };
+    const reg = { pen: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune' }, arrow: { ep: 1, ty: 'plein', d: 'aucune', f: 'fleche' }, ellipse: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune', kind: 'ellipse', tx: false }, gomme: { ep: 1 } };
     let draft = null;
+    let gommePos = null; // position de la gomme (px du canvas) pour le cercle d'aperçu
     const W = 800; // résolution du dessin à l'écran : relative, les traits sont stockés en 0..1
 
     const img = h('img', { class: 'sig4cem-pe__img', src: url, alt: 'Photo à annoter', draggable: 'false' });
@@ -309,9 +313,9 @@ NS.PhotoEditor = {
     const stage = h('div', { class: 'sig4cem-pe__stage' }, img, canvas);
     const btnIc = (titre, svg, extra) => { const b = h('button', { type: 'button', class: 'sig4cem-pe__ic' + (extra ? ' ' + extra : ''), title: titre, 'aria-label': titre }); b.innerHTML = svg; return b; };
     let dernierDessin = 'pen';
-    const sousOutil = () => (tool === 'pen' || tool === 'arrow' ? tool : tool === 'ellipse' ? reg.ellipse.kind : null);
+    const sousOutil = () => (tool === 'pen' || tool === 'arrow' || tool === 'gomme' ? tool : tool === 'ellipse' ? reg.ellipse.kind : null);
     function choisirSousOutil(k) {
-      if (k === 'pen' || k === 'arrow') tool = k;
+      if (k === 'pen' || k === 'arrow' || k === 'gomme') tool = k;
       else { tool = 'ellipse'; reg.ellipse.kind = k; }
       dernierDessin = tool;
     }
@@ -408,7 +412,7 @@ NS.PhotoEditor = {
     }
     for (const b of [btnOutil, btnEp, btnDeb, btnTy, btnFin]) b.classList.add('sig4cem-pe__ic--menu');
     btnOutil.addEventListener('click', (e) => { e.stopPropagation(); if (edit || polyDraft) return; ouvrirMenu(btnOutil, SOUS_OUTILS.map(([k, titre, ic]) => ({ val: k, titre, ic, texte: titre })), sousOutil(), (k) => { choisirSousOutil(k); refresh(); }); });
-    btnEp.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool] || (tool === 'text' ? reg.ellipse : null); if (r) ouvrirMenu(btnEp, [0, 1, 2].map((i) => ({ val: i, titre: `Épaisseur ${NOM_EP[i]}`, ic: icEp(i) })), r.ep, (v) => { for (const o of Object.values(reg)) o.ep = v; if (edit) edit.w = EPAISSEURS[v]; redraw(); refresh(); }); });
+    btnEp.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool] || (tool === 'text' ? reg.ellipse : null); if (r) ouvrirMenu(btnEp, [0, 1, 2].map((i) => ({ val: i, titre: `Épaisseur ${NOM_EP[i]}`, ic: icEp(i) })), r.ep, (v) => { if (tool === 'gomme') reg.gomme.ep = v; else { for (const [k, o] of Object.entries(reg)) if (k !== 'gomme') o.ep = v; if (edit) edit.w = EPAISSEURS[v]; } redraw(); refresh(); }); });
     btnTy.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool]; if (r) ouvrirMenu(btnTy, (tool === 'ellipse' ? TYPES_FORMES : TYPES).map((t) => ({ val: t, titre: `Trait ${t}`, ic: icTy(t) })), r.ty, (v) => { for (const [k, o] of Object.entries(reg)) if (v !== 'nuage' || k === 'ellipse') o.ty = v; if (edit) { if (v === 'plein') delete edit.ty; else edit.ty = v; } redraw(); refresh(); }); });
     btnDeb.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool]; if (r && r.d) ouvrirMenu(btnDeb, TERMINAISONS.map((k) => ({ val: k, titre: `Début : ${TITRES_T[k]}`, ic: svgIc(finIc(k, false)) })), r.d, (v) => { r.d = v; if (edit && edit.t === 'poly') edit.ed = v; redraw(); refresh(); }); });
     btnFin.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool]; if (r && r.f) ouvrirMenu(btnFin, TERMINAISONS.map((k) => ({ val: k, titre: `Fin : ${TITRES_T[k]}`, ic: svgIc(finIc(k, true)) })), r.f, (v) => { r.f = v; if (edit && edit.t === 'poly') edit.ef = v; redraw(); refresh(); }); });
@@ -448,7 +452,7 @@ NS.PhotoEditor = {
       if (!menuEl.hidden && !menuEl.contains(e.target) && !(menuBtn && menuBtn.contains(e.target))) fermerMenu();
     });
     const txVide = (x) => !!x.tx && !(x.txt || []).some((sg) => String(sg.t).trim()) && !x.c && !x.fc;
-    const propre = () => JSON.stringify(list.filter((t) => !txVide(t)));
+    const propre = () => JSON.stringify(list.filter((t) => t.t !== 'gomme' && !txVide(t)));
     let etatInitial = propre();
 
     function fit() {
@@ -485,6 +489,13 @@ NS.PhotoEditor = {
         ctx.fill();
         if (polyDraft.length === 1) { ctx.beginPath(); ctx.arc(polyDraft[0][0] * cw, polyDraft[0][1] * ch, 2 * k, 0, 7); ctx.fill(); }
       }
+      if (tool === 'gomme' && gommePos) {
+        ctx.setLineDash([]);
+        ctx.lineWidth = 1.4 * k;
+        ctx.beginPath();
+        ctx.arc(gommePos[0], gommePos[1], GOMMES[reg.gomme.ep] * cw, 0, Math.PI * 2);
+        ctx.stroke();
+      }
       ctx.restore();
       placePoignees();
     }
@@ -502,7 +513,8 @@ NS.PhotoEditor = {
       if (!formes) cible = 'trait';
       btnOutil.hidden = !r;
       btnEp.hidden = !r && tool !== 'text';
-      btnTy.hidden = btnDeb.hidden = btnFin.hidden = !r || tx;
+      btnTy.hidden = btnDeb.hidden = btnFin.hidden = !r || tx || tool === 'gomme';
+      btnTF.disabled = tool === 'gomme';
       btnTx.hidden = !(tool === 'ellipse' && reg.ellipse.kind === 'rect');
       btnTx.classList.toggle('sig4cem-pe__ic--on', !!reg.ellipse.tx);
       btnTx.disabled = verrou;
@@ -528,8 +540,7 @@ NS.PhotoEditor = {
       btnEp.innerHTML = maskIc('epaisseur');
       btnEp.title = `Épaisseur du trait (${NOM_EP[(r || reg.ellipse).ep]})`;
       if (r) {
-        btnTy.innerHTML = icTy(r.ty);
-        btnTy.title = `Type de trait (${r.ty})`;
+        if (r.ty) { btnTy.innerHTML = icTy(r.ty); btnTy.title = `Type de trait (${r.ty})`; }
         if (r.d) {
           btnDeb.innerHTML = svgIc(finIc(r.d, false));
           btnFin.innerHTML = svgIc(finIc(r.f, true));
@@ -549,8 +560,8 @@ NS.PhotoEditor = {
       btnSmaller.disabled = cur <= MIN_S + 1e-6;
       btnBigger.disabled = cur >= MAX_S - 1e-6;
       majFormats();
-      hint.hidden = !(tool === 'text' && !edit);
-      hint.textContent = hint.hidden ? '' : 'Tracez ou touchez la photo pour poser une boîte de texte.';
+      hint.hidden = !((tool === 'text' && !edit) || tool === 'gomme');
+      hint.textContent = hint.hidden ? '' : tool === 'gomme' ? 'Passez la gomme sur un tracé au crayon pour en effacer une partie.' : 'Tracez ou touchez la photo pour poser une boîte de texte.';
     }
     // ---- Boîtes de texte : un rectangle dont l'intérieur se saisit au clavier. Une couleur et une taille par boîte,
     // mais des formats mélangeables (gras, italique, souligné, indice, exposant) : texte = [{ t, b, i, u, x }].
@@ -737,6 +748,48 @@ NS.PhotoEditor = {
         return n;
       });
       etatInitial = propre();
+    }
+
+    // Gomme : retire, dans les tracés au crayon, la partie qui passe à moins du rayon de la gomme ; le tracé est coupé en morceaux qui gardent son style.
+    // Chaque modification est notée dans le marqueur `m` : { i, a: tracés remplacés, b: morceaux }, pour que « Annuler » rende le dessin.
+    function gommer(q0, q1, m) {
+      const r = GOMMES[reg.gomme.ep] * canvas.width, r2 = r * r;
+      const x0 = Math.min(q0[0], q1[0]) - r, x1 = Math.max(q0[0], q1[0]) + r, y0 = Math.min(q0[1], q1[1]) - r, y1 = Math.max(q0[1], q1[1]) + r;
+      const vx = q1[0] - q0[0], vy = q1[1] - q0[1], L = vx * vx + vy * vy;
+      const proche = (x, y) => {
+        const u = L ? Math.max(0, Math.min(1, ((x - q0[0]) * vx + (y - q0[1]) * vy) / L)) : 0;
+        const dx = x - (q0[0] + u * vx), dy = y - (q0[1] + u * vy);
+        return dx * dx + dy * dy < r2;
+      };
+      for (let i = list.length - 1; i >= 0; i--) {
+        const t = list[i];
+        if (t.t !== 'pen') continue;
+        const P = t.p.map(([x, y]) => [x * canvas.width, y * canvas.height]);
+        const pts = [{ x: P[0][0], y: P[0][1], e: proche(P[0][0], P[0][1]) }];
+        for (let j = 1; j < P.length; j++) {
+          const [ax, ay] = P[j - 1], [bx, by] = P[j];
+          if (Math.max(ax, bx) >= x0 && Math.min(ax, bx) <= x1 && Math.max(ay, by) >= y0 && Math.min(ay, by) <= y1) {
+            const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / (r / 4)));
+            for (let k = 1; k <= n; k++) { const x = ax + (bx - ax) * k / n, y = ay + (by - ay) * k / n; pts.push({ x, y, e: proche(x, y) }); }
+          } else pts.push({ x: bx, y: by, e: false });
+        }
+        if (!pts.some((o) => o.e)) continue;
+        const morceaux = [];
+        let cur = [];
+        pts.forEach((o, k) => {
+          if (o.e) { if (cur.length) morceaux.push({ pts: cur, debut: cur[0] === pts[0], fin: false }); cur = []; } else cur.push(o);
+          if (k === pts.length - 1 && cur.length) morceaux.push({ pts: cur, debut: cur[0] === pts[0], fin: true });
+        });
+        const nouveaux = morceaux.filter((o) => o.pts.length >= 2).map((o) => {
+          const n = JSON.parse(JSON.stringify(t));
+          n.p = o.pts.map((q) => fromPx(q.x, q.y));
+          if (!o.debut) delete n.ed;
+          if (!o.fin) delete n.ef;
+          return n;
+        });
+        list.splice(i, 1, ...nouveaux);
+        m.ch.push({ i, a: [t], b: nouveaux });
+      }
     }
 
     const pos = (e) => {
@@ -934,6 +987,14 @@ NS.PhotoEditor = {
       if (nuancier) nuancier.hidden = true;
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       canvas.setPointerCapture(e.pointerId);
+      if (tool === 'gomme') {
+        const q = toPx(p);
+        drag = { mode: 'gommer', last: q, marque: { t: 'gomme', ch: [] } };
+        gommePos = q;
+        gommer(q, q, drag.marque);
+        redraw();
+        return;
+      }
       const r = reg[tool] || (tool === 'text' ? reg.ellipse : null);
       if (tool === 'ellipse' || tool === 'text') {
         if (edit && !edit.tx && dansForme(edit, p)) { drag = { mode: 'move', p0: p, orig: cl(edit), corps: true }; return; }
@@ -956,6 +1017,13 @@ NS.PhotoEditor = {
       redraw();
     });
     canvas.addEventListener('pointermove', (e) => {
+      if (tool === 'gomme') {
+        const q = toPx(pos(e));
+        if (drag && drag.mode === 'gommer') { e.preventDefault(); gommer(drag.last, q, drag.marque); drag.last = q; }
+        gommePos = q;
+        redraw();
+        return;
+      }
       if (drag && drag.mode === 'move' && drag.corps) { e.preventDefault(); suivre(e); return; }
       if (drag && drag.mode === 'tap') { const p = pos(e); if (Math.hypot(p[0] - drag.p0[0], p[1] - drag.p0[1]) > 0.02) drag = null; return; }
       if (!draft) return;
@@ -978,6 +1046,13 @@ NS.PhotoEditor = {
       redraw();
     });
     const end = (e) => {
+      if (drag && drag.mode === 'gommer') {
+        const m = drag.marque;
+        drag = null;
+        if (m.ch.length) { list.push(m); redoStack.length = 0; }
+        refresh(); redraw();
+        return;
+      }
       if (drag && drag.mode === 'move') { drag = null; redraw(); refresh(); return; }
       if (drag && drag.mode === 'tap') {
         const p = drag.p0;
@@ -1015,6 +1090,7 @@ NS.PhotoEditor = {
     };
     // Sur mobile, le clavier ne s'ouvre que depuis un vrai toucher : on redonne le focus au clic qui suit la création de la boîte.
     stage.addEventListener('click', () => { if (focusPlan && tbox) { focusPlan = false; if (document.activeElement !== tbox.body) tbox.body.focus(); } });
+    canvas.addEventListener('pointerleave', () => { if (gommePos && !drag) { gommePos = null; redraw(); } });
     canvas.addEventListener('pointerup', end);
     canvas.addEventListener('pointercancel', end);
     btnUndo.addEventListener('click', () => {
@@ -1025,13 +1101,18 @@ NS.PhotoEditor = {
         if (effaces.length) { const items = effaces.pop(); toutRestaurer(items); redoStack.push({ tout: items }); refresh(); redraw(); }
         return;
       }
-      if (list[list.length - 1] === last) { list.pop(); redoStack.push(last); }
+      if (list[list.length - 1] === last) {
+        list.pop();
+        if (last.t === 'gomme') for (let k = last.ch.length - 1; k >= 0; k--) { const c = last.ch[k]; list.splice(c.i, c.b.length, ...c.a); } // rend les tracés d'avant la gomme
+        redoStack.push(last);
+      }
       refresh(); redraw();
     });
     btnRedo.addEventListener('click', () => {
       const item = redoStack.pop();
       if (!item) return;
       if (item.tout) { effaces.push(toutEffacer()); refresh(); redraw(); return; }
+      if (item.t === 'gomme') for (const c of item.ch) list.splice(c.i, c.a.length, ...c.b);
       list.push(item);
       refresh(); redraw();
     });
@@ -1044,7 +1125,7 @@ NS.PhotoEditor = {
       if (propre() !== etatInitial && !window.confirm('Fermer sans enregistrer ? Les modifications seront perdues.')) return;
       close();
     });
-    btnOk.addEventListener('click', () => { list = list.filter((t) => !txVide(t)); close(); onDone(list); });
+    btnOk.addEventListener('click', () => { list = list.filter((t) => t.t !== 'gomme' && !txVide(t)); close(); onDone(list); });
     img.addEventListener('load', () => fit());
     if (img.complete) fit();
     refresh();
