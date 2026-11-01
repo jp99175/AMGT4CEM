@@ -1,8 +1,9 @@
 /**
  * SIG4CEM — annotations d'une photo : pinceau, ligne (flèche), formes (ellipse), texte. Ligne 1 : historique et outils ; ligne 2 : palette
  * (couleur + opacité) puis options de l'outil actif.
- * Le texte est une zone à fond transparent : on la pose d'un toucher, on la modifie, on la déplace (✥), on la supprime (✕),
- * on change sa taille (A− / A+) et sa couleur tant que l'éditeur est ouvert.
+ * Le texte est une boîte de texte : un rectangle (cadre et fond « aucun » par défaut) dont l'intérieur se saisit au clavier.
+ * Une couleur et une taille par boîte, formats mélangeables (gras, italique, souligné, indice, exposant). Même édition que les
+ * formes : poignées, rotation, déplacement, ✓ / ✗. Se pose avec le bouton Texte ou avec le « T » de l'outil rectangle.
  *
  * La photo d'origine n'est jamais modifiée : les annotations sont dessinées sur un calque TRANSPARENT (PNG)
  * enregistré à part (AMGT4CEM_Signalements.Pieces.setAnnotations) et superposé à l'affichage. Les traits sont
@@ -113,8 +114,71 @@ function nuage(ctx, pts, ferme, lw) {
   ctx.stroke();
 }
 
-/** Dessine les traits (coordonnées relatives) sur un contexte de W×H pixels (`sansTexte` : l'éditeur affiche les textes en zones modifiables). */
-function render(ctx, W, H, traits, sansTexte) {
+/** Texte riche d'une boîte : segments [{ t, b, i, u, x: 'sub' | 'sup' }], une seule couleur (`tc`) et une seule taille (`s`) par boîte. */
+const POS = { sub: 0.175, sup: -0.385 }; // décalage vertical (en fraction de la taille) ; indice et exposant sont à 70 %
+const policeSeg = (sg, size) => `${sg.i ? 'italic ' : ''}${sg.b ? 'bold ' : ''}${sg.x ? size * 0.7 : size}px sans-serif`;
+/** Retour à la ligne : coupe aux espaces (et au caractère si un mot dépasse la largeur). Renvoie des lignes de morceaux { t, sg, w }. */
+function mettreEnPage(ctx, segs, size, inner) {
+  const lignes = [[]];
+  let x = 0;
+  const nl = () => { lignes.push([]); x = 0; };
+  const ajoute = (t, sg, w) => { lignes[lignes.length - 1].push({ t, sg, w }); x += w; };
+  for (const sg of segs) {
+    ctx.font = policeSeg(sg, size);
+    String(sg.t).split('\n').forEach((m, k) => {
+      if (k) nl();
+      for (const tok of m.match(/\s+|\S+/g) || []) {
+        const esp = /^\s/.test(tok);
+        const w = ctx.measureText(tok).width;
+        if (esp) { ajoute(tok, sg, w); continue; }
+        if (x + w > inner && x > 0) nl();
+        if (w > inner) {
+          let cur = '';
+          for (const ch of tok) {
+            if (cur && ctx.measureText(cur + ch).width > inner) { ajoute(cur, sg, ctx.measureText(cur).width); nl(); cur = ch; } else cur += ch;
+          }
+          if (cur) ajoute(cur, sg, ctx.measureText(cur).width);
+        } else ajoute(tok, sg, w);
+      }
+    });
+  }
+  return lignes;
+}
+function texteRiche(ctx, t, W, H) {
+  const segs = Array.isArray(t.txt) ? t.txt : [];
+  if (!segs.some((sg) => String(sg.t).trim())) return;
+  const g = geom(t, W, H), size = Math.max(8, t.s * W), pad = size * 0.3, inner = Math.max(size, g.hw * 2 - 2 * pad), lh = size * 1.2;
+  const lignes = mettreEnPage(ctx, segs, size, inner);
+  const k = t.al === 'c' ? 0.5 : t.al === 'd' ? 1 : 0;
+  ctx.save();
+  ctx.translate(g.cx, g.cy);
+  ctx.rotate(g.r);
+  ctx.setLineDash([]);
+  ctx.textBaseline = 'alphabetic';
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = ctx.strokeStyle = t.tc || '#e53935';
+  lignes.forEach((ligne, i) => {
+    let n = ligne.length;
+    while (n > 0 && !ligne[n - 1].t.trim()) n--;
+    let wl = 0;
+    for (let j = 0; j < n; j++) wl += ligne[j].w;
+    let x = -g.hw + pad + (inner - wl) * k;
+    const base = -g.hh + pad + i * lh + lh * 0.5 + size * 0.275;
+    for (let j = 0; j < n; j++) {
+      const { t: tx, sg, w } = ligne[j];
+      const y = base + (sg.x ? POS[sg.x] * size : 0);
+      ctx.font = policeSeg(sg, size);
+      if (!t.fc) { ctx.save(); ctx.lineWidth = Math.max(2, size / 8); ctx.strokeStyle = '#fff'; ctx.strokeText(tx, x, y); ctx.restore(); }
+      ctx.fillText(tx, x, y);
+      if (sg.u) { ctx.lineWidth = Math.max(1.5, size / 14); ctx.beginPath(); ctx.moveTo(x, y + size * 0.12); ctx.lineTo(x + w, y + size * 0.12); ctx.stroke(); }
+      x += w;
+    }
+  });
+  ctx.restore();
+}
+
+/** Dessine les traits (coordonnées relatives) sur un contexte de W×H pixels (`sansTexte` : ne dessine aucun texte ; `exclure` : une boîte dont le texte est en cours de saisie). */
+function render(ctx, W, H, traits, sansTexte, exclure) {
   ctx.clearRect(0, 0, W, H);
   ctx.globalAlpha = 1;
   ctx.lineCap = 'round';
@@ -161,13 +225,15 @@ function render(ctx, W, H, traits, sansTexte) {
           ctx.fill();
           ctx.restore();
         }
-        if (t.ty === 'nuage') nuage(ctx, pts, ferme, lw);
+        if (!t.c) { /* cadre sans couleur (boîte de texte) */ }
+        else if (t.ty === 'nuage') nuage(ctx, pts, ferme, lw);
         else {
           ctx.beginPath();
           pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
           if (ferme) ctx.closePath();
           ctx.stroke();
         }
+        if (t.tx && !sansTexte && t !== exclure) texteRiche(ctx, t, W, H);
         if (t.t === 'poly' && !ferme && pts.length > 1) {
           const n = pts.length;
           terminaison(ctx, pts[0][0], pts[0][1], Math.atan2(pts[0][1] - pts[1][1], pts[0][0] - pts[1][0]), t.ed, lw);
@@ -226,6 +292,7 @@ NS.PhotoEditor = {
     let list = (traits || []).map((t) => JSON.parse(JSON.stringify(t)));
     let tool = 'pen';
     let color = COULEURS[0];
+    let textColor = COULEURS[0]; // couleur du texte des boîtes de texte
     let opacity = 1;
     let fillColor = null; // remplissage des formes fermées (null = aucun)
     let cible = 'trait'; // ce que modifie la palette : 'trait' ou 'fond'
@@ -233,7 +300,7 @@ NS.PhotoEditor = {
     let polyDraft = null; // sommets d'une ligne brisée en cours de pose
     let guide = null; // repère en pointillés : { type: 'med' | 'diag', sx, sy }
     // Réglages propres à chaque outil (épaisseur, type de trait, terminaisons).
-    const reg = { pen: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune' }, arrow: { ep: 1, ty: 'plein', d: 'aucune', f: 'fleche' }, ellipse: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune', kind: 'ellipse' } };
+    const reg = { pen: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune' }, arrow: { ep: 1, ty: 'plein', d: 'aucune', f: 'fleche' }, ellipse: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune', kind: 'ellipse', tx: false } };
     let draft = null;
     const W = 800; // résolution du dessin à l'écran : relative, les traits sont stockés en 0..1
 
@@ -262,7 +329,9 @@ NS.PhotoEditor = {
       const b = h('button', { type: 'button', class: 'sig4cem-pe__color', title: 'Couleur', 'aria-label': 'Couleur' });
       b.style.background = c;
       b.addEventListener('click', () => {
-        if (cible === 'fond') { fillColor = c; if (edit) edit.fc = c; } else { color = c; if (edit) edit.c = c; if (selected) { selected.item.c = c; layoutText(selected); } }
+        if (cible === 'fond') { fillColor = c; if (edit) edit.fc = c; }
+        else if (cible === 'texte') { textColor = c; if (edit && edit.tx) edit.tc = c; }
+        else { color = c; if (edit) edit.c = c; }
         redraw(); refresh();
       });
       b.dataset.color = c;
@@ -270,12 +339,20 @@ NS.PhotoEditor = {
     });
     const btnAucun = h('button', { type: 'button', class: 'sig4cem-pe__color sig4cem-pe__color--aucun', title: 'Aucun remplissage', 'aria-label': 'Aucun remplissage' });
     btnAucun.innerHTML = '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#e53935" stroke-width="1.6"><path d="M5 19L19 5"/></svg>';
-    btnAucun.addEventListener('click', () => { fillColor = null; if (edit) delete edit.fc; redraw(); refresh(); });
+    btnAucun.addEventListener('click', () => { if (cible === 'fond') { fillColor = null; if (edit) delete edit.fc; } else if (edit) edit.c = null; redraw(); refresh(); });
     // Palette : couleurs + opacité, dans une fenêtre sous la ligne 2.
     const opaVal = h('span', { class: 'sig4cem-pe__opaval' });
     const opaRange = h('input', { type: 'range', min: '10', max: '100', step: '5', value: '100', 'aria-label': 'Opacité' });
-    opaRange.addEventListener('input', () => { opacity = Number(opaRange.value) / 100; if (selected) { selected.item.o = opacity === 1 ? undefined : opacity; layoutText(selected); } if (edit) { if (opacity === 1) delete edit.o; else edit.o = opacity; redraw(); } refresh(); });
+    opaRange.addEventListener('input', () => { opacity = Number(opaRange.value) / 100; if (edit) { if (opacity === 1) delete edit.o; else edit.o = opacity; redraw(); } refresh(); });
+    const ongletBtns = [['texte', 'Texte'], ['trait', 'Cadre'], ['fond', 'Fond']].map(([k, nom]) => {
+      const b = h('button', { type: 'button', class: 'sig4cem-pe__onglet', text: nom });
+      b.dataset.cible = k;
+      b.addEventListener('click', () => { cible = k; refresh(); });
+      return b;
+    });
+    const onglets = h('div', { class: 'sig4cem-pe__onglets', hidden: '' }, ...ongletBtns);
     const nuancier = h('div', { class: 'sig4cem-pe__nuancier', hidden: '' },
+      onglets,
       h('div', { class: 'sig4cem-pe__nuancier-c' }, ...colorBtns, btnAucun),
       h('label', { class: 'sig4cem-pe__opa' }, h('span', { text: 'Opacité' }), opaRange, opaVal));
     const btnTF = btnIc('Couleur du trait / du remplissage', '');
@@ -283,11 +360,13 @@ NS.PhotoEditor = {
       e.stopPropagation();
       fermerMenu();
       // Pour les formes, un 2e toucher passe du trait au remplissage ; ailleurs seul le trait se règle.
-      if (tool === 'ellipse' && !nuancier.hidden) cible = cible === 'trait' ? 'fond' : 'trait';
+      if (texteCtx()) nuancier.hidden = !nuancier.hidden; // trois cibles : onglets Texte / Cadre / Fond
+      else if (tool === 'ellipse' && !nuancier.hidden) cible = cible === 'trait' ? 'fond' : 'trait';
       else { cible = 'trait'; nuancier.hidden = !nuancier.hidden; }
       refresh();
     });
-    const tfSvg = () => `<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke-linejoin="round">${tool === 'ellipse' ? `<rect x="9.5" y="9.5" width="11.5" height="11.5" rx="1" fill="${fillColor || 'none'}" stroke="#0b5c75" stroke-width=".835"/>` : ''}<rect x="3" y="3" width="12" height="12" rx="1" stroke="${color}" stroke-width="2.4"/><rect x="3" y="3" width="12" height="12" rx="1" stroke="#0b5c75" stroke-width=".835"/></svg>`;
+    const texteCtx = () => (edit ? !!edit.tx : tool === 'text' || (tool === 'ellipse' && reg.ellipse.kind === 'rect' && !!reg.ellipse.tx));
+    const tfSvg = () => texteCtx() ? `<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke-linejoin="round"><rect x="9.5" y="9.5" width="11.5" height="11.5" rx="1" fill="${fillColor && !(edit && !edit.fc) ? fillColor : 'none'}" stroke="#0b5c75" stroke-width=".835"/><rect x="3" y="3" width="12" height="12" rx="1" stroke="${(edit ? edit.c : tool === 'ellipse') ? ((edit && edit.c) || color) : '#9aa5b1'}" stroke-width="${(edit ? edit.c : tool === 'ellipse') ? 2.4 : 1}" ${(edit ? edit.c : tool === 'ellipse') ? '' : 'stroke-dasharray="2 2"'}/><text x="9" y="12.6" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="${edit && edit.tx ? edit.tc : textColor}" stroke="#fff" stroke-width=".7" paint-order="stroke">A</text></svg>` : `<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke-linejoin="round">${tool === 'ellipse' ? `<rect x="9.5" y="9.5" width="11.5" height="11.5" rx="1" fill="${fillColor || 'none'}" stroke="#0b5c75" stroke-width=".835"/>` : ''}<rect x="3" y="3" width="12" height="12" rx="1" stroke="${color}" stroke-width="2.4"/><rect x="3" y="3" width="12" height="12" rx="1" stroke="#0b5c75" stroke-width=".835"/></svg>`;
     const btnOutil = btnIc('Outil de dessin', '');
     const sepTexte = [];
     // Options de ligne 2 : chaque bouton fait défiler ses choix, son icône montre le choix en cours.
@@ -329,24 +408,23 @@ NS.PhotoEditor = {
     }
     for (const b of [btnOutil, btnEp, btnDeb, btnTy, btnFin]) b.classList.add('sig4cem-pe__ic--menu');
     btnOutil.addEventListener('click', (e) => { e.stopPropagation(); if (edit || polyDraft) return; ouvrirMenu(btnOutil, SOUS_OUTILS.map(([k, titre, ic]) => ({ val: k, titre, ic, texte: titre })), sousOutil(), (k) => { choisirSousOutil(k); refresh(); }); });
-    btnEp.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool]; if (r) ouvrirMenu(btnEp, [0, 1, 2].map((i) => ({ val: i, titre: `Épaisseur ${NOM_EP[i]}`, ic: icEp(i) })), r.ep, (v) => { for (const o of Object.values(reg)) o.ep = v; if (edit) edit.w = EPAISSEURS[v]; redraw(); refresh(); }); });
+    btnEp.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool] || (tool === 'text' ? reg.ellipse : null); if (r) ouvrirMenu(btnEp, [0, 1, 2].map((i) => ({ val: i, titre: `Épaisseur ${NOM_EP[i]}`, ic: icEp(i) })), r.ep, (v) => { for (const o of Object.values(reg)) o.ep = v; if (edit) edit.w = EPAISSEURS[v]; redraw(); refresh(); }); });
     btnTy.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool]; if (r) ouvrirMenu(btnTy, (tool === 'ellipse' ? TYPES_FORMES : TYPES).map((t) => ({ val: t, titre: `Trait ${t}`, ic: icTy(t) })), r.ty, (v) => { for (const [k, o] of Object.entries(reg)) if (v !== 'nuage' || k === 'ellipse') o.ty = v; if (edit) { if (v === 'plein') delete edit.ty; else edit.ty = v; } redraw(); refresh(); }); });
     btnDeb.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool]; if (r && r.d) ouvrirMenu(btnDeb, TERMINAISONS.map((k) => ({ val: k, titre: `Début : ${TITRES_T[k]}`, ic: svgIc(finIc(k, false)) })), r.d, (v) => { r.d = v; if (edit && edit.t === 'poly') edit.ed = v; redraw(); refresh(); }); });
     btnFin.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool]; if (r && r.f) ouvrirMenu(btnFin, TERMINAISONS.map((k) => ({ val: k, titre: `Fin : ${TITRES_T[k]}`, ic: svgIc(finIc(k, true)) })), r.f, (v) => { r.f = v; if (edit && edit.t === 'poly') edit.ef = v; redraw(); refresh(); }); });
     const btnG = btnIc('Gras', '<span class="sig4cem-pe__t"><b>G</b></span>');
     const btnI = btnIc('Italique', '<span class="sig4cem-pe__t"><i style="font-family:serif">I</i></span>');
     const btnU = btnIc('Souligné', svgIc('<path d="M7 4v7.5a5 5 0 0 0 10 0V4"/><path d="M5 20h14"/>'));
+    const btnPos = btnIc('Position : normal, indice, exposant', '');
     const btnAl = btnIc('Alignement du texte', '');
+    const btnTx = btnIc('Texte dans le rectangle', maskIc('texte'));
     const ALIGN = { g: '<path d="M4 6h16M4 10.5h10M4 15h16M4 19.5h10"/>', c: '<path d="M4 6h16M7 10.5h10M4 15h16M7 19.5h10"/>', d: '<path d="M4 6h16M10 10.5h10M4 15h16M10 19.5h10"/>' };
     const NOM_AL = { g: 'gauche', c: 'centré', d: 'droite' };
-    const stT = { b: true, i: false, u: false, al: 'g' }; // style des prochains textes
-    const styleTexte = (cle, val) => { stT[cle] = val; if (selected) { if (cle === 'b') selected.item.b = val; else selected.item[cle] = val; layoutText(selected); } refresh(); };
-    btnG.addEventListener('click', () => styleTexte('b', !(selected ? selected.item.b !== false : stT.b)));
-    btnI.addEventListener('click', () => styleTexte('i', !(selected ? !!selected.item.i : stT.i)));
-    btnU.addEventListener('click', () => styleTexte('u', !(selected ? !!selected.item.u : stT.u)));
-    btnAl.addEventListener('click', () => styleTexte('al', suivant(['g', 'c', 'd'], selected ? selected.item.al || 'g' : stT.al)));
+    const stT = { s: 0.045, al: 'g' }; // taille et alignement des prochaines boîtes de texte
+    const MIN_S = 0.02, MAX_S = 0.12;
     const btnSmaller = btnIc('Texte plus petit', '<span class="sig4cem-pe__t">A<small>−</small></span>');
     const btnBigger = btnIc('Texte plus grand', '<span class="sig4cem-pe__t">A<small>+</small></span>');
+    const sousTexte = [btnG, btnI, btnU, btnPos, btnAl];
     const hint = h('div', { class: 'sig4cem-pe__hint', hidden: '' });
     // Ligne 1 : icônes en trait fin (mêmes dessins que le menu Couches).
     const btnUndo = btnIc('Annuler', svgIc(`<g transform="matrix(-1 0 0 1 24 0)">${FLECHE}</g>`));
@@ -358,7 +436,7 @@ NS.PhotoEditor = {
     const sep2 = () => { const e = sep(); sepTexte.push(e); return e; };
     const effaces = []; // dessins effacés par « feuille blanche », que « Annuler » restaure
     const redoStack = []; // éléments annulés, que « Refaire » remet dans l'ordre inverse
-    const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnTF, sep(), btnOutil, btnEp, btnDeb, btnTy, btnFin, btnG, btnI, btnU, btnAl, sep2(), btnSmaller, btnBigger, menuEl, nuancier);
+    const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnTF, sep(), btnOutil, btnEp, btnDeb, btnTy, btnFin, btnTx, btnG, btnI, btnU, btnPos, btnAl, sep2(), btnSmaller, btnBigger, menuEl, nuancier);
     const root = h('section', { class: 'sig4cem-screen sig4cem-screen--editor' },
       h('div', { class: 'sig4cem-pe__bar' }, btnUndo, btnRedo, btnClear, sep(), ...toolBtns, btnOk, btnCancel),
       ligne2,
@@ -369,19 +447,23 @@ NS.PhotoEditor = {
       if (!nuancier.hidden && !nuancier.contains(e.target) && !btnTF.contains(e.target)) nuancier.hidden = true;
       if (!menuEl.hidden && !menuEl.contains(e.target) && !(menuBtn && menuBtn.contains(e.target))) fermerMenu();
     });
-    const propre = () => JSON.stringify(list.filter((t) => t.t !== 'text' || (t.txt || '').trim()));
-    const etatInitial = propre();
+    const txVide = (x) => !!x.tx && !(x.txt || []).some((sg) => String(sg.t).trim()) && !x.c && !x.fc;
+    const propre = () => JSON.stringify(list.filter((t) => !txVide(t)));
+    let etatInitial = propre();
 
     function fit() {
       const ratio = img.naturalHeight / img.naturalWidth || 0.75;
       canvas.width = W;
       canvas.height = Math.round(W * ratio);
+      convertirAnciens();
       redraw();
+      refresh();
     }
     function redraw() {
       const ctx = canvas.getContext('2d');
       const poly = polyDraft && polyDraft.length > 1 ? [{ t: 'poly', c: color, w: EPAISSEURS[reg.ellipse.ep], p: polyDraft, cl: false, ed: reg.ellipse.d, ef: reg.ellipse.f }] : [];
-      render(ctx, canvas.width, canvas.height, (draft ? list.concat([draft]) : list).concat(poly), true);
+      const dr = draft && draft.tx && !draft.c ? Object.assign({}, draft, { c: '#1e88e5', ty: 'tirets', w: 0.003 }) : draft; // cadre provisoire en pointillés pendant le tracé
+      render(ctx, canvas.width, canvas.height, (dr ? list.concat([dr]) : list).concat(poly), false, edit);
       const cw = canvas.width, ch = canvas.height, k = cw / (canvas.clientWidth || cw);
       ctx.save();
       ctx.strokeStyle = '#1e88e5';
@@ -412,19 +494,30 @@ NS.PhotoEditor = {
       opaVal.textContent = `${Math.round(opacity * 100)} %`;
       btnUndo.disabled = !list.length && !effaces.length;
       btnRedo.disabled = !redoStack.length || verrou;
-      const texte = tool === 'text';
+      const tx = texteCtx();
       const r = reg[tool];
-      const formes = tool === 'ellipse';
+      const formes = tool === 'ellipse' || tx;
+      if (tx && !['texte', 'trait', 'fond'].includes(cible)) cible = 'texte';
+      if (!tx && cible === 'texte') cible = 'trait';
       if (!formes) cible = 'trait';
-      btnOutil.hidden = btnEp.hidden = btnTy.hidden = btnDeb.hidden = btnFin.hidden = !r;
+      btnOutil.hidden = !r;
+      btnEp.hidden = !r && tool !== 'text';
+      btnTy.hidden = btnDeb.hidden = btnFin.hidden = !r || tx;
+      btnTx.hidden = !(tool === 'ellipse' && reg.ellipse.kind === 'rect');
+      btnTx.classList.toggle('sig4cem-pe__ic--on', !!reg.ellipse.tx);
+      btnTx.disabled = verrou;
+      onglets.hidden = !tx;
+      for (const b of ongletBtns) b.classList.toggle('sig4cem-pe__onglet--on', b.dataset.cible === cible);
       // réglages sans objet pour la forme choisie : grisés (la ligne ne bouge pas)
       const termOk = !!(r && r.d && (!formes || r.kind === 'poly'));
       btnDeb.disabled = btnFin.disabled = !termOk;
       btnTF.innerHTML = tfSvg();
-      btnTF.title = `Couleur du trait / du remplissage (on modifie : ${cible === 'fond' ? 'le remplissage' : 'le trait'})`;
-      btnAucun.hidden = cible !== 'fond';
-      for (const b of colorBtns) b.classList.toggle('sig4cem-pe__color--on', b.dataset.color === (cible === 'fond' ? fillColor : color));
-      btnAucun.classList.toggle('sig4cem-pe__color--on', cible === 'fond' && !fillColor);
+      btnTF.title = tx ? `Couleurs : texte, cadre, fond (on modifie : ${cible === 'texte' ? 'le texte' : cible === 'fond' ? 'le fond' : 'le cadre'})` : `Couleur du trait / du remplissage (on modifie : ${cible === 'fond' ? 'le remplissage' : 'le trait'})`;
+      btnAucun.hidden = !(cible === 'fond' || (tx && cible === 'trait'));
+      btnAucun.title = cible === 'fond' ? 'Aucun remplissage' : 'Aucun cadre';
+      const courante = cible === 'fond' ? (edit && tx ? edit.fc : fillColor) : cible === 'texte' ? (edit && tx ? edit.tc : textColor) : (edit && tx ? edit.c : color);
+      for (const b of colorBtns) b.classList.toggle('sig4cem-pe__color--on', b.dataset.color === courante);
+      btnAucun.classList.toggle('sig4cem-pe__color--on', !courante);
       btnOutil.disabled = verrou;
       const so = SOUS_OUTILS.find((k) => k[0] === sousOutil());
       if (so) { btnOutil.innerHTML = so[2]; btnOutil.title = `Outil : ${so[1]}`; }
@@ -432,9 +525,9 @@ NS.PhotoEditor = {
       btnClear.disabled = verrou || !list.length;
       btnOk.disabled = verrou || propre() === etatInitial;
       btnCancel.disabled = verrou;
+      btnEp.innerHTML = maskIc('epaisseur');
+      btnEp.title = `Épaisseur du trait (${NOM_EP[(r || reg.ellipse).ep]})`;
       if (r) {
-        btnEp.innerHTML = maskIc('epaisseur');
-        btnEp.title = `Épaisseur du trait (${NOM_EP[r.ep]})`;
         btnTy.innerHTML = icTy(r.ty);
         btnTy.title = `Type de trait (${r.ty})`;
         if (r.d) {
@@ -444,90 +537,207 @@ NS.PhotoEditor = {
           btnFin.title = `Terminaison de la fin (${TITRES_T[r.f]})`;
         }
       }
-      btnSmaller.hidden = btnBigger.hidden = btnG.hidden = btnI.hidden = btnU.hidden = btnAl.hidden = !texte;
-      sepTexte.forEach((e) => { e.hidden = !texte; });
-      const it = selected ? selected.item : null;
-      const gras = it ? it.b !== false : stT.b, ital = it ? !!it.i : stT.i, sou = it ? !!it.u : stT.u, al = it ? it.al || 'g' : stT.al;
-      btnG.classList.toggle('sig4cem-pe__ic--on', gras);
-      btnI.classList.toggle('sig4cem-pe__ic--on', ital);
-      btnU.classList.toggle('sig4cem-pe__ic--on', sou);
+      btnSmaller.hidden = btnBigger.hidden = !tx;
+      for (const b of sousTexte) b.hidden = !tx;
+      sepTexte.forEach((e) => { e.hidden = !tx; });
+      const it = edit && edit.tx ? edit : null;
+      const al = it ? it.al || 'g' : stT.al;
+      const cur = it ? it.s : stT.s;
       btnAl.innerHTML = svgIc(ALIGN[al]);
       btnAl.title = `Alignement du texte (${NOM_AL[al]})`;
-      btnSmaller.disabled = btnBigger.disabled = !selected;
-      hint.hidden = !texte;
-      hint.textContent = texte ? 'Touchez la photo pour poser un texte. ✥ le déplace, ✕ le supprime.' : '';
+      btnG.disabled = btnI.disabled = btnU.disabled = btnPos.disabled = !tbox;
+      btnSmaller.disabled = cur <= MIN_S + 1e-6;
+      btnBigger.disabled = cur >= MAX_S - 1e-6;
+      majFormats();
+      hint.hidden = !(tool === 'text' && !edit);
+      hint.textContent = hint.hidden ? '' : 'Tracez ou touchez la photo pour poser une boîte de texte.';
     }
-    // ---- Textes : zones à fond transparent, modifiables et déplaçables tant que l'éditeur est ouvert.
-    let selected = null; // { item, el }
-    const boxes = [];
-    const MIN_S = 0.02, MAX_S = 0.12;
-    function layoutText(b) {
-      b.el.style.left = `${b.item.x * 100}%`;
-      b.el.style.top = `${b.item.y * 100}%`;
-      b.el.style.fontSize = `${Math.max(10, b.item.s * stage.clientWidth)}px`;
-      b.el.style.color = b.item.c;
-      b.body.style.opacity = b.item.o == null ? 1 : b.item.o;
-      b.el.style.fontWeight = b.item.b === false ? '400' : '700';
-      b.el.style.fontStyle = b.item.i ? 'italic' : 'normal';
-      b.el.style.textDecoration = b.item.u ? 'underline' : 'none';
-      b.body.style.textAlign = b.item.al === 'c' ? 'center' : b.item.al === 'd' ? 'right' : 'left';
-      b.el.classList.toggle('sig4cem-pe__text--low', b.item.y < 0.07);
+    // ---- Boîtes de texte : un rectangle dont l'intérieur se saisit au clavier. Une couleur et une taille par boîte,
+    // mais des formats mélangeables (gras, italique, souligné, indice, exposant) : texte = [{ t, b, i, u, x }].
+    let tbox = null; // zone de saisie de la boîte en cours d'édition : { el, body }
+    let focusPlan = false;
+    function segsVersDom(segs, body) {
+      body.textContent = '';
+      for (const sg of segs) {
+        String(sg.t).split('\n').forEach((m, k) => {
+          if (k) body.append(document.createElement('br'));
+          if (!m) return;
+          let n = document.createTextNode(m);
+          for (const [cle, tag] of [['u', 'u'], ['i', 'i'], ['b', 'b']]) if (sg[cle]) { const e = document.createElement(tag); e.append(n); n = e; }
+          if (sg.x) { const e = document.createElement(sg.x); e.append(n); n = e; }
+          body.append(n);
+        });
+      }
     }
-    function select(b) {
-      selected = b;
-      for (const o of boxes) o.el.classList.toggle('sig4cem-pe__text--on', o === b);
-      refresh();
+    function domVersSegs(body) {
+      const out = [];
+      const push = (t, f) => {
+        if (!t) return;
+        const sg = { t };
+        if (f.b) sg.b = 1;
+        if (f.i) sg.i = 1;
+        if (f.u) sg.u = 1;
+        if (f.x) sg.x = f.x;
+        const l = out[out.length - 1];
+        if (l && l.b === sg.b && l.i === sg.i && l.u === sg.u && l.x === sg.x) l.t += t; else out.push(sg);
+      };
+      const walk = (n, f) => {
+        for (const c of n.childNodes) {
+          if (c.nodeType === 3) push(c.nodeValue.replace(/[\u00a0\u200b]/g, (m) => (m === '\u200b' ? '' : ' ')), f);
+          else if (c.nodeName === 'BR') push('\n', f);
+          else if (c.nodeType === 1) {
+            const g = Object.assign({}, f), tag = c.nodeName, st = c.style || {};
+            if (tag === 'B' || tag === 'STRONG') g.b = 1; else if (tag === 'I' || tag === 'EM') g.i = 1; else if (tag === 'U') g.u = 1; else if (tag === 'SUB') g.x = 'sub'; else if (tag === 'SUP') g.x = 'sup';
+            if (st.fontWeight === 'bold' || Number(st.fontWeight) >= 600) g.b = 1;
+            if (st.fontStyle === 'italic') g.i = 1;
+            if (/underline/.test(st.textDecorationLine || st.textDecoration || '')) g.u = 1;
+            if ((tag === 'DIV' || tag === 'P') && out.length && !/\n$/.test(out[out.length - 1].t)) push('\n', f);
+            walk(c, g);
+          }
+        }
+      };
+      walk(body, {});
+      return out;
     }
-    function removeBox(b) {
-      const i = boxes.indexOf(b);
-      if (i >= 0) boxes.splice(i, 1);
-      const j = list.indexOf(b.item);
-      if (j >= 0) list.splice(j, 1);
-      b.el.remove();
-      if (selected === b) selected = null;
-      refresh();
-    }
-    function addBox(item, focus) {
-      const body = h('span', { class: 'sig4cem-pe__text-body', contenteditable: 'true', spellcheck: 'false', role: 'textbox', 'aria-label': 'Texte sur la photo' });
-      body.textContent = item.txt || '';
-      const move = h('span', { class: 'sig4cem-pe__text-move', title: 'Déplacer', 'aria-label': 'Déplacer le texte', text: '✥' });
-      const del = h('span', { class: 'sig4cem-pe__text-del', title: 'Supprimer', 'aria-label': 'Supprimer le texte', text: '✕' });
-      const el = h('div', { class: 'sig4cem-pe__text' }, move, body, del);
-      const b = { item, el, body };
-      boxes.push(b);
+    function detruireTbox() { if (tbox) { tbox.el.remove(); tbox = null; } }
+    function creerTbox(t) {
+      detruireTbox();
+      const body = h('div', { class: 'sig4cem-pe__tb-body', contenteditable: 'true', spellcheck: 'false', role: 'textbox', 'aria-label': 'Texte de la boîte', 'aria-multiline': 'true' });
+      segsVersDom(t.txt || [], body);
+      const el = h('div', { class: 'sig4cem-pe__tbox' }, body);
       stage.append(el);
-      layoutText(b);
-      body.addEventListener('focus', () => select(b));
-      body.addEventListener('input', () => { item.txt = body.innerText.replace(/\u00a0/g, ' ').replace(/\n+$/, '').slice(0, 200); refresh(); });
-      body.addEventListener('blur', () => { if (!body.innerText.trim()) removeBox(b); });
-      del.addEventListener('click', () => removeBox(b));
-      let drag = null;
-      move.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        move.setPointerCapture(e.pointerId);
-        const r = stage.getBoundingClientRect();
-        drag = { dx: (e.clientX - r.left) / r.width - item.x, dy: (e.clientY - r.top) / r.height - item.y };
-        select(b);
-      });
-      move.addEventListener('pointermove', (e) => {
-        if (!drag) return;
-        const r = stage.getBoundingClientRect();
-        item.x = Math.min(0.95, Math.max(0, (e.clientX - r.left) / r.width - drag.dx));
-        item.y = Math.min(0.95, Math.max(0, (e.clientY - r.top) / r.height - drag.dy));
-        layoutText(b);
-      });
-      const endDrag = () => { drag = null; refresh(); };
-      move.addEventListener('pointerup', endDrag);
-      move.addEventListener('pointercancel', endDrag);
-      select(b);
-      if (focus) body.focus();
-      return b;
+      tbox = { el, body };
+      body.addEventListener('beforeinput', (e) => { if (e.inputType === 'insertParagraph') { e.preventDefault(); if (!document.execCommand('insertLineBreak')) document.execCommand('insertHTML', false, '<br>'); } });
+      body.addEventListener('paste', (e) => { e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain')); });
+      body.addEventListener('input', () => { t.txt = domVersSegs(body); ajusterHauteur(); redraw(); refresh(); });
+      body.addEventListener('focus', () => refresh());
     }
-    for (const t of list) if (t.t === 'text') addBox(t, false);
-    select(null);
-    window.addEventListener('resize', () => boxes.forEach(layoutText));
-    btnBigger.addEventListener('click', () => { if (selected) { selected.item.s = Math.min(MAX_S, selected.item.s * 1.2); layoutText(selected); refresh(); } });
-    btnSmaller.addEventListener('click', () => { if (selected) { selected.item.s = Math.max(MIN_S, selected.item.s / 1.2); layoutText(selected); refresh(); } });
+    // La hauteur dessinée est un minimum : si le texte déborde, la boîte grandit vers le bas (le haut reste fixe).
+    function ajusterHauteur() {
+      if (!tbox || !edit || !canvas.clientWidth) return;
+      const f = canvas.clientWidth / canvas.width;
+      const need = tbox.body.offsetHeight / f;
+      const g = geom(edit, canvas.width, canvas.height);
+      if (need > g.hh * 2 + 0.5) {
+        const dh = (need - g.hh * 2) / 2, d = tourne(0, dh, g.r);
+        const cx = g.cx + d[0], cy = g.cy + d[1], hh = g.hh + dh;
+        edit.a = fromPx(cx - g.hw, cy - hh);
+        edit.b = fromPx(cx + g.hw, cy + hh);
+      }
+    }
+    function placeTbox() {
+      if (!tbox || !edit) return;
+      const f = canvas.clientWidth / canvas.width;
+      const g = geom(edit, canvas.width, canvas.height);
+      const st = tbox.el.style;
+      st.left = `${(g.cx - g.hw) * f}px`;
+      st.top = `${(g.cy - g.hh) * f}px`;
+      st.width = `${g.hw * 2 * f}px`;
+      st.height = `${g.hh * 2 * f}px`;
+      st.transform = `rotate(${g.r}rad)`;
+      st.fontSize = `${Math.max(8, edit.s * canvas.clientWidth)}px`;
+      st.color = edit.tc || '#e53935';
+      st.opacity = edit.o == null ? 1 : edit.o;
+      st.textAlign = edit.al === 'c' ? 'center' : edit.al === 'd' ? 'right' : 'left';
+      tbox.el.classList.toggle('sig4cem-pe__tbox--halo', !edit.fc);
+    }
+    // Formats : appliqués à la sélection (ou à la suite de la frappe) par le navigateur ; la boîte garde le focus.
+    function selDansBoite() { const sel = window.getSelection(); return !!(tbox && sel && sel.rangeCount && tbox.body.contains(sel.anchorNode)); }
+    function exec(cmd) {
+      if (!tbox) return;
+      if (!selDansBoite()) { tbox.body.focus(); const r = document.createRange(); r.selectNodeContents(tbox.body); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+      document.execCommand(cmd);
+      tbox.body.focus();
+      majFormats();
+    }
+    // État d'un format au curseur : on lit les balises autour de la sélection (queryCommandState seul est peu fiable pour indice/exposant).
+    const BALISES = { bold: ['B', 'STRONG'], italic: ['I', 'EM'], underline: ['U'], subscript: ['SUB'], superscript: ['SUP'] };
+    const etat = (cmd) => {
+      if (!selDansBoite()) return false;
+      for (let n = window.getSelection().getRangeAt(0).startContainer; n && n !== tbox.body; n = n.parentNode) if (n.nodeType === 1 && BALISES[cmd].includes(n.nodeName)) return true;
+      try { return document.queryCommandState(cmd); } catch (_) { return false; }
+    };
+    function majFormats() {
+      btnG.classList.toggle('sig4cem-pe__ic--on', etat('bold'));
+      btnI.classList.toggle('sig4cem-pe__ic--on', etat('italic'));
+      btnU.classList.toggle('sig4cem-pe__ic--on', etat('underline'));
+      const x = etat('subscript') ? 'sub' : etat('superscript') ? 'sup' : 'norm';
+      btnPos.innerHTML = `<span class="sig4cem-pe__t">${x === 'sub' ? 'x<sub>2</sub>' : x === 'sup' ? 'x<sup>2</sup>' : 'x'}</span>`;
+      btnPos.classList.toggle('sig4cem-pe__ic--on', x !== 'norm');
+    }
+    document.addEventListener('selectionchange', majFormats);
+    btnG.addEventListener('click', () => exec('bold'));
+    btnI.addEventListener('click', () => exec('italic'));
+    btnU.addEventListener('click', () => exec('underline'));
+    function sortirPos() {
+      const sel = window.getSelection();
+      let el = null;
+      for (let n = sel.getRangeAt(0).startContainer; n && n !== tbox.body; n = n.parentNode) if (n.nodeType === 1 && (n.nodeName === 'SUB' || n.nodeName === 'SUP')) el = n;
+      if (!el) return;
+      const z = document.createTextNode('\u200b');
+      el.after(z);
+      const r = document.createRange();
+      r.setStart(z, 1);
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+    btnPos.classList.add('sig4cem-pe__ic--menu');
+    btnPos.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!tbox) return;
+      const cur = etat('subscript') ? 'sub' : etat('superscript') ? 'sup' : 'norm';
+      ouvrirMenu(btnPos, [['norm', 'Normal', 'x'], ['sub', 'Indice', 'x<sub>2</sub>'], ['sup', 'Exposant', 'x<sup>2</sup>']].map(([val, titre, g]) => ({ val, titre, ic: `<span class="sig4cem-pe__t">${g}</span>`, texte: titre })), cur, (v) => {
+        if (v === cur) return;
+        if (!selDansBoite()) tbox.body.focus();
+        const sel = window.getSelection();
+        if (cur !== 'norm' && sel.rangeCount && sel.getRangeAt(0).collapsed) sortirPos(); // curseur seul : on sort de l'indice / de l'exposant
+        else if (cur === 'sub') exec('subscript'); else if (cur === 'sup') exec('superscript');
+        if (v === 'sub') exec('subscript'); else if (v === 'sup') exec('superscript');
+        if (tbox) { edit.txt = domVersSegs(tbox.body); ajusterHauteur(); redraw(); }
+        refresh();
+      });
+    });
+    btnTx.addEventListener('click', () => { if (edit) return; reg.ellipse.tx = !reg.ellipse.tx; nuancier.hidden = true; fermerMenu(); refresh(); });
+    const appliquerTaille = (f) => {
+      const it = edit && edit.tx ? edit : null;
+      const v = Math.min(MAX_S, Math.max(MIN_S, (it ? it.s : stT.s) * f));
+      stT.s = v;
+      if (it) { it.s = v; placeTbox(); ajusterHauteur(); redraw(); }
+      refresh();
+    };
+    btnBigger.addEventListener('click', () => appliquerTaille(1.2));
+    btnSmaller.addEventListener('click', () => appliquerTaille(1 / 1.2));
+    btnAl.addEventListener('click', () => {
+      const it = edit && edit.tx ? edit : null;
+      stT.al = suivant(['g', 'c', 'd'], it ? it.al || 'g' : stT.al);
+      if (it) { it.al = stT.al; redraw(); }
+      refresh();
+    });
+    // Les boutons de la barre ne prennent pas le focus (la sélection du texte reste active dans la boîte).
+    root.addEventListener('mousedown', (e) => { if (e.target.closest && e.target.closest('.sig4cem-pe__ic')) e.preventDefault(); });
+    window.addEventListener('resize', () => redraw());
+    // Conversion des anciens textes (zone libre) en boîtes de texte sans cadre, à l'ouverture.
+    function convertirAnciens() {
+      if (!list.some((t) => t.t === 'text')) return;
+      const ctx = canvas.getContext('2d');
+      list = list.map((t) => {
+        if (t.t !== 'text') return t;
+        const size = Math.max(10, t.s * canvas.width), pad = size * 0.3;
+        const lignes = String(t.txt || '').split('\n');
+        ctx.font = `${t.i ? 'italic ' : ''}${t.b === false ? '' : 'bold '}${size}px sans-serif`;
+        const maxL = Math.max(0, ...lignes.map((l) => ctx.measureText(l).width));
+        const sg = { t: String(t.txt || '') };
+        if (t.b !== false) sg.b = 1;
+        if (t.i) sg.i = 1;
+        if (t.u) sg.u = 1;
+        const n = { t: 'rect', c: null, w: EPAISSEURS[1], a: [t.x - pad / canvas.width, t.y - pad / canvas.height], b: [t.x + (maxL + pad + 4) / canvas.width, t.y + (lignes.length * size * 1.2 + pad) / canvas.height], tx: true, tc: t.c, s: t.s, txt: [sg] };
+        if (t.al && t.al !== 'g') n.al = t.al;
+        if (t.o != null) n.o = t.o;
+        return n;
+      });
+      etatInitial = propre();
+    }
 
     const pos = (e) => {
       const r = canvas.getBoundingClientRect();
@@ -554,8 +764,12 @@ NS.PhotoEditor = {
     const toPx = (p) => [p[0] * canvas.width, p[1] * canvas.height];
     const fromPx = (x, y) => [x / canvas.width, y / canvas.height];
     function setEdit(t) {
+      if (edit && edit !== t && txVide(edit)) { const j = list.indexOf(edit); if (j >= 0) list.splice(j, 1); } // boîte sans texte ni cadre : écartée
+      if (edit && edit !== t && document.activeElement && document.activeElement.blur) document.activeElement.blur();
       edit = t;
       guide = null;
+      detruireTbox();
+      if (t && t.tx) creerTbox(t);
       poigns.forEach((o) => o.el.remove());
       poigns = [];
       if (t) {
@@ -563,9 +777,11 @@ NS.PhotoEditor = {
         if (t.t === 'poly') t.p.forEach((_, i) => mk('v', { i }));
         else for (const [sx, sy] of [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]]) mk('h', { sx, sy });
         if (t.t !== 'poly') mk('rot');
+        if (t.tx) mk('move');
       }
       for (const o of poigns) liePoignee(o);
       redraw();
+      if (tbox) { ajusterHauteur(); redraw(); }
       refresh();
     }
     function finaliserTout() {
@@ -595,6 +811,7 @@ NS.PhotoEditor = {
       pill.hidden = !(edit || (polyDraft && polyDraft.length > 0));
       btnFOk.hidden = !!(polyDraft && polyDraft.length < 2);
       if (!edit) return;
+      placeTbox();
       let haut = [Infinity, Infinity];
       if (edit.t === 'poly') {
         const P = contour(edit, canvas.width, canvas.height);
@@ -615,7 +832,12 @@ NS.PhotoEditor = {
       // rotation : sur la diagonale à 45° du coin haut-gauche (déplacer : toucher l'intérieur de la forme)
       const k = 1 / f, dec = 28 * k;
       const rot = poigns.find((o) => o.kind === 'rot');
-      if (rot) put(rot.el, Math.max(16 * k, Math.min(canvas.width - 16 * k, haut[0] - dec)), Math.max(16 * k, Math.min(canvas.height - 16 * k, haut[1] - dec)));
+      if (rot) {
+        const rx = Math.max(16 * k, Math.min(canvas.width - 16 * k, haut[0] - dec)), ry = Math.max(16 * k, Math.min(canvas.height - 16 * k, haut[1] - dec));
+        put(rot.el, rx, ry);
+        const mv = poigns.find((o) => o.kind === 'move'); // boîte de texte : le symbole de déplacement juste à côté de la rotation
+        if (mv) { put(mv.el, rx + 34 * k, ry); const sv = mv.el.querySelector('.sig4cem-ic'); if (sv) sv.style.transform = `rotate(${edit.r || 0}rad)`; }
+      }
     }
     function liePoignee(o) {
       const el = o.el;
@@ -709,18 +931,18 @@ NS.PhotoEditor = {
     canvas.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       const p = pos(e);
-      select(null);
       if (nuancier) nuancier.hidden = true;
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-      if (tool === 'text') return; // la zone de texte se pose au clic (pour que le clavier s'ouvre sur mobile)
       canvas.setPointerCapture(e.pointerId);
-      const r = reg[tool];
-      if (tool === 'ellipse') {
-        if (edit && dansForme(edit, p)) { drag = { mode: 'move', p0: p, orig: cl(edit), corps: true }; return; }
+      const r = reg[tool] || (tool === 'text' ? reg.ellipse : null);
+      if (tool === 'ellipse' || tool === 'text') {
+        if (edit && !edit.tx && dansForme(edit, p)) { drag = { mode: 'move', p0: p, orig: cl(edit), corps: true }; return; }
         if (edit) { drag = null; return; } // la forme en cours ne se quitte que par ✓ ou ✗
-        if (r.kind === 'poly') { drag = { mode: 'tap', p0: p }; return; }
-        draft = { t: r.kind, c: color, w: EPAISSEURS[r.ep], a: p, b: p };
-        if (fillColor) draft.fc = fillColor;
+        if (tool === 'ellipse' && r.kind === 'poly') { drag = { mode: 'tap', p0: p }; return; }
+        const boite = tool === 'text' || (r.kind === 'rect' && r.tx);
+        draft = { t: tool === 'text' ? 'rect' : r.kind, c: tool === 'text' ? null : color, w: EPAISSEURS[r.ep], a: p, b: p };
+        if (boite) { draft.tx = true; draft.tc = textColor; draft.s = stT.s; draft.txt = []; if (stT.al !== 'g') draft.al = stT.al; }
+        if (fillColor && tool !== 'text') draft.fc = fillColor;
         drag = { mode: 'creer', p0: p };
       } else {
         const w = EPAISSEURS[r.ep];
@@ -729,7 +951,7 @@ NS.PhotoEditor = {
       if (draft) {
         if (opacity < 1) draft.o = opacity;
         if (r.ty !== 'plein') draft.ty = r.ty;
-        if (r.d && tool !== 'ellipse') { draft.ed = r.d; draft.ef = r.f; }
+        if (r.d && (tool === 'pen' || tool === 'arrow')) { draft.ed = r.d; draft.ef = r.f; }
       }
       redraw();
     });
@@ -773,23 +995,26 @@ NS.PhotoEditor = {
       if (!draft) return;
       const t = draft;
       draft = null;
-      const vide = t.t !== 'pen' && Math.hypot(t.b[0] - t.a[0], t.b[1] - t.a[1]) < 0.01;
+      let vide = t.t !== 'pen' && Math.hypot(t.b[0] - t.a[0], t.b[1] - t.a[1]) < 0.01;
+      if (vide && t.tx) { // simple toucher : boîte de texte de largeur par défaut (40 % de l'image), une ligne de haut
+        const w = 0.4, hr = (t.s * canvas.width * 1.8) / canvas.height;
+        const x0 = Math.min(Math.max(0, t.a[0]), 1 - w), y0 = Math.min(Math.max(0, t.a[1]), Math.max(0, 1 - hr));
+        t.a = [x0, y0];
+        t.b = [x0 + w, y0 + hr];
+        vide = false;
+      }
       if (!vide) { list.push(t); redoStack.length = 0; }
-      if (!vide && (t.t === 'rect' || t.t === 'ellipse')) { setEdit(t); return; }
+      if (!vide && (t.t === 'rect' || t.t === 'ellipse')) {
+        setEdit(t);
+        if (t.tx && tbox) { focusPlan = true; tbox.body.focus({ preventScroll: true }); }
+        return;
+      }
       guide = null;
       refresh();
       redraw();
     };
-    canvas.addEventListener('click', (e) => {
-      if (tool !== 'text') return;
-      const p = pos(e);
-      const item = { t: 'text', c: color, s: 0.045, x: Math.min(0.9, p[0]), y: Math.min(0.9, p[1]), txt: '' };
-      if (opacity < 1) item.o = opacity;
-      item.b = stT.b; if (stT.i) item.i = true; if (stT.u) item.u = true; if (stT.al !== 'g') item.al = stT.al;
-      list.push(item);
-      redoStack.length = 0;
-      addBox(item, true);
-    });
+    // Sur mobile, le clavier ne s'ouvre que depuis un vrai toucher : on redonne le focus au clic qui suit la création de la boîte.
+    stage.addEventListener('click', () => { if (focusPlan && tbox) { focusPlan = false; if (document.activeElement !== tbox.body) tbox.body.focus(); } });
     canvas.addEventListener('pointerup', end);
     canvas.addEventListener('pointercancel', end);
     btnUndo.addEventListener('click', () => {
@@ -800,9 +1025,7 @@ NS.PhotoEditor = {
         if (effaces.length) { const items = effaces.pop(); toutRestaurer(items); redoStack.push({ tout: items }); refresh(); redraw(); }
         return;
       }
-      const b = boxes.find((o) => o.item === last);
-      if (b) removeBox(b); else list.pop();
-      redoStack.push(last);
+      if (list[list.length - 1] === last) { list.pop(); redoStack.push(last); }
       refresh(); redraw();
     });
     btnRedo.addEventListener('click', () => {
@@ -810,20 +1033,19 @@ NS.PhotoEditor = {
       if (!item) return;
       if (item.tout) { effaces.push(toutEffacer()); refresh(); redraw(); return; }
       list.push(item);
-      if (item.t === 'text') addBox(item, false);
       refresh(); redraw();
     });
-    const toutEffacer = () => { const items = list; polyDraft = null; if (edit) setEdit(null); for (const b of boxes.slice()) b.el.remove(); boxes.length = 0; selected = null; list = []; return items; };
-    const toutRestaurer = (items) => { list = items; for (const it of items) if (it.t === 'text') addBox(it, false); };
+    const toutEffacer = () => { const items = list; polyDraft = null; if (edit) setEdit(null); list = []; return items; };
+    const toutRestaurer = (items) => { list = items; };
     btnClear.addEventListener('click', () => { const items = toutEffacer(); if (items.length) effaces.push(items); redoStack.length = 0; refresh(); redraw(); });
 
-    const close = () => { root.remove(); URL.revokeObjectURL(url); };
+    const close = () => { document.removeEventListener('selectionchange', majFormats); root.remove(); URL.revokeObjectURL(url); };
     btnCancel.addEventListener('click', () => {
       if (propre() !== etatInitial && !window.confirm('Fermer sans enregistrer ? Les modifications seront perdues.')) return;
       close();
     });
-    btnOk.addEventListener('click', () => { list = list.filter((t) => t.t !== 'text' || (t.txt || '').trim()); close(); onDone(list); });
-    img.addEventListener('load', () => { fit(); boxes.forEach(layoutText); });
+    btnOk.addEventListener('click', () => { list = list.filter((t) => !txVide(t)); close(); onDone(list); });
+    img.addEventListener('load', () => fit());
     if (img.complete) fit();
     refresh();
   },

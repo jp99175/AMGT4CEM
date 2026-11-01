@@ -225,14 +225,6 @@ html[data-app="signal"] body {
 
 /* Éditeur de photo : zones de texte à fond transparent, modifiables et déplaçables */
 .sig4cem-pe__hint { font-size: 12px; color: #52606d; flex: none; }
-.sig4cem-pe__text { position: absolute; line-height: 1.2; font-weight: 700; font-family: sans-serif; white-space: pre; min-width: 1.5em; background: transparent; touch-action: none; }
-.sig4cem-pe__text-body { display: inline-block; min-width: 1.5em; min-height: 1.2em; outline: none; background: transparent; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 3px #fff; cursor: text; }
-.sig4cem-pe__text--on { outline: 2px dashed rgba(255, 255, 255, .95); outline-offset: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .45); }
-.sig4cem-pe__text-move, .sig4cem-pe__text-del { display: none; position: absolute; top: -30px; width: 28px; height: 28px; line-height: 28px; text-align: center; font-size: 15px; font-weight: 400; color: #fff; background: #1f2933; border-radius: 50%; cursor: pointer; }
-.sig4cem-pe__text-move { left: 0; cursor: move; touch-action: none; }
-.sig4cem-pe__text-del { right: 0; }
-.sig4cem-pe__text--on .sig4cem-pe__text-move, .sig4cem-pe__text--on .sig4cem-pe__text-del { display: block; }
-.sig4cem-pe__text--low .sig4cem-pe__text-move, .sig4cem-pe__text--low .sig4cem-pe__text-del { top: auto; bottom: -30px; }
 
 /* Lignes de liste : 2e ligne « NATURE – DOMAINE » en gras majuscules et gris, de la taille du reste du cadre */
 .sig4cem-row__rest { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; }
@@ -281,7 +273,17 @@ html[data-app="signal"] body {
 .sig4cem-pe__opaval { min-width: 38px; text-align: right; }
 
 /* Éditeur de photo : poignées des formes (carrés pleins ; la flèche apparaît au survol / pendant le geste, centrée sur la poignée) */
-.sig4cem-pe__poign { position: absolute; inset: 0; pointer-events: none; line-height: 0; }
+.sig4cem-pe__tbox { position: absolute; z-index: 2; box-sizing: border-box; font-family: sans-serif; line-height: 1.2; transform-origin: 50% 50%; outline: 1px dashed #1e88e5; outline-offset: 0; touch-action: manipulation; }
+.sig4cem-pe__tb-body { box-sizing: border-box; min-height: 100%; padding: .3em; outline: none; white-space: pre-wrap; overflow-wrap: anywhere; cursor: text; line-height: 1.2; -webkit-user-select: text; user-select: text; }
+.sig4cem-pe__tb-body sub, .sig4cem-pe__tb-body sup { font-size: .7em; line-height: 0; vertical-align: baseline; position: relative; }
+.sig4cem-pe__tb-body sup { top: -.55em; }
+.sig4cem-pe__tb-body sub { top: .25em; }
+.sig4cem-pe__tbox--halo .sig4cem-pe__tb-body { -webkit-text-stroke: .125em #fff; paint-order: stroke fill; }
+.sig4cem-pe__onglets { display: flex; gap: 6px; margin-bottom: 10px; }
+.sig4cem-pe__onglets[hidden] { display: none; }
+.sig4cem-pe__onglet { flex: 1; padding: 5px 0; border: 1px solid #cbd2d9; border-radius: 8px; background: #fff; color: #0b5c75; font-size: 13px; cursor: pointer; }
+.sig4cem-pe__onglet--on { background: #0b5c75; border-color: #0b5c75; color: #fff; }
+.sig4cem-pe__poign { position: absolute; z-index: 3; inset: 0; pointer-events: none; line-height: 0; }
 .sig4cem-pe__hd { position: absolute; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin: -15px 0 0 -15px; pointer-events: auto; touch-action: none; color: #1e88e5; cursor: pointer; }
 .sig4cem-pe__hd[hidden] { display: none; }
 .sig4cem-pe__sq { display: block; width: 7px; height: 7px; background: #1e88e5; box-shadow: 0 0 0 1px #fff; }
