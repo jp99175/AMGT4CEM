@@ -244,7 +244,7 @@ html[data-app="signal"] body {
 .sig4cem-ic--pinceau { width: 22px; height: 16.75px; -webkit-mask-image: url(icone-pinceau.png); mask-image: url(icone-pinceau.png); }
 .sig4cem-ic--epaisseur { width: 22px; height: 16px; -webkit-mask-image: url(icone-epaisseur.png); mask-image: url(icone-epaisseur.png); }
 .sig4cem-ic--crayon { width: 17.25px; height: 23px; -webkit-mask-image: url(icone-crayon.png); mask-image: url(icone-crayon.png); }
-.sig4cem-ic--gomme { width: 23.5px; height: 16px; -webkit-mask-image: url(icone-gomme.png); mask-image: url(icone-gomme.png); }
+.sig4cem-ic--gomme { width: 23px; height: 18.75px; -webkit-mask-image: url(icone-gomme.png); mask-image: url(icone-gomme.png); }
 .sig4cem-ic--poubelle { width: 20px; height: 23px; -webkit-mask-image: url(icone-poubelle.png); mask-image: url(icone-poubelle.png); }
 .sig4cem-btn--primary .sig4cem-ic { background: #fff; }
 .sig4cem-btn .sig4cem-ic, .sig4cem-trash .sig4cem-ic { display: inline-block; vertical-align: middle; }
