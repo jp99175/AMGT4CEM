@@ -77,6 +77,10 @@
 .annotate-btn--menu::after { content: ''; position: absolute; right: 4px; bottom: 9px; border: 3px solid transparent; border-top: 4px solid currentColor; border-bottom: 0; }
 .annotate-menu { position: absolute; top: calc(100% + 2px); z-index: 30; display: flex; flex-direction: column; padding: 3px; background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
 .annotate-menu[hidden] { display: none; }
+.annotate-menu--curseur { align-items: center; width: 46px; padding: 8px 3px 6px; box-sizing: border-box; }
+.annotate-ep { position: relative; width: 34px; height: 150px; }
+.annotate-ep input { position: absolute; left: 50%; top: 50%; width: 150px; height: 28px; margin: 0; transform: translate(-50%, -50%) rotate(-90deg); accent-color: #0b5c75; touch-action: none; }
+.annotate-ep-val { margin-top: 4px; font: 600 12px system-ui, sans-serif; color: #0b5c75; white-space: nowrap; }
 .annotate-btn--large { width: auto; flex: none; gap: 10px; padding: 0 14px 0 8px; justify-content: flex-start; font: 13px system-ui, sans-serif; white-space: nowrap; }
 .annotate-btn--large .annotate-ic { flex: none; }
 /* Sélection d'objets : liste des objets et fenêtre des objets masqués */

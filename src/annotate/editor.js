@@ -68,7 +68,11 @@ const SOUS_OUTILS = [
     const vz = { z: 1, tx: 0, ty: 0 }; // zoom d'affichage (non enregistré), en px du cadre
     let sw = 1, sh = 1, M = new DOMMatrix(), sTot = 1, thTot = 0, fr = { x: 0, y: 0, w: 1, h: 1 }, sBase = 1, bw = 1, bh = 1;
     // Réglages propres à chaque outil (épaisseur, type de trait, terminaisons).
-    const reg = { pen: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune' }, arrow: { ep: 1, ty: 'plein', d: 'aucune', f: 'fleche' }, ellipse: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune', kind: 'ellipse', tx: false }, gomme: { ep: 1 } };
+    // Épaisseur des traits : en pixels d'une image de 1000 px de large (continue, 1 à 30) ; enregistrée en fraction de la largeur (px / 1000),
+    // donc proportionnelle à la photo. La gomme garde ses trois tailles (reg.gomme.ep).
+    const EP_MIN = 1, EP_MAX = 30;
+    let epPx = 8;
+    const reg = { pen: { ty: 'plein', d: 'aucune', f: 'aucune' }, arrow: { ty: 'plein', d: 'aucune', f: 'fleche' }, ellipse: { ty: 'plein', d: 'aucune', f: 'aucune', kind: 'ellipse', tx: false }, gomme: { ep: 1 } };
     let draft = null;
     let gommePos = null; // position de la gomme (px du canvas) pour le cercle d'aperçu
     const W = 800; // résolution du dessin à l'écran : relative, les traits sont stockés en 0..1
@@ -174,6 +178,7 @@ const SOUS_OUTILS = [
       if (menuBtn === btn) { fermerMenu(); return; }
       nuancier.hidden = true;
       menuEl.textContent = '';
+      menuEl.classList.remove('annotate-menu--curseur');
       for (const c of choix) {
         const b = btnIc(c.titre, c.texte ? `${c.ic}<span>${c.texte}</span>` : c.ic, (c.val === courant ? 'annotate-btn--on' : '') + (c.texte ? ' annotate-btn--large' : ''));
         b.addEventListener('click', (e) => { e.stopPropagation(); choisir(c.val); fermerMenu(); });
@@ -185,7 +190,27 @@ const SOUS_OUTILS = [
     }
     for (const b of [btnOutil, btnEp, btnDeb, btnTy, btnFin]) b.classList.add('annotate-btn--menu');
     btnOutil.addEventListener('click', (e) => { e.stopPropagation(); if (edit || polyDraft) return; ouvrirMenu(btnOutil, SOUS_OUTILS.map(([k, titre, ic]) => ({ val: k, titre, ic, texte: titre })), sousOutil(), (k) => { choisirSousOutil(k); refresh(); }); });
-    btnEp.addEventListener('click', (e) => { e.stopPropagation(); const T = outil(); const r = reg[T] || (T === 'text' ? reg.ellipse : null); if (r) ouvrirMenu(btnEp, [0, 1, 2].map((i) => ({ val: i, titre: `Épaisseur ${NOM_EP[i]}`, ic: icEp(i) })), r.ep, (v) => { if (T === 'gomme') reg.gomme.ep = v; else { for (const [k, o] of Object.entries(reg)) if (k !== 'gomme') o.ep = v; if (edit) edit.w = EPAISSEURS[v]; } redraw(); refresh(); }); });
+    const epTexte = () => `${Number.isInteger(epPx) ? epPx : epPx.toFixed(1).replace('.', ',')} px`;
+    // Épaisseur : curseur vertical (haut = épais) avec la valeur en px dessous ; la gomme garde ses trois tailles.
+    function ouvrirCurseur(btn) {
+      if (menuBtn === btn) { fermerMenu(); return; }
+      nuancier.hidden = true;
+      menuEl.textContent = '';
+      menuEl.classList.add('annotate-menu--curseur');
+      const val = h('div', { class: 'annotate-ep-val', text: epTexte() });
+      const input = h('input', { type: 'range', min: String(EP_MIN), max: String(EP_MAX), step: '0.5', value: String(epPx), 'aria-label': "Épaisseur du trait, en pixels d'une image de 1000 px de large" });
+      input.addEventListener('input', () => { epPx = Number(input.value); if (edit) edit.w = epPx / 1000; val.textContent = epTexte(); redraw(); refresh(); });
+      menuEl.append(h('div', { class: 'annotate-ep' }, input), val);
+      menuEl.style.left = `${btn.offsetLeft}px`;
+      menuEl.hidden = false;
+      menuBtn = btn;
+    }
+    btnEp.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const T = outil();
+      if (T === 'gomme') ouvrirMenu(btnEp, [0, 1, 2].map((i) => ({ val: i, titre: `Taille ${NOM_EP[i]}`, ic: icEp(i) })), reg.gomme.ep, (v) => { reg.gomme.ep = v; redraw(); refresh(); });
+      else if (reg[T] || T === 'text') ouvrirCurseur(btnEp);
+    });
     btnTy.addEventListener('click', (e) => { e.stopPropagation(); const T = outil(); const r = reg[T]; if (r) ouvrirMenu(btnTy, (T === 'ellipse' ? TYPES_FORMES : TYPES).map((t) => ({ val: t, titre: `Trait ${t}`, ic: icTy(t) })), r.ty, (v) => { for (const [k, o] of Object.entries(reg)) if (v !== 'nuage' || k === 'ellipse') o.ty = v; if (edit) { if (v === 'plein') delete edit.ty; else edit.ty = v; } redraw(); refresh(); }); });
     btnDeb.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[outil()]; if (r && r.d) ouvrirMenu(btnDeb, TERMINAISONS.map((k) => ({ val: k, titre: `Début : ${TITRES_T[k]}`, ic: svgIc(finIc(k, false)) })), r.d, (v) => { r.d = v; if (edit && ['poly', 'pen', 'arrow'].includes(edit.t)) edit.ed = v; redraw(); refresh(); }); });
     btnFin.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[outil()]; if (r && r.f) ouvrirMenu(btnFin, TERMINAISONS.map((k) => ({ val: k, titre: `Fin : ${TITRES_T[k]}`, ic: svgIc(finIc(k, true)) })), r.f, (v) => { r.f = v; if (edit && ['poly', 'pen', 'arrow'].includes(edit.t)) edit.ef = v; redraw(); refresh(); }); });
@@ -248,7 +273,7 @@ const SOUS_OUTILS = [
     }
     function redraw() {
       const ctx = canvas.getContext('2d');
-      const poly = polyDraft && polyDraft.length > 1 ? [{ t: 'poly', c: color, w: EPAISSEURS[reg.ellipse.ep], p: polyDraft, cl: false, ed: reg.ellipse.d, ef: reg.ellipse.f }] : [];
+      const poly = polyDraft && polyDraft.length > 1 ? [{ t: 'poly', c: color, w: epPx / 1000, p: polyDraft, cl: false, ed: reg.ellipse.d, ef: reg.ellipse.f }] : [];
       const dr = draft && draft.tx && !draft.c ? Object.assign({}, draft, { c: '#1e88e5', ty: 'tirets', w: 0.003 }) : draft; // cadre provisoire en pointillés pendant le tracé
       render(ctx, canvas.width, canvas.height, (dr ? list.concat([dr]) : list).concat(poly), false, edit);
       const cw = canvas.width, ch = canvas.height, k = kEcr();
@@ -326,7 +351,7 @@ const SOUS_OUTILS = [
       btnSupp.hidden = !(tool === 'select' && edit);
       btnCancel.disabled = verrou;
       btnEp.innerHTML = maskIc('epaisseur');
-      btnEp.title = `Épaisseur du trait (${NOM_EP[(r || reg.ellipse).ep]})`;
+      btnEp.title = T === 'gomme' ? `Taille de la gomme (${NOM_EP[reg.gomme.ep]})` : `Épaisseur du trait (${epTexte()})`;
       if (r) {
         if (r.ty) { btnTy.innerHTML = icTy(r.ty); btnTy.title = `Type de trait (${r.ty})`; }
         if (r.d) {
@@ -900,7 +925,7 @@ const SOUS_OUTILS = [
       if (pts && pts.length >= 2) {
         const r = reg.ellipse;
         const base = snap();
-        const t = { t: 'poly', c: color, w: EPAISSEURS[r.ep], p: pts, cl: !!ferme };
+        const t = { t: 'poly', c: color, w: epPx / 1000, p: pts, cl: !!ferme };
         if (ferme && fillColor) t.fc = fillColor;
         if (opacity < 1) t.o = opacity;
         if (r.ty !== 'plein') t.ty = r.ty;
@@ -1087,12 +1112,12 @@ const SOUS_OUTILS = [
         if (edit) { drag = null; return; } // la forme en cours ne se quitte que par ✓ ou ✗
         if (tool === 'ellipse' && r.kind === 'poly') { drag = { mode: 'tap', p0: p }; return; }
         const boite = tool === 'text' || (r.kind === 'rect' && r.tx);
-        draft = { t: tool === 'text' ? 'rect' : r.kind, c: tool === 'text' ? null : color, w: EPAISSEURS[r.ep], a: p, b: p };
+        draft = { t: tool === 'text' ? 'rect' : r.kind, c: tool === 'text' ? null : color, w: epPx / 1000, a: p, b: p };
         if (boite) { draft.tx = true; draft.tc = textColor; draft.s = stT.s; draft.txt = []; if (stT.al !== 'g') draft.al = stT.al; }
         if (fillColor && tool !== 'text') draft.fc = fillColor;
         drag = { mode: 'creer', p0: p };
       } else {
-        const w = EPAISSEURS[r.ep];
+        const w = epPx / 1000;
         draft = tool === 'pen' ? { t: 'pen', c: color, w, p: [p] } : { t: tool, c: color, w, a: p, b: p };
       }
       if (draft) {
@@ -1216,7 +1241,6 @@ const SOUS_OUTILS = [
       }
       return null;
     }
-    const idxEp = (w) => { let b = 0; EPAISSEURS.forEach((e, i) => { if (Math.abs(e - w) < Math.abs(EPAISSEURS[b] - w)) b = i; }); return b; };
     // Les réglages affichés en ligne 2 reprennent ceux de l'objet choisi.
     function synchroniser(t) {
       if (t.c) color = t.c;
@@ -1224,7 +1248,7 @@ const SOUS_OUTILS = [
       opaRange.value = String(Math.round(opacity * 100));
       fillColor = t.fc || null;
       const R = t.t === 'pen' ? reg.pen : t.t === 'arrow' ? reg.arrow : reg.ellipse;
-      R.ep = idxEp(t.w); R.ty = t.ty || 'plein';
+      epPx = Math.min(EP_MAX, Math.max(EP_MIN, Math.round((t.w || 0.008) * 2000) / 2)); R.ty = t.ty || 'plein';
       if (t.t === 'pen' || t.t === 'arrow' || t.t === 'poly') { R.d = t.ed || 'aucune'; R.f = t.ef == null ? (t.t === 'arrow' ? 'fleche' : 'aucune') : t.ef; }
       if (t.tx) { textColor = t.tc || textColor; stT.s = t.s; stT.al = t.al || 'g'; }
     }
