@@ -240,7 +240,7 @@ html[data-app="signal"] body {
 .sig4cem-ic--fleche { width: 21.5px; height: 10px; -webkit-mask-image: url(icone-fleche.svg); mask-image: url(icone-fleche.svg); }
 .sig4cem-ic--cercle { width: 22.5px; height: 23px; -webkit-mask-image: url(icone-cercle.svg); mask-image: url(icone-cercle.svg); }
 .sig4cem-ic--palette { width: 22.5px; height: 22.75px; -webkit-mask-image: url(icone-palette.svg); mask-image: url(icone-palette.svg); }
-.sig4cem-ic--selection { width: 20px; height: 22.5px; -webkit-mask-image: url(icone-selection.svg); mask-image: url(icone-selection.svg); }
+.sig4cem-ic--selection { width: 20.5px; height: 23px; -webkit-mask-image: url(icone-selection.svg); mask-image: url(icone-selection.svg); }
 .sig4cem-ic--texte { width: 24.5px; height: 23px; -webkit-mask-image: url(icone-texte.svg); mask-image: url(icone-texte.svg); }
 .sig4cem-ic--pinceau { width: 22px; height: 16.75px; -webkit-mask-image: url(icone-pinceau.svg); mask-image: url(icone-pinceau.svg); }
 .sig4cem-ic--epaisseur { width: 22px; height: 16px; -webkit-mask-image: url(icone-epaisseur.svg); mask-image: url(icone-epaisseur.svg); }
