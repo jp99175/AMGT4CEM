@@ -8,6 +8,8 @@
  * La photo d'origine n'est jamais modifiée : les annotations sont dessinées sur un calque TRANSPARENT (PNG)
  * enregistré à part (AMGT4CEM_Signalements.Pieces.setAnnotations) et superposé à l'affichage. Les traits sont
  * aussi conservés (coordonnées relatives à l'image, 0..1) pour pouvoir les reprendre et en annuler un.
+ * Outil Sélection : toucher un objet pour le modifier (poignées) ; liste des objets (ordre de superposition, masquer `hid`, supprimer) ;
+ * annuler / refaire par instantanés ; à l'enregistrement, question sur les objets masqués (garder ou supprimer).
  */
 (function () {
 const NS = window.SIG4CEM;
@@ -20,6 +22,7 @@ const maskIc = (n) => `<span class="sig4cem-ic sig4cem-ic--${n}" aria-hidden="tr
 const OUTILS = [
   ['edit', 'Édition', maskIc('pinceau')],
   ['text', 'Texte', maskIc('texte')],
+  ['select', 'Sélection : toucher un objet pour le modifier', maskIc('selection')],
 ];
 // Outils de dessin du menu de la ligne 2 : [clé, libellé, icône].
 const SOUS_OUTILS = [
@@ -186,7 +189,7 @@ function render(ctx, W, H, traits, sansTexte, exclure) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   for (const t of traits) {
-    if (t.t === 'gomme') continue; // marqueur d'une passe de gomme (sert à annuler), sans dessin
+    if (t.t === 'gomme' || t.hid) continue; // marqueur d'une ancienne passe de gomme, ou objet masqué : sans dessin
     ctx.strokeStyle = ctx.fillStyle = t.c;
     ctx.globalAlpha = t.o == null ? 1 : t.o;
     const lw = Math.max(2, t.w * W);
@@ -293,7 +296,7 @@ NS.PhotoEditor = {
   open(blob, traits, onDone) {
     const url = URL.createObjectURL(blob);
     let list = (traits || []).map((t) => JSON.parse(JSON.stringify(t)));
-    let tool = 'pen';
+    let tool = 'pen'; // 'pen' | 'arrow' | 'gomme' | 'ellipse' (dessin), 'text', 'select'
     let color = COULEURS[0];
     let textColor = COULEURS[0]; // couleur du texte des boîtes de texte
     let opacity = 1;
@@ -322,13 +325,16 @@ NS.PhotoEditor = {
     const toolBtns = OUTILS.map(([k, label, ic]) => {
       const b = btnIc(label, ic);
       b.addEventListener('click', () => {
-        if (edit || polyDraft) return;
-        if (k === 'text') { if (tool !== 'text') dernierDessin = tool; tool = 'text'; } else if (tool === 'text') tool = dernierDessin;
-        nuancier.hidden = true; fermerMenu(); refresh();
+        if (polyDraft || (edit && tool !== 'select')) return;
+        if (edit) setEdit(null);
+        if (k === 'text' || k === 'select') { if (tool !== k) { if (tool !== 'text' && tool !== 'select') dernierDessin = tool; tool = k; } } else if (tool === 'text' || tool === 'select') tool = dernierDessin;
+        nuancier.hidden = true; fermerMenu(); fermerObjets(); refresh(); redraw();
       });
       b.dataset.tool = k;
       return b;
     });
+    // Outil dont les réglages s'affichent : l'outil actif, ou celui de l'objet sélectionné en mode Sélection.
+    const outil = () => (tool === 'select' ? (edit ? (edit.tx ? 'text' : edit.t === 'pen' || edit.t === 'arrow' ? edit.t : 'ellipse') : null) : tool);
     const colorBtns = COULEURS.map((c) => {
       const b = h('button', { type: 'button', class: 'sig4cem-pe__color', title: 'Couleur', 'aria-label': 'Couleur' });
       b.style.background = c;
@@ -365,12 +371,12 @@ NS.PhotoEditor = {
       fermerMenu();
       // Pour les formes, un 2e toucher passe du trait au remplissage ; ailleurs seul le trait se règle.
       if (texteCtx()) nuancier.hidden = !nuancier.hidden; // trois cibles : onglets Texte / Cadre / Fond
-      else if (tool === 'ellipse' && !nuancier.hidden) cible = cible === 'trait' ? 'fond' : 'trait';
+      else if (outil() === 'ellipse' && !nuancier.hidden) cible = cible === 'trait' ? 'fond' : 'trait';
       else { cible = 'trait'; nuancier.hidden = !nuancier.hidden; }
       refresh();
     });
     const texteCtx = () => (edit ? !!edit.tx : tool === 'text' || (tool === 'ellipse' && reg.ellipse.kind === 'rect' && !!reg.ellipse.tx));
-    const tfSvg = () => texteCtx() ? `<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke-linejoin="round"><rect x="9.5" y="9.5" width="11.5" height="11.5" rx="1" fill="${fillColor && !(edit && !edit.fc) ? fillColor : 'none'}" stroke="#0b5c75" stroke-width=".835"/><rect x="3" y="3" width="12" height="12" rx="1" stroke="${(edit ? edit.c : tool === 'ellipse') ? ((edit && edit.c) || color) : '#9aa5b1'}" stroke-width="${(edit ? edit.c : tool === 'ellipse') ? 2.4 : 1}" ${(edit ? edit.c : tool === 'ellipse') ? '' : 'stroke-dasharray="2 2"'}/><text x="9" y="12.6" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="${edit && edit.tx ? edit.tc : textColor}" stroke="#fff" stroke-width=".7" paint-order="stroke">A</text></svg>` : `<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke-linejoin="round">${tool === 'ellipse' ? `<rect x="9.5" y="9.5" width="11.5" height="11.5" rx="1" fill="${fillColor || 'none'}" stroke="#0b5c75" stroke-width=".835"/>` : ''}<rect x="3" y="3" width="12" height="12" rx="1" stroke="${color}" stroke-width="2.4"/><rect x="3" y="3" width="12" height="12" rx="1" stroke="#0b5c75" stroke-width=".835"/></svg>`;
+    const tfSvg = () => texteCtx() ? `<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke-linejoin="round"><rect x="9.5" y="9.5" width="11.5" height="11.5" rx="1" fill="${fillColor && !(edit && !edit.fc) ? fillColor : 'none'}" stroke="#0b5c75" stroke-width=".835"/><rect x="3" y="3" width="12" height="12" rx="1" stroke="${(edit ? edit.c : tool === 'ellipse') ? ((edit && edit.c) || color) : '#9aa5b1'}" stroke-width="${(edit ? edit.c : tool === 'ellipse') ? 2.4 : 1}" ${(edit ? edit.c : tool === 'ellipse') ? '' : 'stroke-dasharray="2 2"'}/><text x="9" y="12.6" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="${edit && edit.tx ? edit.tc : textColor}" stroke="#fff" stroke-width=".7" paint-order="stroke">A</text></svg>` : `<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke-linejoin="round">${outil() === 'ellipse' ? `<rect x="9.5" y="9.5" width="11.5" height="11.5" rx="1" fill="${fillColor || 'none'}" stroke="#0b5c75" stroke-width=".835"/>` : ''}<rect x="3" y="3" width="12" height="12" rx="1" stroke="${color}" stroke-width="2.4"/><rect x="3" y="3" width="12" height="12" rx="1" stroke="#0b5c75" stroke-width=".835"/></svg>`;
     const btnOutil = btnIc('Outil de dessin', '');
     const sepTexte = [];
     // Options de ligne 2 : chaque bouton fait défiler ses choix, son icône montre le choix en cours.
@@ -412,10 +418,10 @@ NS.PhotoEditor = {
     }
     for (const b of [btnOutil, btnEp, btnDeb, btnTy, btnFin]) b.classList.add('sig4cem-pe__ic--menu');
     btnOutil.addEventListener('click', (e) => { e.stopPropagation(); if (edit || polyDraft) return; ouvrirMenu(btnOutil, SOUS_OUTILS.map(([k, titre, ic]) => ({ val: k, titre, ic, texte: titre })), sousOutil(), (k) => { choisirSousOutil(k); refresh(); }); });
-    btnEp.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool] || (tool === 'text' ? reg.ellipse : null); if (r) ouvrirMenu(btnEp, [0, 1, 2].map((i) => ({ val: i, titre: `Épaisseur ${NOM_EP[i]}`, ic: icEp(i) })), r.ep, (v) => { if (tool === 'gomme') reg.gomme.ep = v; else { for (const [k, o] of Object.entries(reg)) if (k !== 'gomme') o.ep = v; if (edit) edit.w = EPAISSEURS[v]; } redraw(); refresh(); }); });
-    btnTy.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool]; if (r) ouvrirMenu(btnTy, (tool === 'ellipse' ? TYPES_FORMES : TYPES).map((t) => ({ val: t, titre: `Trait ${t}`, ic: icTy(t) })), r.ty, (v) => { for (const [k, o] of Object.entries(reg)) if (v !== 'nuage' || k === 'ellipse') o.ty = v; if (edit) { if (v === 'plein') delete edit.ty; else edit.ty = v; } redraw(); refresh(); }); });
-    btnDeb.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool]; if (r && r.d) ouvrirMenu(btnDeb, TERMINAISONS.map((k) => ({ val: k, titre: `Début : ${TITRES_T[k]}`, ic: svgIc(finIc(k, false)) })), r.d, (v) => { r.d = v; if (edit && edit.t === 'poly') edit.ed = v; redraw(); refresh(); }); });
-    btnFin.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[tool]; if (r && r.f) ouvrirMenu(btnFin, TERMINAISONS.map((k) => ({ val: k, titre: `Fin : ${TITRES_T[k]}`, ic: svgIc(finIc(k, true)) })), r.f, (v) => { r.f = v; if (edit && edit.t === 'poly') edit.ef = v; redraw(); refresh(); }); });
+    btnEp.addEventListener('click', (e) => { e.stopPropagation(); const T = outil(); const r = reg[T] || (T === 'text' ? reg.ellipse : null); if (r) ouvrirMenu(btnEp, [0, 1, 2].map((i) => ({ val: i, titre: `Épaisseur ${NOM_EP[i]}`, ic: icEp(i) })), r.ep, (v) => { if (T === 'gomme') reg.gomme.ep = v; else { for (const [k, o] of Object.entries(reg)) if (k !== 'gomme') o.ep = v; if (edit) edit.w = EPAISSEURS[v]; } redraw(); refresh(); }); });
+    btnTy.addEventListener('click', (e) => { e.stopPropagation(); const T = outil(); const r = reg[T]; if (r) ouvrirMenu(btnTy, (T === 'ellipse' ? TYPES_FORMES : TYPES).map((t) => ({ val: t, titre: `Trait ${t}`, ic: icTy(t) })), r.ty, (v) => { for (const [k, o] of Object.entries(reg)) if (v !== 'nuage' || k === 'ellipse') o.ty = v; if (edit) { if (v === 'plein') delete edit.ty; else edit.ty = v; } redraw(); refresh(); }); });
+    btnDeb.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[outil()]; if (r && r.d) ouvrirMenu(btnDeb, TERMINAISONS.map((k) => ({ val: k, titre: `Début : ${TITRES_T[k]}`, ic: svgIc(finIc(k, false)) })), r.d, (v) => { r.d = v; if (edit && ['poly', 'pen', 'arrow'].includes(edit.t)) edit.ed = v; redraw(); refresh(); }); });
+    btnFin.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[outil()]; if (r && r.f) ouvrirMenu(btnFin, TERMINAISONS.map((k) => ({ val: k, titre: `Fin : ${TITRES_T[k]}`, ic: svgIc(finIc(k, true)) })), r.f, (v) => { r.f = v; if (edit && ['poly', 'pen', 'arrow'].includes(edit.t)) edit.ef = v; redraw(); refresh(); }); });
     const btnG = btnIc('Gras', '<span class="sig4cem-pe__t"><b>G</b></span>');
     const btnI = btnIc('Italique', '<span class="sig4cem-pe__t"><i style="font-family:serif">I</i></span>');
     const btnU = btnIc('Souligné', svgIc('<path d="M7 4v7.5a5 5 0 0 0 10 0V4"/><path d="M5 20h14"/>'));
@@ -436,11 +442,19 @@ NS.PhotoEditor = {
     const btnClear = btnIc('Feuille blanche : effacer tout le dessin', svgIc('<path d="M6.5 3h7.5l4.5 4.5V20a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4.5h4.5"/>'));
     const btnOk = btnIc('Enregistrer les annotations', svgIc('<path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/>'), 'sig4cem-pe__ic--droite');
     const btnCancel = btnIc('Fermer sans enregistrer', svgIc('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'));
+    const LAY = svgIc('<path d="M12 3.5l8.5 4.5-8.5 4.5L3.5 8z"/><path d="M3.5 12.2L12 16.7l8.5-4.5"/><path d="M3.5 16.2L12 20.7l8.5-4.5"/>');
+    const btnObjets = btnIc('Liste des objets : ordre de superposition, masquer, supprimer', LAY, 'sig4cem-pe__ic--menu');
+    const btnSupp = btnIc('Supprimer cet objet', maskIc('poubelle'), 'sig4cem-pe__ic--droite');
     const sep = () => h('span', { class: 'sig4cem-pe__sep' });
     const sep2 = () => { const e = sep(); sepTexte.push(e); return e; };
-    const effaces = []; // dessins effacés par « feuille blanche », que « Annuler » restaure
-    const redoStack = []; // éléments annulés, que « Refaire » remet dans l'ordre inverse
-    const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnTF, sep(), btnOutil, btnEp, btnDeb, btnTy, btnFin, btnTx, btnG, btnI, btnU, btnPos, btnAl, sep2(), btnSmaller, btnBigger, menuEl, nuancier);
+    // Historique par instantanés : chaque modification validée range l'état d'avant (annuler) ; « refaire » rend l'état annulé.
+    const undoS = [];
+    const redoS = [];
+    let editBase = null; // état de la liste quand on a commencé à modifier l'objet en cours
+    const snap = () => JSON.stringify(list);
+    const commit = (base) => { if (base != null && base !== snap()) { undoS.push(base); if (undoS.length > 80) undoS.shift(); redoS.length = 0; } };
+    const sepObj = sep();
+    const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnObjets, sepObj, btnTF, sep(), btnOutil, btnEp, btnDeb, btnTy, btnFin, btnTx, btnG, btnI, btnU, btnPos, btnAl, sep2(), btnSmaller, btnBigger, btnSupp, menuEl, nuancier);
     const root = h('section', { class: 'sig4cem-screen sig4cem-screen--editor' },
       h('div', { class: 'sig4cem-pe__bar' }, btnUndo, btnRedo, btnClear, sep(), ...toolBtns, btnOk, btnCancel),
       ligne2,
@@ -500,28 +514,28 @@ NS.PhotoEditor = {
       placePoignees();
     }
     function refresh() {
-      const verrou = !!(edit || polyDraft);
-      for (const b of toolBtns) { const actif = b.dataset.tool === 'text' ? tool === 'text' : tool !== 'text'; b.classList.toggle('sig4cem-pe__ic--on', actif); b.disabled = verrou && !actif; }
+      const verrou = !!(polyDraft || (edit && tool !== 'select'));
+      for (const b of toolBtns) { const actif = b.dataset.tool === 'text' ? tool === 'text' : b.dataset.tool === 'select' ? tool === 'select' : tool !== 'text' && tool !== 'select'; b.classList.toggle('sig4cem-pe__ic--on', actif); b.disabled = verrou && !actif; }
       opaVal.textContent = `${Math.round(opacity * 100)} %`;
-      btnUndo.disabled = !list.length && !effaces.length;
-      btnRedo.disabled = !redoStack.length || verrou;
+      btnRedo.disabled = !redoS.length || verrou;
       const tx = texteCtx();
-      const r = reg[tool];
-      const formes = tool === 'ellipse' || tx;
+      const T = outil();
+      const r = reg[T];
+      const formes = T === 'ellipse' || tx;
       if (tx && !['texte', 'trait', 'fond'].includes(cible)) cible = 'texte';
       if (!tx && cible === 'texte') cible = 'trait';
       if (!formes) cible = 'trait';
-      btnOutil.hidden = !r;
-      btnEp.hidden = !r && tool !== 'text';
-      btnTy.hidden = btnDeb.hidden = btnFin.hidden = !r || tx || tool === 'gomme';
-      btnTF.disabled = tool === 'gomme';
+      btnOutil.hidden = !r || tool === 'select';
+      btnEp.hidden = !r && T !== 'text';
+      btnTy.hidden = btnDeb.hidden = btnFin.hidden = !r || tx || T === 'gomme';
+      btnTF.disabled = T === 'gomme';
       btnTx.hidden = !(tool === 'ellipse' && reg.ellipse.kind === 'rect');
       btnTx.classList.toggle('sig4cem-pe__ic--on', !!reg.ellipse.tx);
       btnTx.disabled = verrou;
       onglets.hidden = !tx;
       for (const b of ongletBtns) b.classList.toggle('sig4cem-pe__onglet--on', b.dataset.cible === cible);
       // réglages sans objet pour la forme choisie : grisés (la ligne ne bouge pas)
-      const termOk = !!(r && r.d && (!formes || r.kind === 'poly'));
+      const termOk = !!(r && r.d && (!formes || (edit ? edit.t === 'poly' && !edit.cl : r.kind === 'poly')));
       btnDeb.disabled = btnFin.disabled = !termOk;
       btnTF.innerHTML = tfSvg();
       btnTF.title = tx ? `Couleurs : texte, cadre, fond (on modifie : ${cible === 'texte' ? 'le texte' : cible === 'fond' ? 'le fond' : 'le cadre'})` : `Couleur du trait / du remplissage (on modifie : ${cible === 'fond' ? 'le remplissage' : 'le trait'})`;
@@ -533,9 +547,14 @@ NS.PhotoEditor = {
       btnOutil.disabled = verrou;
       const so = SOUS_OUTILS.find((k) => k[0] === sousOutil());
       if (so) { btnOutil.innerHTML = so[2]; btnOutil.title = `Outil : ${so[1]}`; }
-      btnUndo.disabled = !list.length && !polyDraft && !effaces.length;
+      btnUndo.disabled = !undoS.length && !polyDraft && !edit;
       btnClear.disabled = verrou || !list.length;
       btnOk.disabled = verrou || propre() === etatInitial;
+      btnObjets.hidden = sepObj.hidden = tool !== 'select';
+      sepObj.hidden = tool !== 'select' || !edit;
+      btnObjets.disabled = !list.length;
+      btnObjets.classList.toggle('sig4cem-pe__ic--on', !objetsEl.hidden);
+      btnSupp.hidden = !(tool === 'select' && edit);
       btnCancel.disabled = verrou;
       btnEp.innerHTML = maskIc('epaisseur');
       btnEp.title = `Épaisseur du trait (${NOM_EP[(r || reg.ellipse).ep]})`;
@@ -559,9 +578,12 @@ NS.PhotoEditor = {
       btnG.disabled = btnI.disabled = btnU.disabled = btnPos.disabled = !tbox;
       btnSmaller.disabled = cur <= MIN_S + 1e-6;
       btnBigger.disabled = cur >= MAX_S - 1e-6;
+      if (tool === 'select' && !edit) { for (const b of [btnTF, btnEp, btnTy, btnDeb, btnFin, btnTx, btnOutil, btnSmaller, btnBigger, ...sousTexte]) b.hidden = true; sepTexte.forEach((e) => { e.hidden = true; }); ligne2.querySelectorAll('.sig4cem-pe__sep').forEach((e) => { e.hidden = true; }); }
       majFormats();
-      hint.hidden = !((tool === 'text' && !edit) || tool === 'gomme');
-      hint.textContent = hint.hidden ? '' : tool === 'gomme' ? 'Passez la gomme sur un tracé au crayon pour en effacer une partie.' : 'Tracez ou touchez la photo pour poser une boîte de texte.';
+      if (!objetsEl.hidden) majObjets();
+      const selVide = tool === 'select' && !edit && objetsEl.hidden;
+      hint.hidden = !((tool === 'text' && !edit) || tool === 'gomme' || selVide);
+      hint.textContent = hint.hidden ? '' : tool === 'gomme' ? 'Passez la gomme sur un tracé au crayon pour en effacer une partie.' : tool === 'select' ? (list.some((t) => !t.hid) || list.length ? 'Touchez un objet pour le sélectionner, ou ouvrez la liste des objets.' : 'Aucun objet à sélectionner pour le moment.') : 'Tracez ou touchez la photo pour poser une boîte de texte.';
     }
     // ---- Boîtes de texte : un rectangle dont l'intérieur se saisit au clavier. Une couleur et une taille par boîte,
     // mais des formats mélangeables (gras, italique, souligné, indice, exposant) : texte = [{ t, b, i, u, x }].
@@ -763,7 +785,7 @@ NS.PhotoEditor = {
       };
       for (let i = list.length - 1; i >= 0; i--) {
         const t = list[i];
-        if (t.t !== 'pen') continue;
+        if (t.t !== 'pen' || t.hid) continue;
         const P = t.p.map(([x, y]) => [x * canvas.width, y * canvas.height]);
         const pts = [{ x: P[0][0], y: P[0][1], e: proche(P[0][0], P[0][1]) }];
         for (let j = 1; j < P.length; j++) {
@@ -807,8 +829,7 @@ NS.PhotoEditor = {
     btnFOk.addEventListener('click', () => { if (polyDraft) terminerPoly(false, true); else setEdit(null); });
     btnFNon.addEventListener('click', () => {
       if (polyDraft) { polyDraft = null; redraw(); refresh(); return; }
-      const j = list.indexOf(edit);
-      if (j >= 0) list.splice(j, 1);
+      if (editBase != null) { const b = editBase; editBase = null; list = JSON.parse(b); } else { const j = list.indexOf(edit); if (j >= 0) list.splice(j, 1); }
       setEdit(null);
     });
     stage.append(pill);
@@ -816,8 +837,13 @@ NS.PhotoEditor = {
     const cl = (t) => JSON.parse(JSON.stringify(t));
     const toPx = (p) => [p[0] * canvas.width, p[1] * canvas.height];
     const fromPx = (x, y) => [x / canvas.width, y / canvas.height];
-    function setEdit(t) {
-      if (edit && edit !== t && txVide(edit)) { const j = list.indexOf(edit); if (j >= 0) list.splice(j, 1); } // boîte sans texte ni cadre : écartée
+    function setEdit(t, base) {
+      if (edit && edit !== t) {
+        if (txVide(edit)) { const j = list.indexOf(edit); if (j >= 0) list.splice(j, 1); } // boîte sans texte ni cadre : écartée
+        commit(editBase);
+        editBase = null;
+      }
+      if (t && edit !== t) editBase = base === undefined ? snap() : base;
       if (edit && edit !== t && document.activeElement && document.activeElement.blur) document.activeElement.blur();
       edit = t;
       guide = null;
@@ -828,8 +854,9 @@ NS.PhotoEditor = {
       if (t) {
         const mk = (kind, extra) => { const el = h('span', { class: `sig4cem-pe__hd sig4cem-pe__hd--${kind}` }); const o = Object.assign({ el, kind }, extra); poigns.push(o); poign.append(el); return o; };
         if (t.t === 'poly') t.p.forEach((_, i) => mk('v', { i }));
+        else if (t.t === 'arrow') [0, 1].forEach((i) => mk('v', { i }));
         else for (const [sx, sy] of [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]]) mk('h', { sx, sy });
-        if (t.t !== 'poly') mk('rot');
+        if (t.t === 'rect' || t.t === 'ellipse') mk('rot');
         if (t.tx) mk('move');
       }
       for (const o of poigns) liePoignee(o);
@@ -846,14 +873,15 @@ NS.PhotoEditor = {
       polyDraft = null;
       if (pts && pts.length >= 2) {
         const r = reg.ellipse;
+        const base = snap();
         const t = { t: 'poly', c: color, w: EPAISSEURS[r.ep], p: pts, cl: !!ferme };
         if (ferme && fillColor) t.fc = fillColor;
         if (opacity < 1) t.o = opacity;
         if (r.ty !== 'plein') t.ty = r.ty;
         if (!ferme) { t.ed = r.d; t.ef = r.f; }
         list.push(t);
-        redoStack.length = 0;
-        if (ferme && !silencieux) { setEdit(t); return; }
+        if (ferme && !silencieux) { setEdit(t, base); return; }
+        commit(base);
       }
       redraw(); refresh();
     }
@@ -866,13 +894,13 @@ NS.PhotoEditor = {
       if (!edit) return;
       placeTbox();
       let haut = [Infinity, Infinity];
-      if (edit.t === 'poly') {
-        const P = contour(edit, canvas.width, canvas.height);
+      if (edit.t === 'poly' || edit.t === 'arrow') {
+        const P = edit.t === 'arrow' ? [toPx(edit.a), toPx(edit.b)] : contour(edit, canvas.width, canvas.height);
         for (const o of poigns) if (o.kind === 'v' && P[o.i]) put(o.el, P[o.i][0], P[o.i][1]);
         const xs = P.map((q) => q[0]), ys = P.map((q) => q[1]);
         haut = [Math.min(...xs), Math.min(...ys)];
       } else {
-        const g = geom(edit, canvas.width, canvas.height);
+        const g = geomE(edit);
         const pt = (lx, ly) => { const q = tourne(lx, ly, g.r); return [g.cx + q[0], g.cy + q[1]]; };
         for (const o of poigns) if (o.kind === 'h') { const q = pt(o.sx * g.hw, o.sy * g.hh); put(o.el, q[0], q[1]); const ar = o.el.querySelector('.sig4cem-pe__ar'); if (ar) ar.style.transform = `rotate(${g.r + (o.sx && !o.sy ? Math.PI / 2 : 0)}rad)`; }
         const dec = 28 / f;
@@ -902,9 +930,29 @@ NS.PhotoEditor = {
       }
       el.addEventListener('pointerdown', (e) => demarrerPoignee(o, e));
     }
+    function bboxPen(t) {
+      let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+      for (const [x, y] of t.p) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+      return { a: [x0, y0], b: [x1, y1] };
+    }
+    const geomE = (t) => geom(t.t === 'pen' ? bboxPen(t) : t, canvas.width, canvas.height);
+    // Distance (px) du point (x, y) à une suite de segments.
+    function distSeg(x, y, P, ferme) {
+      const n = P.length;
+      if (n === 1) return Math.hypot(x - P[0][0], y - P[0][1]);
+      let d = Infinity;
+      for (let i = 0; i < (ferme ? n : n - 1); i++) {
+        const A = P[i], B = P[(i + 1) % n], vx = B[0] - A[0], vy = B[1] - A[1], L = vx * vx + vy * vy;
+        const u = L ? Math.max(0, Math.min(1, ((x - A[0]) * vx + (y - A[1]) * vy) / L)) : 0;
+        d = Math.min(d, Math.hypot(x - A[0] - u * vx, y - A[1] - u * vy));
+      }
+      return d;
+    }
     function dansForme(t, p) {
       const [x, y] = toPx(p);
       const k = canvas.width / (canvas.clientWidth || canvas.width);
+      if (t.t === 'arrow') return distSeg(x, y, [toPx(t.a), toPx(t.b)], false) < 16 * k;
+      if (t.t === 'pen') { const g = geomE(t); return Math.abs(x - g.cx) <= g.hw + 12 * k && Math.abs(y - g.cy) <= g.hh + 12 * k; }
       if (t.t === 'poly') {
         const P = contour(t, canvas.width, canvas.height);
         let dedans = false;
@@ -918,7 +966,7 @@ NS.PhotoEditor = {
     }
     let drag = null;
     function deplacerForme(orig, dx, dy) {
-      if (edit.t === 'poly') edit.p = orig.p.map(([x, y]) => [x + dx, y + dy]);
+      if (edit.t === 'poly' || edit.t === 'pen') edit.p = orig.p.map(([x, y]) => [x + dx, y + dy]);
       else { edit.a = [orig.a[0] + dx, orig.a[1] + dy]; edit.b = [orig.b[0] + dx, orig.b[1] + dy]; }
     }
     function demarrerPoignee(o, e) {
@@ -941,7 +989,7 @@ NS.PhotoEditor = {
       const p = pos(e);
       const orig = drag.orig;
       if (drag.mode === 'move') { deplacerForme(orig, p[0] - drag.p0[0], p[1] - drag.p0[1]); }
-      else if (drag.mode === 'v') { edit.p[drag.o.i] = p; }
+      else if (drag.mode === 'v') { if (edit.t === 'arrow') edit[drag.o.i ? 'b' : 'a'] = p; else edit.p[drag.o.i] = p; }
       else if (drag.mode === 'rot') {
         const g = geom(orig, canvas.width, canvas.height), q = toPx(p);
         let r = (orig.r || 0) + Math.atan2(q[1] - g.cy, q[0] - g.cx) - drag.a0;
@@ -949,7 +997,7 @@ NS.PhotoEditor = {
         if (Math.min(reste, pas - reste) < 0.045) r = Math.round(r / pas) * pas; // aimant à 0 / 45 / 90°
         edit.r = r;
       } else if (drag.mode === 'h') {
-        const g = geom(orig, canvas.width, canvas.height), q = toPx(p);
+        const g = geomE(orig), q = toPx(p);
         const l = tourne(q[0] - g.cx, q[1] - g.cy, -g.r);
         const { sx, sy } = drag.o;
         let left = -g.hw, right = g.hw, top = -g.hh, bottom = g.hh;
@@ -976,8 +1024,11 @@ NS.PhotoEditor = {
         const lc = [(left + right) / 2, (top + bottom) / 2];
         const w = tourne(lc[0], lc[1], g.r);
         const cx = g.cx + w[0], cy = g.cy + w[1], hw = Math.abs(right - left) / 2, hh = Math.abs(bottom - top) / 2;
-        edit.a = fromPx(cx - hw, cy - hh);
-        edit.b = fromPx(cx + hw, cy + hh);
+        const na = fromPx(cx - hw, cy - hh), nb = fromPx(cx + hw, cy + hh);
+        if (edit.t === 'pen') { // tracé libre : mise à l'échelle des points dans le nouveau cadre
+          const bb = bboxPen(orig), ox = bb.b[0] - bb.a[0], oy = bb.b[1] - bb.a[1];
+          edit.p = orig.p.map(([x, y]) => [ox > 1e-6 ? na[0] + (x - bb.a[0]) * (nb[0] - na[0]) / ox : x, oy > 1e-6 ? na[1] + (y - bb.a[1]) * (nb[1] - na[1]) / oy : y]);
+        } else { edit.a = na; edit.b = nb; }
       }
       redraw();
     }
@@ -987,9 +1038,17 @@ NS.PhotoEditor = {
       if (nuancier) nuancier.hidden = true;
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       canvas.setPointerCapture(e.pointerId);
+      fermerObjets();
+      if (tool === 'select') {
+        if (edit && dansForme(edit, p)) { drag = { mode: 'move', p0: p, orig: cl(edit), corps: true }; return; }
+        const t = toucher(p);
+        if (t && t !== edit) { selectionner(t); drag = { mode: 'move', p0: p, orig: cl(edit), corps: true }; return; }
+        if (!t && edit) setEdit(null);
+        return;
+      }
       if (tool === 'gomme') {
         const q = toPx(p);
-        drag = { mode: 'gommer', last: q, marque: { t: 'gomme', ch: [] } };
+        drag = { mode: 'gommer', last: q, marque: { t: 'gomme', ch: [] }, base: snap() };
         gommePos = q;
         gommer(q, q, drag.marque);
         redraw();
@@ -1047,9 +1106,9 @@ NS.PhotoEditor = {
     });
     const end = (e) => {
       if (drag && drag.mode === 'gommer') {
-        const m = drag.marque;
+        const m = drag.marque, base = drag.base;
         drag = null;
-        if (m.ch.length) { list.push(m); redoStack.length = 0; }
+        if (m.ch.length) commit(base);
         refresh(); redraw();
         return;
       }
@@ -1078,12 +1137,14 @@ NS.PhotoEditor = {
         t.b = [x0 + w, y0 + hr];
         vide = false;
       }
-      if (!vide) { list.push(t); redoStack.length = 0; }
+      const base = snap();
+      if (!vide) list.push(t);
       if (!vide && (t.t === 'rect' || t.t === 'ellipse')) {
-        setEdit(t);
+        setEdit(t, base);
         if (t.tx && tbox) { focusPlan = true; tbox.body.focus({ preventScroll: true }); }
         return;
       }
+      if (!vide) commit(base);
       guide = null;
       refresh();
       redraw();
@@ -1095,37 +1156,146 @@ NS.PhotoEditor = {
     canvas.addEventListener('pointercancel', end);
     btnUndo.addEventListener('click', () => {
       if (polyDraft) { polyDraft.pop(); if (!polyDraft.length) polyDraft = null; redraw(); refresh(); return; }
-      const last = list[list.length - 1];
-      if (last && last === edit) setEdit(null);
-      if (!last) {
-        if (effaces.length) { const items = effaces.pop(); toutRestaurer(items); redoStack.push({ tout: items }); refresh(); redraw(); }
-        return;
-      }
-      if (list[list.length - 1] === last) {
-        list.pop();
-        if (last.t === 'gomme') for (let k = last.ch.length - 1; k >= 0; k--) { const c = last.ch[k]; list.splice(c.i, c.b.length, ...c.a); } // rend les tracés d'avant la gomme
-        redoStack.push(last);
-      }
+      if (edit) setEdit(null);
+      const prev = undoS.pop();
+      if (prev == null) { refresh(); redraw(); return; }
+      redoS.push(snap());
+      list = JSON.parse(prev);
       refresh(); redraw();
     });
     btnRedo.addEventListener('click', () => {
-      const item = redoStack.pop();
-      if (!item) return;
-      if (item.tout) { effaces.push(toutEffacer()); refresh(); redraw(); return; }
-      if (item.t === 'gomme') for (const c of item.ch) list.splice(c.i, c.a.length, ...c.b);
-      list.push(item);
+      if (edit) setEdit(null);
+      const next = redoS.pop();
+      if (next == null) { refresh(); return; }
+      undoS.push(snap());
+      list = JSON.parse(next);
       refresh(); redraw();
     });
-    const toutEffacer = () => { const items = list; polyDraft = null; if (edit) setEdit(null); list = []; return items; };
-    const toutRestaurer = (items) => { list = items; };
-    btnClear.addEventListener('click', () => { const items = toutEffacer(); if (items.length) effaces.push(items); redoStack.length = 0; refresh(); redraw(); });
+    btnClear.addEventListener('click', () => { polyDraft = null; if (edit) setEdit(null); const base = snap(); list = []; commit(base); refresh(); redraw(); });
+    btnSupp.addEventListener('click', () => { if (!edit) return; const j = list.indexOf(edit); if (j >= 0) list.splice(j, 1); setEdit(null); refresh(); redraw(); });
+
+    // ---- Sélection : le plus haut objet touché ; ses réglages et ses poignées sont ceux d'une forme en cours de création.
+    function toucher(p) {
+      const [x, y] = toPx(p), k = canvas.width / (canvas.clientWidth || canvas.width), m = 14 * k;
+      for (let i = list.length - 1; i >= 0; i--) {
+        const t = list[i];
+        if (t.t === 'gomme' || t.hid) continue;
+        const marge = (t.w || 0) * canvas.width / 2;
+        let hit = false;
+        if (t.t === 'pen') hit = distSeg(x, y, t.p.map(([a, b]) => toPx([a, b])), false) < m + marge;
+        else if (t.t === 'arrow') hit = distSeg(x, y, [toPx(t.a), toPx(t.b)], false) < m + marge;
+        else if (t.t === 'poly') hit = (!!t.cl && !!t.fc && dansForme(t, p)) || distSeg(x, y, contour(t, canvas.width, canvas.height), !!t.cl) < m + marge;
+        else if (t.t === 'rect' || t.t === 'ellipse') {
+          const g = geom(t, canvas.width, canvas.height), q = tourne(x - g.cx, y - g.cy, -g.r);
+          if (t.fc || t.tx || Math.min(g.hw, g.hh) < m * 1.5) hit = dansForme(t, p);
+          else if (t.t === 'rect') hit = Math.abs(q[0]) <= g.hw + m && Math.abs(q[1]) <= g.hh + m && !(Math.abs(q[0]) < g.hw - m && Math.abs(q[1]) < g.hh - m);
+          else hit = Math.abs(Math.hypot(q[0] / Math.max(1, g.hw), q[1] / Math.max(1, g.hh)) - 1) * Math.min(g.hw, g.hh) < m;
+        }
+        if (hit) return t;
+      }
+      return null;
+    }
+    const idxEp = (w) => { let b = 0; EPAISSEURS.forEach((e, i) => { if (Math.abs(e - w) < Math.abs(EPAISSEURS[b] - w)) b = i; }); return b; };
+    // Les réglages affichés en ligne 2 reprennent ceux de l'objet choisi.
+    function synchroniser(t) {
+      if (t.c) color = t.c;
+      opacity = t.o == null ? 1 : t.o;
+      opaRange.value = String(Math.round(opacity * 100));
+      fillColor = t.fc || null;
+      const R = t.t === 'pen' ? reg.pen : t.t === 'arrow' ? reg.arrow : reg.ellipse;
+      R.ep = idxEp(t.w); R.ty = t.ty || 'plein';
+      if (t.t === 'pen' || t.t === 'arrow' || t.t === 'poly') { R.d = t.ed || 'aucune'; R.f = t.ef == null ? (t.t === 'arrow' ? 'fleche' : 'aucune') : t.ef; }
+      if (t.tx) { textColor = t.tc || textColor; stT.s = t.s; stT.al = t.al || 'g'; }
+    }
+    function selectionner(t) {
+      if (edit && edit !== t) setEdit(null);
+      synchroniser(t);
+      setEdit(t, snap());
+    }
+
+    // ---- Liste des objets : du plus haut au plus bas ; ordre de superposition, masquer / afficher, supprimer.
+    const COULEUR_NOM = { '#e53935': 'rouge', '#fdd835': 'jaune', '#1e88e5': 'bleu', '#212121': 'noir' };
+    const iconeDe = (cle) => SOUS_OUTILS.find((k) => k[0] === cle)[2];
+    function descr(t) {
+      let cle = t.t, nom = { pen: 'Tracé libre', arrow: 'Trait', poly: t.cl ? 'Polygone' : 'Ligne brisée', rect: 'Rectangle', ellipse: 'Ellipse' }[t.t] || 'Objet';
+      const sub = [];
+      if (t.tx) {
+        const brut = (t.txt || []).map((sg) => sg.t).join('').replace(/\s+/g, ' ').trim();
+        nom = t.c || t.fc ? 'Texte dans un cadre' : 'Texte';
+        sub.push(brut ? `« ${brut.length > 28 ? `${brut.slice(0, 28)}…` : brut} »` : '(vide)');
+      } else {
+        if (COULEUR_NOM[t.c]) sub.push(COULEUR_NOM[t.c]);
+        if (t.fc) sub.push(`rempli ${COULEUR_NOM[t.fc] || ''}`.trim());
+      }
+      if (t.o != null && t.o < 1) sub.push(`${Math.round(t.o * 100)} %`);
+      if (t.hid) sub.push('masqué');
+      return { ic: t.tx ? maskIc('texte') : t.t === 'poly' && t.cl ? iconeDe('poly') : iconeDe(cle), nom, sub: sub.join(' · ') };
+    }
+    const objetsEl = h('div', { class: 'sig4cem-pe__objets', hidden: '' });
+    stage.append(objetsEl);
+    function fermerObjets() { if (!objetsEl.hidden) { objetsEl.hidden = true; refresh(); } }
+    function agir(t, fn, reselect) {
+      if (edit) setEdit(null);
+      const base = snap();
+      fn();
+      commit(base);
+      if (reselect && list.includes(t)) selectionner(t);
+      refresh(); redraw();
+    }
+    function majObjets() {
+      objetsEl.textContent = '';
+      objetsEl.append(h('div', { class: 'sig4cem-pe__objets-t', text: `Objets (${list.length}) · du plus haut au plus bas` }));
+      for (let i = list.length - 1; i >= 0; i--) {
+        const t = list[i];
+        if (t.t === 'gomme') continue;
+        const d = descr(t);
+        const ic = h('span', { class: 'sig4cem-pe__obj-ic' });
+        ic.innerHTML = d.ic;
+        const bUp = btnIc('Monter (au-dessus)', svgIc('<path d="M12 19V5M6 11l6-6 6 6"/>'), 'sig4cem-pe__ic--mini');
+        const bDn = btnIc('Descendre (en dessous)', svgIc('<path d="M12 5v14M6 13l6 6 6-6"/>'), 'sig4cem-pe__ic--mini');
+        const bEye = btnIc(t.hid ? 'Afficher' : 'Masquer', svgIc(t.hid ? '<path d="M2.5 12S6 5.5 12 5.5c1.6 0 3 .5 4.2 1.2M21.5 12S18 18.5 12 18.5c-1.6 0-3-.5-4.2-1.2"/><path d="M4 4l16 16"/>' : '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'), 'sig4cem-pe__ic--mini');
+        const bDel = btnIc('Supprimer', maskIc('poubelle'), 'sig4cem-pe__ic--mini');
+        bUp.disabled = i === list.length - 1 || list.slice(i + 1).every((u) => u.t === 'gomme');
+        bDn.disabled = i === 0;
+        bUp.addEventListener('click', () => agir(t, () => { let j = list.indexOf(t) + 1; while (j < list.length && list[j].t === 'gomme') j++; if (j < list.length) { list.splice(list.indexOf(t), 1); list.splice(j, 0, t); } }, true));
+        bDn.addEventListener('click', () => agir(t, () => { const j = list.indexOf(t); if (j > 0) { list.splice(j, 1); list.splice(j - 1, 0, t); } }, true));
+        bEye.addEventListener('click', () => agir(t, () => { if (t.hid) delete t.hid; else t.hid = true; }, false));
+        bDel.addEventListener('click', () => agir(t, () => { list.splice(list.indexOf(t), 1); }, false));
+        const ligneEl = h('div', { class: 'sig4cem-pe__obj' + (t === edit ? ' sig4cem-pe__obj--sel' : '') + (t.hid ? ' sig4cem-pe__obj--hid' : '') }, ic, h('span', { class: 'sig4cem-pe__obj-t' }, h('b', { text: d.nom }), h('small', { text: d.sub })), bUp, bDn, bEye, bDel);
+        ligneEl.addEventListener('click', (e) => { if (e.target.closest('button')) return; if (t !== edit) { selectionner(t); redraw(); } refresh(); });
+        objetsEl.append(ligneEl);
+      }
+    }
+    btnObjets.addEventListener('click', (e) => { e.stopPropagation(); fermerMenu(); nuancier.hidden = true; if (objetsEl.hidden) { objetsEl.hidden = false; majObjets(); } else objetsEl.hidden = true; refresh(); });
 
     const close = () => { document.removeEventListener('selectionchange', majFormats); root.remove(); URL.revokeObjectURL(url); };
     btnCancel.addEventListener('click', () => {
+      finaliserTout();
       if (propre() !== etatInitial && !window.confirm('Fermer sans enregistrer ? Les modifications seront perdues.')) return;
       close();
     });
-    btnOk.addEventListener('click', () => { list = list.filter((t) => t.t !== 'gomme' && !txVide(t)); close(); onDone(list); });
+    // Objets masqués : l'utilisateur choisit à l'enregistrement de les garder (dans la source modifiable) ou de les supprimer.
+    function dialogueMasques(masques, suite) {
+      const lignes = masques.map((t) => { const d = descr(t); const ic = h('span', { class: 'sig4cem-pe__obj-ic' }); ic.innerHTML = d.ic; return h('div', { class: 'sig4cem-pe__obj' }, ic, h('span', { class: 'sig4cem-pe__obj-t' }, h('b', { text: d.nom }), h('small', { text: d.sub.replace(/ ?· ?masqué|^masqué$/, '') }))); });
+      const bt = (txt, cls, fn) => { const b = h('button', { type: 'button', class: 'sig4cem-pe__dlg-b' + (cls ? ` ${cls}` : ''), text: txt }); b.addEventListener('click', fn); return b; };
+      const voile = h('div', { class: 'sig4cem-pe__voile' });
+      const fermer = () => voile.remove();
+      voile.append(h('div', { class: 'sig4cem-pe__dlg', role: 'dialog', 'aria-modal': 'true' },
+        h('h4', { text: 'Enregistrer les annotations' }),
+        h('p', { text: masques.length === 1 ? '1 objet est masqué. Voulez-vous le conserver dans la source modifiable ? Il ne figure pas sur l\'image du rapport.' : `${masques.length} objets sont masqués. Voulez-vous les conserver dans la source modifiable ? Ils ne figurent pas sur l'image du rapport.` }),
+        h('div', { class: 'sig4cem-pe__dlg-l' }, ...lignes),
+        bt(masques.length === 1 ? 'Conserver masqué' : 'Conserver masqués', '', () => { fermer(); suite(true); }),
+        bt('Supprimer définitivement', '', () => { fermer(); suite(false); }),
+        bt('Revenir', 'sig4cem-pe__dlg-b--sec', fermer)));
+      root.append(voile);
+    }
+    btnOk.addEventListener('click', () => {
+      finaliserTout();
+      list = list.filter((t) => t.t !== 'gomme' && !txVide(t));
+      const masques = list.filter((t) => t.hid);
+      const fin = (garder) => { if (!garder) list = list.filter((t) => !t.hid); close(); onDone(list); };
+      if (masques.length) dialogueMasques(masques, fin); else fin(true);
+    });
     img.addEventListener('load', () => fit());
     if (img.complete) fit();
     refresh();

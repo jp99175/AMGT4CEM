@@ -140,6 +140,7 @@ SIG.Form = {
       const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', });
       edit.innerHTML = `${'<span class="sig4cem-ic sig4cem-ic--crayon" aria-hidden="true"></span>'} ${record.annot ? 'Modifier les annotations' : 'Annoter'}`;
       edit.addEventListener('click', () => {
+        if ((record.annotV || 0) > 1 && !window.confirm('Ces annotations ont été enregistrées avec une version plus récente de l\'application : les modifier ici risque d\'en perdre une partie. Continuer ?')) return;
         SIG.PhotoEditor.open(record.blob, record.traits || [], async (traits) => {
           const png = await SIG.PhotoEditor.overlayPng(traits, meta.largeur, meta.hauteur);
           meta.annotation = await NS.Pieces.setAnnotations(meta.id, traits, png);

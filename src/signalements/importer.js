@@ -27,6 +27,8 @@ NS.Importer = {
         annot: overlay,
         annotSha256: overlay ? p.annotations.sha256 : null,
         traits: overlay && Array.isArray(p.annotations.traits) ? p.annotations.traits : null,
+        annotModifie: overlay ? p.annotations.modifie || null : null,
+        annotV: overlay ? p.annotations.v || 0 : 0,
       });
       meta.commentaire = p.commentaire || '';
       pieces.push(meta);

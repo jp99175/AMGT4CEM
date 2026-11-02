@@ -119,7 +119,7 @@ NS.Depot = {
         // Commentaire de la photo et calque d'annotations (PNG transparent, à superposer : la photo reste intacte).
         commentaire: meta.commentaire || '',
         annotations: meta.annotation
-          ? { nom: this.annotationFileName(s, i), type: 'image/png', taille: meta.annotation.taille, sha256: meta.annotation.sha256 }
+          ? { nom: this.annotationFileName(s, i), type: 'image/png', taille: meta.annotation.taille, sha256: meta.annotation.sha256, v: 1, modifie: meta.annotation.modifie || null }
           : null,
       })),
     };

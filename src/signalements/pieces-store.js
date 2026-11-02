@@ -79,16 +79,16 @@ NS.Pieces = {
   },
 
   /** Remet en stock une photo venue du serveur (révision d'une entrée envoyée) : fichier inchangé, calque et traits repris. */
-  async restore(pointId, { blob, sha256, sha256Original, annot, annotSha256, traits }) {
+  async restore(pointId, { blob, sha256, sha256Original, annot, annotSha256, traits, annotModifie, annotV }) {
     const bitmap = await createImageBitmap(blob);
     const largeur = bitmap.width;
     const hauteur = bitmap.height;
     if (bitmap.close) bitmap.close();
     const id = crypto.randomUUID ? crypto.randomUUID() : `pc-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const record = { id, pointId, blob, sha256, sha256Original, largeur, hauteur };
-    if (annot) { record.annot = annot; record.annotSha256 = annotSha256; if (traits && traits.length) record.traits = traits; }
+    if (annot) { record.annot = annot; record.annotSha256 = annotSha256; if (traits && traits.length) record.traits = traits; if (annotModifie) record.annotModifie = annotModifie; if (annotV) record.annotV = annotV; }
     await this._tx('readwrite', (store) => store.put(record));
-    return { id, taille: blob.size, largeur, hauteur, sha256, sha256Original, annotation: annot ? { taille: annot.size, sha256: annotSha256 } : null };
+    return { id, taille: blob.size, largeur, hauteur, sha256, sha256Original, annotation: annot ? { taille: annot.size, sha256: annotSha256, modifie: annotModifie || null } : null };
   },
 
   /**
@@ -101,15 +101,19 @@ NS.Pieces = {
     if (!record) throw new Error('Photo introuvable');
     if (traits && traits.length && png) {
       record.traits = traits;
+      record.annotV = 1; // version du format des traits (objets masqués `hid`, etc.)
+      record.annotModifie = new Date().toISOString();
       record.annot = png;
       record.annotSha256 = await this.sha256(png);
     } else {
       delete record.traits;
       delete record.annot;
       delete record.annotSha256;
+      delete record.annotV;
+      delete record.annotModifie;
     }
     await this._tx('readwrite', (store) => store.put(record));
-    return record.annot ? { taille: record.annot.size, sha256: record.annotSha256 } : null;
+    return record.annot ? { taille: record.annot.size, sha256: record.annotSha256, modifie: record.annotModifie } : null;
   },
 
   async get(id) {
