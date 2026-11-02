@@ -134,23 +134,41 @@ SIG.Form = {
         await this._renderPhotos();
       });
       // La photo d'origine ; les annotations sont un calque transparent superposé, jamais fondu dans la photo.
-      const thumb = h('span', { class: 'sig4cem-photo' }, h('img', { src: URL.createObjectURL(record.blob), alt: `Photo ${i + 1}` }));
+      const vueBlob = record.mep && SIG.PhotoEditor.vue ? await SIG.PhotoEditor.vue(record.blob, record.mep, 400) : record.blob; // photo vue à travers sa mise en page
+      const thumb = h('span', { class: 'sig4cem-photo' }, h('img', { src: URL.createObjectURL(vueBlob), alt: `Photo ${i + 1}` }));
       if (record.annot) thumb.append(h('img', { class: 'sig4cem-photo__overlay', src: URL.createObjectURL(record.annot), alt: '' }));
       thumb.append(rm);
       const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', });
       edit.innerHTML = `${'<span class="sig4cem-ic sig4cem-ic--crayon" aria-hidden="true"></span>'} ${record.annot ? 'Modifier les annotations' : 'Annoter'}`;
       edit.addEventListener('click', () => {
         if ((record.annotV || 0) > 1 && !window.confirm('Ces annotations ont été enregistrées avec une version plus récente de l\'application : les modifier ici risque d\'en perdre une partie. Continuer ?')) return;
-        SIG.PhotoEditor.open(record.blob, record.traits || [], async (traits) => {
-          const png = await SIG.PhotoEditor.overlayPng(traits, meta.largeur, meta.hauteur);
-          meta.annotation = await NS.Pieces.setAnnotations(meta.id, traits, png);
-          await this._renderPhotos();
-        });
+        ouvrirEditeur();
       });
+      // Pivoter / recadrer : icônes seules, à côté de « Annoter ». La photo d'origine n'est pas touchée ; le calque d'annotations est recalculé dans le nouveau cadre.
+      const appliquerMep = async (mep) => {
+        await NS.Pieces.setMep(meta.id, mep);
+        if (record.traits && record.traits.length) {
+          const png = await SIG.PhotoEditor.overlayPng(record.traits, meta.largeur, meta.hauteur, mep);
+          meta.annotation = await NS.Pieces.setAnnotations(meta.id, record.traits, png);
+        }
+        await this._renderPhotos();
+      };
+      const ouvrirEditeur = (outil) => SIG.PhotoEditor.open(record.blob, record.traits || [], async (traits, mep) => {
+        await NS.Pieces.setMep(meta.id, mep);
+        const png = await SIG.PhotoEditor.overlayPng(traits, meta.largeur, meta.hauteur, mep);
+        meta.annotation = await NS.Pieces.setAnnotations(meta.id, traits, png);
+        await this._renderPhotos();
+      }, record.mep || null, outil ? { outil } : null);
+      const rot = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small sig4cem-btn--ico', title: 'Pivoter de 90° dans le sens horaire', 'aria-label': 'Pivoter de 90° dans le sens horaire' });
+      rot.innerHTML = '<span class="sig4cem-ic sig4cem-ic--rot-horaire" aria-hidden="true"></span>';
+      rot.addEventListener('click', () => appliquerMep(SIG.PhotoEditor.pivoterMep(record.mep || null, 1, meta.largeur, meta.hauteur)));
+      const crop = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small sig4cem-btn--ico', title: 'Recadrer', 'aria-label': 'Recadrer' });
+      crop.innerHTML = '<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="#0b5c75" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2.5v14.5h14.5"/><path d="M2.5 7H17v14.5"/></svg>';
+      crop.addEventListener('click', () => ouvrirEditeur('mep'));
       const comment = h('textarea', { class: 'sig4cem-photo__comment', rows: '2', maxlength: '500', placeholder: 'Commentaire sur cette photo (facultatif)' });
       comment.value = meta.commentaire || '';
       comment.addEventListener('input', () => { meta.commentaire = comment.value; });
-      list.append(h('div', { class: 'sig4cem-photo-card' }, thumb, h('div', { class: 'sig4cem-photo-card__side' }, comment, edit)));
+      list.append(h('div', { class: 'sig4cem-photo-card' }, thumb, h('div', { class: 'sig4cem-photo-card__side' }, comment, h('div', { class: 'sig4cem-photo-buttons' }, edit, rot, crop))));
     }
   },
 

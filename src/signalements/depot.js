@@ -136,6 +136,8 @@ NS.Depot = {
       records.push(record);
       // Les traits accompagnent le calque : une révision (sur n'importe quel appareil) peut reprendre les annotations.
       if (depot.pieces[i].annotations && record.traits) depot.pieces[i].annotations.traits = record.traits;
+      // Mise en page (rotation, cadre) : la photo du dépôt reste l'originale, la vue finale s'obtient en appliquant `mep`.
+      if (record.mep) depot.pieces[i].mep = record.mep;
     }
     const entries = [{ name: 'signalement.json', data: enc.encode(JSON.stringify(depot, null, 2)) }];
     for (let i = 0; i < (s.pieces || []).length; i++) {

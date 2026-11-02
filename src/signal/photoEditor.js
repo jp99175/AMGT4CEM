@@ -9,7 +9,7 @@
  * enregistré à part (AMGT4CEM_Signalements.Pieces.setAnnotations) et superposé à l'affichage. Les traits sont
  * aussi conservés (coordonnées relatives à l'image, 0..1) pour pouvoir les reprendre et en annuler un.
  * Outil Sélection : toucher un objet pour le modifier (poignées) ; liste des objets (ordre de superposition, masquer `hid`, supprimer) ;
- * annuler / refaire par instantanés ; à l'enregistrement, question sur les objets masqués (garder ou supprimer).
+ * annuler / refaire par instantanés ; mode Mise en page (pivoter, recadrer, transformation libre, réversible : `mep`) ; zoom à deux doigts ; à l'enregistrement, question sur les objets masqués (garder ou supprimer).
  */
 (function () {
 const NS = window.SIG4CEM;
@@ -23,6 +23,7 @@ const OUTILS = [
   ['edit', 'Édition', maskIc('pinceau')],
   ['text', 'Texte', maskIc('texte')],
   ['select', 'Sélection : toucher un objet pour le modifier', maskIc('selection')],
+  ['mep', 'Mise en page : pivoter, recadrer', svgIc('<rect x="4.5" y="9" width="12" height="11" rx="1"/><path d="M9 4.5a6.5 6.5 0 0 1 9 1.2"/><path d="M18.8 2.8v3.4h-3.4"/>')],
 ];
 // Outils de dessin du menu de la ligne 2 : [clé, libellé, icône].
 const SOUS_OUTILS = [
@@ -276,15 +277,83 @@ function render(ctx, W, H, traits, sansTexte, exclure) {
   ctx.setLineDash([]);
 }
 
+/**
+ * Mise en page d'une photo (réversible, la photo d'origine n'est jamais modifiée) : { v: 1, a, c: [x, y], w, h }.
+ * a = rotation en degrés (sens horaire) autour du centre de la photo ; le cadre (la vue finale) est un rectangle de w × h,
+ * centré en c, dans le repère pivoté et centré sur la photo. Toutes les longueurs sont en largeurs de photo (la photo mesure 1 × H/W).
+ * Les annotations restent dans le repère de la photo entière (0..1) : seule la vue change.
+ */
+const MEP_VERSION = 1;
+const mepDefaut = (W, H) => ({ v: MEP_VERSION, a: 0, c: [0, 0], w: 1, h: H / W });
+const mepNeutre = (m, W, H) => !m || (Math.abs(m.a) < 0.01 && Math.abs(m.c[0]) < 1e-4 && Math.abs(m.c[1]) < 1e-4 && Math.abs(m.w - 1) < 1e-4 && Math.abs(m.h - H / W) < 1e-4);
+const mepNormal = (m, W, H) => (mepNeutre(m, W, H) ? null : m);
+const normAngle = (a) => { const r = ((a + 180) % 360 + 360) % 360 - 180; return r === -180 ? 180 : r; };
+/** Pivote la mise en page d'un quart de tour (sens = 1 horaire, -1 anti-horaire) : le cadre suit la photo. */
+function pivoterMep(m, sens, W, H) {
+  const b = m || mepDefaut(W, H), r = sens * Math.PI / 2;
+  return mepNormal({ v: MEP_VERSION, a: normAngle(b.a + sens * 90), c: [b.c[0] * Math.cos(r) - b.c[1] * Math.sin(r), b.c[0] * Math.sin(r) + b.c[1] * Math.cos(r)], w: b.h, h: b.w }, W, H);
+}
+/** Plus grand cadre centré, de proportion `aspect` (largeur / hauteur), entièrement dans la photo tournée de `a` degrés. */
+function cadreInscrit(a, aspect, W, H) {
+  const th = a * Math.PI / 180, co = Math.abs(Math.cos(th)), si = Math.abs(Math.sin(th)), r = H / W;
+  const h = Math.min(1 / (aspect * co + si), r / (aspect * si + co));
+  return { w: aspect * h, h };
+}
+/** Ramène le cadre dans la photo (translation, puis réduction si besoin) : pas de coin vide. */
+function contenirMep(m, W, H) {
+  const r = H / W, th = m.a * Math.PI / 180, co = Math.cos(th), si = Math.sin(th);
+  const o = { v: MEP_VERSION, a: m.a, c: m.c.slice(), w: m.w, h: m.h };
+  for (let it = 0; it < 40; it++) {
+    let ok = true;
+    for (const [kx, ky] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const x = o.c[0] + kx * o.w / 2, y = o.c[1] + ky * o.h / 2, sx = x * co + y * si, sy = -x * si + y * co;
+      const ex = Math.abs(sx) > 0.5 ? (Math.abs(sx) - 0.5) * Math.sign(sx) : 0, ey = Math.abs(sy) > r / 2 ? (Math.abs(sy) - r / 2) * Math.sign(sy) : 0;
+      if (ex || ey) { ok = false; o.c = [o.c[0] - (ex * co - ey * si), o.c[1] - (ex * si + ey * co)]; }
+    }
+    if (ok) break;
+    if (it >= 8 && it % 4 === 0) { o.w *= 0.92; o.h *= 0.92; }
+  }
+  return o;
+}
+/** Place le contexte pour dessiner la photo (ou ses annotations) dans le cadre : `u` pixels par largeur de photo. */
+function appliquerMep(ctx, m, u, W, H) {
+  ctx.translate(m.w * u / 2, m.h * u / 2);
+  ctx.translate(-m.c[0] * u, -m.c[1] * u);
+  ctx.rotate(m.a * Math.PI / 180);
+  ctx.translate(-u / 2, -u * H / W / 2);
+}
+const tailleVue = (m, W, H, cote) => { const u = Math.min(W, cote / Math.max(m.w, m.h)); return { u, ow: Math.max(1, Math.round(m.w * u)), oh: Math.max(1, Math.round(m.h * u)) }; };
+
 NS.PhotoEditor = {
-  /** Calque PNG transparent pour des traits donnés (null s'il n'y en a pas). */
-  async overlayPng(traits, largeur, hauteur) {
-    if (!traits || !traits.length) return null;
-    const scale = Math.min(1, OVERLAY_SIDE / Math.max(largeur, hauteur));
+  mepNormal,
+  pivoterMep,
+  /** Photo vue à travers sa mise en page (Blob JPEG, grand côté `cote` px) ; la photo d'origine reste inchangée. */
+  async vue(blob, mep, cote) {
+    const bmp = await createImageBitmap(blob);
+    const W = bmp.width, H = bmp.height, m = mep || mepDefaut(W, H), { u, ow, oh } = tailleVue(m, W, H, cote || 1000);
     const c = document.createElement('canvas');
-    c.width = Math.max(1, Math.round(largeur * scale));
-    c.height = Math.max(1, Math.round(hauteur * scale));
-    render(c.getContext('2d'), c.width, c.height, traits);
+    c.width = ow; c.height = oh;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, ow, oh);
+    ctx.save();
+    appliquerMep(ctx, m, u, W, H);
+    ctx.drawImage(bmp, 0, 0, u, u * H / W);
+    ctx.restore();
+    if (bmp.close) bmp.close();
+    return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('Encodage JPEG impossible'))), 'image/jpeg', 0.85));
+  },
+  /** Calque PNG transparent pour des traits donnés, dans le cadre de la mise en page (null s'il n'y a pas de traits). */
+  async overlayPng(traits, largeur, hauteur, mep) {
+    if (!traits || !traits.length) return null;
+    const m = mep || mepDefaut(largeur, hauteur), { u, ow, oh } = tailleVue(m, largeur, hauteur, OVERLAY_SIDE);
+    const c = document.createElement('canvas');
+    c.width = ow; c.height = oh;
+    const ctx = c.getContext('2d');
+    ctx.save();
+    appliquerMep(ctx, m, u, largeur, hauteur);
+    render(ctx, u, u * hauteur / largeur, traits);
+    ctx.restore();
     return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('Encodage PNG impossible'))), 'image/png'));
   },
 
@@ -292,8 +361,11 @@ NS.PhotoEditor = {
    * Ouvre l'éditeur sur une photo. `onDone(traits)` à la validation ; rien n'est modifié si on annule.
    * @param {Blob} blob - la photo (JPEG réduit)
    * @param {Array} traits - traits existants
+   * @param {Function} onDone - (traits, mep) à la validation
+   * @param {object|null} mep0 - mise en page enregistrée (rotation, cadre)
+   * @param {{outil?: string}} [opts] - `outil: 'mep'` ouvre directement la mise en page
    */
-  open(blob, traits, onDone) {
+  open(blob, traits, onDone, mep0, opts) {
     const url = URL.createObjectURL(blob);
     let list = (traits || []).map((t) => JSON.parse(JSON.stringify(t)));
     let tool = 'pen'; // 'pen' | 'arrow' | 'gomme' | 'ellipse' (dessin), 'text', 'select'
@@ -305,6 +377,11 @@ NS.PhotoEditor = {
     let edit = null; // forme en cours d'édition (poignées) tant qu'elle n'est pas confirmée
     let polyDraft = null; // sommets d'une ligne brisée en cours de pose
     let guide = null; // repère en pointillés : { type: 'med' | 'diag', sx, sy }
+    let mep = mep0 ? JSON.parse(JSON.stringify(mep0)) : null; // mise en page enregistrée (null : photo entière)
+    let sousMep = 'crop'; // en mode Mise en page : 'crop' (cadre) ou 'libre' (transformation libre à deux doigts)
+    let ratioCadre = null; // proportion verrouillée du cadre (largeur / hauteur), null : libre
+    const vz = { z: 1, tx: 0, ty: 0 }; // zoom d'affichage (non enregistré), en px du cadre
+    let sw = 1, sh = 1, M = new DOMMatrix(), sTot = 1, thTot = 0, fr = { x: 0, y: 0, w: 1, h: 1 }, sBase = 1, bw = 1, bh = 1;
     // Réglages propres à chaque outil (épaisseur, type de trait, terminaisons).
     const reg = { pen: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune' }, arrow: { ep: 1, ty: 'plein', d: 'aucune', f: 'fleche' }, ellipse: { ep: 1, ty: 'plein', d: 'aucune', f: 'aucune', kind: 'ellipse', tx: false }, gomme: { ep: 1 } };
     let draft = null;
@@ -314,6 +391,8 @@ NS.PhotoEditor = {
     const img = h('img', { class: 'sig4cem-pe__img', src: url, alt: 'Photo à annoter', draggable: 'false' });
     const canvas = h('canvas', { class: 'sig4cem-pe__canvas' });
     const stage = h('div', { class: 'sig4cem-pe__stage' }, img, canvas);
+    const frame = h('div', { class: 'sig4cem-pe__frame' }, stage);
+    const corps = h('div', { class: 'sig4cem-pe__body' }, frame);
     const btnIc = (titre, svg, extra) => { const b = h('button', { type: 'button', class: 'sig4cem-pe__ic' + (extra ? ' ' + extra : ''), title: titre, 'aria-label': titre }); b.innerHTML = svg; return b; };
     let dernierDessin = 'pen';
     const sousOutil = () => (tool === 'pen' || tool === 'arrow' || tool === 'gomme' ? tool : tool === 'ellipse' ? reg.ellipse.kind : null);
@@ -327,8 +406,9 @@ NS.PhotoEditor = {
       b.addEventListener('click', () => {
         if (polyDraft || (edit && tool !== 'select')) return;
         if (edit) setEdit(null);
-        if (k === 'text' || k === 'select') { if (tool !== k) { if (tool !== 'text' && tool !== 'select') dernierDessin = tool; tool = k; } } else if (tool === 'text' || tool === 'select') tool = dernierDessin;
-        nuancier.hidden = true; fermerMenu(); fermerObjets(); refresh(); redraw();
+        const modes = ['text', 'select', 'mep'];
+        if (modes.includes(k)) { if (tool !== k) { if (!modes.includes(tool)) dernierDessin = tool; tool = k; vz.z = 1; vz.tx = vz.ty = 0; } } else if (modes.includes(tool)) { tool = dernierDessin; vz.z = 1; vz.tx = vz.ty = 0; }
+        nuancier.hidden = true; fermerMenu(); fermerObjets(); disposition(); refresh(); redraw();
       });
       b.dataset.tool = k;
       return b;
@@ -451,7 +531,8 @@ NS.PhotoEditor = {
     const undoS = [];
     const redoS = [];
     let editBase = null; // état de la liste quand on a commencé à modifier l'objet en cours
-    const snap = () => JSON.stringify(list);
+    const snap = () => JSON.stringify([list, mep]);
+    const restaurer = (str) => { const o = JSON.parse(str); list = o[0]; mep = o[1]; disposition(); };
     const commit = (base) => { if (base != null && base !== snap()) { undoS.push(base); if (undoS.length > 80) undoS.shift(); redoS.length = 0; } };
     const sepObj = sep();
     const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnObjets, sepObj, btnTF, sep(), btnOutil, btnEp, btnDeb, btnTy, btnFin, btnTx, btnG, btnI, btnU, btnPos, btnAl, sep2(), btnSmaller, btnBigger, btnSupp, menuEl, nuancier);
@@ -459,14 +540,14 @@ NS.PhotoEditor = {
       h('div', { class: 'sig4cem-pe__bar' }, btnUndo, btnRedo, btnClear, sep(), ...toolBtns, btnOk, btnCancel),
       ligne2,
       hint,
-      h('div', { class: 'sig4cem-pe__body' }, stage));
+      corps);
     document.getElementById('sig4cem-root').append(root);
     root.addEventListener('pointerdown', (e) => {
       if (!nuancier.hidden && !nuancier.contains(e.target) && !btnTF.contains(e.target)) nuancier.hidden = true;
       if (!menuEl.hidden && !menuEl.contains(e.target) && !(menuBtn && menuBtn.contains(e.target))) fermerMenu();
     });
     const txVide = (x) => !!x.tx && !(x.txt || []).some((sg) => String(sg.t).trim()) && !x.c && !x.fc;
-    const propre = () => JSON.stringify(list.filter((t) => t.t !== 'gomme' && !txVide(t)));
+    const propre = () => JSON.stringify([list.filter((t) => t.t !== 'gomme' && !txVide(t)), mep]);
     let etatInitial = propre();
 
     function fit() {
@@ -474,15 +555,17 @@ NS.PhotoEditor = {
       canvas.width = W;
       canvas.height = Math.round(W * ratio);
       convertirAnciens();
+      disposition();
       redraw();
       refresh();
+      if (opts && opts.outil === 'mep' && tool !== 'mep') { dernierDessin = tool; tool = 'mep'; disposition(); refresh(); }
     }
     function redraw() {
       const ctx = canvas.getContext('2d');
       const poly = polyDraft && polyDraft.length > 1 ? [{ t: 'poly', c: color, w: EPAISSEURS[reg.ellipse.ep], p: polyDraft, cl: false, ed: reg.ellipse.d, ef: reg.ellipse.f }] : [];
       const dr = draft && draft.tx && !draft.c ? Object.assign({}, draft, { c: '#1e88e5', ty: 'tirets', w: 0.003 }) : draft; // cadre provisoire en pointillés pendant le tracé
       render(ctx, canvas.width, canvas.height, (dr ? list.concat([dr]) : list).concat(poly), false, edit);
-      const cw = canvas.width, ch = canvas.height, k = cw / (canvas.clientWidth || cw);
+      const cw = canvas.width, ch = canvas.height, k = kEcr();
       ctx.save();
       ctx.strokeStyle = '#1e88e5';
       ctx.fillStyle = '#1e88e5';
@@ -515,7 +598,7 @@ NS.PhotoEditor = {
     }
     function refresh() {
       const verrou = !!(polyDraft || (edit && tool !== 'select'));
-      for (const b of toolBtns) { const actif = b.dataset.tool === 'text' ? tool === 'text' : b.dataset.tool === 'select' ? tool === 'select' : tool !== 'text' && tool !== 'select'; b.classList.toggle('sig4cem-pe__ic--on', actif); b.disabled = verrou && !actif; }
+      for (const b of toolBtns) { const actif = b.dataset.tool === 'text' ? tool === 'text' : b.dataset.tool === 'select' ? tool === 'select' : b.dataset.tool === 'mep' ? tool === 'mep' : tool !== 'text' && tool !== 'select' && tool !== 'mep'; b.classList.toggle('sig4cem-pe__ic--on', actif); b.disabled = verrou && !actif; }
       opaVal.textContent = `${Math.round(opacity * 100)} %`;
       btnRedo.disabled = !redoS.length || verrou;
       const tx = texteCtx();
@@ -579,11 +662,20 @@ NS.PhotoEditor = {
       btnSmaller.disabled = cur <= MIN_S + 1e-6;
       btnBigger.disabled = cur >= MAX_S - 1e-6;
       if (tool === 'select' && !edit) { for (const b of [btnTF, btnEp, btnTy, btnDeb, btnFin, btnTx, btnOutil, btnSmaller, btnBigger, ...sousTexte]) b.hidden = true; sepTexte.forEach((e) => { e.hidden = true; }); ligne2.querySelectorAll('.sig4cem-pe__sep').forEach((e) => { e.hidden = true; }); }
+      const em = tool === 'mep';
+      for (const b of mepBtns) b.hidden = !em;
+      if (em) {
+        for (const b of [btnTF, btnEp, btnTy, btnDeb, btnFin, btnTx, btnOutil, btnSmaller, btnBigger, btnObjets, btnSupp, ...sousTexte]) b.hidden = true;
+        ligne2.querySelectorAll('.sig4cem-pe__sep').forEach((e) => { e.hidden = e !== sepMep; });
+        btnLibre.classList.toggle('sig4cem-pe__ic--on', sousMep === 'libre');
+        btnCrop.classList.toggle('sig4cem-pe__ic--on', sousMep === 'crop');
+        btnReset.disabled = mepNormal(mep, srcW(), srcH()) == null;
+      }
       majFormats();
       if (!objetsEl.hidden) majObjets();
       const selVide = tool === 'select' && !edit && objetsEl.hidden;
-      hint.hidden = !((tool === 'text' && !edit) || tool === 'gomme' || selVide);
-      hint.textContent = hint.hidden ? '' : tool === 'gomme' ? 'Passez la gomme sur un tracé au crayon pour en effacer une partie.' : tool === 'select' ? (list.some((t) => !t.hid) || list.length ? 'Touchez un objet pour le sélectionner, ou ouvrez la liste des objets.' : 'Aucun objet à sélectionner pour le moment.') : 'Tracez ou touchez la photo pour poser une boîte de texte.';
+      hint.hidden = !((tool === 'text' && !edit) || tool === 'gomme' || selVide || em);
+      hint.textContent = hint.hidden ? '' : em ? (sousMep === 'libre' ? 'Deux doigts sur la photo : pivoter, zoomer, déplacer.' : 'Déplacez les poignées du cadre. Appui long sur le recadrage : proportions standard.') : tool === 'gomme' ? 'Passez la gomme sur un tracé au crayon pour en effacer une partie.' : tool === 'select' ? (list.some((t) => !t.hid) || list.length ? 'Touchez un objet pour le sélectionner, ou ouvrez la liste des objets.' : 'Aucun objet à sélectionner pour le moment.') : 'Tracez ou touchez la photo pour poser une boîte de texte.';
     }
     // ---- Boîtes de texte : un rectangle dont l'intérieur se saisit au clavier. Une couleur et une taille par boîte,
     // mais des formats mélangeables (gras, italique, souligné, indice, exposant) : texte = [{ t, b, i, u, x }].
@@ -749,7 +841,7 @@ NS.PhotoEditor = {
     });
     // Les boutons de la barre ne prennent pas le focus (la sélection du texte reste active dans la boîte).
     root.addEventListener('mousedown', (e) => { if (e.target.closest && e.target.closest('.sig4cem-pe__ic')) e.preventDefault(); });
-    window.addEventListener('resize', () => redraw());
+    window.addEventListener('resize', () => { disposition(); redraw(); });
     // Conversion des anciens textes (zone libre) en boîtes de texte sans cadre, à l'ouverture.
     function convertirAnciens() {
       if (!list.some((t) => t.t === 'text')) return;
@@ -815,9 +907,222 @@ NS.PhotoEditor = {
     }
 
     const pos = (e) => {
-      const r = canvas.getBoundingClientRect();
-      return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))];
+      const r = frame.getBoundingClientRect(), p = M.inverse().transformPoint(new DOMPoint(e.clientX - r.left, e.clientY - r.top));
+      return [Math.min(1, Math.max(0, p.x / sw)), Math.min(1, Math.max(0, p.y / sh))];
     };
+    // Pixels du dessin par pixel d'écran (le zoom et la rotation d'affichage sont dans la matrice M).
+    const kEcr = () => canvas.width / (canvas.clientWidth || canvas.width) / sTot;
+
+    // ---- Affichage : la photo et son calque sont dans `stage` (repère de la photo entière) ; la matrice M le place dans `frame`
+    // (mise en page + zoom d'affichage). En mode « Mise en page / cadre », on voit la photo entière pivotée avec le cadre par-dessus.
+    const srcW = () => img.naturalWidth || 1, srcH = () => img.naturalHeight || 1;
+    const mepEff = () => mep || mepDefaut(srcW(), srcH());
+    const modeCadre = () => tool === 'mep' && sousMep === 'crop';
+    function disposition() {
+      const br = corps.getBoundingClientRect();
+      bw = br.width; bh = br.height;
+      if (!bw || !bh) return;
+      const pad = 4, ratio = srcH() / srcW(), m = mepEff();
+      sw = Math.max(1, Math.min(bw - 2 * pad, (bh - 2 * pad) / ratio)); sh = sw * ratio;
+      stage.style.width = `${sw}px`; stage.style.height = `${sh}px`;
+      const sc = [sw / 2, sh / 2];
+      if (modeCadre()) {
+        const rad = m.a * Math.PI / 180, cw = Math.abs(Math.cos(rad)) * sw + Math.abs(Math.sin(rad)) * sh, ch = Math.abs(Math.sin(rad)) * sw + Math.abs(Math.cos(rad)) * sh;
+        sBase = Math.min((bw - 2 * pad) / cw, (bh - 2 * pad) / ch);
+        fr = { x: 0, y: 0, w: bw, h: bh };
+        M = new DOMMatrix().translate(bw / 2, bh / 2).scale(sBase).rotate(m.a).translate(-sc[0], -sc[1]);
+      } else {
+        const Fw = m.w * sw, Fh = m.h * sw, s0 = Math.min((bw - 2 * pad) / Fw, (bh - 2 * pad) / Fh);
+        sBase = s0;
+        fr = { x: (bw - Fw * s0) / 2, y: (bh - Fh * s0) / 2, w: Fw * s0, h: Fh * s0 };
+        M = new DOMMatrix().translate(fr.w / 2, fr.h / 2).scale(s0).translate(-m.c[0] * sw, -m.c[1] * sw).rotate(m.a).translate(-sc[0], -sc[1]);
+        if (vz.z !== 1) M = new DOMMatrix().translate(vz.tx, vz.ty).scale(vz.z).multiply(M);
+      }
+      sTot = Math.hypot(M.a, M.b);
+      thTot = Math.atan2(M.b, M.a);
+      Object.assign(frame.style, { left: `${fr.x}px`, top: `${fr.y}px`, width: `${fr.w}px`, height: `${fr.h}px` });
+      stage.style.transform = M.toString();
+      canvas.style.pointerEvents = tool === 'mep' ? 'none' : '';
+      badgeZoom.hidden = !(vz.z > 1.001 && tool !== 'mep');
+      badgeZoom.textContent = `⤢ ${Math.round(vz.z * 100)} %`;
+      majCadre();
+      if (typeof placePoignees === 'function' && canvas.width > 1) placePoignees();
+    }
+    const badgeZoom = h('button', { type: 'button', class: 'sig4cem-pe__zoom', title: 'Revenir à la photo entière', hidden: '' });
+    badgeZoom.addEventListener('click', () => { vz.z = 1; vz.tx = vz.ty = 0; disposition(); });
+    frame.append(badgeZoom);
+    const gridLibre = h('div', { class: 'sig4cem-pe__grille', hidden: '' });
+    const angleEl = h('div', { class: 'sig4cem-pe__angle', hidden: '' });
+    frame.append(gridLibre, angleEl);
+
+    // ---- Cadre de recadrage (mode Mise en page / cadre) : rectangle à poignées par-dessus la photo entière pivotée.
+    const cadreEl = h('div', { class: 'sig4cem-pe__crop', hidden: '' });
+    const cadreInfo = h('div', { class: 'sig4cem-pe__crop-info' });
+    const cadreH = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]].map(([sx, sy]) => { const e = h('span', { class: 'sig4cem-pe__crop-h' + (sx && sy ? ' sig4cem-pe__crop-h--c' : '') }); e.dataset.sx = sx; e.dataset.sy = sy; e.style.left = `${(sx + 1) * 50}%`; e.style.top = `${(sy + 1) * 50}%`; return e; });
+    cadreEl.append(...cadreH, cadreInfo);
+    frame.append(cadreEl);
+    const rectCadre = () => { const m = mepEff(); return { x: bw / 2 + sBase * m.c[0] * sw - sBase * m.w * sw / 2, y: bh / 2 + sBase * m.c[1] * sw - sBase * m.h * sw / 2, w: sBase * m.w * sw, h: sBase * m.h * sw }; };
+    const mepDepuisRect = (r) => ({ v: MEP_VERSION, a: mepEff().a, c: [(r.x + r.w / 2 - bw / 2) / sBase / sw, (r.y + r.h / 2 - bh / 2) / sBase / sw], w: r.w / sBase / sw, h: r.h / sBase / sw });
+    function majCadre() {
+      cadreEl.hidden = !modeCadre();
+      gridLibre.hidden = !(tool === 'mep' && sousMep === 'libre');
+      angleEl.hidden = gridLibre.hidden;
+      if (!gridLibre.hidden) angleEl.textContent = `${mepEff().a >= 0 ? '+' : '−'}${Math.abs(mepEff().a).toFixed(1).replace('.', ',')}°`;
+      if (cadreEl.hidden) return;
+      const r = rectCadre();
+      Object.assign(cadreEl.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
+      const m = mepEff();
+      cadreInfo.textContent = `${Math.round(m.w * srcW())} × ${Math.round(m.h * srcW())}`;
+      for (const e of cadreH) e.hidden = !!ratioCadre && (!Number(e.dataset.sx) || !Number(e.dataset.sy));
+    }
+    let cadreDrag = null;
+    cadreEl.addEventListener('pointerdown', (e) => {
+      if (!modeCadre()) return;
+      e.preventDefault(); e.stopPropagation();
+      cadreEl.setPointerCapture(e.pointerId);
+      const hd = e.target.closest('.sig4cem-pe__crop-h');
+      const br = corps.getBoundingClientRect();
+      cadreDrag = { sx: hd ? Number(hd.dataset.sx) : 0, sy: hd ? Number(hd.dataset.sy) : 0, move: !hd, r0: rectCadre(), p0: [e.clientX - br.left, e.clientY - br.top], base: snap() };
+      if (!mep) mep = mepDefaut(srcW(), srcH());
+    });
+    cadreEl.addEventListener('pointermove', (e) => {
+      if (!cadreDrag) return;
+      e.preventDefault();
+      const br = corps.getBoundingClientRect(), d = cadreDrag, dx = e.clientX - br.left - d.p0[0], dy = e.clientY - br.top - d.p0[1], r0 = d.r0, MIN = 36;
+      let r;
+      if (d.move) r = { x: Math.min(bw - r0.w, Math.max(0, r0.x + dx)), y: Math.min(bh - r0.h, Math.max(0, r0.y + dy)), w: r0.w, h: r0.h };
+      else {
+        let x0 = r0.x, x1 = r0.x + r0.w, y0 = r0.y, y1 = r0.y + r0.h;
+        if (d.sx === -1) x0 = Math.min(x1 - MIN, r0.x + dx); else if (d.sx === 1) x1 = Math.max(x0 + MIN, r0.x + r0.w + dx);
+        if (d.sy === -1) y0 = Math.min(y1 - MIN, r0.y + dy); else if (d.sy === 1) y1 = Math.max(y0 + MIN, r0.y + r0.h + dy);
+        if (ratioCadre && d.sx && d.sy) { // proportion verrouillée : on suit la plus grande variation, le coin opposé reste fixe
+          const w = Math.max(MIN, Math.max(x1 - x0, (y1 - y0) * ratioCadre)), hh = w / ratioCadre;
+          if (d.sx === -1) x0 = x1 - w; else x1 = x0 + w;
+          if (d.sy === -1) y0 = y1 - hh; else y1 = y0 + hh;
+        }
+        r = { x: Math.max(0, x0), y: Math.max(0, y0), w: Math.min(bw, x1) - Math.max(0, x0), h: Math.min(bh, y1) - Math.max(0, y0) };
+      }
+      mep = mepDepuisRect(r);
+      majCadre();
+    });
+    const finCadre = () => {
+      if (!cadreDrag) return;
+      const base = cadreDrag.base;
+      cadreDrag = null;
+      mep = mepNormal(contenirMep(mepEff(), srcW(), srcH()), srcW(), srcH());
+      commit(base);
+      disposition(); refresh();
+    };
+    cadreEl.addEventListener('pointerup', finCadre);
+    cadreEl.addEventListener('pointercancel', finCadre);
+
+    // ---- Gestes à deux doigts (et molette) : zoom d'affichage ; en transformation libre, rotation + zoom + déplacement de la photo.
+    const ptrs = new Map();
+    let geste = null;
+    const milieu = () => { const r = frame.getBoundingClientRect(), p = [...ptrs.values()]; const a = p[0], b = p[1] || p[0]; return { x: (a[0] + b[0]) / 2 - r.left, y: (a[1] + b[1]) / 2 - r.top, d: p[1] ? Math.hypot(a[0] - b[0], a[1] - b[1]) : 0, ang: p[1] ? Math.atan2(b[1] - a[1], b[0] - a[0]) : 0 }; };
+    const libreActif = () => tool === 'mep' && sousMep === 'libre';
+    function debutGeste() {
+      const g = milieu();
+      geste = { m0: g, z0: vz.z, tx0: vz.tx, ty0: vz.ty, M0: M, mep0: mepDefautSiNul(), base: snap(), libre: libreActif(), n: ptrs.size };
+      if (!geste.libre) { draft = null; drag = null; guide = null; redraw(); }
+    }
+    const mepDefautSiNul = () => JSON.parse(JSON.stringify(mepEff()));
+    function suiteGeste() {
+      const g = milieu(), G = geste;
+      const k = G.m0.d > 8 && g.d > 0 ? g.d / G.m0.d : 1;
+      if (!G.libre) {
+        const z = Math.min(8, Math.max(1, G.z0 * k)), kk = z / G.z0;
+        vz.z = z;
+        vz.tx = z <= 1.001 ? 0 : g.x + kk * (G.tx0 - G.m0.x);
+        vz.ty = z <= 1.001 ? 0 : g.y + kk * (G.ty0 - G.m0.y);
+        if (z <= 1.001) { vz.z = 1; }
+        disposition(); redraw();
+        return;
+      }
+      const dA = G.m0.d > 8 && g.d > 0 ? g.ang - G.m0.ang : 0;
+      const Mn = new DOMMatrix().translate(g.x, g.y).rotate(dA * 180 / Math.PI).scale(k).translate(-G.m0.x, -G.m0.y).multiply(G.M0);
+      const s1 = Math.hypot(Mn.a, Mn.b);
+      let a1 = Math.atan2(Mn.b, Mn.a) * 180 / Math.PI;
+      const pas = 45, reste = ((a1 % pas) + pas) % pas;
+      if (Math.min(reste, pas - reste) < 1.2) a1 = Math.round(a1 / pas) * pas; // aimant à 0, 45, 90°…
+      const p0 = Mn.inverse().transformPoint(new DOMPoint(fr.w / 2, fr.h / 2)), th = a1 * Math.PI / 180;
+      const qx = p0.x - sw / 2, qy = p0.y - sh / 2;
+      mep = { v: MEP_VERSION, a: normAngle(a1), c: [(qx * Math.cos(th) - qy * Math.sin(th)) / sw, (qx * Math.sin(th) + qy * Math.cos(th)) / sw], w: fr.w / s1 / sw, h: fr.h / s1 / sw };
+      disposition();
+    }
+    frame.addEventListener('pointerdown', (e) => {
+      ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+      if (ptrs.size === 2 || (libreActif() && ptrs.size === 1)) {
+        if (libreActif() && ptrs.size === 1) { try { frame.setPointerCapture(e.pointerId); } catch (_) { /* ignoré */ } }
+        e.preventDefault(); e.stopPropagation();
+        debutGeste();
+      }
+    }, true);
+    frame.addEventListener('pointermove', (e) => {
+      if (!ptrs.has(e.pointerId)) return;
+      ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+      if (geste) { e.preventDefault(); e.stopPropagation(); suiteGeste(); }
+    }, true);
+    const finPtr = (e) => {
+      if (!ptrs.delete(e.pointerId) || !geste) return;
+      if (ptrs.size >= 1 && geste.libre) { debutGeste(); return; } // un doigt en moins : on repart de l'état courant
+      const G = geste;
+      geste = null;
+      if (G.libre) { mep = mepNormal(contenirMep(mepEff(), srcW(), srcH()), srcW(), srcH()); commit(G.base); disposition(); refresh(); }
+    };
+    frame.addEventListener('pointerup', finPtr, true);
+    frame.addEventListener('pointercancel', finPtr, true);
+    frame.addEventListener('wheel', (e) => {
+      if (tool === 'mep') return;
+      e.preventDefault();
+      const r = frame.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      const z = Math.min(8, Math.max(1, vz.z * Math.exp(-e.deltaY / 400))), kk = z / vz.z;
+      vz.tx = z <= 1.001 ? 0 : x + kk * (vz.tx - x); vz.ty = z <= 1.001 ? 0 : y + kk * (vz.ty - y); vz.z = z <= 1.001 ? 1 : z;
+      disposition();
+    }, { passive: false });
+
+    // ---- Boutons de la mise en page (ligne 2) : pivoter, transformation libre, recadrage (appui long : proportions), réinitialiser.
+    const btnRotH = btnIc('Pivoter de 90° dans le sens horaire', maskIc('rot-horaire'));
+    const btnRotA = btnIc('Pivoter de 90° dans le sens anti-horaire', maskIc('rot-antihoraire'));
+    const btnLibre = btnIc('Transformation libre : pivoter de −180° à +180°, zoomer, déplacer (deux doigts)', maskIc('rot-libre'));
+    const btnCrop = btnIc('Recadrer (appui long : proportions standard)', svgIc('<path d="M7 2.5v14.5h14.5"/><path d="M2.5 7H17v14.5"/>'), 'sig4cem-pe__ic--menu');
+    const btnReset = btnIc('Rétablir la photo d\'origine (sans rotation ni recadrage)', svgIc('<path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 3.5V8h4.5"/>'), 'sig4cem-pe__ic--droite');
+    const sepMep = h('span', { class: 'sig4cem-pe__sep' });
+    const mepBtns = [btnRotH, btnRotA, btnLibre, sepMep, btnCrop, btnReset];
+    ligne2.prepend(...mepBtns);
+    function agirMep(fn) {
+      if (edit) setEdit(null);
+      const base = snap();
+      fn();
+      commit(base);
+      disposition(); refresh();
+    }
+    btnRotH.addEventListener('click', () => agirMep(() => { mep = pivoterMep(mep, 1, srcW(), srcH()); if (ratioCadre) ratioCadre = 1 / ratioCadre; vz.z = 1; }));
+    btnRotA.addEventListener('click', () => agirMep(() => { mep = pivoterMep(mep, -1, srcW(), srcH()); if (ratioCadre) ratioCadre = 1 / ratioCadre; vz.z = 1; }));
+    btnLibre.addEventListener('click', () => { sousMep = sousMep === 'libre' ? 'crop' : 'libre'; vz.z = 1; vz.tx = vz.ty = 0; fermerMenu(); disposition(); refresh(); });
+    btnReset.addEventListener('click', () => agirMep(() => { mep = null; ratioCadre = null; vz.z = 1; }));
+    const RATIOS = [['libre', 'Libre'], ['orig', 'Original'], [1, '1 : 1'], [4 / 3, '4 : 3'], [3 / 2, '10 : 15'], [16 / 9, '16 : 9'], ['inv', 'Inverser portrait / paysage']];
+    function appliquerRatio(v) {
+      if (v === 'libre') { ratioCadre = null; refresh(); disposition(); return; }
+      agirMep(() => {
+        const m = mepEff(), W = srcW(), H = srcH();
+        if (v === 'inv') { if (ratioCadre) ratioCadre = 1 / ratioCadre; const c = m.c.slice(); mep = contenirMep({ v: MEP_VERSION, a: m.a, c, w: m.h, h: m.w }, W, H); return; }
+        const paysage = m.w >= m.h;
+        let asp;
+        if (v === 'orig') asp = Math.abs(Math.round(m.a / 90)) % 2 ? H / W : W / H;
+        else asp = paysage ? v : 1 / v;
+        ratioCadre = v === 'orig' ? null : asp;
+        const cur = { w: m.w, h: m.h };
+        let w = Math.min(cur.w, cur.h * asp), hh = w / asp;
+        if (v === 'orig') { const ins = cadreInscrit(m.a, asp, W, H); w = ins.w; hh = ins.h; mep = { v: MEP_VERSION, a: m.a, c: [0, 0], w, h: hh }; mep = mepNormal(mep, W, H); return; }
+        mep = mepNormal(contenirMep({ v: MEP_VERSION, a: m.a, c: m.c, w, h: hh }, W, H), W, H);
+      });
+    }
+    let appuiLong = null, longFait = false;
+    btnCrop.addEventListener('pointerdown', () => { longFait = false; clearTimeout(appuiLong); appuiLong = setTimeout(() => { longFait = true; ouvrirMenu(btnCrop, RATIOS.map(([val, txt]) => ({ val, titre: txt, ic: '', texte: txt })), ratioCadre ? RATIOS.find((r) => typeof r[0] === 'number' && Math.abs(Math.max(r[0], 1 / r[0]) - Math.max(ratioCadre, 1 / ratioCadre)) < 1e-3)?.[0] : 'libre', appliquerRatio); }, 450); });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btnCrop.addEventListener(ev, () => clearTimeout(appuiLong));
+    btnCrop.addEventListener('click', (e) => { e.stopPropagation(); if (longFait) { longFait = false; return; } sousMep = 'crop'; vz.z = 1; vz.tx = vz.ty = 0; fermerMenu(); disposition(); refresh(); });
+
 
     // ---- Formes : rectangle, ellipse, ligne brisée. Elles restent modifiables (poignées) jusqu'à confirmation (✓) ou changement d'outil.
     const poign = h('div', { class: 'sig4cem-pe__poign' });
@@ -829,10 +1134,10 @@ NS.PhotoEditor = {
     btnFOk.addEventListener('click', () => { if (polyDraft) terminerPoly(false, true); else setEdit(null); });
     btnFNon.addEventListener('click', () => {
       if (polyDraft) { polyDraft = null; redraw(); refresh(); return; }
-      if (editBase != null) { const b = editBase; editBase = null; list = JSON.parse(b); } else { const j = list.indexOf(edit); if (j >= 0) list.splice(j, 1); }
+      if (editBase != null) { const b = editBase; editBase = null; restaurer(b); } else { const j = list.indexOf(edit); if (j >= 0) list.splice(j, 1); }
       setEdit(null);
     });
-    stage.append(pill);
+    frame.append(pill);
     let poigns = []; // { el, kind: 'h' | 'rot' | 'move' | 'ok' | 'v', sx, sy, i }
     const cl = (t) => JSON.parse(JSON.stringify(t));
     const toPx = (p) => [p[0] * canvas.width, p[1] * canvas.height];
@@ -889,6 +1194,7 @@ NS.PhotoEditor = {
     function placePoignees() {
       const f = canvas.clientWidth / canvas.width;
       const put = (el, x, y) => { el.style.left = `${x * f}px`; el.style.top = `${y * f}px`; };
+      for (const o of poigns) o.el.style.transform = `rotate(${-thTot}rad) scale(${1 / sTot})`; // les poignées gardent la même taille à l'écran
       pill.hidden = !(edit || (polyDraft && polyDraft.length > 0));
       btnFOk.hidden = !!(polyDraft && polyDraft.length < 2);
       if (!edit) return;
@@ -902,22 +1208,22 @@ NS.PhotoEditor = {
       } else {
         const g = geomE(edit);
         const pt = (lx, ly) => { const q = tourne(lx, ly, g.r); return [g.cx + q[0], g.cy + q[1]]; };
-        for (const o of poigns) if (o.kind === 'h') { const q = pt(o.sx * g.hw, o.sy * g.hh); put(o.el, q[0], q[1]); const ar = o.el.querySelector('.sig4cem-pe__ar'); if (ar) ar.style.transform = `rotate(${g.r + (o.sx && !o.sy ? Math.PI / 2 : 0)}rad)`; }
-        const dec = 28 / f;
+        for (const o of poigns) if (o.kind === 'h') { const q = pt(o.sx * g.hw, o.sy * g.hh); put(o.el, q[0], q[1]); const ar = o.el.querySelector('.sig4cem-pe__ar'); if (ar) ar.style.transform = `rotate(${g.r + thTot + (o.sx && !o.sy ? Math.PI / 2 : 0)}rad)`; }
+        const dec = 28 / f / sTot;
         const d = tourne(-dec, -dec, g.r);
         haut = pt(-g.hw, -g.hh);
         haut = [haut[0] + d[0] + dec, haut[1] + d[1] + dec];
         const rotEl = poigns.find((o) => o.kind === 'rot');
-        if (rotEl) { const sv = rotEl.el.querySelector('svg'); if (sv) sv.style.transform = `rotate(${g.r}rad)`; }
+        if (rotEl) { const sv = rotEl.el.querySelector('svg'); if (sv) sv.style.transform = `rotate(${g.r + thTot}rad)`; }
       }
       // rotation : sur la diagonale à 45° du coin haut-gauche (déplacer : toucher l'intérieur de la forme)
-      const k = 1 / f, dec = 28 * k;
+      const k = 1 / f / sTot, dec = 28 * k;
       const rot = poigns.find((o) => o.kind === 'rot');
       if (rot) {
         const rx = Math.max(16 * k, Math.min(canvas.width - 16 * k, haut[0] - dec)), ry = Math.max(16 * k, Math.min(canvas.height - 16 * k, haut[1] - dec));
         put(rot.el, rx, ry);
         const mv = poigns.find((o) => o.kind === 'move'); // boîte de texte : le symbole de déplacement juste à côté de la rotation
-        if (mv) { put(mv.el, rx + 34 * k, ry); const sv = mv.el.querySelector('.sig4cem-ic'); if (sv) sv.style.transform = `rotate(${edit.r || 0}rad)`; }
+        if (mv) { put(mv.el, rx + 34 * k, ry); const sv = mv.el.querySelector('.sig4cem-ic'); if (sv) sv.style.transform = `rotate(${(edit.r || 0) + thTot}rad)`; }
       }
     }
     function liePoignee(o) {
@@ -950,7 +1256,7 @@ NS.PhotoEditor = {
     }
     function dansForme(t, p) {
       const [x, y] = toPx(p);
-      const k = canvas.width / (canvas.clientWidth || canvas.width);
+      const k = kEcr();
       if (t.t === 'arrow') return distSeg(x, y, [toPx(t.a), toPx(t.b)], false) < 16 * k;
       if (t.t === 'pen') { const g = geomE(t); return Math.abs(x - g.cx) <= g.hw + 12 * k && Math.abs(y - g.cy) <= g.hh + 12 * k; }
       if (t.t === 'poly') {
@@ -1119,7 +1425,7 @@ NS.PhotoEditor = {
         const [x, y] = toPx(p);
         if (polyDraft && polyDraft.length >= 3) {
           const [fx, fy] = toPx(polyDraft[0]);
-          if (Math.hypot(x - fx, y - fy) < 18 * canvas.width / (canvas.clientWidth || canvas.width)) { terminerPoly(true); return; }
+          if (Math.hypot(x - fx, y - fy) < 18 * kEcr()) { terminerPoly(true); return; }
         }
         polyDraft = (polyDraft || []).concat([p]);
         redraw(); refresh();
@@ -1160,7 +1466,7 @@ NS.PhotoEditor = {
       const prev = undoS.pop();
       if (prev == null) { refresh(); redraw(); return; }
       redoS.push(snap());
-      list = JSON.parse(prev);
+      restaurer(prev);
       refresh(); redraw();
     });
     btnRedo.addEventListener('click', () => {
@@ -1168,7 +1474,7 @@ NS.PhotoEditor = {
       const next = redoS.pop();
       if (next == null) { refresh(); return; }
       undoS.push(snap());
-      list = JSON.parse(next);
+      restaurer(next);
       refresh(); redraw();
     });
     btnClear.addEventListener('click', () => { polyDraft = null; if (edit) setEdit(null); const base = snap(); list = []; commit(base); refresh(); redraw(); });
@@ -1176,7 +1482,7 @@ NS.PhotoEditor = {
 
     // ---- Sélection : le plus haut objet touché ; ses réglages et ses poignées sont ceux d'une forme en cours de création.
     function toucher(p) {
-      const [x, y] = toPx(p), k = canvas.width / (canvas.clientWidth || canvas.width), m = 14 * k;
+      const [x, y] = toPx(p), k = kEcr(), m = 14 * k;
       for (let i = list.length - 1; i >= 0; i--) {
         const t = list[i];
         if (t.t === 'gomme' || t.hid) continue;
@@ -1232,7 +1538,7 @@ NS.PhotoEditor = {
       return { ic: t.tx ? maskIc('texte') : t.t === 'poly' && t.cl ? iconeDe('poly') : iconeDe(cle), nom, sub: sub.join(' · ') };
     }
     const objetsEl = h('div', { class: 'sig4cem-pe__objets', hidden: '' });
-    stage.append(objetsEl);
+    frame.append(objetsEl);
     function fermerObjets() { if (!objetsEl.hidden) { objetsEl.hidden = true; refresh(); } }
     function agir(t, fn, reselect) {
       if (edit) setEdit(null);
@@ -1291,9 +1597,10 @@ NS.PhotoEditor = {
     }
     btnOk.addEventListener('click', () => {
       finaliserTout();
+      mep = mepNormal(mep, img.naturalWidth, img.naturalHeight);
       list = list.filter((t) => t.t !== 'gomme' && !txVide(t));
       const masques = list.filter((t) => t.hid);
-      const fin = (garder) => { if (!garder) list = list.filter((t) => !t.hid); close(); onDone(list); };
+      const fin = (garder) => { if (!garder) list = list.filter((t) => !t.hid); close(); onDone(list, mep); };
       if (masques.length) dialogueMasques(masques, fin); else fin(true);
     });
     img.addEventListener('load', () => fit());

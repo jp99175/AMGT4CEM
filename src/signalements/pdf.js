@@ -23,7 +23,8 @@ function day(iso) {
 
 /** Photo + calque dans un seul JPEG (grand côté 1100 px) : { data, w, h } */
 async function composite(record) {
-  const base = await createImageBitmap(record.blob);
+  // Photo vue à travers sa mise en page (rotation, cadre) ; le calque d'annotations est déjà dans ce cadre.
+  const base = await createImageBitmap(record.mep && window.SIG4CEM && window.SIG4CEM.PhotoEditor ? await window.SIG4CEM.PhotoEditor.vue(record.blob, record.mep, 1100) : record.blob);
   const scale = Math.min(1, 1100 / Math.max(base.width, base.height));
   const c = document.createElement('canvas');
   c.width = Math.max(1, Math.round(base.width * scale));

@@ -227,7 +227,8 @@ SIG.List = {
           try {
             const rec = await NS.Pieces.get(meta.id);
             if (!rec) continue;
-            const thumb = h('span', { class: 'sig4cem-photo' }, h('img', { src: URL.createObjectURL(rec.blob), alt: `Photo ${i + 1}` }));
+            const vueBlob = rec.mep && SIG.PhotoEditor && SIG.PhotoEditor.vue ? await SIG.PhotoEditor.vue(rec.blob, rec.mep, 400) : rec.blob;
+            const thumb = h('span', { class: 'sig4cem-photo' }, h('img', { src: URL.createObjectURL(vueBlob), alt: `Photo ${i + 1}` }));
             if (rec.annot) thumb.append(h('img', { class: 'sig4cem-photo__overlay', src: URL.createObjectURL(rec.annot), alt: '' }));
             gallery.append(h('div', { class: 'sig4cem-photo-card' }, thumb,
               h('div', { class: 'sig4cem-photo-card__side' }, h('p', { class: 'sig4cem-photo__text', text: meta.commentaire || '' }))));

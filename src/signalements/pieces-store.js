@@ -79,13 +79,14 @@ NS.Pieces = {
   },
 
   /** Remet en stock une photo venue du serveur (révision d'une entrée envoyée) : fichier inchangé, calque et traits repris. */
-  async restore(pointId, { blob, sha256, sha256Original, annot, annotSha256, traits, annotModifie, annotV }) {
+  async restore(pointId, { blob, sha256, sha256Original, annot, annotSha256, traits, annotModifie, annotV, mep }) {
     const bitmap = await createImageBitmap(blob);
     const largeur = bitmap.width;
     const hauteur = bitmap.height;
     if (bitmap.close) bitmap.close();
     const id = crypto.randomUUID ? crypto.randomUUID() : `pc-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const record = { id, pointId, blob, sha256, sha256Original, largeur, hauteur };
+    if (mep) record.mep = mep;
     if (annot) { record.annot = annot; record.annotSha256 = annotSha256; if (traits && traits.length) record.traits = traits; if (annotModifie) record.annotModifie = annotModifie; if (annotV) record.annotV = annotV; }
     await this._tx('readwrite', (store) => store.put(record));
     return { id, taille: blob.size, largeur, hauteur, sha256, sha256Original, annotation: annot ? { taille: annot.size, sha256: annotSha256, modifie: annotModifie || null } : null };
@@ -114,6 +115,14 @@ NS.Pieces = {
     }
     await this._tx('readwrite', (store) => store.put(record));
     return record.annot ? { taille: record.annot.size, sha256: record.annotSha256, modifie: record.annotModifie } : null;
+  },
+
+  /** Mise en page de la photo (rotation, cadre) : réversible, la photo d'origine n'est pas modifiée. `null` : photo entière. */
+  async setMep(id, mep) {
+    const record = await this.get(id);
+    if (!record) throw new Error('Photo introuvable');
+    if (mep) record.mep = mep; else delete record.mep;
+    await this._tx('readwrite', (store) => store.put(record));
   },
 
   async get(id) {

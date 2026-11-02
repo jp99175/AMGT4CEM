@@ -29,6 +29,7 @@ NS.Importer = {
         traits: overlay && Array.isArray(p.annotations.traits) ? p.annotations.traits : null,
         annotModifie: overlay ? p.annotations.modifie || null : null,
         annotV: overlay ? p.annotations.v || 0 : 0,
+        mep: p.mep || null,
       });
       meta.commentaire = p.commentaire || '';
       pieces.push(meta);
