@@ -1118,14 +1118,14 @@ boutons et du texte des onglets), sans cadre autour des icônes seules :
 
 | Élément | Taille du dessin | Réalisation |
 |---|---|---|
-| Onglets Carte, Saisie, Réglages | 23 px de haut | Carte : tracé SVG dans `nav.js` ; Saisie et Réglages : images `icone-saisie.png`, `icone-reglages.png` (masque coloré par CSS) |
+| Onglets Carte, Saisie, Réglages | 23 px de haut | Carte : tracé SVG dans `nav.js` ; Saisie et Réglages : images `icone-saisie.svg`, `icone-reglages.svg` (masque coloré par CSS) |
 | Boutons ronds de la carte : loupe, latte, chaîne, compas, sondage | bouton de 55 px, cercle de 51 px (liseré blanc de 2 px) | SVG dans `mesureIcones.js` |
-| Boutons ronds Couches et Ajouter un point | idem (dessin réduit à 93,2 %) | masques `couches-bouton.png`, `ajouter-point.png` (CSS de `couches.css`) |
+| Boutons ronds Couches et Ajouter un point | idem (dessin réduit à 93,2 %) | masques `couches-bouton.svg`, `ajouter-point.svg` (CSS de `couches.css`) |
 | Pied du bandeau Couches : disquette, flèches circulaires, fermeture des sélecteurs | 23 px | SVG dans `couches.js` (`svgIcone`) |
-| Fermeture du bandeau, curseurs d'opacité et de réglages, croix de la fenêtre d'un signalement | 23 px | `icone-fermer-bandeau.png` ; curseurs et croix : masques en SVG dans `couches.css` et `nav.css` |
+| Fermeture du bandeau, curseurs d'opacité et de réglages, croix de la fenêtre d'un signalement | 23 px | `icone-fermer-bandeau.svg` ; curseurs et croix : masques en SVG dans `couches.css` et `nav.css` |
 | Logo du bandeau | 40 px de haut | SVG dans `couches.js` : cœur plein, pétales à contour et hachures de 0,8 px |
 
-Les images masque sont des `.png` à fond transparent : la couleur vient du CSS (`background: currentColor`), ce qui permet
+Les images masque sont des `.svg` vectoriels (tracés remplis, dessinés depuis les masques raster d'origine, qui étaient des `.png` ; plus de PNG dans le dépôt, hors logos et Leaflet) : la couleur vient du CSS (`background: currentColor`), ce qui permet
 l'inversion (blanc sur bleu quand l'outil est actif). Les dessins viennent des tracés de Jph, remis à une épaisseur
 uniforme par un traitement hors dépôt. Il reste des symboles texte (💾 ✕ ✓ ✥ 🗑 …) dans les fenêtres de réglages, la saisie
 et les éditeurs : ils seront harmonisés par lots (voir `refonte-interface-reglages.md`).

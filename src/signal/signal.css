@@ -153,8 +153,8 @@ html[data-app="signal"] body {
 .sig4cem-photo-buttons { display: flex; gap: 8px; align-items: center; }
 .sig4cem-link { padding: 8px 0; background: none; border: none; color: #1565c0; font-size: 16px; text-decoration: underline; cursor: pointer; }
 .sig4cem-ic { display: block; flex: none; background: #0b5c75; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
-.sig4cem-ic--punaise { width: 11.5px; height: 23px; margin: 0 2px; cursor: pointer; -webkit-mask-image: url(icone-punaise.png); mask-image: url(icone-punaise.png); }
-.sig4cem-ic--objectif { width: 23px; height: 22.75px; -webkit-mask-image: url(icone-objectif.png); mask-image: url(icone-objectif.png); }
+.sig4cem-ic--punaise { width: 11.5px; height: 23px; margin: 0 2px; cursor: pointer; -webkit-mask-image: url(icone-punaise.svg); mask-image: url(icone-punaise.svg); }
+.sig4cem-ic--objectif { width: 23px; height: 22.75px; -webkit-mask-image: url(icone-objectif.svg); mask-image: url(icone-objectif.svg); }
 .sig4cem-btn--icon { box-shadow: none; padding: 4px; font-size: 18px; line-height: 1; background: transparent; border: none; cursor: pointer; }
 .sig4cem-photos { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
 .sig4cem-photo-card { display: flex; gap: 10px; align-items: flex-start; }
@@ -237,15 +237,15 @@ html[data-app="signal"] body {
 .sig4cem-identity { margin: 0 0 6px; font-size: 13px; color: #52606d; }
 
 /* Icônes de l'éditeur de photo et corbeilles : masques PNG au trait de 0,8 px, couleur du texte du bouton (blanc si actif) */
-.sig4cem-ic--fleche { width: 21.5px; height: 10px; -webkit-mask-image: url(icone-fleche.png); mask-image: url(icone-fleche.png); }
-.sig4cem-ic--cercle { width: 22.5px; height: 23px; -webkit-mask-image: url(icone-cercle.png); mask-image: url(icone-cercle.png); }
-.sig4cem-ic--palette { width: 22.5px; height: 22.75px; -webkit-mask-image: url(icone-palette.png); mask-image: url(icone-palette.png); }
-.sig4cem-ic--texte { width: 24.5px; height: 23px; -webkit-mask-image: url(icone-texte.png); mask-image: url(icone-texte.png); }
-.sig4cem-ic--pinceau { width: 22px; height: 16.75px; -webkit-mask-image: url(icone-pinceau.png); mask-image: url(icone-pinceau.png); }
-.sig4cem-ic--epaisseur { width: 22px; height: 16px; -webkit-mask-image: url(icone-epaisseur.png); mask-image: url(icone-epaisseur.png); }
-.sig4cem-ic--crayon { width: 23px; height: 23px; -webkit-mask-image: url(icone-crayon.png); mask-image: url(icone-crayon.png); }
-.sig4cem-ic--gomme { width: 24.5px; height: 23px; -webkit-mask-image: url(icone-gomme.png); mask-image: url(icone-gomme.png); }
-.sig4cem-ic--poubelle { width: 20px; height: 23px; -webkit-mask-image: url(icone-poubelle.png); mask-image: url(icone-poubelle.png); }
+.sig4cem-ic--fleche { width: 21.5px; height: 10px; -webkit-mask-image: url(icone-fleche.svg); mask-image: url(icone-fleche.svg); }
+.sig4cem-ic--cercle { width: 22.5px; height: 23px; -webkit-mask-image: url(icone-cercle.svg); mask-image: url(icone-cercle.svg); }
+.sig4cem-ic--palette { width: 22.5px; height: 22.75px; -webkit-mask-image: url(icone-palette.svg); mask-image: url(icone-palette.svg); }
+.sig4cem-ic--texte { width: 24.5px; height: 23px; -webkit-mask-image: url(icone-texte.svg); mask-image: url(icone-texte.svg); }
+.sig4cem-ic--pinceau { width: 22px; height: 16.75px; -webkit-mask-image: url(icone-pinceau.svg); mask-image: url(icone-pinceau.svg); }
+.sig4cem-ic--epaisseur { width: 22px; height: 16px; -webkit-mask-image: url(icone-epaisseur.svg); mask-image: url(icone-epaisseur.svg); }
+.sig4cem-ic--crayon { width: 23px; height: 23px; -webkit-mask-image: url(icone-crayon.svg); mask-image: url(icone-crayon.svg); }
+.sig4cem-ic--gomme { width: 24.5px; height: 23px; -webkit-mask-image: url(icone-gomme.svg); mask-image: url(icone-gomme.svg); }
+.sig4cem-ic--poubelle { width: 20px; height: 23px; -webkit-mask-image: url(icone-poubelle.svg); mask-image: url(icone-poubelle.svg); }
 .sig4cem-btn--primary .sig4cem-ic { background: #fff; }
 .sig4cem-btn .sig4cem-ic, .sig4cem-trash .sig4cem-ic { display: inline-block; vertical-align: middle; }
 .sig4cem-btn--ico { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; }
@@ -293,10 +293,10 @@ html[data-app="signal"] body {
 .sig4cem-pe__hd--h:hover .sig4cem-pe__ar, .sig4cem-pe__hd--v:hover .sig4cem-pe__ar, .sig4cem-pe__hd--act .sig4cem-pe__ar { display: block; }
 .sig4cem-pe__hd--rot, .sig4cem-pe__hd--move, .sig4cem-pe__hd--ok, .sig4cem-pe__hd--cancel { background: rgba(255, 255, 255, 0.85); border-radius: 8px; }
 .sig4cem-pe__hd--move .sig4cem-ic { background: #1e88e5; }
-.sig4cem-ic--deplacer { width: 21px; height: 20.25px; -webkit-mask-image: url(icone-deplacer.png); mask-image: url(icone-deplacer.png); }
-.sig4cem-ic--redim-diag1 { width: 18px; height: 18px; -webkit-mask-image: url(icone-redim-diag1.png); mask-image: url(icone-redim-diag1.png); }
-.sig4cem-ic--redim-diag2 { width: 18px; height: 18px; -webkit-mask-image: url(icone-redim-diag2.png); mask-image: url(icone-redim-diag2.png); }
-.sig4cem-ic--redim-vert { width: 8.5px; height: 21px; -webkit-mask-image: url(icone-redim-vert.png); mask-image: url(icone-redim-vert.png); }
+.sig4cem-ic--deplacer { width: 21px; height: 20.25px; -webkit-mask-image: url(icone-deplacer.svg); mask-image: url(icone-deplacer.svg); }
+.sig4cem-ic--redim-diag1 { width: 18px; height: 18px; -webkit-mask-image: url(icone-redim-diag1.svg); mask-image: url(icone-redim-diag1.svg); }
+.sig4cem-ic--redim-diag2 { width: 18px; height: 18px; -webkit-mask-image: url(icone-redim-diag2.svg); mask-image: url(icone-redim-diag2.svg); }
+.sig4cem-ic--redim-vert { width: 8.5px; height: 21px; -webkit-mask-image: url(icone-redim-vert.svg); mask-image: url(icone-redim-vert.svg); }
 .sig4cem-pe__color--aucun { background: #fff; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 .sig4cem-pe__color--aucun[hidden] { display: none; }
 .sig4cem-pe__pill { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 5; display: flex; gap: 4px; padding: 3px 8px; background: rgba(255, 255, 255, 0.95); border-radius: 23px; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35); line-height: 0; }

@@ -130,7 +130,7 @@ html.amgt-has-nav .amgt-bore-panel__btn.amgt-ic-btn:hover:not(:disabled) { backg
 .amgt-couches-pied__gauche { gap: 4px; }
 
 /* « Ajouter un point » : bouton rond de 55 px, même dessin fin que les boutons de mesure (cercle compris dans le dessin).
-   Le dessin est un masque (ajouter-point.png) coloré par la couleur du texte : bleu au repos, blanc quand l'outil est actif. */
+   Le dessin est un masque (ajouter-point.svg) coloré par la couleur du texte : bleu au repos, blanc quand l'outil est actif. */
 html[data-page="carto"] #amgt-add-point-btn {
   box-sizing: border-box;
   width: 55px;
@@ -152,8 +152,8 @@ html[data-page="carto"] #amgt-add-point-btn::before {
   width: 55px;
   height: 55px;
   background: currentColor;
-  -webkit-mask: url('./ajouter-point.png') center / 93.2% no-repeat;
-  mask: url('./ajouter-point.png') center / 93.2% no-repeat;
+  -webkit-mask: url('./ajouter-point.svg') center / 93.2% no-repeat;
+  mask: url('./ajouter-point.svg') center / 93.2% no-repeat;
   pointer-events: none;
 }
 html[data-page="carto"] #amgt-add-point-btn:hover { background: #e8f2f6; }
@@ -161,7 +161,7 @@ html[data-page="carto"] #amgt-add-point-btn.amgt-btn--active,
 html[data-page="carto"] #amgt-add-point-btn.amgt-btn--active:hover { background: #0b5c75; color: #fff; }
 
 /* Bouton « Couches » : rond, 55 px, même dessin fin que les autres boutons ronds de la carte (cercle compris).
-   Le dessin est un masque (couches-bouton.png) coloré par la couleur du texte. */
+   Le dessin est un masque (couches-bouton.svg) coloré par la couleur du texte. */
 html[data-page="carto"] #amgt-menu-btn {
   box-sizing: border-box;
   width: 55px;
@@ -179,21 +179,21 @@ html[data-page="carto"] #amgt-menu-btn::before {
   width: 55px;
   height: 55px;
   background: currentColor;
-  -webkit-mask: url('./couches-bouton.png') center / 93.2% no-repeat;
-  mask: url('./couches-bouton.png') center / 93.2% no-repeat;
+  -webkit-mask: url('./couches-bouton.svg') center / 93.2% no-repeat;
+  mask: url('./couches-bouton.svg') center / 93.2% no-repeat;
   pointer-events: none;
 }
 html[data-page="carto"] #amgt-menu-btn:hover { background: #e8f2f6; }
 
-/* Fermeture du bandeau : dessin de 23 px, trait de 0,8 px (masque icone-fermer-bandeau.png), bleu des boutons. */
+/* Fermeture du bandeau : dessin de 23 px, trait de 0,8 px (masque icone-fermer-bandeau.svg), bleu des boutons. */
 .amgt-couches-fermer { color: #0b5c75; }
 .amgt-couches-fermer__ic {
   display: block;
   width: 24px;
   height: 24px;
   background: currentColor;
-  -webkit-mask: url('./icone-fermer-bandeau.png') center / 100% 100% no-repeat;
-  mask: url('./icone-fermer-bandeau.png') center / 100% 100% no-repeat;
+  -webkit-mask: url('./icone-fermer-bandeau.svg') center / 100% 100% no-repeat;
+  mask: url('./icone-fermer-bandeau.svg') center / 100% 100% no-repeat;
   pointer-events: none;
 }
 
