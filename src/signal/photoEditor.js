@@ -378,6 +378,7 @@ NS.PhotoEditor = {
     let polyDraft = null; // sommets d'une ligne brisée en cours de pose
     let guide = null; // repère en pointillés : { type: 'med' | 'diag', sx, sy }
     let mep = mep0 ? JSON.parse(JSON.stringify(mep0)) : null; // mise en page enregistrée (null : photo entière)
+    let mepEntry = null; // état à l'entrée en mode Mise en page : « Annuler » le rétablit
     let sousMep = 'crop'; // en mode Mise en page : 'crop' (cadre) ou 'libre' (transformation libre à deux doigts)
     let ratioCadre = null; // proportion verrouillée du cadre (largeur / hauteur), null : libre
     const vz = { z: 1, tx: 0, ty: 0 }; // zoom d'affichage (non enregistré), en px du cadre
@@ -407,7 +408,9 @@ NS.PhotoEditor = {
         if (polyDraft || (edit && tool !== 'select')) return;
         if (edit) setEdit(null);
         const modes = ['text', 'select', 'mep'];
+        const entrait = tool !== 'mep' && k === 'mep';
         if (modes.includes(k)) { if (tool !== k) { if (!modes.includes(tool)) dernierDessin = tool; tool = k; vz.z = 1; vz.tx = vz.ty = 0; } } else if (modes.includes(tool)) { tool = dernierDessin; vz.z = 1; vz.tx = vz.ty = 0; }
+        if (entrait) mepEntry = { base: snap(), n: undoS.length }; else if (tool !== 'mep') mepEntry = null;
         nuancier.hidden = true; fermerMenu(); fermerObjets(); disposition(); refresh(); redraw();
       });
       b.dataset.tool = k;
@@ -558,7 +561,7 @@ NS.PhotoEditor = {
       disposition();
       redraw();
       refresh();
-      if (opts && opts.outil === 'mep' && tool !== 'mep') { dernierDessin = tool; tool = 'mep'; disposition(); refresh(); }
+      if (opts && opts.outil === 'mep' && tool !== 'mep') { dernierDessin = tool; tool = 'mep'; mepEntry = { base: snap(), n: undoS.length }; disposition(); refresh(); }
     }
     function redraw() {
       const ctx = canvas.getContext('2d');
@@ -943,6 +946,7 @@ NS.PhotoEditor = {
       Object.assign(frame.style, { left: `${fr.x}px`, top: `${fr.y}px`, width: `${fr.w}px`, height: `${fr.h}px` });
       stage.style.transform = M.toString();
       canvas.style.pointerEvents = tool === 'mep' ? 'none' : '';
+      pillMep.hidden = tool !== 'mep';
       badgeZoom.hidden = !(vz.z > 1.001 && tool !== 'mep');
       badgeZoom.textContent = `⤢ ${Math.round(vz.z * 100)} %`;
       majCadre();
@@ -1086,8 +1090,22 @@ NS.PhotoEditor = {
     const btnRotA = btnIc('Pivoter de 90° dans le sens anti-horaire', maskIc('rot-antihoraire'));
     const btnLibre = btnIc('Transformation libre : pivoter de −180° à +180°, zoomer, déplacer (deux doigts)', maskIc('rot-libre'));
     const btnCrop = btnIc('Recadrer (appui long : proportions standard)', svgIc('<path d="M7 2.5v14.5h14.5"/><path d="M2.5 7H17v14.5"/>'), 'sig4cem-pe__ic--menu');
-    const btnReset = btnIc('Rétablir la photo d\'origine (sans rotation ni recadrage)', svgIc('<path d="M4 12a8 8 0 1 0 2.6-5.9"/><path d="M4 3.5V8h4.5"/>'), 'sig4cem-pe__ic--droite');
+    const btnReset = btnIc('Rétablir la photo d\'origine (sans rotation ni recadrage)', svgIc(FLECHE), 'sig4cem-pe__ic--droite');
     const sepMep = h('span', { class: 'sig4cem-pe__sep' });
+    // Sortie du mode Mise en page : ✓ garde les changements, ✗ les annule tous ; on revient à l'outil précédent.
+    const quitterMep = (garder) => {
+      if (edit) setEdit(null);
+      if (!garder && mepEntry) { undoS.length = Math.min(undoS.length, mepEntry.n); redoS.length = 0; restaurer(mepEntry.base); }
+      mepEntry = null; sousMep = 'crop'; ratioCadre = null; vz.z = 1; vz.tx = vz.ty = 0;
+      tool = dernierDessin;
+      fermerMenu(); disposition(); refresh(); redraw();
+    };
+    const btnMNon = btnIc('Annuler les changements de mise en page', '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>');
+    const btnMOk = btnIc('Valider la mise en page', '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"/></svg>');
+    btnMNon.addEventListener('click', () => quitterMep(false));
+    btnMOk.addEventListener('click', () => quitterMep(true));
+    const pillMep = h('div', { class: 'sig4cem-pe__pill sig4cem-pe__pill--mep', hidden: '' }, btnMNon, btnMOk);
+    frame.append(pillMep);
     const mepBtns = [btnRotH, btnRotA, btnLibre, sepMep, btnCrop, btnReset];
     ligne2.prepend(...mepBtns);
     function agirMep(fn) {
