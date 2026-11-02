@@ -672,6 +672,7 @@ NS.PhotoEditor = {
         ligne2.querySelectorAll('.sig4cem-pe__sep').forEach((e) => { e.hidden = e !== sepMep; });
         btnLibre.classList.toggle('sig4cem-pe__ic--on', sousMep === 'libre');
         btnCrop.classList.toggle('sig4cem-pe__ic--on', sousMep === 'crop');
+        btnReset.disabled = mepNormal(mep, srcW(), srcH()) == null;
       }
       majFormats();
       if (!objetsEl.hidden) majObjets();
@@ -1088,6 +1089,8 @@ NS.PhotoEditor = {
     const btnRotA = btnIc('Pivoter de 90° dans le sens anti-horaire', maskIc('rot-antihoraire'));
     const btnLibre = btnIc('Transformation libre : pivoter de −180° à +180°, zoomer, déplacer (deux doigts)', maskIc('rot-libre'));
     const btnCrop = btnIc('Recadrer (appui long : proportions standard)', svgIc('<path d="M7 2.5v14.5h14.5"/><path d="M2.5 7H17v14.5"/>'), 'sig4cem-pe__ic--menu');
+    const btnReset = btnIc('Remettre le cadrage d\'origine (photo entière, sans rotation)', svgIc('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'), 'sig4cem-pe__ic--droite');
+    btnReset.addEventListener('click', () => agirMep(() => { mep = null; ratioCadre = null; vz.z = 1; vz.tx = vz.ty = 0; }));
     const sepMep = h('span', { class: 'sig4cem-pe__sep' });
     // Sortie du mode Mise en page : ✓ garde les changements, ✗ les annule tous ; on revient à l'outil précédent.
     const quitterMep = (garder) => {
@@ -1099,10 +1102,9 @@ NS.PhotoEditor = {
     };
     const btnMNon = btnIc('Annuler les changements de mise en page', '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>');
     const btnMOk = btnIc('Valider la mise en page', '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"/></svg>');
-    btnMNon.classList.add('sig4cem-pe__ic--droite');
     btnMNon.addEventListener('click', () => quitterMep(false));
     btnMOk.addEventListener('click', () => quitterMep(true));
-    const mepBtns = [btnRotH, btnRotA, btnLibre, sepMep, btnCrop, btnMNon, btnMOk];
+    const mepBtns = [btnRotH, btnRotA, btnLibre, sepMep, btnCrop, btnReset, btnMNon, btnMOk];
     ligne2.prepend(...mepBtns);
     function agirMep(fn) {
       if (edit) setEdit(null);
