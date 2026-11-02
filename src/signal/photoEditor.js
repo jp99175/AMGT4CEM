@@ -955,6 +955,25 @@ NS.PhotoEditor = {
     badgeZoom.addEventListener('click', () => { vz.z = 1; vz.tx = vz.ty = 0; disposition(); });
     frame.append(badgeZoom);
     const gridLibre = h('div', { class: 'sig4cem-pe__grille', hidden: '' });
+    // Curseur d'angle (écran non tactile, ou réglage fin) : −180° à +180°, zéro au centre ; la rotation se fait autour du centre du cadre.
+    const rotRange = h('input', { type: 'range', min: '-180', max: '180', step: '0.5', value: '0', 'aria-label': 'Angle de rotation en degrés' });
+    const rotVal = h('button', { type: 'button', class: 'sig4cem-pe__rot-val', title: 'Remettre à 0°' });
+    const rotBar = h('div', { class: 'sig4cem-pe__rot', hidden: '' }, h('div', { class: 'sig4cem-pe__rot-t' }, h('span', { text: '−180°' }), rotVal, h('span', { text: '+180°' })), rotRange);
+    frame.append(rotBar);
+    let rotBase = null;
+    function fixerAngle(a1, final) {
+      const m = mepEff();
+      if (rotBase == null) rotBase = snap();
+      const pas = 45, reste = ((a1 % pas) + pas) % pas;
+      if (Math.min(reste, pas - reste) < 0.3) a1 = Math.round(a1 / pas) * pas; // aimant à 0, ±45, ±90°…
+      const d = (a1 - m.a) * Math.PI / 180, co = Math.cos(d), si = Math.sin(d);
+      mep = { v: MEP_VERSION, a: normAngle(a1), c: [m.c[0] * co - m.c[1] * si, m.c[0] * si + m.c[1] * co], w: m.w, h: m.h }; // le point de la photo au centre du cadre y reste
+      if (final) { mep = mepNormal(contenirMep(mep, srcW(), srcH()), srcW(), srcH()); commit(rotBase); rotBase = null; refresh(); }
+      disposition();
+    }
+    rotRange.addEventListener('input', () => fixerAngle(Number(rotRange.value), false));
+    rotRange.addEventListener('change', () => fixerAngle(Number(rotRange.value), true));
+    rotVal.addEventListener('click', () => fixerAngle(0, true));
     const angleEl = h('div', { class: 'sig4cem-pe__angle', hidden: '' });
     frame.append(gridLibre, angleEl);
 
@@ -970,6 +989,8 @@ NS.PhotoEditor = {
       cadreEl.hidden = !modeCadre();
       gridLibre.hidden = !(tool === 'mep' && sousMep === 'libre');
       angleEl.hidden = gridLibre.hidden;
+      rotBar.hidden = gridLibre.hidden;
+      if (!rotBar.hidden) { rotRange.value = String(mepEff().a); rotVal.textContent = `${mepEff().a > 0 ? '+' : mepEff().a < 0 ? '−' : ''}${Math.abs(mepEff().a).toFixed(1).replace('.', ',')}°`; }
       if (!gridLibre.hidden) angleEl.textContent = `${mepEff().a >= 0 ? '+' : '−'}${Math.abs(mepEff().a).toFixed(1).replace('.', ',')}°`;
       if (cadreEl.hidden) return;
       const r = rectCadre();
@@ -1054,6 +1075,7 @@ NS.PhotoEditor = {
       disposition();
     }
     frame.addEventListener('pointerdown', (e) => {
+      if (e.target.closest && e.target.closest('.sig4cem-pe__rot, .sig4cem-pe__zoom')) return; // curseur d'angle et bandeau de zoom : leurs propres commandes
       ptrs.set(e.pointerId, [e.clientX, e.clientY]);
       if (ptrs.size === 2 || (libreActif() && ptrs.size === 1)) {
         if (libreActif() && ptrs.size === 1) { try { frame.setPointerCapture(e.pointerId); } catch (_) { /* ignoré */ } }
