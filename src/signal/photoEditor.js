@@ -672,7 +672,6 @@ NS.PhotoEditor = {
         ligne2.querySelectorAll('.sig4cem-pe__sep').forEach((e) => { e.hidden = e !== sepMep; });
         btnLibre.classList.toggle('sig4cem-pe__ic--on', sousMep === 'libre');
         btnCrop.classList.toggle('sig4cem-pe__ic--on', sousMep === 'crop');
-        btnReset.disabled = mepNormal(mep, srcW(), srcH()) == null;
       }
       majFormats();
       if (!objetsEl.hidden) majObjets();
@@ -946,7 +945,6 @@ NS.PhotoEditor = {
       Object.assign(frame.style, { left: `${fr.x}px`, top: `${fr.y}px`, width: `${fr.w}px`, height: `${fr.h}px` });
       stage.style.transform = M.toString();
       canvas.style.pointerEvents = tool === 'mep' ? 'none' : '';
-      pillMep.hidden = tool !== 'mep';
       badgeZoom.hidden = !(vz.z > 1.001 && tool !== 'mep');
       badgeZoom.textContent = `⤢ ${Math.round(vz.z * 100)} %`;
       majCadre();
@@ -1090,7 +1088,6 @@ NS.PhotoEditor = {
     const btnRotA = btnIc('Pivoter de 90° dans le sens anti-horaire', maskIc('rot-antihoraire'));
     const btnLibre = btnIc('Transformation libre : pivoter de −180° à +180°, zoomer, déplacer (deux doigts)', maskIc('rot-libre'));
     const btnCrop = btnIc('Recadrer (appui long : proportions standard)', svgIc('<path d="M7 2.5v14.5h14.5"/><path d="M2.5 7H17v14.5"/>'), 'sig4cem-pe__ic--menu');
-    const btnReset = btnIc('Rétablir la photo d\'origine (sans rotation ni recadrage)', svgIc(FLECHE), 'sig4cem-pe__ic--droite');
     const sepMep = h('span', { class: 'sig4cem-pe__sep' });
     // Sortie du mode Mise en page : ✓ garde les changements, ✗ les annule tous ; on revient à l'outil précédent.
     const quitterMep = (garder) => {
@@ -1102,11 +1099,10 @@ NS.PhotoEditor = {
     };
     const btnMNon = btnIc('Annuler les changements de mise en page', '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>');
     const btnMOk = btnIc('Valider la mise en page', '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"/></svg>');
+    btnMNon.classList.add('sig4cem-pe__ic--droite');
     btnMNon.addEventListener('click', () => quitterMep(false));
     btnMOk.addEventListener('click', () => quitterMep(true));
-    const pillMep = h('div', { class: 'sig4cem-pe__pill sig4cem-pe__pill--mep', hidden: '' }, btnMNon, btnMOk);
-    frame.append(pillMep);
-    const mepBtns = [btnRotH, btnRotA, btnLibre, sepMep, btnCrop, btnReset];
+    const mepBtns = [btnRotH, btnRotA, btnLibre, sepMep, btnCrop, btnMNon, btnMOk];
     ligne2.prepend(...mepBtns);
     function agirMep(fn) {
       if (edit) setEdit(null);
@@ -1118,7 +1114,6 @@ NS.PhotoEditor = {
     btnRotH.addEventListener('click', () => agirMep(() => { mep = pivoterMep(mep, 1, srcW(), srcH()); if (ratioCadre) ratioCadre = 1 / ratioCadre; vz.z = 1; }));
     btnRotA.addEventListener('click', () => agirMep(() => { mep = pivoterMep(mep, -1, srcW(), srcH()); if (ratioCadre) ratioCadre = 1 / ratioCadre; vz.z = 1; }));
     btnLibre.addEventListener('click', () => { sousMep = sousMep === 'libre' ? 'crop' : 'libre'; vz.z = 1; vz.tx = vz.ty = 0; fermerMenu(); disposition(); refresh(); });
-    btnReset.addEventListener('click', () => agirMep(() => { mep = null; ratioCadre = null; vz.z = 1; }));
     const RATIOS = [['libre', 'Libre'], ['orig', 'Original'], [1, '1 : 1'], [4 / 3, '4 : 3'], [3 / 2, '10 : 15'], [16 / 9, '16 : 9'], ['inv', 'Inverser portrait / paysage']];
     function appliquerRatio(v) {
       if (v === 'libre') { ratioCadre = null; refresh(); disposition(); return; }
