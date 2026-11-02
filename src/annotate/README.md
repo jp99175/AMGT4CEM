@@ -36,7 +36,7 @@ La photo d'origine n'est **jamais modifiée**. Les annotations et la mise en pag
 - **`traits`** (liste d'objets, du dessous vers le dessus), coordonnées relatives à la photo entière (0..1) :
   `pen` (p), `arrow` (a, b), `rect` / `ellipse` (a, b, r), `poly` (p, cl), boîtes de texte (`tx: true, tc, s, al, txt: [{t, b, i, u, x}]`).
   Champs communs : `c` (couleur, null = sans cadre), `w` (épaisseur), `o` (opacité), `ty` (plein / tirets / points / nuage),
-  `ed` / `ef` (terminaisons), `fc` (remplissage), `hid` (objet masqué).
+  `ed` / `ef` (terminaisons), `fc` (remplissage), `hid` (objet masqué), `nom` (nom donné par l'utilisateur dans la liste des objets, facultatif ; absent = nom du type).
 - **`mep`** (mise en page) : `{ v: 1, a, c: [x, y], w, h }` ; `a` = rotation en degrés (sens horaire) autour du centre de la photo ;
   le cadre (la vue finale) est un rectangle `w × h` centré en `c` dans le repère pivoté ; longueurs en largeurs de photo
   (la photo mesure 1 × H/W). `null` = photo entière, sans rotation.

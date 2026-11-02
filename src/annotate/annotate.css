@@ -84,6 +84,12 @@
 .annotate-objets[hidden] { display: none; }
 .annotate-objets-t { padding: 2px 6px 6px; font: 11.5px system-ui, sans-serif; color: #7b8794; }
 .annotate-obj { display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 8px; font: 13px system-ui, sans-serif; color: #1f2933; cursor: pointer; }
+.annotate-obj { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.annotate-obj--drag { position: relative; z-index: 2; background: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); }
+.annotate-obj--av { box-shadow: 0 -2px 0 #1e88e5; }
+.annotate-obj--ap { box-shadow: 0 2px 0 #1e88e5; }
+.annotate-obj-nom { width: 100%; box-sizing: border-box; padding: 2px 4px; border: 1px solid #1e88e5; border-radius: 6px; font: 600 13px system-ui, sans-serif; color: #1f2933; user-select: text; -webkit-user-select: text; }
+.annotate-objets-aide { padding-top: 0; font-size: 11px; }
 .annotate-obj--sel { background: #e3f0f5; outline: 1px solid #1e88e5; }
 .annotate-obj--hid { opacity: 0.55; }
 .annotate-obj-ic { flex: none; width: 26px; display: flex; justify-content: center; color: #0b5c75; }

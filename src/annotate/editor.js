@@ -759,7 +759,7 @@ const SOUS_OUTILS = [
       disposition();
     }
     frame.addEventListener('pointerdown', (e) => {
-      if (e.target.closest && e.target.closest('.annotate-rot, .annotate-zoom')) return; // curseur d'angle et bandeau de zoom : leurs propres commandes
+      if (e.target.closest && e.target.closest('.annotate-rot, .annotate-zoom, .annotate-objets')) return; // curseur d'angle et bandeau de zoom : leurs propres commandes
       ptrs.set(e.pointerId, [e.clientX, e.clientY]);
       if (ptrs.size === 2 || (libreActif() && ptrs.size === 1)) {
         if (libreActif() && ptrs.size === 1) { try { frame.setPointerCapture(e.pointerId); } catch (_) { /* ignoré */ } }
@@ -1250,7 +1250,8 @@ const SOUS_OUTILS = [
       }
       if (t.o != null && t.o < 1) sub.push(`${Math.round(t.o * 100)} %`);
       if (t.hid) sub.push('masqué');
-      return { ic: t.tx ? maskIc('texte') : t.t === 'poly' && t.cl ? iconeDe('poly') : iconeDe(cle), nom, sub: sub.join(' · ') };
+      if (t.nom) sub.unshift(nom); // nom donné par l'utilisateur : le type passe en second
+      return { ic: t.tx ? maskIc('texte') : t.t === 'poly' && t.cl ? iconeDe('poly') : iconeDe(cle), nom: t.nom || nom, defaut: nom, sub: sub.join(' · ') };
     }
     const objetsEl = h('div', { class: 'annotate-objets', hidden: '' });
     frame.append(objetsEl);
@@ -1263,9 +1264,95 @@ const SOUS_OUTILS = [
       if (reselect && list.includes(t)) selectionner(t);
       refresh(); redraw();
     }
+    let rangees = []; // lignes affichées de la liste : { el, t }, du plus haut au plus bas
+    let glisseA = 0; // instant de la dernière fin de glissement (le clic qui suit est ignoré)
+    // Renommer : le nom se saisit à la place du titre de la ligne ; vide = nom d'origine (type de l'objet).
+    function renommer(ligneEl, t) {
+      const b = ligneEl.querySelector('.annotate-obj-t b');
+      if (!b) return;
+      const input = h('input', { type: 'text', class: 'annotate-obj-nom', maxlength: '40', value: t.nom || '', placeholder: descr(t).defaut, 'aria-label': "Nom de l'objet" });
+      let fini = false;
+      const fin = (ok) => {
+        if (fini) return;
+        fini = true;
+        const v = input.value.replace(/\s+/g, ' ').trim().slice(0, 40);
+        if (ok && v !== (t.nom || '')) agir(t, () => { if (v) t.nom = v; else delete t.nom; }, true); else majObjets();
+      };
+      input.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); fin(true); } else if (e.key === 'Escape') { e.preventDefault(); fin(false); } });
+      input.addEventListener('blur', () => fin(true));
+      b.replaceWith(input);
+      input.focus();
+      input.select();
+    }
+    // Déplacer : appui long sur une ligne (souris : un simple glissement), puis on la fait glisser ; trait bleu = nouvelle place.
+    function glisserLigne(e, ligneEl, t) {
+      if (e.button > 0 || e.target.closest('button, input')) return;
+      const souris = e.pointerType === 'mouse', pid = e.pointerId, x0 = e.clientX, y0 = e.clientY, st0 = objetsEl.scrollTop;
+      const autres = rangees.filter((r) => r.t !== t);
+      let y = y0, actif = false, timer = 0, raf = 0, q = 0;
+      const calcul = () => {
+        q = autres.filter((r) => { const b = r.el.getBoundingClientRect(); return b.top + b.height / 2 < y; }).length;
+        for (const r of autres) r.el.classList.remove('annotate-obj--av', 'annotate-obj--ap');
+        if (q < autres.length) autres[q].el.classList.add('annotate-obj--av'); else if (autres.length) autres[autres.length - 1].el.classList.add('annotate-obj--ap');
+        ligneEl.style.transform = `translateY(${y - y0 + objetsEl.scrollTop - st0}px)`;
+      };
+      const boucle = () => {
+        if (!actif) return;
+        const b = objetsEl.getBoundingClientRect(), z = 36;
+        if (y < b.top + z) objetsEl.scrollTop -= Math.ceil((b.top + z - y) / 4); else if (y > b.bottom - z) objetsEl.scrollTop += Math.ceil((y - (b.bottom - z)) / 4);
+        calcul();
+        raf = requestAnimationFrame(boucle);
+      };
+      const demarrer = () => {
+        clearTimeout(timer);
+        actif = true;
+        ligneEl.classList.add('annotate-obj--drag');
+        try { ligneEl.setPointerCapture(pid); } catch (_) { /* ignoré */ }
+        try { if (navigator.vibrate) navigator.vibrate(15); } catch (_) { /* ignoré */ }
+        boucle();
+      };
+      const nettoyer = () => {
+        clearTimeout(timer);
+        cancelAnimationFrame(raf);
+        ligneEl.removeEventListener('pointermove', bouge);
+        ligneEl.removeEventListener('pointerup', fin);
+        ligneEl.removeEventListener('pointercancel', annule);
+        ligneEl.removeEventListener('touchmove', tm);
+        ligneEl.removeEventListener('contextmenu', cm);
+        ligneEl.classList.remove('annotate-obj--drag');
+        ligneEl.style.transform = '';
+        for (const r of autres) r.el.classList.remove('annotate-obj--av', 'annotate-obj--ap');
+      };
+      const bouge = (ev) => {
+        if (ev.pointerId !== pid) return;
+        y = ev.clientY;
+        if (!actif && Math.hypot(ev.clientX - x0, ev.clientY - y0) > (souris ? 6 : 8)) { if (souris) demarrer(); else nettoyer(); } // au doigt, bouger avant l'appui long = défilement
+      };
+      const fin = (ev) => {
+        if (ev.pointerId !== pid) return;
+        const etait = actif, etaitSel = t === edit;
+        if (etait) { y = ev.clientY; calcul(); glisseA = Date.now(); }
+        const qf = q;
+        nettoyer();
+        if (!etait) return;
+        const r = autres.map((x) => x.t);
+        agir(t, () => { list.splice(list.indexOf(t), 1); if (qf <= 0) list.push(t); else list.splice(list.indexOf(r[qf - 1]), 0, t); }, etaitSel);
+      };
+      const annule = (ev) => { if (ev.pointerId === pid) nettoyer(); };
+      const tm = (ev) => { if (actif) ev.preventDefault(); }; // sinon le doigt ferait défiler la liste
+      const cm = (ev) => ev.preventDefault();
+      ligneEl.addEventListener('pointermove', bouge);
+      ligneEl.addEventListener('pointerup', fin);
+      ligneEl.addEventListener('pointercancel', annule);
+      ligneEl.addEventListener('touchmove', tm, { passive: false });
+      ligneEl.addEventListener('contextmenu', cm);
+      if (!souris) timer = setTimeout(demarrer, 450);
+    }
     function majObjets() {
       objetsEl.textContent = '';
+      rangees = [];
       objetsEl.append(h('div', { class: 'annotate-objets-t', text: `Objets (${list.length}) · du plus haut au plus bas` }));
+      if (list.length) objetsEl.append(h('div', { class: 'annotate-objets-t annotate-objets-aide', text: "Maintenir une ligne pour la déplacer · toucher le nom d'un objet sélectionné pour le renommer" }));
       for (let i = list.length - 1; i >= 0; i--) {
         const t = list[i];
         if (t.t === 'gomme') continue;
@@ -1283,7 +1370,14 @@ const SOUS_OUTILS = [
         bEye.addEventListener('click', () => agir(t, () => { if (t.hid) delete t.hid; else t.hid = true; }, false));
         bDel.addEventListener('click', () => agir(t, () => { list.splice(list.indexOf(t), 1); }, false));
         const ligneEl = h('div', { class: 'annotate-obj' + (t === edit ? ' annotate-obj--sel' : '') + (t.hid ? ' annotate-obj--hid' : '') }, ic, h('span', { class: 'annotate-obj-t' }, h('b', { text: d.nom }), h('small', { text: d.sub })), bUp, bDn, bEye, bDel);
-        ligneEl.addEventListener('click', (e) => { if (e.target.closest('button')) return; if (t !== edit) { selectionner(t); redraw(); } refresh(); });
+        ligneEl.addEventListener('click', (e) => {
+          if (e.target.closest('button, input') || Date.now() - glisseA < 250) return;
+          if (t === edit && e.target.closest('.annotate-obj-t')) { renommer(ligneEl, t); return; }
+          if (t !== edit) { selectionner(t); redraw(); }
+          refresh();
+        });
+        ligneEl.addEventListener('pointerdown', (e) => glisserLigne(e, ligneEl, t));
+        rangees.push({ el: ligneEl, t });
         objetsEl.append(ligneEl);
       }
     }
