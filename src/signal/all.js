@@ -41,7 +41,7 @@ SIG.All = {
   /** Icône corbeille alignée à droite du cadre ; `onDone()` après une suppression réussie. */
   trashButton(reference, titre, onDone) {
     const b = h('button', { type: 'button', class: 'sig4cem-trash', title: 'Supprimer cette entrée', 'aria-label': 'Supprimer cette entrée' });
-    b.innerHTML = '<span class="sig4cem-ic sig4cem-ic--poubelle" aria-hidden="true"></span>';
+    b.innerHTML = '<span class="annotate-ic annotate-ic--poubelle" aria-hidden="true"></span>';
     b.addEventListener('click', async () => {
       if (!confirm(`Supprimer l'entrée ${reference} « ${titre} » du système ? Elle disparaît de la carte et des listes de tous les agents.`)) return;
       b.disabled = true;

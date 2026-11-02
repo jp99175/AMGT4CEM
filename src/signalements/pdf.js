@@ -24,7 +24,7 @@ function day(iso) {
 /** Photo + calque dans un seul JPEG (grand côté 1100 px) : { data, w, h } */
 async function composite(record) {
   // Photo vue à travers sa mise en page (rotation, cadre) ; le calque d'annotations est déjà dans ce cadre.
-  const base = await createImageBitmap(record.mep && window.SIG4CEM && window.SIG4CEM.PhotoEditor ? await window.SIG4CEM.PhotoEditor.vue(record.blob, record.mep, 1100) : record.blob);
+  const base = await createImageBitmap(record.mep && window.AMGT4CEM_Annotate ? await window.AMGT4CEM_Annotate.vue(record.blob, record.mep, 1100) : record.blob);
   const scale = Math.min(1, 1100 / Math.max(base.width, base.height));
   const c = document.createElement('canvas');
   c.width = Math.max(1, Math.round(base.width * scale));
@@ -84,7 +84,7 @@ NS.Pdf = {
 
     const pieces = s.pieces || [];
     for (const [i, meta] of pieces.entries()) {
-      const record = await NS.Pieces.get(meta.id);
+      const record = await AMGT4CEM_Annotate.Store.get(meta.id);
       if (!record) continue;
       const img = await composite(record);
       const w = Math.min(TW, 120);

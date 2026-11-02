@@ -20,7 +20,7 @@ NS.Importer = {
       if (!jpg) throw new Error(`Photo ${i + 1} absente de l'archive.`);
       const photo = new Blob([jpg], { type: p.type || 'image/jpeg' });
       const overlay = p.annotations && files.get(p.annotations.nom) ? new Blob([files.get(p.annotations.nom)], { type: 'image/png' }) : null;
-      const meta = await NS.Pieces.restore(dep.id, {
+      const meta = await AMGT4CEM_Annotate.Store.restore(dep.id, {
         blob: photo,
         sha256: p.sha256,
         sha256Original: p.sha256Original,

@@ -1,5 +1,5 @@
 /**
- * Photos jointes aux signalements : stockage LOCAL (IndexedDB), en attendant
+ * Photos et annotations (formulaires de signalement, plus tard inspections, constats…) : stockage LOCAL (IndexedDB), en attendant
  * le stockage des pièces (Cloudflare R2, voir le document de conception).
  *
  * Pourquoi IndexedDB et pas localStorage : une photo pèse de quelques centaines
@@ -10,10 +10,10 @@
  * réduit, pour qu'un original retrouvé plus tard puisse toujours être rattaché.
  */
 (function () {
-const NS = (window.AMGT4CEM_Signalements = window.AMGT4CEM_Signalements || {});
+const NS = (window.AMGT4CEM_Annotate = window.AMGT4CEM_Annotate || {});
 const DB_NAME = 'amgt4cem-pieces';
 
-NS.Pieces = {
+NS.Store = {
   maxSide: 2000,
   jpegQuality: 0.85,
   _dbPromise: null,

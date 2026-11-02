@@ -1,23 +1,28 @@
 /**
- * SIG4CEM — annotations d'une photo : pinceau, ligne (flèche), formes (ellipse), texte. Ligne 1 : historique et outils ; ligne 2 : palette
+ * Annotations d'une photo : pinceau, ligne (flèche), formes (ellipse), texte. Ligne 1 : historique et outils ; ligne 2 : palette
  * (couleur + opacité) puis options de l'outil actif.
  * Le texte est une boîte de texte : un rectangle (cadre et fond « aucun » par défaut) dont l'intérieur se saisit au clavier.
  * Une couleur et une taille par boîte, formats mélangeables (gras, italique, souligné, indice, exposant). Même édition que les
  * formes : poignées, rotation, déplacement, ✓ / ✗. Se pose avec le bouton Texte ou avec le « T » de l'outil rectangle.
  *
  * La photo d'origine n'est jamais modifiée : les annotations sont dessinées sur un calque TRANSPARENT (PNG)
- * enregistré à part (AMGT4CEM_Signalements.Pieces.setAnnotations) et superposé à l'affichage. Les traits sont
+ * enregistré à part (par l'appelant, via AMGT4CEM_Annotate.Store.setAnnotations) et superposé à l'affichage. Les traits sont
  * aussi conservés (coordonnées relatives à l'image, 0..1) pour pouvoir les reprendre et en annuler un.
  * Outil Sélection : toucher un objet pour le modifier (poignées) ; liste des objets (ordre de superposition, masquer `hid`, supprimer) ;
  * annuler / refaire par instantanés ; mode Mise en page (pivoter, recadrer, transformation libre, réversible : `mep`) ; zoom à deux doigts ; à l'enregistrement, question sur les objets masqués (garder ou supprimer).
+ *
+ * Interface de l'éditeur (outils, sélection, mise en page, zoom). Dessin : render.js ; calculs de mise en page : layout.js ;
+ * historique : history.js ; API publique : annotate.js.
  */
 (function () {
-const NS = window.SIG4CEM;
-const h = NS.h;
+const A = (window.AMGT4CEM_Annotate = window.AMGT4CEM_Annotate || {});
+const h = A.h;
+const { EPAISSEURS, GOMMES, TYPES, TYPES_FORMES, TERMINAISONS, geom, tourne, contour, nuage, tirets, render } = A.Render;
+const { MEP_VERSION, mepDefaut, mepNormal, normAngle, pivoterMep, cadreInscrit, contenirMep, appliquerMep, tailleVue } = A.Layout;
 const COULEURS = ['#e53935', '#fdd835', '#1e88e5', '#212121'];
 const svgIc = (contenu) => `<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round">${contenu}</svg>`;
 const FLECHE = '<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/>';
-const maskIc = (n) => `<span class="sig4cem-ic sig4cem-ic--${n}" aria-hidden="true"></span>`;
+const maskIc = (n) => `<span class="annotate-ic annotate-ic--${n}" aria-hidden="true"></span>`;
 // Ligne 1 : le pinceau ouvre le mode « édition » (dessin : crayon, trait, ligne brisée, rectangle, ellipse, choisis en ligne 2) ; le texte a le sien.
 const OUTILS = [
   ['edit', 'Édition', maskIc('pinceau')],
@@ -34,328 +39,7 @@ const SOUS_OUTILS = [
   ['rect', 'Rectangle', svgIc('<rect x="4" y="6.5" width="16" height="11" rx="1.2"/>')],
   ['ellipse', 'Ellipse', svgIc('<ellipse cx="12" cy="12" rx="9" ry="6"/>')],
 ];
-const OVERLAY_SIDE = 1000; // grand côté du calque PNG (la photo, elle, garde sa définition)
 
-const EPAISSEURS = [0.004, 0.008, 0.014];
-const GOMMES = [0.008, 0.016, 0.03]; // rayon de la gomme (fraction de la largeur)
-const TYPES = ['plein', 'tirets', 'points'];
-const TYPES_FORMES = ['plein', 'tirets', 'points', 'nuage'];
-const TERMINAISONS = ['aucune', 'fleche', 'barre', 'rond'];
-
-/** Terminaison au point (x, y) ; `ang` = direction du trait, orientée vers l'extérieur. */
-function terminaison(ctx, x, y, ang, kind, lw) {
-  if (!kind || kind === 'aucune') return;
-  const head = Math.max(12, lw * 5);
-  ctx.save();
-  ctx.setLineDash([]);
-  ctx.beginPath();
-  if (kind === 'fleche') {
-    ctx.moveTo(x - head * Math.cos(ang - 0.45), y - head * Math.sin(ang - 0.45));
-    ctx.lineTo(x, y);
-    ctx.lineTo(x - head * Math.cos(ang + 0.45), y - head * Math.sin(ang + 0.45));
-    ctx.stroke();
-  } else if (kind === 'barre') {
-    const d = head * 0.55;
-    ctx.moveTo(x - d * Math.sin(ang), y + d * Math.cos(ang));
-    ctx.lineTo(x + d * Math.sin(ang), y - d * Math.cos(ang));
-    ctx.stroke();
-  } else if (kind === 'rond') {
-    ctx.arc(x, y, Math.max(3, lw * 1.6), 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
-/** Pointillé selon le type de trait. */
-function tirets(ctx, type, lw) {
-  if (type === 'tirets') ctx.setLineDash([lw * 3.5, lw * 2.5]);
-  else if (type === 'points') ctx.setLineDash([0.1, lw * 2.2]);
-  else ctx.setLineDash([]);
-}
-
-/** Géométrie d'un rectangle / d'une ellipse en pixels d'un canvas W×H : centre, demi-côtés, rotation. */
-function geom(t, W, H) {
-  return { cx: ((t.a[0] + t.b[0]) / 2) * W, cy: ((t.a[1] + t.b[1]) / 2) * H, hw: Math.abs(t.b[0] - t.a[0]) * W / 2, hh: Math.abs(t.b[1] - t.a[1]) * H / 2, r: t.r || 0 };
-}
-const tourne = (x, y, r) => [x * Math.cos(r) - y * Math.sin(r), x * Math.sin(r) + y * Math.cos(r)];
-/** Contour d'une forme (points en pixels) : rectangle, ellipse (polygone fin) ou ligne brisée. */
-function contour(t, W, H) {
-  if (t.t === 'poly') return t.p.map(([x, y]) => [x * W, y * H]);
-  const g = geom(t, W, H);
-  const loc = t.t === 'rect'
-    ? [[-g.hw, -g.hh], [g.hw, -g.hh], [g.hw, g.hh], [-g.hw, g.hh]]
-    : Array.from({ length: 96 }, (_, i) => [g.hw * Math.cos(i / 96 * Math.PI * 2), g.hh * Math.sin(i / 96 * Math.PI * 2)]);
-  return loc.map(([x, y]) => { const q = tourne(x, y, g.r); return [g.cx + q[0], g.cy + q[1]]; });
-}
-/** Nuage de révision : arcs qui bombent vers l'extérieur le long du contour. */
-function nuage(ctx, pts, ferme, lw) {
-  const P = ferme ? pts.concat([pts[0]]) : pts;
-  const step = Math.max(16, lw * 6);
-  const out = [P[0]];
-  let reste = step;
-  for (let i = 1; i < P.length; i++) {
-    let [x0, y0] = P[i - 1];
-    const [x1, y1] = P[i];
-    let L = Math.hypot(x1 - x0, y1 - y0);
-    while (L >= reste && L > 0) {
-      const f = reste / L;
-      x0 += (x1 - x0) * f; y0 += (y1 - y0) * f;
-      out.push([x0, y0]);
-      L = Math.hypot(x1 - x0, y1 - y0);
-      reste = step;
-    }
-    reste -= L;
-  }
-  if (!ferme || Math.hypot(out[out.length - 1][0] - P[0][0], out[out.length - 1][1] - P[0][1]) > step * 0.3) out.push(P[P.length - 1]);
-  let aire = 0;
-  for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; aire += a[0] * b[1] - b[0] * a[1]; }
-  const sens = ferme && aire < 0 ? -1 : 1;
-  ctx.beginPath();
-  ctx.moveTo(out[0][0], out[0][1]);
-  for (let i = 1; i < out.length; i++) {
-    const [ax, ay] = out[i - 1], [bx, by] = out[i];
-    const L = Math.hypot(bx - ax, by - ay) || 1;
-    const nx = sens * (by - ay) / L, ny = sens * -(bx - ax) / L;
-    ctx.quadraticCurveTo((ax + bx) / 2 + nx * L * 0.75, (ay + by) / 2 + ny * L * 0.75, bx, by);
-  }
-  ctx.stroke();
-}
-
-/** Texte riche d'une boîte : segments [{ t, b, i, u, x: 'sub' | 'sup' }], une seule couleur (`tc`) et une seule taille (`s`) par boîte. */
-const POS = { sub: 0.175, sup: -0.385 }; // décalage vertical (en fraction de la taille) ; indice et exposant sont à 70 %
-const policeSeg = (sg, size) => `${sg.i ? 'italic ' : ''}${sg.b ? 'bold ' : ''}${sg.x ? size * 0.7 : size}px sans-serif`;
-/** Retour à la ligne : coupe aux espaces (et au caractère si un mot dépasse la largeur). Renvoie des lignes de morceaux { t, sg, w }. */
-function mettreEnPage(ctx, segs, size, inner) {
-  const lignes = [[]];
-  let x = 0;
-  const nl = () => { lignes.push([]); x = 0; };
-  const ajoute = (t, sg, w) => { lignes[lignes.length - 1].push({ t, sg, w }); x += w; };
-  for (const sg of segs) {
-    ctx.font = policeSeg(sg, size);
-    String(sg.t).split('\n').forEach((m, k) => {
-      if (k) nl();
-      for (const tok of m.match(/\s+|\S+/g) || []) {
-        const esp = /^\s/.test(tok);
-        const w = ctx.measureText(tok).width;
-        if (esp) { ajoute(tok, sg, w); continue; }
-        if (x + w > inner && x > 0) nl();
-        if (w > inner) {
-          let cur = '';
-          for (const ch of tok) {
-            if (cur && ctx.measureText(cur + ch).width > inner) { ajoute(cur, sg, ctx.measureText(cur).width); nl(); cur = ch; } else cur += ch;
-          }
-          if (cur) ajoute(cur, sg, ctx.measureText(cur).width);
-        } else ajoute(tok, sg, w);
-      }
-    });
-  }
-  return lignes;
-}
-function texteRiche(ctx, t, W, H) {
-  const segs = Array.isArray(t.txt) ? t.txt : [];
-  if (!segs.some((sg) => String(sg.t).trim())) return;
-  const g = geom(t, W, H), size = Math.max(8, t.s * W), pad = size * 0.3, inner = Math.max(size, g.hw * 2 - 2 * pad), lh = size * 1.2;
-  const lignes = mettreEnPage(ctx, segs, size, inner);
-  const k = t.al === 'c' ? 0.5 : t.al === 'd' ? 1 : 0;
-  ctx.save();
-  ctx.translate(g.cx, g.cy);
-  ctx.rotate(g.r);
-  ctx.setLineDash([]);
-  ctx.textBaseline = 'alphabetic';
-  ctx.lineJoin = 'round';
-  ctx.fillStyle = ctx.strokeStyle = t.tc || '#e53935';
-  lignes.forEach((ligne, i) => {
-    let n = ligne.length;
-    while (n > 0 && !ligne[n - 1].t.trim()) n--;
-    let wl = 0;
-    for (let j = 0; j < n; j++) wl += ligne[j].w;
-    let x = -g.hw + pad + (inner - wl) * k;
-    const base = -g.hh + pad + i * lh + lh * 0.5 + size * 0.275;
-    for (let j = 0; j < n; j++) {
-      const { t: tx, sg, w } = ligne[j];
-      const y = base + (sg.x ? POS[sg.x] * size : 0);
-      ctx.font = policeSeg(sg, size);
-      if (!t.fc) { ctx.save(); ctx.lineWidth = Math.max(2, size / 8); ctx.strokeStyle = '#fff'; ctx.strokeText(tx, x, y); ctx.restore(); }
-      ctx.fillText(tx, x, y);
-      if (sg.u) { ctx.lineWidth = Math.max(1.5, size / 14); ctx.beginPath(); ctx.moveTo(x, y + size * 0.12); ctx.lineTo(x + w, y + size * 0.12); ctx.stroke(); }
-      x += w;
-    }
-  });
-  ctx.restore();
-}
-
-/** Dessine les traits (coordonnées relatives) sur un contexte de W×H pixels (`sansTexte` : ne dessine aucun texte ; `exclure` : une boîte dont le texte est en cours de saisie). */
-function render(ctx, W, H, traits, sansTexte, exclure) {
-  ctx.clearRect(0, 0, W, H);
-  ctx.globalAlpha = 1;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  for (const t of traits) {
-    if (t.t === 'gomme' || t.hid) continue; // marqueur d'une ancienne passe de gomme, ou objet masqué : sans dessin
-    ctx.strokeStyle = ctx.fillStyle = t.c;
-    ctx.globalAlpha = t.o == null ? 1 : t.o;
-    const lw = Math.max(2, t.w * W);
-    ctx.lineWidth = lw;
-    tirets(ctx, t.ty, lw);
-    if (t.t === 'pen') {
-      ctx.beginPath();
-      t.p.forEach(([x, y], i) => (i ? ctx.lineTo(x * W, y * H) : ctx.moveTo(x * W, y * H)));
-      if (t.p.length === 1) ctx.lineTo(t.p[0][0] * W + 0.1, t.p[0][1] * H);
-      ctx.stroke();
-      const n = t.p.length;
-      if (n > 1) {
-        const P = t.p.map(([x, y]) => [x * W, y * H]);
-        const loin = (i0, sens) => { for (let i = i0 + sens; i >= 0 && i < n; i += sens) if (Math.hypot(P[i][0] - P[i0][0], P[i][1] - P[i0][1]) > lw * 2) return P[i]; return P[n - 1 - i0 === 0 ? 0 : n - 1]; };
-        const q0 = loin(0, 1), q1 = loin(n - 1, -1);
-        terminaison(ctx, P[0][0], P[0][1], Math.atan2(P[0][1] - q0[1], P[0][0] - q0[0]), t.ed, lw);
-        terminaison(ctx, P[n - 1][0], P[n - 1][1], Math.atan2(P[n - 1][1] - q1[1], P[n - 1][0] - q1[0]), t.ef, lw);
-      }
-    } else if (t.t === 'arrow') {
-      const [ax, ay, bx, by] = [t.a[0] * W, t.a[1] * H, t.b[0] * W, t.b[1] * H];
-      const ang = Math.atan2(by - ay, bx - ax);
-      ctx.beginPath();
-      ctx.moveTo(ax, ay);
-      ctx.lineTo(bx, by);
-      ctx.stroke();
-      terminaison(ctx, ax, ay, ang + Math.PI, t.ed, lw);
-      terminaison(ctx, bx, by, ang, t.ef == null ? 'fleche' : t.ef, lw);
-    } else if (t.t === 'ellipse' || t.t === 'rect' || t.t === 'poly') {
-      const pts = contour(t, W, H);
-      const ferme = t.t !== 'poly' || !!t.cl;
-      if (pts.length > 1) {
-        if (t.fc && ferme) {
-          ctx.save();
-          ctx.setLineDash([]);
-          ctx.fillStyle = t.fc;
-          ctx.beginPath();
-          pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-          ctx.closePath();
-          ctx.fill();
-          ctx.restore();
-        }
-        if (!t.c) { /* cadre sans couleur (boîte de texte) */ }
-        else if (t.ty === 'nuage') nuage(ctx, pts, ferme, lw);
-        else {
-          ctx.beginPath();
-          pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-          if (ferme) ctx.closePath();
-          ctx.stroke();
-        }
-        if (t.tx && !sansTexte && t !== exclure) texteRiche(ctx, t, W, H);
-        if (t.t === 'poly' && !ferme && pts.length > 1) {
-          const n = pts.length;
-          terminaison(ctx, pts[0][0], pts[0][1], Math.atan2(pts[0][1] - pts[1][1], pts[0][0] - pts[1][0]), t.ed, lw);
-          terminaison(ctx, pts[n - 1][0], pts[n - 1][1], Math.atan2(pts[n - 1][1] - pts[n - 2][1], pts[n - 1][0] - pts[n - 2][0]), t.ef, lw);
-        }
-      }
-    } else if (t.t === 'text' && !sansTexte) {
-      ctx.setLineDash([]);
-      const size = Math.max(10, t.s * W);
-      ctx.font = `${t.i ? 'italic ' : ''}${t.b === false ? '' : 'bold '}${size}px sans-serif`;
-      ctx.textBaseline = 'top';
-      const lignes = String(t.txt || '').split('\n');
-      const largeurs = lignes.map((l) => ctx.measureText(l).width);
-      const maxL = Math.max(0, ...largeurs);
-      const k = t.al === 'c' ? 0.5 : t.al === 'd' ? 1 : 0;
-      lignes.forEach((ligne, i) => {
-        const x = t.x * W + (maxL - largeurs[i]) * k, y = t.y * H + i * size * 1.2;
-        ctx.lineWidth = Math.max(2, t.s * W / 8);
-        ctx.strokeStyle = '#fff';
-        ctx.strokeText(ligne, x, y);
-        ctx.fillText(ligne, x, y);
-        if (t.u && ligne) {
-          ctx.lineWidth = Math.max(1.5, size / 14);
-          ctx.strokeStyle = t.c;
-          ctx.beginPath();
-          ctx.moveTo(x, y + size * 1.02);
-          ctx.lineTo(x + largeurs[i], y + size * 1.02);
-          ctx.stroke();
-        }
-      });
-    }
-  }
-  ctx.globalAlpha = 1;
-  ctx.setLineDash([]);
-}
-
-/**
- * Mise en page d'une photo (réversible, la photo d'origine n'est jamais modifiée) : { v: 1, a, c: [x, y], w, h }.
- * a = rotation en degrés (sens horaire) autour du centre de la photo ; le cadre (la vue finale) est un rectangle de w × h,
- * centré en c, dans le repère pivoté et centré sur la photo. Toutes les longueurs sont en largeurs de photo (la photo mesure 1 × H/W).
- * Les annotations restent dans le repère de la photo entière (0..1) : seule la vue change.
- */
-const MEP_VERSION = 1;
-const mepDefaut = (W, H) => ({ v: MEP_VERSION, a: 0, c: [0, 0], w: 1, h: H / W });
-const mepNeutre = (m, W, H) => !m || (Math.abs(m.a) < 0.01 && Math.abs(m.c[0]) < 1e-4 && Math.abs(m.c[1]) < 1e-4 && Math.abs(m.w - 1) < 1e-4 && Math.abs(m.h - H / W) < 1e-4);
-const mepNormal = (m, W, H) => (mepNeutre(m, W, H) ? null : m);
-const normAngle = (a) => { const r = ((a + 180) % 360 + 360) % 360 - 180; return r === -180 ? 180 : r; };
-/** Pivote la mise en page d'un quart de tour (sens = 1 horaire, -1 anti-horaire) : le cadre suit la photo. */
-function pivoterMep(m, sens, W, H) {
-  const b = m || mepDefaut(W, H), r = sens * Math.PI / 2;
-  return mepNormal({ v: MEP_VERSION, a: normAngle(b.a + sens * 90), c: [b.c[0] * Math.cos(r) - b.c[1] * Math.sin(r), b.c[0] * Math.sin(r) + b.c[1] * Math.cos(r)], w: b.h, h: b.w }, W, H);
-}
-/** Plus grand cadre centré, de proportion `aspect` (largeur / hauteur), entièrement dans la photo tournée de `a` degrés. */
-function cadreInscrit(a, aspect, W, H) {
-  const th = a * Math.PI / 180, co = Math.abs(Math.cos(th)), si = Math.abs(Math.sin(th)), r = H / W;
-  const h = Math.min(1 / (aspect * co + si), r / (aspect * si + co));
-  return { w: aspect * h, h };
-}
-/** Ramène le cadre dans la photo (translation, puis réduction si besoin) : pas de coin vide. */
-function contenirMep(m, W, H) {
-  const r = H / W, th = m.a * Math.PI / 180, co = Math.cos(th), si = Math.sin(th);
-  const o = { v: MEP_VERSION, a: m.a, c: m.c.slice(), w: m.w, h: m.h };
-  for (let it = 0; it < 40; it++) {
-    let ok = true;
-    for (const [kx, ky] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-      const x = o.c[0] + kx * o.w / 2, y = o.c[1] + ky * o.h / 2, sx = x * co + y * si, sy = -x * si + y * co;
-      const ex = Math.abs(sx) > 0.5 ? (Math.abs(sx) - 0.5) * Math.sign(sx) : 0, ey = Math.abs(sy) > r / 2 ? (Math.abs(sy) - r / 2) * Math.sign(sy) : 0;
-      if (ex || ey) { ok = false; o.c = [o.c[0] - (ex * co - ey * si), o.c[1] - (ex * si + ey * co)]; }
-    }
-    if (ok) break;
-    if (it >= 8 && it % 4 === 0) { o.w *= 0.92; o.h *= 0.92; }
-  }
-  return o;
-}
-/** Place le contexte pour dessiner la photo (ou ses annotations) dans le cadre : `u` pixels par largeur de photo. */
-function appliquerMep(ctx, m, u, W, H) {
-  ctx.translate(m.w * u / 2, m.h * u / 2);
-  ctx.translate(-m.c[0] * u, -m.c[1] * u);
-  ctx.rotate(m.a * Math.PI / 180);
-  ctx.translate(-u / 2, -u * H / W / 2);
-}
-const tailleVue = (m, W, H, cote) => { const u = Math.min(W, cote / Math.max(m.w, m.h)); return { u, ow: Math.max(1, Math.round(m.w * u)), oh: Math.max(1, Math.round(m.h * u)) }; };
-
-NS.PhotoEditor = {
-  mepNormal,
-  pivoterMep,
-  /** Photo vue à travers sa mise en page (Blob JPEG, grand côté `cote` px) ; la photo d'origine reste inchangée. */
-  async vue(blob, mep, cote) {
-    const bmp = await createImageBitmap(blob);
-    const W = bmp.width, H = bmp.height, m = mep || mepDefaut(W, H), { u, ow, oh } = tailleVue(m, W, H, cote || 1000);
-    const c = document.createElement('canvas');
-    c.width = ow; c.height = oh;
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, ow, oh);
-    ctx.save();
-    appliquerMep(ctx, m, u, W, H);
-    ctx.drawImage(bmp, 0, 0, u, u * H / W);
-    ctx.restore();
-    if (bmp.close) bmp.close();
-    return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('Encodage JPEG impossible'))), 'image/jpeg', 0.85));
-  },
-  /** Calque PNG transparent pour des traits donnés, dans le cadre de la mise en page (null s'il n'y a pas de traits). */
-  async overlayPng(traits, largeur, hauteur, mep) {
-    if (!traits || !traits.length) return null;
-    const m = mep || mepDefaut(largeur, hauteur), { u, ow, oh } = tailleVue(m, largeur, hauteur, OVERLAY_SIDE);
-    const c = document.createElement('canvas');
-    c.width = ow; c.height = oh;
-    const ctx = c.getContext('2d');
-    ctx.save();
-    appliquerMep(ctx, m, u, largeur, hauteur);
-    render(ctx, u, u * hauteur / largeur, traits);
-    ctx.restore();
-    return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('Encodage PNG impossible'))), 'image/png'));
-  },
 
   /**
    * Ouvre l'éditeur sur une photo. `onDone(traits)` à la validation ; rien n'est modifié si on annule.
@@ -365,7 +49,7 @@ NS.PhotoEditor = {
    * @param {object|null} mep0 - mise en page enregistrée (rotation, cadre)
    * @param {{outil?: string}} [opts] - `outil: 'mep'` ouvre directement la mise en page
    */
-  open(blob, traits, onDone, mep0, opts) {
+  function open(blob, traits, onDone, mep0, opts) {
     const url = URL.createObjectURL(blob);
     let list = (traits || []).map((t) => JSON.parse(JSON.stringify(t)));
     let tool = 'pen'; // 'pen' | 'arrow' | 'gomme' | 'ellipse' (dessin), 'text', 'select'
@@ -389,12 +73,12 @@ NS.PhotoEditor = {
     let gommePos = null; // position de la gomme (px du canvas) pour le cercle d'aperçu
     const W = 800; // résolution du dessin à l'écran : relative, les traits sont stockés en 0..1
 
-    const img = h('img', { class: 'sig4cem-pe__img', src: url, alt: 'Photo à annoter', draggable: 'false' });
-    const canvas = h('canvas', { class: 'sig4cem-pe__canvas' });
-    const stage = h('div', { class: 'sig4cem-pe__stage' }, img, canvas);
-    const frame = h('div', { class: 'sig4cem-pe__frame' }, stage);
-    const corps = h('div', { class: 'sig4cem-pe__body' }, frame);
-    const btnIc = (titre, svg, extra) => { const b = h('button', { type: 'button', class: 'sig4cem-pe__ic' + (extra ? ' ' + extra : ''), title: titre, 'aria-label': titre }); b.innerHTML = svg; return b; };
+    const img = h('img', { class: 'annotate-img', src: url, alt: 'Photo à annoter', draggable: 'false' });
+    const canvas = h('canvas', { class: 'annotate-canvas' });
+    const stage = h('div', { class: 'annotate-stage' }, img, canvas);
+    const frame = h('div', { class: 'annotate-frame' }, stage);
+    const corps = h('div', { class: 'annotate-body' }, frame);
+    const btnIc = (titre, svg, extra) => { const b = h('button', { type: 'button', class: 'annotate-btn' + (extra ? ' ' + extra : ''), title: titre, 'aria-label': titre }); b.innerHTML = svg; return b; };
     let dernierDessin = 'pen';
     const sousOutil = () => (tool === 'pen' || tool === 'arrow' || tool === 'gomme' ? tool : tool === 'ellipse' ? reg.ellipse.kind : null);
     function choisirSousOutil(k) {
@@ -419,7 +103,7 @@ NS.PhotoEditor = {
     // Outil dont les réglages s'affichent : l'outil actif, ou celui de l'objet sélectionné en mode Sélection.
     const outil = () => (tool === 'select' ? (edit ? (edit.tx ? 'text' : edit.t === 'pen' || edit.t === 'arrow' ? edit.t : 'ellipse') : null) : tool);
     const colorBtns = COULEURS.map((c) => {
-      const b = h('button', { type: 'button', class: 'sig4cem-pe__color', title: 'Couleur', 'aria-label': 'Couleur' });
+      const b = h('button', { type: 'button', class: 'annotate-color', title: 'Couleur', 'aria-label': 'Couleur' });
       b.style.background = c;
       b.addEventListener('click', () => {
         if (cible === 'fond') { fillColor = c; if (edit) edit.fc = c; }
@@ -430,24 +114,24 @@ NS.PhotoEditor = {
       b.dataset.color = c;
       return b;
     });
-    const btnAucun = h('button', { type: 'button', class: 'sig4cem-pe__color sig4cem-pe__color--aucun', title: 'Aucun remplissage', 'aria-label': 'Aucun remplissage' });
+    const btnAucun = h('button', { type: 'button', class: 'annotate-color annotate-color--aucun', title: 'Aucun remplissage', 'aria-label': 'Aucun remplissage' });
     btnAucun.innerHTML = '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#e53935" stroke-width="1.6"><path d="M5 19L19 5"/></svg>';
     btnAucun.addEventListener('click', () => { if (cible === 'fond') { fillColor = null; if (edit) delete edit.fc; } else if (edit) edit.c = null; redraw(); refresh(); });
     // Palette : couleurs + opacité, dans une fenêtre sous la ligne 2.
-    const opaVal = h('span', { class: 'sig4cem-pe__opaval' });
+    const opaVal = h('span', { class: 'annotate-opaval' });
     const opaRange = h('input', { type: 'range', min: '10', max: '100', step: '5', value: '100', 'aria-label': 'Opacité' });
     opaRange.addEventListener('input', () => { opacity = Number(opaRange.value) / 100; if (edit) { if (opacity === 1) delete edit.o; else edit.o = opacity; redraw(); } refresh(); });
     const ongletBtns = [['texte', 'Texte'], ['trait', 'Cadre'], ['fond', 'Fond']].map(([k, nom]) => {
-      const b = h('button', { type: 'button', class: 'sig4cem-pe__onglet', text: nom });
+      const b = h('button', { type: 'button', class: 'annotate-onglet', text: nom });
       b.dataset.cible = k;
       b.addEventListener('click', () => { cible = k; refresh(); });
       return b;
     });
-    const onglets = h('div', { class: 'sig4cem-pe__onglets', hidden: '' }, ...ongletBtns);
-    const nuancier = h('div', { class: 'sig4cem-pe__nuancier', hidden: '' },
+    const onglets = h('div', { class: 'annotate-onglets', hidden: '' }, ...ongletBtns);
+    const nuancier = h('div', { class: 'annotate-nuancier', hidden: '' },
       onglets,
-      h('div', { class: 'sig4cem-pe__nuancier-c' }, ...colorBtns, btnAucun),
-      h('label', { class: 'sig4cem-pe__opa' }, h('span', { text: 'Opacité' }), opaRange, opaVal));
+      h('div', { class: 'annotate-nuancier-c' }, ...colorBtns, btnAucun),
+      h('label', { class: 'annotate-opa' }, h('span', { text: 'Opacité' }), opaRange, opaVal));
     const btnTF = btnIc('Couleur du trait / du remplissage', '');
     btnTF.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -483,7 +167,7 @@ NS.PhotoEditor = {
     const icTy = (t) => svgIc(t === 'nuage' ? NUAGE : t === 'tirets' ? ligneIc(12, 1.6, '4 3') : t === 'points' ? ligneIc(12, 1.8, '0.1 3.2') : ligneIc(12, 1.6)).replace('<svg ', '<svg stroke-linecap="round" ');
     const NOM_EP = ['fine', 'moyenne', 'épaisse'];
     // Menus déroulants (vers le bas) : l'icône montre le choix en cours, un toucher déploie tous les choix.
-    const menuEl = h('div', { class: 'sig4cem-pe__menu', hidden: '' });
+    const menuEl = h('div', { class: 'annotate-menu', hidden: '' });
     let menuBtn = null;
     function fermerMenu() { menuEl.hidden = true; menuBtn = null; }
     function ouvrirMenu(btn, choix, courant, choisir) {
@@ -491,7 +175,7 @@ NS.PhotoEditor = {
       nuancier.hidden = true;
       menuEl.textContent = '';
       for (const c of choix) {
-        const b = btnIc(c.titre, c.texte ? `${c.ic}<span>${c.texte}</span>` : c.ic, (c.val === courant ? 'sig4cem-pe__ic--on' : '') + (c.texte ? ' sig4cem-pe__ic--large' : ''));
+        const b = btnIc(c.titre, c.texte ? `${c.ic}<span>${c.texte}</span>` : c.ic, (c.val === courant ? 'annotate-btn--on' : '') + (c.texte ? ' annotate-btn--large' : ''));
         b.addEventListener('click', (e) => { e.stopPropagation(); choisir(c.val); fermerMenu(); });
         menuEl.append(b);
       }
@@ -499,14 +183,14 @@ NS.PhotoEditor = {
       menuEl.hidden = false;
       menuBtn = btn;
     }
-    for (const b of [btnOutil, btnEp, btnDeb, btnTy, btnFin]) b.classList.add('sig4cem-pe__ic--menu');
+    for (const b of [btnOutil, btnEp, btnDeb, btnTy, btnFin]) b.classList.add('annotate-btn--menu');
     btnOutil.addEventListener('click', (e) => { e.stopPropagation(); if (edit || polyDraft) return; ouvrirMenu(btnOutil, SOUS_OUTILS.map(([k, titre, ic]) => ({ val: k, titre, ic, texte: titre })), sousOutil(), (k) => { choisirSousOutil(k); refresh(); }); });
     btnEp.addEventListener('click', (e) => { e.stopPropagation(); const T = outil(); const r = reg[T] || (T === 'text' ? reg.ellipse : null); if (r) ouvrirMenu(btnEp, [0, 1, 2].map((i) => ({ val: i, titre: `Épaisseur ${NOM_EP[i]}`, ic: icEp(i) })), r.ep, (v) => { if (T === 'gomme') reg.gomme.ep = v; else { for (const [k, o] of Object.entries(reg)) if (k !== 'gomme') o.ep = v; if (edit) edit.w = EPAISSEURS[v]; } redraw(); refresh(); }); });
     btnTy.addEventListener('click', (e) => { e.stopPropagation(); const T = outil(); const r = reg[T]; if (r) ouvrirMenu(btnTy, (T === 'ellipse' ? TYPES_FORMES : TYPES).map((t) => ({ val: t, titre: `Trait ${t}`, ic: icTy(t) })), r.ty, (v) => { for (const [k, o] of Object.entries(reg)) if (v !== 'nuage' || k === 'ellipse') o.ty = v; if (edit) { if (v === 'plein') delete edit.ty; else edit.ty = v; } redraw(); refresh(); }); });
     btnDeb.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[outil()]; if (r && r.d) ouvrirMenu(btnDeb, TERMINAISONS.map((k) => ({ val: k, titre: `Début : ${TITRES_T[k]}`, ic: svgIc(finIc(k, false)) })), r.d, (v) => { r.d = v; if (edit && ['poly', 'pen', 'arrow'].includes(edit.t)) edit.ed = v; redraw(); refresh(); }); });
     btnFin.addEventListener('click', (e) => { e.stopPropagation(); const r = reg[outil()]; if (r && r.f) ouvrirMenu(btnFin, TERMINAISONS.map((k) => ({ val: k, titre: `Fin : ${TITRES_T[k]}`, ic: svgIc(finIc(k, true)) })), r.f, (v) => { r.f = v; if (edit && ['poly', 'pen', 'arrow'].includes(edit.t)) edit.ef = v; redraw(); refresh(); }); });
-    const btnG = btnIc('Gras', '<span class="sig4cem-pe__t"><b>G</b></span>');
-    const btnI = btnIc('Italique', '<span class="sig4cem-pe__t"><i style="font-family:serif">I</i></span>');
+    const btnG = btnIc('Gras', '<span class="annotate-t"><b>G</b></span>');
+    const btnI = btnIc('Italique', '<span class="annotate-t"><i style="font-family:serif">I</i></span>');
     const btnU = btnIc('Souligné', svgIc('<path d="M7 4v7.5a5 5 0 0 0 10 0V4"/><path d="M5 20h14"/>'));
     const btnPos = btnIc('Position : normal, indice, exposant', '');
     const btnAl = btnIc('Alignement du texte', '');
@@ -515,36 +199,35 @@ NS.PhotoEditor = {
     const NOM_AL = { g: 'gauche', c: 'centré', d: 'droite' };
     const stT = { s: 0.045, al: 'g' }; // taille et alignement des prochaines boîtes de texte
     const MIN_S = 0.02, MAX_S = 0.12;
-    const btnSmaller = btnIc('Texte plus petit', '<span class="sig4cem-pe__t">A<small>−</small></span>');
-    const btnBigger = btnIc('Texte plus grand', '<span class="sig4cem-pe__t">A<small>+</small></span>');
+    const btnSmaller = btnIc('Texte plus petit', '<span class="annotate-t">A<small>−</small></span>');
+    const btnBigger = btnIc('Texte plus grand', '<span class="annotate-t">A<small>+</small></span>');
     const sousTexte = [btnG, btnI, btnU, btnPos, btnAl];
-    const hint = h('div', { class: 'sig4cem-pe__hint', hidden: '' });
+    const hint = h('div', { class: 'annotate-hint', hidden: '' });
     // Ligne 1 : icônes en trait fin (mêmes dessins que le menu Couches).
     const btnUndo = btnIc('Annuler', svgIc(`<g transform="matrix(-1 0 0 1 24 0)">${FLECHE}</g>`));
     const btnRedo = btnIc('Refaire', svgIc(FLECHE));
     const btnClear = btnIc('Feuille blanche : effacer tout le dessin', svgIc('<path d="M6.5 3h7.5l4.5 4.5V20a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4.5h4.5"/>'));
-    const btnOk = btnIc('Enregistrer les annotations', svgIc('<path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/>'), 'sig4cem-pe__ic--droite');
+    const btnOk = btnIc('Enregistrer les annotations', svgIc('<path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/>'), 'annotate-btn--droite');
     const btnCancel = btnIc('Fermer sans enregistrer', svgIc('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'));
     const LAY = svgIc('<path d="M12 3.5l8.5 4.5-8.5 4.5L3.5 8z"/><path d="M3.5 12.2L12 16.7l8.5-4.5"/><path d="M3.5 16.2L12 20.7l8.5-4.5"/>');
-    const btnObjets = btnIc('Liste des objets : ordre de superposition, masquer, supprimer', LAY, 'sig4cem-pe__ic--menu');
-    const btnSupp = btnIc('Supprimer cet objet', maskIc('poubelle'), 'sig4cem-pe__ic--droite');
-    const sep = () => h('span', { class: 'sig4cem-pe__sep' });
+    const btnObjets = btnIc('Liste des objets : ordre de superposition, masquer, supprimer', LAY, 'annotate-btn--menu');
+    const btnSupp = btnIc('Supprimer cet objet', maskIc('poubelle'), 'annotate-btn--droite');
+    const sep = () => h('span', { class: 'annotate-sep' });
     const sep2 = () => { const e = sep(); sepTexte.push(e); return e; };
     // Historique par instantanés : chaque modification validée range l'état d'avant (annuler) ; « refaire » rend l'état annulé.
-    const undoS = [];
-    const redoS = [];
     let editBase = null; // état de la liste quand on a commencé à modifier l'objet en cours
     const snap = () => JSON.stringify([list, mep]);
     const restaurer = (str) => { const o = JSON.parse(str); list = o[0]; mep = o[1]; disposition(); };
-    const commit = (base) => { if (base != null && base !== snap()) { undoS.push(base); if (undoS.length > 80) undoS.shift(); redoS.length = 0; } };
+    const hist = A.History.create(snap, restaurer);
+    const { undoS, redoS, commit } = hist;
     const sepObj = sep();
-    const ligne2 = h('div', { class: 'sig4cem-pe__bar sig4cem-pe__bar--2' }, btnObjets, sepObj, btnTF, sep(), btnOutil, btnEp, btnDeb, btnTy, btnFin, btnTx, btnG, btnI, btnU, btnPos, btnAl, sep2(), btnSmaller, btnBigger, btnSupp, menuEl, nuancier);
-    const root = h('section', { class: 'sig4cem-screen sig4cem-screen--editor' },
-      h('div', { class: 'sig4cem-pe__bar' }, btnUndo, btnRedo, btnClear, sep(), ...toolBtns, btnOk, btnCancel),
+    const ligne2 = h('div', { class: 'annotate-bar annotate-bar--2' }, btnObjets, sepObj, btnTF, sep(), btnOutil, btnEp, btnDeb, btnTy, btnFin, btnTx, btnG, btnI, btnU, btnPos, btnAl, sep2(), btnSmaller, btnBigger, btnSupp, menuEl, nuancier);
+    const root = h('section', { class: 'annotate-screen' },
+      h('div', { class: 'annotate-bar' }, btnUndo, btnRedo, btnClear, sep(), ...toolBtns, btnOk, btnCancel),
       ligne2,
       hint,
       corps);
-    document.getElementById('sig4cem-root').append(root);
+    document.body.append(root);
     root.addEventListener('pointerdown', (e) => {
       if (!nuancier.hidden && !nuancier.contains(e.target) && !btnTF.contains(e.target)) nuancier.hidden = true;
       if (!menuEl.hidden && !menuEl.contains(e.target) && !(menuBtn && menuBtn.contains(e.target))) fermerMenu();
@@ -601,7 +284,7 @@ NS.PhotoEditor = {
     }
     function refresh() {
       const verrou = !!(polyDraft || (edit && tool !== 'select'));
-      for (const b of toolBtns) { const actif = b.dataset.tool === 'text' ? tool === 'text' : b.dataset.tool === 'select' ? tool === 'select' : b.dataset.tool === 'mep' ? tool === 'mep' : tool !== 'text' && tool !== 'select' && tool !== 'mep'; b.classList.toggle('sig4cem-pe__ic--on', actif); b.disabled = verrou && !actif; }
+      for (const b of toolBtns) { const actif = b.dataset.tool === 'text' ? tool === 'text' : b.dataset.tool === 'select' ? tool === 'select' : b.dataset.tool === 'mep' ? tool === 'mep' : tool !== 'text' && tool !== 'select' && tool !== 'mep'; b.classList.toggle('annotate-btn--on', actif); b.disabled = verrou && !actif; }
       opaVal.textContent = `${Math.round(opacity * 100)} %`;
       btnRedo.disabled = !redoS.length || verrou;
       const tx = texteCtx();
@@ -616,10 +299,10 @@ NS.PhotoEditor = {
       btnTy.hidden = btnDeb.hidden = btnFin.hidden = !r || tx || T === 'gomme';
       btnTF.disabled = T === 'gomme';
       btnTx.hidden = !(tool === 'ellipse' && reg.ellipse.kind === 'rect');
-      btnTx.classList.toggle('sig4cem-pe__ic--on', !!reg.ellipse.tx);
+      btnTx.classList.toggle('annotate-btn--on', !!reg.ellipse.tx);
       btnTx.disabled = verrou;
       onglets.hidden = !tx;
-      for (const b of ongletBtns) b.classList.toggle('sig4cem-pe__onglet--on', b.dataset.cible === cible);
+      for (const b of ongletBtns) b.classList.toggle('annotate-onglet--on', b.dataset.cible === cible);
       // réglages sans objet pour la forme choisie : grisés (la ligne ne bouge pas)
       const termOk = !!(r && r.d && (!formes || (edit ? edit.t === 'poly' && !edit.cl : r.kind === 'poly')));
       btnDeb.disabled = btnFin.disabled = !termOk;
@@ -628,8 +311,8 @@ NS.PhotoEditor = {
       btnAucun.hidden = !(cible === 'fond' || (tx && cible === 'trait'));
       btnAucun.title = cible === 'fond' ? 'Aucun remplissage' : 'Aucun cadre';
       const courante = cible === 'fond' ? (edit && tx ? edit.fc : fillColor) : cible === 'texte' ? (edit && tx ? edit.tc : textColor) : (edit && tx ? edit.c : color);
-      for (const b of colorBtns) b.classList.toggle('sig4cem-pe__color--on', b.dataset.color === courante);
-      btnAucun.classList.toggle('sig4cem-pe__color--on', !courante);
+      for (const b of colorBtns) b.classList.toggle('annotate-color--on', b.dataset.color === courante);
+      btnAucun.classList.toggle('annotate-color--on', !courante);
       btnOutil.disabled = verrou;
       const so = SOUS_OUTILS.find((k) => k[0] === sousOutil());
       if (so) { btnOutil.innerHTML = so[2]; btnOutil.title = `Outil : ${so[1]}`; }
@@ -639,7 +322,7 @@ NS.PhotoEditor = {
       btnObjets.hidden = sepObj.hidden = tool !== 'select';
       sepObj.hidden = tool !== 'select' || !edit;
       btnObjets.disabled = !list.length;
-      btnObjets.classList.toggle('sig4cem-pe__ic--on', !objetsEl.hidden);
+      btnObjets.classList.toggle('annotate-btn--on', !objetsEl.hidden);
       btnSupp.hidden = !(tool === 'select' && edit);
       btnCancel.disabled = verrou;
       btnEp.innerHTML = maskIc('epaisseur');
@@ -664,14 +347,14 @@ NS.PhotoEditor = {
       btnG.disabled = btnI.disabled = btnU.disabled = btnPos.disabled = !tbox;
       btnSmaller.disabled = cur <= MIN_S + 1e-6;
       btnBigger.disabled = cur >= MAX_S - 1e-6;
-      if (tool === 'select' && !edit) { for (const b of [btnTF, btnEp, btnTy, btnDeb, btnFin, btnTx, btnOutil, btnSmaller, btnBigger, ...sousTexte]) b.hidden = true; sepTexte.forEach((e) => { e.hidden = true; }); ligne2.querySelectorAll('.sig4cem-pe__sep').forEach((e) => { e.hidden = true; }); }
+      if (tool === 'select' && !edit) { for (const b of [btnTF, btnEp, btnTy, btnDeb, btnFin, btnTx, btnOutil, btnSmaller, btnBigger, ...sousTexte]) b.hidden = true; sepTexte.forEach((e) => { e.hidden = true; }); ligne2.querySelectorAll('.annotate-sep').forEach((e) => { e.hidden = true; }); }
       const em = tool === 'mep';
       for (const b of mepBtns) b.hidden = !em;
       if (em) {
         for (const b of [btnTF, btnEp, btnTy, btnDeb, btnFin, btnTx, btnOutil, btnSmaller, btnBigger, btnObjets, btnSupp, ...sousTexte]) b.hidden = true;
-        ligne2.querySelectorAll('.sig4cem-pe__sep').forEach((e) => { e.hidden = e !== sepMep; });
-        btnLibre.classList.toggle('sig4cem-pe__ic--on', sousMep === 'libre');
-        btnCrop.classList.toggle('sig4cem-pe__ic--on', sousMep === 'crop');
+        ligne2.querySelectorAll('.annotate-sep').forEach((e) => { e.hidden = e !== sepMep; });
+        btnLibre.classList.toggle('annotate-btn--on', sousMep === 'libre');
+        btnCrop.classList.toggle('annotate-btn--on', sousMep === 'crop');
         btnReset.disabled = mepNormal(mep, srcW(), srcH()) == null;
       }
       majFormats();
@@ -730,9 +413,9 @@ NS.PhotoEditor = {
     function detruireTbox() { if (tbox) { tbox.el.remove(); tbox = null; } }
     function creerTbox(t) {
       detruireTbox();
-      const body = h('div', { class: 'sig4cem-pe__tb-body', contenteditable: 'true', spellcheck: 'false', role: 'textbox', 'aria-label': 'Texte de la boîte', 'aria-multiline': 'true' });
+      const body = h('div', { class: 'annotate-tb-body', contenteditable: 'true', spellcheck: 'false', role: 'textbox', 'aria-label': 'Texte de la boîte', 'aria-multiline': 'true' });
       segsVersDom(t.txt || [], body);
-      const el = h('div', { class: 'sig4cem-pe__tbox' }, body);
+      const el = h('div', { class: 'annotate-tbox' }, body);
       stage.append(el);
       tbox = { el, body };
       body.addEventListener('beforeinput', (e) => { if (e.inputType === 'insertParagraph') { e.preventDefault(); if (!document.execCommand('insertLineBreak')) document.execCommand('insertHTML', false, '<br>'); } });
@@ -767,7 +450,7 @@ NS.PhotoEditor = {
       st.color = edit.tc || '#e53935';
       st.opacity = edit.o == null ? 1 : edit.o;
       st.textAlign = edit.al === 'c' ? 'center' : edit.al === 'd' ? 'right' : 'left';
-      tbox.el.classList.toggle('sig4cem-pe__tbox--halo', !edit.fc);
+      tbox.el.classList.toggle('annotate-tbox--halo', !edit.fc);
     }
     // Formats : appliqués à la sélection (ou à la suite de la frappe) par le navigateur ; la boîte garde le focus.
     function selDansBoite() { const sel = window.getSelection(); return !!(tbox && sel && sel.rangeCount && tbox.body.contains(sel.anchorNode)); }
@@ -786,12 +469,12 @@ NS.PhotoEditor = {
       try { return document.queryCommandState(cmd); } catch (_) { return false; }
     };
     function majFormats() {
-      btnG.classList.toggle('sig4cem-pe__ic--on', etat('bold'));
-      btnI.classList.toggle('sig4cem-pe__ic--on', etat('italic'));
-      btnU.classList.toggle('sig4cem-pe__ic--on', etat('underline'));
+      btnG.classList.toggle('annotate-btn--on', etat('bold'));
+      btnI.classList.toggle('annotate-btn--on', etat('italic'));
+      btnU.classList.toggle('annotate-btn--on', etat('underline'));
       const x = etat('subscript') ? 'sub' : etat('superscript') ? 'sup' : 'norm';
-      btnPos.innerHTML = `<span class="sig4cem-pe__t">${x === 'sub' ? 'x<sub>2</sub>' : x === 'sup' ? 'x<sup>2</sup>' : 'x'}</span>`;
-      btnPos.classList.toggle('sig4cem-pe__ic--on', x !== 'norm');
+      btnPos.innerHTML = `<span class="annotate-t">${x === 'sub' ? 'x<sub>2</sub>' : x === 'sup' ? 'x<sup>2</sup>' : 'x'}</span>`;
+      btnPos.classList.toggle('annotate-btn--on', x !== 'norm');
     }
     document.addEventListener('selectionchange', majFormats);
     btnG.addEventListener('click', () => exec('bold'));
@@ -810,12 +493,12 @@ NS.PhotoEditor = {
       sel.removeAllRanges();
       sel.addRange(r);
     }
-    btnPos.classList.add('sig4cem-pe__ic--menu');
+    btnPos.classList.add('annotate-btn--menu');
     btnPos.addEventListener('click', (e) => {
       e.stopPropagation();
       if (!tbox) return;
       const cur = etat('subscript') ? 'sub' : etat('superscript') ? 'sup' : 'norm';
-      ouvrirMenu(btnPos, [['norm', 'Normal', 'x'], ['sub', 'Indice', 'x<sub>2</sub>'], ['sup', 'Exposant', 'x<sup>2</sup>']].map(([val, titre, g]) => ({ val, titre, ic: `<span class="sig4cem-pe__t">${g}</span>`, texte: titre })), cur, (v) => {
+      ouvrirMenu(btnPos, [['norm', 'Normal', 'x'], ['sub', 'Indice', 'x<sub>2</sub>'], ['sup', 'Exposant', 'x<sup>2</sup>']].map(([val, titre, g]) => ({ val, titre, ic: `<span class="annotate-t">${g}</span>`, texte: titre })), cur, (v) => {
         if (v === cur) return;
         if (!selDansBoite()) tbox.body.focus();
         const sel = window.getSelection();
@@ -843,7 +526,7 @@ NS.PhotoEditor = {
       refresh();
     });
     // Les boutons de la barre ne prennent pas le focus (la sélection du texte reste active dans la boîte).
-    root.addEventListener('mousedown', (e) => { if (e.target.closest && e.target.closest('.sig4cem-pe__ic')) e.preventDefault(); });
+    root.addEventListener('mousedown', (e) => { if (e.target.closest && e.target.closest('.annotate-btn')) e.preventDefault(); });
     window.addEventListener('resize', () => { disposition(); redraw(); });
     if (window.ResizeObserver) new ResizeObserver(() => { disposition(); redraw(); }).observe(corps); // la zone change de hauteur quand la ligne d'aide apparaît ou disparaît
     // Conversion des anciens textes (zone libre) en boîtes de texte sans cadre, à l'ouverture.
@@ -952,14 +635,14 @@ NS.PhotoEditor = {
       majCadre();
       if (typeof placePoignees === 'function' && canvas.width > 1) placePoignees();
     }
-    const badgeZoom = h('button', { type: 'button', class: 'sig4cem-pe__zoom', title: 'Revenir à la photo entière', hidden: '' });
+    const badgeZoom = h('button', { type: 'button', class: 'annotate-zoom', title: 'Revenir à la photo entière', hidden: '' });
     badgeZoom.addEventListener('click', () => { vz.z = 1; vz.tx = vz.ty = 0; disposition(); });
     frame.append(badgeZoom);
-    const gridLibre = h('div', { class: 'sig4cem-pe__grille', hidden: '' });
+    const gridLibre = h('div', { class: 'annotate-grille', hidden: '' });
     // Curseur d'angle (écran non tactile, ou réglage fin) : −180° à +180°, zéro au centre ; la rotation se fait autour du centre du cadre.
     const rotRange = h('input', { type: 'range', min: '-180', max: '180', step: '0.5', value: '0', 'aria-label': 'Angle de rotation en degrés' });
-    const rotVal = h('button', { type: 'button', class: 'sig4cem-pe__rot-val', title: 'Remettre à 0°' });
-    const rotBar = h('div', { class: 'sig4cem-pe__rot', hidden: '' }, h('div', { class: 'sig4cem-pe__rot-t' }, h('span', { text: '−180°' }), rotVal, h('span', { text: '+180°' })), rotRange);
+    const rotVal = h('button', { type: 'button', class: 'annotate-rot-val', title: 'Remettre à 0°' });
+    const rotBar = h('div', { class: 'annotate-rot', hidden: '' }, h('div', { class: 'annotate-rot-t' }, h('span', { text: '−180°' }), rotVal, h('span', { text: '+180°' })), rotRange);
     frame.append(rotBar);
     let rotBase = null;
     function fixerAngle(a1, final) {
@@ -975,13 +658,13 @@ NS.PhotoEditor = {
     rotRange.addEventListener('input', () => fixerAngle(Number(rotRange.value), false));
     rotRange.addEventListener('change', () => fixerAngle(Number(rotRange.value), true));
     rotVal.addEventListener('click', () => fixerAngle(0, true));
-    const angleEl = h('div', { class: 'sig4cem-pe__angle', hidden: '' });
+    const angleEl = h('div', { class: 'annotate-angle', hidden: '' });
     frame.append(gridLibre, angleEl);
 
     // ---- Cadre de recadrage (mode Mise en page / cadre) : rectangle à poignées par-dessus la photo entière pivotée.
-    const cadreEl = h('div', { class: 'sig4cem-pe__crop', hidden: '' });
-    const cadreInfo = h('div', { class: 'sig4cem-pe__crop-info' });
-    const cadreH = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]].map(([sx, sy]) => { const e = h('span', { class: 'sig4cem-pe__crop-h' + (sx && sy ? ' sig4cem-pe__crop-h--c' : '') }); e.dataset.sx = sx; e.dataset.sy = sy; e.style.left = `${(sx + 1) * 50}%`; e.style.top = `${(sy + 1) * 50}%`; return e; });
+    const cadreEl = h('div', { class: 'annotate-crop', hidden: '' });
+    const cadreInfo = h('div', { class: 'annotate-crop-info' });
+    const cadreH = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]].map(([sx, sy]) => { const e = h('span', { class: 'annotate-crop-h' + (sx && sy ? ' annotate-crop-h--c' : '') }); e.dataset.sx = sx; e.dataset.sy = sy; e.style.left = `${(sx + 1) * 50}%`; e.style.top = `${(sy + 1) * 50}%`; return e; });
     cadreEl.append(...cadreH, cadreInfo);
     frame.append(cadreEl);
     const rectCadre = () => { const m = mepEff(); return { x: bw / 2 + sBase * m.c[0] * sw - sBase * m.w * sw / 2, y: bh / 2 + sBase * m.c[1] * sw - sBase * m.h * sw / 2, w: sBase * m.w * sw, h: sBase * m.h * sw }; };
@@ -1005,7 +688,7 @@ NS.PhotoEditor = {
       if (!modeCadre()) return;
       e.preventDefault(); e.stopPropagation();
       cadreEl.setPointerCapture(e.pointerId);
-      const hd = e.target.closest('.sig4cem-pe__crop-h');
+      const hd = e.target.closest('.annotate-crop-h');
       const br = corps.getBoundingClientRect();
       cadreDrag = { sx: hd ? Number(hd.dataset.sx) : 0, sy: hd ? Number(hd.dataset.sy) : 0, move: !hd, r0: rectCadre(), p0: [e.clientX - br.left, e.clientY - br.top], base: snap() };
       if (!mep) mep = mepDefaut(srcW(), srcH());
@@ -1076,7 +759,7 @@ NS.PhotoEditor = {
       disposition();
     }
     frame.addEventListener('pointerdown', (e) => {
-      if (e.target.closest && e.target.closest('.sig4cem-pe__rot, .sig4cem-pe__zoom')) return; // curseur d'angle et bandeau de zoom : leurs propres commandes
+      if (e.target.closest && e.target.closest('.annotate-rot, .annotate-zoom')) return; // curseur d'angle et bandeau de zoom : leurs propres commandes
       ptrs.set(e.pointerId, [e.clientX, e.clientY]);
       if (ptrs.size === 2 || (libreActif() && ptrs.size === 1)) {
         if (libreActif() && ptrs.size === 1) { try { frame.setPointerCapture(e.pointerId); } catch (_) { /* ignoré */ } }
@@ -1111,14 +794,14 @@ NS.PhotoEditor = {
     const btnRotH = btnIc('Pivoter de 90° dans le sens horaire', maskIc('rot-horaire'));
     const btnRotA = btnIc('Pivoter de 90° dans le sens anti-horaire', maskIc('rot-antihoraire'));
     const btnLibre = btnIc('Transformation libre : pivoter de −180° à +180°, zoomer, déplacer (deux doigts)', maskIc('rot-libre'));
-    const btnCrop = btnIc('Recadrer (appui long : proportions standard)', svgIc('<path d="M7 2.5v14.5h14.5"/><path d="M2.5 7H17v14.5"/>'), 'sig4cem-pe__ic--menu');
-    const btnReset = btnIc('Remettre le cadrage d\'origine (photo entière, sans rotation)', svgIc('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'), 'sig4cem-pe__ic--droite');
+    const btnCrop = btnIc('Recadrer (appui long : proportions standard)', svgIc('<path d="M7 2.5v14.5h14.5"/><path d="M2.5 7H17v14.5"/>'), 'annotate-btn--menu');
+    const btnReset = btnIc('Remettre le cadrage d\'origine (photo entière, sans rotation)', svgIc('<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>'), 'annotate-btn--droite');
     btnReset.addEventListener('click', () => agirMep(() => { mep = null; ratioCadre = null; vz.z = 1; vz.tx = vz.ty = 0; }));
-    const sepMep = h('span', { class: 'sig4cem-pe__sep' });
+    const sepMep = h('span', { class: 'annotate-sep' });
     // Sortie du mode Mise en page : ✓ garde les changements, ✗ les annule tous ; on revient à l'outil précédent.
     const quitterMep = (garder) => {
       if (edit) setEdit(null);
-      if (!garder && mepEntry) { undoS.length = Math.min(undoS.length, mepEntry.n); redoS.length = 0; restaurer(mepEntry.base); }
+      if (!garder && mepEntry) hist.revenir(mepEntry.n, mepEntry.base);
       mepEntry = null; sousMep = 'crop'; ratioCadre = null; vz.z = 1; vz.tx = vz.ty = 0;
       tool = dernierDessin;
       fermerMenu(); disposition(); refresh(); redraw();
@@ -1163,12 +846,12 @@ NS.PhotoEditor = {
 
 
     // ---- Formes : rectangle, ellipse, ligne brisée. Elles restent modifiables (poignées) jusqu'à confirmation (✓) ou changement d'outil.
-    const poign = h('div', { class: 'sig4cem-pe__poign' });
+    const poign = h('div', { class: 'annotate-poign' });
     stage.append(poign);
     // Menu flottant dans l'image (comme la barre de lecture des captures) : valider ✓ / annuler ✗ la forme en cours.
     const btnFOk = btnIc('Valider la forme', '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"/></svg>');
     const btnFNon = btnIc('Annuler cette forme', '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>');
-    const pill = h('div', { class: 'sig4cem-pe__pill', hidden: '' }, btnFNon, btnFOk);
+    const pill = h('div', { class: 'annotate-pill', hidden: '' }, btnFNon, btnFOk);
     btnFOk.addEventListener('click', () => { if (polyDraft) terminerPoly(false, true); else setEdit(null); });
     btnFNon.addEventListener('click', () => {
       if (polyDraft) { polyDraft = null; redraw(); refresh(); return; }
@@ -1195,7 +878,7 @@ NS.PhotoEditor = {
       poigns.forEach((o) => o.el.remove());
       poigns = [];
       if (t) {
-        const mk = (kind, extra) => { const el = h('span', { class: `sig4cem-pe__hd sig4cem-pe__hd--${kind}` }); const o = Object.assign({ el, kind }, extra); poigns.push(o); poign.append(el); return o; };
+        const mk = (kind, extra) => { const el = h('span', { class: `annotate-hd annotate-hd--${kind}` }); const o = Object.assign({ el, kind }, extra); poigns.push(o); poign.append(el); return o; };
         if (t.t === 'poly') t.p.forEach((_, i) => mk('v', { i }));
         else if (t.t === 'arrow') [0, 1].forEach((i) => mk('v', { i }));
         else for (const [sx, sy] of [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]]) mk('h', { sx, sy });
@@ -1246,7 +929,7 @@ NS.PhotoEditor = {
       } else {
         const g = geomE(edit);
         const pt = (lx, ly) => { const q = tourne(lx, ly, g.r); return [g.cx + q[0], g.cy + q[1]]; };
-        for (const o of poigns) if (o.kind === 'h') { const q = pt(o.sx * g.hw, o.sy * g.hh); put(o.el, q[0], q[1]); const ar = o.el.querySelector('.sig4cem-pe__ar'); if (ar) ar.style.transform = `rotate(${g.r + thTot + (o.sx && !o.sy ? Math.PI / 2 : 0)}rad)`; }
+        for (const o of poigns) if (o.kind === 'h') { const q = pt(o.sx * g.hw, o.sy * g.hh); put(o.el, q[0], q[1]); const ar = o.el.querySelector('.annotate-ar'); if (ar) ar.style.transform = `rotate(${g.r + thTot + (o.sx && !o.sy ? Math.PI / 2 : 0)}rad)`; }
         const dec = 28 / f / sTot;
         const d = tourne(-dec, -dec, g.r);
         haut = pt(-g.hw, -g.hh);
@@ -1261,16 +944,16 @@ NS.PhotoEditor = {
         const rx = Math.max(16 * k, Math.min(canvas.width - 16 * k, haut[0] - dec)), ry = Math.max(16 * k, Math.min(canvas.height - 16 * k, haut[1] - dec));
         put(rot.el, rx, ry);
         const mv = poigns.find((o) => o.kind === 'move'); // boîte de texte : le symbole de déplacement juste à côté de la rotation
-        if (mv) { put(mv.el, rx + 34 * k, ry); const sv = mv.el.querySelector('.sig4cem-ic'); if (sv) sv.style.transform = `rotate(${(edit.r || 0) + thTot}rad)`; }
+        if (mv) { put(mv.el, rx + 34 * k, ry); const sv = mv.el.querySelector('.annotate-ic'); if (sv) sv.style.transform = `rotate(${(edit.r || 0) + thTot}rad)`; }
       }
     }
     function liePoignee(o) {
       const el = o.el;
       if (o.kind === 'rot') { el.innerHTML = '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/></svg>'; el.title = 'Faire pivoter'; }
-      else if (o.kind === 'move') { el.innerHTML = '<span class="sig4cem-ic sig4cem-ic--deplacer"></span>'; el.title = 'Déplacer'; }
+      else if (o.kind === 'move') { el.innerHTML = '<span class="annotate-ic annotate-ic--deplacer"></span>'; el.title = 'Déplacer'; }
       else {
         const nom = o.kind === 'v' ? 'deplacer' : (o.sx && o.sy ? (o.sx * o.sy > 0 ? 'redim-diag2' : 'redim-diag1') : 'redim-vert');
-        el.innerHTML = `<i class="sig4cem-pe__sq"></i><span class="sig4cem-ic sig4cem-ic--${nom} sig4cem-pe__ar" style="${o.sx && !o.sy && o.kind === 'h' ? 'transform:rotate(90deg)' : ''}"></span>`;
+        el.innerHTML = `<i class="annotate-sq"></i><span class="annotate-ic annotate-ic--${nom} annotate-ar" style="${o.sx && !o.sy && o.kind === 'h' ? 'transform:rotate(90deg)' : ''}"></span>`;
       }
       el.addEventListener('pointerdown', (e) => demarrerPoignee(o, e));
     }
@@ -1317,12 +1000,12 @@ NS.PhotoEditor = {
       e.preventDefault();
       e.stopPropagation();
       o.el.setPointerCapture(e.pointerId);
-      o.el.classList.add('sig4cem-pe__hd--act');
+      o.el.classList.add('annotate-hd--act');
       const p0 = pos(e);
       drag = { mode: o.kind, o, p0, orig: cl(edit) };
       if (o.kind === 'rot') { const g = geom(edit, canvas.width, canvas.height); const q = toPx(p0); drag.a0 = Math.atan2(q[1] - g.cy, q[0] - g.cx); }
       const bouge = (ev) => { ev.preventDefault(); suivre(ev); };
-      const fin = () => { o.el.classList.remove('sig4cem-pe__hd--act'); o.el.removeEventListener('pointermove', bouge); o.el.removeEventListener('pointerup', fin); o.el.removeEventListener('pointercancel', fin); drag = null; guide = null; redraw(); refresh(); };
+      const fin = () => { o.el.classList.remove('annotate-hd--act'); o.el.removeEventListener('pointermove', bouge); o.el.removeEventListener('pointerup', fin); o.el.removeEventListener('pointercancel', fin); drag = null; guide = null; redraw(); refresh(); };
       o.el.addEventListener('pointermove', bouge);
       o.el.addEventListener('pointerup', fin);
       o.el.addEventListener('pointercancel', fin);
@@ -1501,18 +1184,12 @@ NS.PhotoEditor = {
     btnUndo.addEventListener('click', () => {
       if (polyDraft) { polyDraft.pop(); if (!polyDraft.length) polyDraft = null; redraw(); refresh(); return; }
       if (edit) setEdit(null);
-      const prev = undoS.pop();
-      if (prev == null) { refresh(); redraw(); return; }
-      redoS.push(snap());
-      restaurer(prev);
+      if (!hist.undo()) { refresh(); redraw(); return; }
       refresh(); redraw();
     });
     btnRedo.addEventListener('click', () => {
       if (edit) setEdit(null);
-      const next = redoS.pop();
-      if (next == null) { refresh(); return; }
-      undoS.push(snap());
-      restaurer(next);
+      if (!hist.redo()) { refresh(); return; }
       refresh(); redraw();
     });
     btnClear.addEventListener('click', () => { polyDraft = null; if (edit) setEdit(null); const base = snap(); list = []; commit(base); refresh(); redraw(); });
@@ -1575,7 +1252,7 @@ NS.PhotoEditor = {
       if (t.hid) sub.push('masqué');
       return { ic: t.tx ? maskIc('texte') : t.t === 'poly' && t.cl ? iconeDe('poly') : iconeDe(cle), nom, sub: sub.join(' · ') };
     }
-    const objetsEl = h('div', { class: 'sig4cem-pe__objets', hidden: '' });
+    const objetsEl = h('div', { class: 'annotate-objets', hidden: '' });
     frame.append(objetsEl);
     function fermerObjets() { if (!objetsEl.hidden) { objetsEl.hidden = true; refresh(); } }
     function agir(t, fn, reselect) {
@@ -1588,24 +1265,24 @@ NS.PhotoEditor = {
     }
     function majObjets() {
       objetsEl.textContent = '';
-      objetsEl.append(h('div', { class: 'sig4cem-pe__objets-t', text: `Objets (${list.length}) · du plus haut au plus bas` }));
+      objetsEl.append(h('div', { class: 'annotate-objets-t', text: `Objets (${list.length}) · du plus haut au plus bas` }));
       for (let i = list.length - 1; i >= 0; i--) {
         const t = list[i];
         if (t.t === 'gomme') continue;
         const d = descr(t);
-        const ic = h('span', { class: 'sig4cem-pe__obj-ic' });
+        const ic = h('span', { class: 'annotate-obj-ic' });
         ic.innerHTML = d.ic;
-        const bUp = btnIc('Monter (au-dessus)', svgIc('<path d="M12 19V5M6 11l6-6 6 6"/>'), 'sig4cem-pe__ic--mini');
-        const bDn = btnIc('Descendre (en dessous)', svgIc('<path d="M12 5v14M6 13l6 6 6-6"/>'), 'sig4cem-pe__ic--mini');
-        const bEye = btnIc(t.hid ? 'Afficher' : 'Masquer', svgIc(t.hid ? '<path d="M2.5 12S6 5.5 12 5.5c1.6 0 3 .5 4.2 1.2M21.5 12S18 18.5 12 18.5c-1.6 0-3-.5-4.2-1.2"/><path d="M4 4l16 16"/>' : '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'), 'sig4cem-pe__ic--mini');
-        const bDel = btnIc('Supprimer', maskIc('poubelle'), 'sig4cem-pe__ic--mini');
+        const bUp = btnIc('Monter (au-dessus)', svgIc('<path d="M12 19V5M6 11l6-6 6 6"/>'), 'annotate-btn--mini');
+        const bDn = btnIc('Descendre (en dessous)', svgIc('<path d="M12 5v14M6 13l6 6 6-6"/>'), 'annotate-btn--mini');
+        const bEye = btnIc(t.hid ? 'Afficher' : 'Masquer', svgIc(t.hid ? '<path d="M2.5 12S6 5.5 12 5.5c1.6 0 3 .5 4.2 1.2M21.5 12S18 18.5 12 18.5c-1.6 0-3-.5-4.2-1.2"/><path d="M4 4l16 16"/>' : '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'), 'annotate-btn--mini');
+        const bDel = btnIc('Supprimer', maskIc('poubelle'), 'annotate-btn--mini');
         bUp.disabled = i === list.length - 1 || list.slice(i + 1).every((u) => u.t === 'gomme');
         bDn.disabled = i === 0;
         bUp.addEventListener('click', () => agir(t, () => { let j = list.indexOf(t) + 1; while (j < list.length && list[j].t === 'gomme') j++; if (j < list.length) { list.splice(list.indexOf(t), 1); list.splice(j, 0, t); } }, true));
         bDn.addEventListener('click', () => agir(t, () => { const j = list.indexOf(t); if (j > 0) { list.splice(j, 1); list.splice(j - 1, 0, t); } }, true));
         bEye.addEventListener('click', () => agir(t, () => { if (t.hid) delete t.hid; else t.hid = true; }, false));
         bDel.addEventListener('click', () => agir(t, () => { list.splice(list.indexOf(t), 1); }, false));
-        const ligneEl = h('div', { class: 'sig4cem-pe__obj' + (t === edit ? ' sig4cem-pe__obj--sel' : '') + (t.hid ? ' sig4cem-pe__obj--hid' : '') }, ic, h('span', { class: 'sig4cem-pe__obj-t' }, h('b', { text: d.nom }), h('small', { text: d.sub })), bUp, bDn, bEye, bDel);
+        const ligneEl = h('div', { class: 'annotate-obj' + (t === edit ? ' annotate-obj--sel' : '') + (t.hid ? ' annotate-obj--hid' : '') }, ic, h('span', { class: 'annotate-obj-t' }, h('b', { text: d.nom }), h('small', { text: d.sub })), bUp, bDn, bEye, bDel);
         ligneEl.addEventListener('click', (e) => { if (e.target.closest('button')) return; if (t !== edit) { selectionner(t); redraw(); } refresh(); });
         objetsEl.append(ligneEl);
       }
@@ -1620,17 +1297,17 @@ NS.PhotoEditor = {
     });
     // Objets masqués : l'utilisateur choisit à l'enregistrement de les garder (dans la source modifiable) ou de les supprimer.
     function dialogueMasques(masques, suite) {
-      const lignes = masques.map((t) => { const d = descr(t); const ic = h('span', { class: 'sig4cem-pe__obj-ic' }); ic.innerHTML = d.ic; return h('div', { class: 'sig4cem-pe__obj' }, ic, h('span', { class: 'sig4cem-pe__obj-t' }, h('b', { text: d.nom }), h('small', { text: d.sub.replace(/ ?· ?masqué|^masqué$/, '') }))); });
-      const bt = (txt, cls, fn) => { const b = h('button', { type: 'button', class: 'sig4cem-pe__dlg-b' + (cls ? ` ${cls}` : ''), text: txt }); b.addEventListener('click', fn); return b; };
-      const voile = h('div', { class: 'sig4cem-pe__voile' });
+      const lignes = masques.map((t) => { const d = descr(t); const ic = h('span', { class: 'annotate-obj-ic' }); ic.innerHTML = d.ic; return h('div', { class: 'annotate-obj' }, ic, h('span', { class: 'annotate-obj-t' }, h('b', { text: d.nom }), h('small', { text: d.sub.replace(/ ?· ?masqué|^masqué$/, '') }))); });
+      const bt = (txt, cls, fn) => { const b = h('button', { type: 'button', class: 'annotate-dlg-b' + (cls ? ` ${cls}` : ''), text: txt }); b.addEventListener('click', fn); return b; };
+      const voile = h('div', { class: 'annotate-voile' });
       const fermer = () => voile.remove();
-      voile.append(h('div', { class: 'sig4cem-pe__dlg', role: 'dialog', 'aria-modal': 'true' },
+      voile.append(h('div', { class: 'annotate-dlg', role: 'dialog', 'aria-modal': 'true' },
         h('h4', { text: 'Enregistrer les annotations' }),
         h('p', { text: masques.length === 1 ? '1 objet est masqué. Voulez-vous le conserver dans la source modifiable ? Il ne figure pas sur l\'image du rapport.' : `${masques.length} objets sont masqués. Voulez-vous les conserver dans la source modifiable ? Ils ne figurent pas sur l'image du rapport.` }),
-        h('div', { class: 'sig4cem-pe__dlg-l' }, ...lignes),
+        h('div', { class: 'annotate-dlg-l' }, ...lignes),
         bt(masques.length === 1 ? 'Conserver masqué' : 'Conserver masqués', '', () => { fermer(); suite(true); }),
         bt('Supprimer définitivement', '', () => { fermer(); suite(false); }),
-        bt('Revenir', 'sig4cem-pe__dlg-b--sec', fermer)));
+        bt('Revenir', 'annotate-dlg-b--sec', fermer)));
       root.append(voile);
     }
     btnOk.addEventListener('click', () => {
@@ -1644,9 +1321,7 @@ NS.PhotoEditor = {
     img.addEventListener('load', () => fit());
     if (img.complete) fit();
     refresh();
-  },
+  }
 
-  /** Dessine un calque de traits sur un canvas (utilisé pour les tests et les aperçus). */
-  render,
-};
+A.Editor = { open };
 })();

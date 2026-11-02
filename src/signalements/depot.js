@@ -131,7 +131,7 @@ NS.Depot = {
     const depot = this.buildDepot(s);
     const records = [];
     for (let i = 0; i < (s.pieces || []).length; i++) {
-      const record = await NS.Pieces.get(s.pieces[i].id);
+      const record = await AMGT4CEM_Annotate.Store.get(s.pieces[i].id);
       if (!record) throw new Error(`Photo ${i + 1} introuvable dans cet appareil.`);
       records.push(record);
       // Les traits accompagnent le calque : une révision (sur n'importe quel appareil) peut reprendre les annotations.

@@ -147,7 +147,7 @@ SIG.List = {
     const btn = (text, onClick, primary) => {
       const b = h('button', { type: 'button', class: `sig4cem-btn sig4cem-btn--small${primary ? ' sig4cem-btn--primary' : ''}` });
       b.textContent = text;
-      if (text.startsWith('🗑 ')) b.innerHTML = `<span class="sig4cem-ic sig4cem-ic--poubelle" aria-hidden="true"></span> ${text.slice(3)}`; // icône poubelle à la place de l'émoji
+      if (text.startsWith('🗑 ')) b.innerHTML = `<span class="annotate-ic annotate-ic--poubelle" aria-hidden="true"></span> ${text.slice(3)}`; // icône poubelle à la place de l'émoji
       b.disabled = n === 0 || this.busy;
       b.addEventListener('click', onClick);
       return b;
@@ -225,9 +225,9 @@ SIG.List = {
         loaded = true;
         for (const [i, meta] of entry.pieces.entries()) {
           try {
-            const rec = await NS.Pieces.get(meta.id);
+            const rec = await AMGT4CEM_Annotate.Store.get(meta.id);
             if (!rec) continue;
-            const vueBlob = rec.mep && SIG.PhotoEditor && SIG.PhotoEditor.vue ? await SIG.PhotoEditor.vue(rec.blob, rec.mep, 400) : rec.blob;
+            const vueBlob = rec.mep && AMGT4CEM_Annotate && AMGT4CEM_Annotate.vue ? await AMGT4CEM_Annotate.vue(rec.blob, rec.mep, 400) : rec.blob;
             const thumb = h('span', { class: 'sig4cem-photo' }, h('img', { src: URL.createObjectURL(vueBlob), alt: `Photo ${i + 1}` }));
             if (rec.annot) thumb.append(h('img', { class: 'sig4cem-photo__overlay', src: URL.createObjectURL(rec.annot), alt: '' }));
             gallery.append(h('div', { class: 'sig4cem-photo-card' }, thumb,

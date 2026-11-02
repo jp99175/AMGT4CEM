@@ -12,7 +12,7 @@
  * (compteur « x/y » du menu) ; il est effacé quand plus rien n'attend.
  *
  * IndexedDB et non localStorage : une entrée peut être nombreuse et ses photos le sont déjà
- * (src/signalements/pieces-store.js).
+ * (src/annotate/store.js).
  */
 (function () {
 const SIG = (window.SIG4CEM = window.SIG4CEM || {});
@@ -95,7 +95,7 @@ SIG.Entries = {
   /** Supprime l'entrée et ses photos locales (jamais la copie du serveur, s'il y en a une). */
   async remove(id) {
     await this._run('readwrite', (s) => s.delete(id));
-    try { await window.AMGT4CEM_Signalements.Pieces.removeForPoint(id); } catch (err) { console.warn('[SIG4CEM] Photos non supprimées :', err); }
+    try { await window.AMGT4CEM_Annotate.Store.removeForPoint(id); } catch (err) { console.warn('[SIG4CEM] Photos non supprimées :', err); }
   },
 
   /** Compteurs du menu : brouillons, en file, en erreur, envoyées, et envoyées pendant l'envoi en cours. */

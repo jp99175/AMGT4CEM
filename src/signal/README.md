@@ -46,7 +46,7 @@ d'interstation. Pas de points métier. Seuls points affichés : les entrées loc
 ## Photos : commentaire et annotations
 
 Chaque photo (réduite à 2000 px, JPEG 85) a un commentaire texte et, au choix, des annotations (crayon, flèche, cercle,
-texte en zone transparente, modifiable, déplaçable, de taille et couleur réglables) saisies dans `photoEditor.js`. La photo n'est jamais modifiée : les annotations sont enregistrées à part, sur un
+texte en zone transparente, modifiable, déplaçable, de taille et couleur réglables) saisies avec l'outil commun `src/annotate/` (voir son README). La photo n'est jamais modifiée : les annotations sont enregistrées à part, sur un
 calque PNG transparent (grand côté 1000 px) superposé à l'affichage, avec les traits (coordonnées relatives) pour les
 reprendre. Dans l'archive de dépôt : `IMG_…_MX.jpg` (photo), `IMG_…_MX_ANNOT.png` (calque) et, dans `signalement.json`,
 `pieces[i].commentaire` et `pieces[i].annotations` (nom, taille, SHA-256), champs facultatifs (schéma version 1).
@@ -104,5 +104,5 @@ Première connexion : lien reçu par email
 | `list.js` | listes « Mes entrées » : brouillons, envois en cours, dernières entrées |
 | `signal.css` | styles (pensés pour le téléphone) |
 | `../auth/` | session et écran de connexion / première connexion (communs avec la page admin) |
-| `../signalements/` | modules repris du plugin : vocabulaire et archive (`depot.js`), photos (`pieces-store.js`), envoi (`envoi.js`) |
+| `../signalements/` | modules repris du plugin : vocabulaire et archive (`depot.js`), photos (`../annotate/store.js`), envoi (`envoi.js`) |
 tools/stamp-build.sh : horodatage du build, lancé par le hook git pre-commit (.git/hooks, non versionné : à recréer sur un autre clone).

@@ -197,7 +197,7 @@ const AMGT4CEM_CONFIG = {
     signal: {
       title: 'SIG4CEM – Signalements et demandes',
       template: 'amgt-tpl-signal',
-      styles: ['./src/signal/signal.css', './src/auth/auth.css'],
+      styles: ['./src/signal/signal.css', './src/annotate/annotate.css', './src/auth/auth.css'],
       // Socle commun avec la carte AMGT4CEM, pour que la carte de choix du point affiche ce que ta sélection
       // locale affiche dans la carte (réseau, UrbIS Topo, Plans patrimoine ; jamais les points métier) :
       // mêmes modules, même ordre. Sans les menus, la recherche, les outils (mesure, ajout de point) ni les
@@ -231,7 +231,7 @@ const AMGT4CEM_CONFIG = {
         './src/plugins.js', // seulement captureClicks : les polygones du réseau lui renvoient les clics
         './src/searchTool.js',
         './src/signal/shims.js',
-        './src/signalements/pieces-store.js',
+        './src/annotate/store.js',
         './src/signalements/zip-writer.js',
         './src/signalements/depot.js',
         './src/auth/auth.js',
@@ -243,7 +243,12 @@ const AMGT4CEM_CONFIG = {
         './src/signalements/importer.js',
         './src/signal/entries.js',
         './src/signal/mapPicker.js',
-        './src/signal/photoEditor.js',
+        './src/annotate/dom.js',
+        './src/annotate/render.js',
+        './src/annotate/layout.js',
+        './src/annotate/history.js',
+        './src/annotate/editor.js',
+        './src/annotate/annotate.js',
         './src/signal/form.js',
         './src/signal/list.js',
         './src/signal/all.js',

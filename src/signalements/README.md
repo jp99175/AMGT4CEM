@@ -2,7 +2,7 @@
 
 > **État** : l'ancien plugin de la carte (bouton, formulaire, stockage local `store.js`) a été **supprimé** ; ses
 > données d'essai sont effacées des appareils. Ce dossier ne garde que les modules repris par SIG4CEM
-> (`home.html?app=signal`, `src/signal/`) : photos (`pieces-store.js`), archive ZIP (`zip-writer.js`,
+> (`home.html?app=signal`, `src/signal/`) : photos (`../annotate/store.js`), archive ZIP (`zip-writer.js`,
 > `zip-reader.js`), vocabulaire et noms de fichiers (`depot.js`), envoi (`envoi.js`), PDF (`pdf.js`), révision
 > (`importer.js`). L'adresse du serveur est dans `config.js`, bloc `depot`. Ce qui suit décrit les règles de
 > saisie et de dépôt, toujours valables dans SIG4CEM.
@@ -92,7 +92,6 @@ encore trouvables par la recherche de la carte.
 |---|---|
 | `depot.js` | vocabulaire, noms de fichiers, contenu et export du dépôt |
 | `envoi.js` | envoi de l'archive au serveur de dépôt, code d'accès (onglet) |
-| `pieces-store.js` | photos (IndexedDB), réduction, empreintes |
 | `zip-writer.js` | écriture d'une archive ZIP sans dépendance |
 | `../../data/signalements/vocabulaire.json` | vocabulaire public |
 | `../../depot-signalements/` | serveur de dépôt (Cloudflare Worker + R2), attribue la référence |

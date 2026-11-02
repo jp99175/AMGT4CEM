@@ -4,7 +4,7 @@
  * Mêmes champs et même vocabulaire que le plugin `signalements` (data/signalements/vocabulaire.json via
  * src/signalements/depot.js) : type > domaine technique, date d'observation, localisation précisée,
  * demandeur et sa référence, description, photos. La position vient du choix sur la carte (mapPicker.js).
- * Les photos sont réduites et rangées dans IndexedDB dès leur ajout (src/signalements/pieces-store.js),
+ * Les photos sont réduites et rangées dans IndexedDB dès leur ajout (src/annotate/store.js),
  * sous l'identifiant de l'entrée : annuler les supprime.
  *
  * Deux boutons d'enregistrement : « Enregistrer en local » (brouillon) et « Enregistrer et envoyer »
@@ -112,7 +112,7 @@ SIG.Form = {
 
   async _addPhoto(file) {
     try {
-      this.photos.push(await NS.Pieces.add(this.entryId, file));
+      this.photos.push(await AMGT4CEM_Annotate.Store.add(this.entryId, file));
       await this._renderPhotos();
     } catch (err) {
       console.error('[SIG4CEM] Photo non ajoutée :', err);
@@ -125,43 +125,43 @@ SIG.Form = {
     for (const img of list.querySelectorAll('img')) URL.revokeObjectURL(img.src);
     list.textContent = '';
     for (const [i, meta] of this.photos.entries()) {
-      const record = await NS.Pieces.get(meta.id);
+      const record = await AMGT4CEM_Annotate.Store.get(meta.id);
       if (!record) continue;
       const rm = h('button', { type: 'button', class: 'sig4cem-photo__rm', title: 'Retirer cette photo', 'aria-label': 'Retirer cette photo', text: '✕' });
       rm.addEventListener('click', async () => {
         this.photos.splice(i, 1);
-        if (this.editing) this.removed.push(meta.id); else await NS.Pieces.remove(meta.id);
+        if (this.editing) this.removed.push(meta.id); else await AMGT4CEM_Annotate.Store.remove(meta.id);
         await this._renderPhotos();
       });
       // La photo d'origine ; les annotations sont un calque transparent superposé, jamais fondu dans la photo.
-      const vueBlob = record.mep && SIG.PhotoEditor.vue ? await SIG.PhotoEditor.vue(record.blob, record.mep, 400) : record.blob; // photo vue à travers sa mise en page
+      const vueBlob = record.mep && AMGT4CEM_Annotate.vue ? await AMGT4CEM_Annotate.vue(record.blob, record.mep, 400) : record.blob; // photo vue à travers sa mise en page
       const thumb = h('span', { class: 'sig4cem-photo' }, h('img', { src: URL.createObjectURL(vueBlob), alt: `Photo ${i + 1}` }));
       if (record.annot) thumb.append(h('img', { class: 'sig4cem-photo__overlay', src: URL.createObjectURL(record.annot), alt: '' }));
       thumb.append(rm);
       const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', });
-      edit.innerHTML = `${'<span class="sig4cem-ic sig4cem-ic--crayon" aria-hidden="true"></span>'} ${record.annot ? 'Modifier les annotations' : 'Annoter'}`;
+      edit.innerHTML = `${'<span class="annotate-ic annotate-ic--crayon" aria-hidden="true"></span>'} ${record.annot ? 'Modifier les annotations' : 'Annoter'}`;
       edit.addEventListener('click', () => {
         if ((record.annotV || 0) > 1 && !window.confirm('Ces annotations ont été enregistrées avec une version plus récente de l\'application : les modifier ici risque d\'en perdre une partie. Continuer ?')) return;
         ouvrirEditeur();
       });
       // Pivoter / recadrer : icônes seules, à côté de « Annoter ». La photo d'origine n'est pas touchée ; le calque d'annotations est recalculé dans le nouveau cadre.
       const appliquerMep = async (mep) => {
-        await NS.Pieces.setMep(meta.id, mep);
+        await AMGT4CEM_Annotate.Store.setMep(meta.id, mep);
         if (record.traits && record.traits.length) {
-          const png = await SIG.PhotoEditor.overlayPng(record.traits, meta.largeur, meta.hauteur, mep);
-          meta.annotation = await NS.Pieces.setAnnotations(meta.id, record.traits, png);
+          const png = await AMGT4CEM_Annotate.overlayPng(record.traits, meta.largeur, meta.hauteur, mep);
+          meta.annotation = await AMGT4CEM_Annotate.Store.setAnnotations(meta.id, record.traits, png);
         }
         await this._renderPhotos();
       };
-      const ouvrirEditeur = (outil) => SIG.PhotoEditor.open(record.blob, record.traits || [], async (traits, mep) => {
-        await NS.Pieces.setMep(meta.id, mep);
-        const png = await SIG.PhotoEditor.overlayPng(traits, meta.largeur, meta.hauteur, mep);
-        meta.annotation = await NS.Pieces.setAnnotations(meta.id, traits, png);
+      const ouvrirEditeur = (outil) => AMGT4CEM_Annotate.open(record.blob, record.traits || [], async (traits, mep) => {
+        await AMGT4CEM_Annotate.Store.setMep(meta.id, mep);
+        const png = await AMGT4CEM_Annotate.overlayPng(traits, meta.largeur, meta.hauteur, mep);
+        meta.annotation = await AMGT4CEM_Annotate.Store.setAnnotations(meta.id, traits, png);
         await this._renderPhotos();
       }, record.mep || null, outil ? { outil } : null);
       const rot = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small sig4cem-btn--ico', title: 'Pivoter de 90° dans le sens horaire', 'aria-label': 'Pivoter de 90° dans le sens horaire' });
-      rot.innerHTML = '<span class="sig4cem-ic sig4cem-ic--rot-horaire" aria-hidden="true"></span>';
-      rot.addEventListener('click', () => appliquerMep(SIG.PhotoEditor.pivoterMep(record.mep || null, 1, meta.largeur, meta.hauteur)));
+      rot.innerHTML = '<span class="annotate-ic annotate-ic--rot-horaire" aria-hidden="true"></span>';
+      rot.addEventListener('click', () => appliquerMep(AMGT4CEM_Annotate.pivoterMep(record.mep || null, 1, meta.largeur, meta.hauteur)));
       const crop = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small sig4cem-btn--ico', title: 'Recadrer', 'aria-label': 'Recadrer' });
       crop.innerHTML = '<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="#0b5c75" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2.5v14.5h14.5"/><path d="M2.5 7H17v14.5"/></svg>';
       crop.addEventListener('click', () => ouvrirEditeur('mep'));
@@ -249,12 +249,12 @@ SIG.Form = {
       if (this.editing) {
         // Entrée déjà enregistrée : annuler ne supprime rien de ce qui existait ; seules les photos ajoutées pendant cette modification partent.
         const kept = new Set((this.editing.pieces || []).map((m) => m.id));
-        for (const m of this.photos) if (!kept.has(m.id)) { try { await NS.Pieces.remove(m.id); } catch (err) { console.warn('[SIG4CEM] Photo non supprimée :', err); } }
+        for (const m of this.photos) if (!kept.has(m.id)) { try { await AMGT4CEM_Annotate.Store.remove(m.id); } catch (err) { console.warn('[SIG4CEM] Photo non supprimée :', err); } }
         onCancel();
         return;
       }
       if (this.photos.length && !confirm('Abandonner cette entrée et ses photos ?')) return;
-      try { await NS.Pieces.removeForPoint(this.entryId); } catch (err) { console.warn('[SIG4CEM] Photos non supprimées :', err); }
+      try { await AMGT4CEM_Annotate.Store.removeForPoint(this.entryId); } catch (err) { console.warn('[SIG4CEM] Photos non supprimées :', err); }
       onCancel();
     };
     const save = (send) => async () => {
@@ -264,7 +264,7 @@ SIG.Form = {
       try {
         const saved = await onSave(data, { send });
         if (saved === false) return; // enregistrement refusé : rien n'est supprimé
-        for (const id of this.removed) { try { await NS.Pieces.remove(id); } catch (err) { console.warn('[SIG4CEM] Photo non supprimée :', err); } }
+        for (const id of this.removed) { try { await AMGT4CEM_Annotate.Store.remove(id); } catch (err) { console.warn('[SIG4CEM] Photo non supprimée :', err); } }
         this.removed = [];
       } finally { f.btnLocal.disabled = f.btnSend.disabled = false; }
     };
