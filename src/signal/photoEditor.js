@@ -678,7 +678,7 @@ NS.PhotoEditor = {
       if (!objetsEl.hidden) majObjets();
       const selVide = tool === 'select' && !edit && objetsEl.hidden;
       hint.hidden = !((tool === 'text' && !edit) || tool === 'gomme' || selVide || em);
-      hint.textContent = hint.hidden ? '' : em ? (sousMep === 'libre' ? 'Deux doigts sur la photo : pivoter, zoomer, déplacer.' : 'Déplacez les poignées du cadre. Appui long sur le recadrage : proportions standard.') : tool === 'gomme' ? 'Passez la gomme sur un tracé au crayon pour en effacer une partie.' : tool === 'select' ? (list.some((t) => !t.hid) || list.length ? 'Touchez un objet pour le sélectionner, ou ouvrez la liste des objets.' : 'Aucun objet à sélectionner pour le moment.') : 'Tracez ou touchez la photo pour poser une boîte de texte.';
+      hint.textContent = hint.hidden ? '' : em ? (sousMep === 'libre' ? (window.matchMedia && window.matchMedia('(pointer: coarse)').matches ? 'Deux doigts sur la photo : pivoter, zoomer, déplacer. Curseur en bas : angle.' : 'Glissez la photo pour la déplacer ; curseur en bas pour pivoter de −180° à +180°.') : 'Déplacez les poignées du cadre. Curseur en bas : pivoter. Appui long sur le recadrage : proportions standard.') : tool === 'gomme' ? 'Passez la gomme sur un tracé au crayon pour en effacer une partie.' : tool === 'select' ? (list.some((t) => !t.hid) || list.length ? 'Touchez un objet pour le sélectionner, ou ouvrez la liste des objets.' : 'Aucun objet à sélectionner pour le moment.') : 'Tracez ou touchez la photo pour poser une boîte de texte.';
     }
     // ---- Boîtes de texte : un rectangle dont l'intérieur se saisit au clavier. Une couleur et une taille par boîte,
     // mais des formats mélangeables (gras, italique, souligné, indice, exposant) : texte = [{ t, b, i, u, x }].
@@ -845,6 +845,7 @@ NS.PhotoEditor = {
     // Les boutons de la barre ne prennent pas le focus (la sélection du texte reste active dans la boîte).
     root.addEventListener('mousedown', (e) => { if (e.target.closest && e.target.closest('.sig4cem-pe__ic')) e.preventDefault(); });
     window.addEventListener('resize', () => { disposition(); redraw(); });
+    if (window.ResizeObserver) new ResizeObserver(() => { disposition(); redraw(); }).observe(corps); // la zone change de hauteur quand la ligne d'aide apparaît ou disparaît
     // Conversion des anciens textes (zone libre) en boîtes de texte sans cadre, à l'ouverture.
     function convertirAnciens() {
       if (!list.some((t) => t.t === 'text')) return;
@@ -989,7 +990,7 @@ NS.PhotoEditor = {
       cadreEl.hidden = !modeCadre();
       gridLibre.hidden = !(tool === 'mep' && sousMep === 'libre');
       angleEl.hidden = gridLibre.hidden;
-      rotBar.hidden = gridLibre.hidden;
+      rotBar.hidden = tool !== 'mep'; // le curseur d'angle sert en recadrage comme en transformation libre
       if (!rotBar.hidden) { rotRange.value = String(mepEff().a); rotVal.textContent = `${mepEff().a > 0 ? '+' : mepEff().a < 0 ? '−' : ''}${Math.abs(mepEff().a).toFixed(1).replace('.', ',')}°`; }
       if (!gridLibre.hidden) angleEl.textContent = `${mepEff().a >= 0 ? '+' : '−'}${Math.abs(mepEff().a).toFixed(1).replace('.', ',')}°`;
       if (cadreEl.hidden) return;
