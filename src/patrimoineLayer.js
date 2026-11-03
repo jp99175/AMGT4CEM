@@ -182,25 +182,44 @@ const AMGT4CEM_PatrimoineLayer = {
     return this._cache[entry.id];
   },
 
-  /** Objets UrbIS Topo (lignes) lus par identifiant ; une erreur réseau n'empêche pas le reste de la couche. */
+  /**
+   * Objets UrbIS Topo lus par identifiant (TopoLines puis TopoShapes) ; une erreur n'empêche pas le reste
+   * de la couche. Sans console sur mobile, le résultat (trouvés / erreurs) est affiché dans un bandeau.
+   */
   async _loadUrbisObjets(objets) {
     const { wfsUrl, version } = AMGT4CEM_CONFIG.urbisTopo;
-    try {
-      const params = new URLSearchParams({
-        service: 'WFS', version, request: 'GetFeature', typeNames: 'urbistopo:TopoLines',
-        outputFormat: 'application/json', CQL_FILTER: `ID IN (${objets.map((o) => `'${o.id}'`).join(",")})`,
-      });
-      const response = await fetch(`${wfsUrl}?${params.toString()}`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const geojson = await response.json();
-      return (geojson.features || []).map((f) => {
-        const o = objets.find((x) => String(x.id) === String((f.properties || {}).ID)) || {};
-        return { type: 'Feature', geometry: f.geometry, properties: { genre: 'urbis', name_fr: o.lieu || 'Objet UrbIS', urbis_id: (f.properties || {}).ID, urbis_code: o.code } };
-      });
-    } catch (err) {
-      console.warn('[AMGT4CEM] Objets UrbIS de la couche temporaire indisponibles :', err);
-      return [];
+    const out = [];
+    const notes = [];
+    for (const featureType of ['urbistopo:TopoLines', 'urbistopo:TopoShapes']) {
+      try {
+        const params = new URLSearchParams({
+          service: 'WFS', version, request: 'GetFeature', typeNames: featureType,
+          outputFormat: 'application/json', CQL_FILTER: `ID IN (${objets.map((o) => `'${o.id}'`).join(',')})`,
+        });
+        const response = await fetch(`${wfsUrl}?${params.toString()}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const geojson = await response.json();
+        for (const f of geojson.features || []) {
+          const o = objets.find((x) => String(x.id) === String((f.properties || {}).ID)) || {};
+          out.push({ type: 'Feature', geometry: f.geometry, properties: { genre: 'urbis', name_fr: o.lieu || 'Objet UrbIS', urbis_id: (f.properties || {}).ID, urbis_code: o.code } });
+        }
+        notes.push(`${featureType.split(':')[1]} : ${(geojson.features || []).length}`);
+      } catch (err) {
+        console.warn('[AMGT4CEM] Objets UrbIS indisponibles :', featureType, err);
+        notes.push(`${featureType.split(':')[1]} : erreur ${err && err.message ? err.message : err}`);
+      }
     }
+    this._bandeau(`Objets UrbIS de la couche temporaire : ${out.length}/${objets.length} trouvés (${notes.join(' ; ')})`);
+    return out;
+  },
+
+  _bandeau(texte) {
+    const el = document.createElement('div');
+    el.textContent = texte;
+    el.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:99999;background:#fff3cd;color:#333;border:1px solid #c9a227;border-radius:8px;padding:8px 10px;font:13px sans-serif;box-shadow:0 2px 6px rgba(0,0,0,.3)';
+    el.addEventListener('click', () => el.remove());
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 15000);
   },
 
   _buildSubGroup(features, color) {
