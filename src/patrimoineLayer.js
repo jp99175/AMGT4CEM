@@ -188,7 +188,7 @@ const AMGT4CEM_PatrimoineLayer = {
     try {
       const params = new URLSearchParams({
         service: 'WFS', version, request: 'GetFeature', typeNames: 'urbistopo:TopoLines',
-        outputFormat: 'application/json', CQL_FILTER: `ID IN (${objets.map((o) => o.id).join(',')})`,
+        outputFormat: 'application/json', CQL_FILTER: `ID IN (${objets.map((o) => `'${o.id}'`).join(",")})`,
       });
       const response = await fetch(`${wfsUrl}?${params.toString()}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
