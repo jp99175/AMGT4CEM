@@ -33,10 +33,7 @@ domaine technique. La nature (signalement ou demande) n'est plus choisie : elle 
 | Application amiante | signalement | sans objet |
 | Demande de modification / renouvellement | demande | gros œuvre, parachèvement, drainage-égouttage-évacuation (obligatoire) |
 
-Sont abandonnés, et marqués `obsolete` (codes conservés, entrées déjà saisies lisibles et modifiables) : « Mise à jour des
-plans », « Modification » et « Renouvellement » (fusionnés dans la demande ci-dessus), les anciennes demandes amiante
-(contrôle, inventaire destructif, traitement). La « demande de modification documentaire » est retirée : le signalement
-d'une incohérence dans les plans sera prévu ailleurs.
+Les anciens types (mise à jour des plans, modification, renouvellement, contrôle, inventaire destructif, traitement) ont été supprimés du vocabulaire en version 5, avec les fiches d'essai. Chaque type porte un champ `fichier` (avarie, infiltration, modif, amiante) : le mot qui figurera dans les noms de fichiers. Le domaine « documentaire » n'est plus rattaché à aucun type.
 
 ## Un seul formulaire
 

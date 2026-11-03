@@ -1,6 +1,6 @@
 {
-  "version": 4,
-  "description": "Vocabulaire des signalements et demandes (points métier). Public : ne contient aucune donnée de suivi. Deux niveaux seulement : type, puis domaine technique. La nature (signalement ou demande) n'est plus choisie : elle découle du type. Les codes ne sont jamais supprimés ni réaffectés : un code abandonné est marqué `obsolete` (plus proposé à la saisie, toujours lisible). Chaque type liste les domaines techniques qu'il accepte (`domaines`, vide : aucun domaine à renseigner) ; `domaineObligatoire` dit si le choix est exigé. Un seul formulaire sert à tous les types : le champ domaine reste affiché, désactivé quand le type n'en accepte pas. Libellés NL à ajouter et à faire valider par un néerlandophone.",
+  "version": 5,
+  "description": "Vocabulaire des signalements et demandes (points métier). Public : ne contient aucune donnée de suivi. Deux niveaux seulement : type, puis domaine technique. La nature (signalement ou demande) n'est plus choisie : elle découle du type. Un code n'est jamais réaffecté. Les anciens types abandonnés ont été supprimés en version 5 (les fiches d'essai ont été effacées). `fichier` : mot du type dans les noms de fichiers (minuscules, sans accent). Chaque type liste les domaines techniques qu'il accepte (`domaines`, vide : aucun domaine à renseigner) ; `domaineObligatoire` dit si le choix est exigé. Un seul formulaire sert à tous les types : le champ domaine reste affiché, désactivé quand le type n'en accepte pas. Libellés NL à ajouter et à faire valider par un néerlandophone.",
   "natures": [
     {
       "code": "SIGNALEMENT",
@@ -51,7 +51,8 @@
         "GROS_OEUVRE",
         "PARACHEVEMENT",
         "DRAINAGE"
-      ]
+      ],
+      "fichier": "avarie"
     },
     {
       "code": "INFILTRATION",
@@ -60,7 +61,8 @@
       "nl": null,
       "court": "INF",
       "domaineObligatoire": false,
-      "domaines": []
+      "domaines": [],
+      "fichier": "infiltration"
     },
     {
       "code": "DEMANDE_MODIF_RENOUV",
@@ -73,7 +75,8 @@
         "GROS_OEUVRE",
         "PARACHEVEMENT",
         "DRAINAGE"
-      ]
+      ],
+      "fichier": "modif"
     },
     {
       "code": "APPLICATION_AMIANTE",
@@ -82,92 +85,8 @@
       "nl": null,
       "court": "AMI",
       "domaineObligatoire": false,
-      "domaines": []
-    },
-    {
-      "code": "MODIFICATION",
-      "nature": "DEMANDE",
-      "fr": "Modification",
-      "nl": null,
-      "court": "MOD",
-      "domaineObligatoire": true,
-      "domaines": [
-        "GROS_OEUVRE",
-        "PARACHEVEMENT",
-        "DRAINAGE",
-        "DOCUMENTAIRE"
-      ],
-      "obsolete": true
-    },
-    {
-      "code": "RENOUVELLEMENT",
-      "nature": "DEMANDE",
-      "fr": "Renouvellement",
-      "nl": null,
-      "court": "REN",
-      "domaineObligatoire": true,
-      "domaines": [
-        "GROS_OEUVRE",
-        "PARACHEVEMENT",
-        "DRAINAGE"
-      ],
-      "obsolete": true
-    },
-    {
-      "code": "MISE_A_JOUR_PLANS",
-      "nature": "DEMANDE",
-      "fr": "Mise à jour des plans",
-      "nl": null,
-      "court": "MAJP",
-      "domaineObligatoire": true,
-      "domaines": [
-        "GROS_OEUVRE",
-        "PARACHEVEMENT",
-        "DRAINAGE"
-      ],
-      "obsolete": true
-    },
-    {
-      "code": "CONTROLE",
-      "nature": "DEMANDE",
-      "fr": "Contrôle",
-      "nl": null,
-      "court": "CTR",
-      "domaineObligatoire": false,
-      "domaines": [
-        "GROS_OEUVRE",
-        "PARACHEVEMENT",
-        "DRAINAGE"
-      ],
-      "obsolete": true
-    },
-    {
-      "code": "INVENTAIRE_DESTRUCTIF",
-      "nature": "DEMANDE",
-      "fr": "Inventaire destructif",
-      "nl": null,
-      "court": "IDE",
-      "domaineObligatoire": false,
-      "domaines": [
-        "GROS_OEUVRE",
-        "PARACHEVEMENT",
-        "DRAINAGE"
-      ],
-      "obsolete": true
-    },
-    {
-      "code": "TRAITEMENT",
-      "nature": "DEMANDE",
-      "fr": "Traitement",
-      "nl": null,
-      "court": "TRA",
-      "domaineObligatoire": false,
-      "domaines": [
-        "GROS_OEUVRE",
-        "PARACHEVEMENT",
-        "DRAINAGE"
-      ],
-      "obsolete": true
+      "domaines": [],
+      "fichier": "amiante"
     }
   ]
 }
