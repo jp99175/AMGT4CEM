@@ -41,6 +41,7 @@ const AMGT4CEM_PATRIMOINE_CATALOG = [
     // identifiant (le service n'est joignable que depuis un navigateur) et dessinés avec la même
     // couleur : polygone si la ligne est fermée, trait sinon. À valider par l'utilisateur ; ils
     // deviendront des « lieux » du formulaire de signalement.
+    lieuxFile: './data/lieux/lieux.json', // lieux enregistrés par src/lieuxTool.js : prioritaires sur la liste provisoire ci-dessous
     urbisObjets: [
       { lieu: 'Auvent FLAGEY', code: 'BB1202L', id: 1160595 },
       { lieu: 'Auvent ROGIER', code: 'BB1202L', id: 170857761 },

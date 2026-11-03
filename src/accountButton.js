@@ -52,6 +52,8 @@ const AMGT4CEM_AccountButton = {
     };
     show('amgt-add-point-btn', !!s);
     show('amgt-settings-btn', AMGT4CEM_Admin.isAdmin());
+    show('amgt-lieux-btn', AMGT4CEM_Admin.isAdmin());
+    if (!AMGT4CEM_Admin.isAdmin() && typeof AMGT4CEM_LieuxTool !== 'undefined' && AMGT4CEM_LieuxTool._active) AMGT4CEM_LieuxTool.close();
 
     if (!s) {
       // Plus de compte : on arrête ce qui lui était réservé.

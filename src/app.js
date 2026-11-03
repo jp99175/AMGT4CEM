@@ -89,6 +89,7 @@
   AMGT4CEM_MeasureTool.init(map);
   AMGT4CEM_VirtualBoreTool.init(map); // après la mesure : réutilise sa pane et son réticule
   AMGT4CEM_ScreenshotTool.init(map);
+  AMGT4CEM_LieuxTool.init(map, document.getElementById('amgt-lieux-btn')); // administrateurs seulement (bouton affiché par accountButton.js)
 
   // Plugins (applications séparées, voir src/plugins.js) : après les outils du cœur, qu'ils peuvent arrêter.
   AMGT4CEM_Plugins.init({

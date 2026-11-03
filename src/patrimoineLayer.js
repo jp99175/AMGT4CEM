@@ -177,7 +177,13 @@ const AMGT4CEM_PatrimoineLayer = {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const geojson = await response.json();
     const features = geojson.features || [];
-    if (entry.urbisObjets) features.push(...await this._loadUrbisObjets(entry.urbisObjets));
+    if (entry.lieuxFile) {
+      // Lieux constitués avec l'outil d'administration (src/lieuxTool.js) : géométrie enregistrée, aucun appel à UrbIS.
+      const lieux = await this._loadLieux(entry.lieuxFile);
+      features.push(...lieux);
+      // Tant qu'aucun lieu n'est enregistré : objets provisoires lus au vol dans UrbIS.
+      if (!lieux.length && entry.urbisObjets) features.push(...await this._loadUrbisObjets(entry.urbisObjets));
+    } else if (entry.urbisObjets) features.push(...await this._loadUrbisObjets(entry.urbisObjets));
     this._cache[entry.id] = features;
     return this._cache[entry.id];
   },
@@ -220,6 +226,21 @@ const AMGT4CEM_PatrimoineLayer = {
     }
     this._bandeau(`Objets UrbIS : ${out.length}/${objets.length}. ${notes.join(' ; ')}`);
     return out;
+  },
+
+  async _loadLieux(file) {
+    try {
+      const r = await fetch(file);
+      if (!r.ok) return [];
+      const lieux = (await r.json()).lieux || {};
+      return Object.values(lieux).flatMap((l) => l.objets.map((o) => ({
+        type: 'Feature',
+        geometry: { type: 'MultiLineString', coordinates: o.lignes },
+        properties: { genre: 'urbis', name_fr: l.nom, urbis_id: o.id, urbis_code: o.code },
+      })));
+    } catch (err) {
+      return [];
+    }
   },
 
   _bandeau(texte) {
