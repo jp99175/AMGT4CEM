@@ -176,8 +176,31 @@ const AMGT4CEM_PatrimoineLayer = {
     const response = await fetch(entry.file);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const geojson = await response.json();
-    this._cache[entry.id] = geojson.features || [];
+    const features = geojson.features || [];
+    if (entry.urbisObjets) features.push(...await this._loadUrbisObjets(entry.urbisObjets));
+    this._cache[entry.id] = features;
     return this._cache[entry.id];
+  },
+
+  /** Objets UrbIS Topo (lignes) lus par identifiant ; une erreur réseau n'empêche pas le reste de la couche. */
+  async _loadUrbisObjets(objets) {
+    const { wfsUrl, version } = AMGT4CEM_CONFIG.urbisTopo;
+    try {
+      const params = new URLSearchParams({
+        service: 'WFS', version, request: 'GetFeature', typeNames: 'urbistopo:TopoLines',
+        outputFormat: 'application/json', CQL_FILTER: `ID IN (${objets.map((o) => o.id).join(',')})`,
+      });
+      const response = await fetch(`${wfsUrl}?${params.toString()}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const geojson = await response.json();
+      return (geojson.features || []).map((f) => {
+        const o = objets.find((x) => String(x.id) === String((f.properties || {}).ID)) || {};
+        return { type: 'Feature', geometry: f.geometry, properties: { genre: 'urbis', name_fr: o.lieu || 'Objet UrbIS', urbis_id: (f.properties || {}).ID, urbis_code: o.code } };
+      });
+    } catch (err) {
+      console.warn('[AMGT4CEM] Objets UrbIS de la couche temporaire indisponibles :', err);
+      return [];
+    }
   },
 
   _buildSubGroup(features, color) {
@@ -192,6 +215,7 @@ const AMGT4CEM_PatrimoineLayer = {
   _buildLeafletLayer(feature, color) {
     const geom = feature.geometry;
     if (geom && geom.type === 'Polygon') return this._buildPolygonLayer(feature, color);
+    if (geom && (geom.type === 'LineString' || geom.type === 'MultiLineString')) return this._buildUrbisLineLayer(feature, color);
     if (!geom || geom.type !== 'Point') return null;
     const props = feature.properties || {};
 
@@ -231,6 +255,25 @@ const AMGT4CEM_PatrimoineLayer = {
     const text = props.name_fr || props.genre || 'Polygone';
     layer.bindPopup(this._buildLabelPopup(text + (props.copie_de ? ` (copie de ${props.copie_de})` : ''), this._lambertCenter(feature)));
     return layer;
+  },
+
+  /** Ligne UrbIS : polygone rempli si elle est fermée, trait épais sinon. */
+  _buildUrbisLineLayer(feature, color) {
+    const props = feature.properties || {};
+    const g = feature.geometry;
+    const lines = g.type === 'LineString' ? [g.coordinates] : g.coordinates;
+    const same = (a, b) => a[0] === b[0] && a[1] === b[1];
+    const group = L.featureGroup();
+    for (const line of lines) {
+      const pts = line.map((pt) => AMGT4CEM_CRS.lambertToLatLng(pt));
+      const closed = line.length > 3 && same(line[0], line[line.length - 1]);
+      group.addLayer(closed
+        ? L.polygon(pts, { color, weight: 2, opacity: this._opacityFactor, fillColor: color, fillOpacity: 0.25 })
+        : L.polyline(pts, { color, weight: 5, opacity: this._opacityFactor }));
+    }
+    const first = lines[0][0];
+    group.bindPopup(this._buildLabelPopup(`${props.name_fr} — ${props.urbis_code} ${props.urbis_id}`, first));
+    return group;
   },
 
   /** Centre de l'emprise englobante du premier anneau, en Lambert 72 (pour la fenêtre d'information). */

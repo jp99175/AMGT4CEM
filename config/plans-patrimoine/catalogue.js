@@ -32,11 +32,23 @@ const AMGT4CEM_PATRIMOINE_CATALOG = [
   },
   {
     id: 'temp_DELTA_mod',
-    label: 'temp_DELTA_mod (emprise DELTA recalée, provisoire)',
+    label: 'temp_DELTA_mod (emprise DELTA recalée + ouvrages atypiques, provisoire)',
     // Couche TEMPORAIRE : copie translatée de P000150 (data/plans-patrimoine/temp-delta-mod.json,
     // Lambert 72), affichée en polygone de la couleur choisie dans le sélecteur. N'entre ni dans
     // polygones.shp ni dans le référentiel ; à retirer une fois l'emprise corrigée reportée dans AutoCAD.
     file: './data/plans-patrimoine/temp-delta-mod.json',
+    // Ouvrages atypiques ajoutés à la même couche : objets UrbIS Topo (TopoLines) lus au vol par
+    // identifiant (le service n'est joignable que depuis un navigateur) et dessinés avec la même
+    // couleur : polygone si la ligne est fermée, trait sinon. À valider par l'utilisateur ; ils
+    // deviendront des « lieux » du formulaire de signalement.
+    urbisObjets: [
+      { lieu: 'Auvent FLAGEY', code: 'BB1202L', id: 1160595 },
+      { lieu: 'Auvent ROGIER', code: 'BB1202L', id: 170857761 },
+      { lieu: 'Passerelle BEEKKANT', code: 'BR03L', id: 1816969 },
+      { lieu: 'Ascenseur POELAERT (bâtiment)', code: 'BB01L', id: 7864774 },
+      { lieu: 'Ascenseur POELAERT (bâtiment)', code: 'BB01L', id: 7864798 },
+      { lieu: 'Ascenseur POELAERT (passerelle)', code: 'BR03L', id: 1817683 },
+    ],
   },
   {
     id: 'plans-ensemble-500e',
