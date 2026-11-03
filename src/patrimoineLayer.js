@@ -190,26 +190,35 @@ const AMGT4CEM_PatrimoineLayer = {
     const { wfsUrl, version } = AMGT4CEM_CONFIG.urbisTopo;
     const out = [];
     const notes = [];
-    for (const featureType of ['urbistopo:TopoLines', 'urbistopo:TopoShapes']) {
-      try {
-        const params = new URLSearchParams({
-          service: 'WFS', version, request: 'GetFeature', typeNames: featureType,
-          outputFormat: 'application/json', CQL_FILTER: `ID IN (${objets.map((o) => `'${o.id}'`).join(',')})`,
-        });
-        const response = await fetch(`${wfsUrl}?${params.toString()}`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const geojson = await response.json();
-        for (const f of geojson.features || []) {
-          const o = objets.find((x) => String(x.id) === String((f.properties || {}).ID)) || {};
-          out.push({ type: 'Feature', geometry: f.geometry, properties: { genre: 'urbis', name_fr: o.lieu || 'Objet UrbIS', urbis_id: (f.properties || {}).ID, urbis_code: o.code } });
+    for (const o of objets) {
+      let trouve = null;
+      const essais = [];
+      // Une requête par objet, plusieurs formulations du filtre : le service accepte l'une ou l'autre selon le type du champ.
+      for (const featureType of ['urbistopo:TopoLines', 'urbistopo:TopoShapes']) {
+        for (const filtre of [`ID='${o.id}'`, `ID=${o.id}`]) {
+          if (trouve) break;
+          try {
+            const params = new URLSearchParams({ service: 'WFS', version, request: 'GetFeature', typeNames: featureType, outputFormat: 'application/json', CQL_FILTER: filtre });
+            const response = await fetch(`${wfsUrl}?${params.toString()}`);
+            if (!response.ok) { essais.push(`${featureType.split(':')[1]} ${filtre} HTTP ${response.status}`); continue; }
+            const geojson = await response.json();
+            const f = (geojson.features || [])[0];
+            if (f) trouve = { f, featureType };
+            else essais.push(`${featureType.split(':')[1]} ${filtre} 0`);
+          } catch (err) {
+            essais.push(`${featureType.split(':')[1]} ${filtre} ${err && err.message ? err.message : err}`);
+          }
         }
-        notes.push(`${featureType.split(':')[1]} : ${(geojson.features || []).length}`);
-      } catch (err) {
-        console.warn('[AMGT4CEM] Objets UrbIS indisponibles :', featureType, err);
-        notes.push(`${featureType.split(':')[1]} : erreur ${err && err.message ? err.message : err}`);
+      }
+      if (trouve) {
+        const props = trouve.f.properties || {};
+        out.push({ type: 'Feature', geometry: trouve.f.geometry, properties: { genre: 'urbis', name_fr: o.lieu, urbis_id: props.ID, urbis_code: o.code } });
+        notes.push(`${o.id} OK (${trouve.featureType.split(':')[1]}, ${props.TYPE || '?'}, ${trouve.f.geometry ? trouve.f.geometry.type : 'sans géométrie'})`);
+      } else {
+        notes.push(`${o.id} introuvable [${essais.join(' | ')}]`);
       }
     }
-    this._bandeau(`Objets UrbIS de la couche temporaire : ${out.length}/${objets.length} trouvés (${notes.join(' ; ')})`);
+    this._bandeau(`Objets UrbIS : ${out.length}/${objets.length}. ${notes.join(' ; ')}`);
     return out;
   },
 
@@ -219,7 +228,7 @@ const AMGT4CEM_PatrimoineLayer = {
     el.style.cssText = 'position:fixed;left:8px;right:8px;top:8px;z-index:99999;background:#fff3cd;color:#333;border:1px solid #c9a227;border-radius:8px;padding:8px 10px;font:13px sans-serif;box-shadow:0 2px 6px rgba(0,0,0,.3)';
     el.addEventListener('click', () => el.remove());
     document.body.appendChild(el);
-    setTimeout(() => el.remove(), 15000);
+    setTimeout(() => el.remove(), 60000);
   },
 
   _buildSubGroup(features, color) {
