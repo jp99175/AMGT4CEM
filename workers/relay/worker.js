@@ -99,6 +99,15 @@ function safeEqual(a, b) {
   return diff === 0;
 }
 
+/** Message d'erreur GitHub : 401 / 403 = jeton expiré, révoqué ou sans droit d'écriture ; on dit quoi faire. */
+function erreurGithub(action, status) {
+  const base = `${action} (HTTP ${status})`;
+  if (status === 401 || status === 403) {
+    return `${base}. Le jeton GitHub du relais est expiré ou refusé : régénérer un jeton « fine-grained » sur GitHub (dépôt jp99175/AMGT4CEM, Contents : lecture et écriture), puis mettre à jour la variable GITHUB_TOKEN dans Cloudflare (Workers & Pages > amgt4cem-pe-label-relay > Settings > Variables and Secrets).`;
+  }
+  return base;
+}
+
 async function github(env, method, path, body) {
   return fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/contents/${path}${method === 'GET' ? `?ref=${encodeURIComponent(env.GITHUB_BRANCH)}` : ''}`, {
     method,
@@ -174,7 +183,7 @@ export default {
         if (file.content && file.content.replace(/\s/g, '') === encoded) return json(200, { ok: true, unchanged: true }, cors);
         break;
       }
-      if (current.status !== 404) return json(502, { error: `Lecture GitHub impossible (HTTP ${current.status})` }, cors);
+      if (current.status !== 404) return json(502, { error: erreurGithub('Lecture GitHub impossible', current.status) }, cors);
     }
     if (!path) {
       const configDir = target.paths.length > 1 ? await github(env, 'GET', 'config') : null;
@@ -186,7 +195,7 @@ export default {
       branch: env.GITHUB_BRANCH,
       ...(sha ? { sha } : {}),
     });
-    if (!put.ok) return json(502, { error: `Écriture GitHub refusée (HTTP ${put.status})` }, cors);
+    if (!put.ok) return json(502, { error: erreurGithub('Écriture GitHub refusée', put.status) }, cors);
     const result = await put.json();
     return json(200, { ok: true, commit: result.commit && result.commit.sha }, cors);
   },
