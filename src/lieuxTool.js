@@ -77,9 +77,9 @@ const AMGT4CEM_LieuxTool = {
     const p = document.createElement('div');
     p.id = 'amgt-lieux-panel';
     p.innerHTML = `
-      <div class="amgt-lieux-row"><strong>Constituer un lieu</strong><button type="button" data-a="fermer" aria-label="Fermer">✕</button></div>
-      <div class="amgt-lieux-row"><select data-f="existant"></select></div>
-      <div class="amgt-lieux-row"><input data-f="nom" placeholder="Nom du lieu (ex. Ascenseur POELAERT)" />
+      <div class="amgt-lieux-row"><strong>Constituer un lieu</strong><button type="button" data-a="reduire" title="Réduire en bandeau / agrandir" aria-label="Réduire">▾</button><button type="button" data-a="fermer" aria-label="Fermer">✕</button></div>
+      <div class="amgt-lieux-row amgt-lieux-sec"><select data-f="existant"></select></div>
+      <div class="amgt-lieux-row amgt-lieux-sec"><input data-f="nom" placeholder="Nom du lieu (ex. Ascenseur POELAERT)" />
         <input data-f="tol" type="number" min="0" max="50" step="1" value="5" title="Tolérance autour des objets (m)" /><span>m</span></div>
       <div class="amgt-lieux-row amgt-lieux-modes">
         <button type="button" data-m="objet" title="Toucher un objet UrbIS visible pour l'ajouter">☝ Objet</button>
@@ -93,15 +93,15 @@ const AMGT4CEM_LieuxTool = {
         <button type="button" data-a="t-fermer" title="Fermer en polygone (ou toucher le premier sommet)">⬡ Fermer</button>
         <button type="button" data-a="t-valider" title="Ajouter ce tracé à la liste">✓</button>
         <button type="button" data-a="t-abandon" title="Abandonner ce tracé">✕</button></div>
-      <div class="amgt-lieux-corps">
+      <div class="amgt-lieux-corps amgt-lieux-sec">
         <div class="amgt-lieux-liste" data-f="liste"></div>
         <input class="amgt-lieux-haut" data-f="haut" type="range" min="0" max="100" value="35" orient="vertical" title="Hauteur de la liste" aria-label="Hauteur de la liste" />
       </div>
-      <div class="amgt-lieux-row"><select data-f="contour" title="Forme du lieu">
+      <div class="amgt-lieux-row amgt-lieux-sec"><select data-f="contour" title="Forme du lieu">
         <option value="">Lignes seules</option><option value="union">Polygone : union des polygones cochés</option><option value="serre">Polygone : enveloppe serrée</option><option value="convexe">Polygone : enveloppe convexe</option></select>
         <input data-f="marge" type="number" min="0" max="10" step="0.5" value="1.5" title="Comble les vides étroits (m) : 1,5 enveloppe serrée, 0,2 union" /><span>m</span></div>
-      <div class="amgt-lieux-row"><input data-f="code" type="password" placeholder="Code administrateur" autocomplete="off" /></div>
-      <div class="amgt-lieux-row"><button type="button" data-a="enreg">💾 Enregistrer</button><button type="button" data-a="suppr">Supprimer le lieu</button></div>
+      <div class="amgt-lieux-row amgt-lieux-sec"><input data-f="code" type="password" placeholder="Code administrateur" autocomplete="off" /></div>
+      <div class="amgt-lieux-row amgt-lieux-sec"><button type="button" data-a="enreg">💾 Enregistrer</button><button type="button" data-a="suppr">Supprimer le lieu</button></div>
       <div class="amgt-lieux-etat" data-f="etat"></div>`;
     document.body.appendChild(p);
     this._panel = p;
@@ -123,6 +123,7 @@ const AMGT4CEM_LieuxTool = {
       const a = e.target.closest('[data-a]');
       if (!a) return;
       if (a.dataset.a === 'fermer') this.close();
+      else if (a.dataset.a === 'reduire') this._reduire();
       else if (a.dataset.a === 'rect') this._arm();
       else if (a.dataset.a === 't-annuler') this._traceAnnuler();
       else if (a.dataset.a === 't-fermer') this._traceFermer();
@@ -135,6 +136,12 @@ const AMGT4CEM_LieuxTool = {
     L.DomEvent.disableScrollPropagation(p);
     this._renderListe();
     this._mode('objet');
+  },
+
+  /** Bandeau : ne garde que les modes, la barre du tracé et le message ; le reste du panneau est masqué. */
+  _reduire() {
+    const r = this._panel.classList.toggle('amgt-lieux-reduit');
+    this._panel.querySelector('[data-a="reduire"]').textContent = r ? '▴' : '▾';
   },
 
   /** Hauteur de la liste : curseur vertical sur le côté (0 = liste repliée). */

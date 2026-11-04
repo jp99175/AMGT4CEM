@@ -1273,3 +1273,8 @@ html, body {
 
 #amgt-lieux-panel .amgt-lieux-aimant { white-space: nowrap; font-size: 13px; }
 #amgt-lieux-panel .amgt-lieux-aimant input { width: 46px; }
+
+/* Bandeau : seuls l'en-tête, les modes, la barre du tracé et le message restent visibles */
+#amgt-lieux-panel.amgt-lieux-reduit { max-height: none; overflow: visible; bottom: 72px; padding: 4px 8px; }
+#amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-sec { display: none; }
+#amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-etat { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
