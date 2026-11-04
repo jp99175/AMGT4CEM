@@ -41,12 +41,17 @@ const AMGT4CEM_LieuxTool = {
     await this._readLieux();
     this._clickH = (e) => this._surClic(e);
     this._map.on('click', this._clickH);
+    this._vueH = () => this._aimantVue();
+    this._map.on('moveend', this._vueH);
     this._buildPanel();
   },
 
   close() {
     this._active = false;
     if (this._clickH) this._map.off('click', this._clickH);
+    if (this._vueH) this._map.off('moveend', this._vueH);
+    clearTimeout(this._aimantTimer);
+    this._aimantPts = [];
     this._traceAbandon();
     this._btn.classList.remove('amgt-btn--active');
     this._disarm();
@@ -83,6 +88,7 @@ const AMGT4CEM_LieuxTool = {
         <span data-f="compte"></span></div>
       <div class="amgt-lieux-row amgt-lieux-trace amgt-hidden" data-f="tracebarre">
         <span data-f="chaine"></span>
+        <label class="amgt-lieux-aimant" title="Aimant : un sommet glissé s'accroche au point remarquable proche si le doigt y reste 1 s (0 = sans aimant)">🧲 <input data-f="aimant" type="number" min="0" max="50" step="1" value="5" /> m</label>
         <button type="button" data-a="t-annuler" title="Retirer le dernier sommet">↶</button>
         <button type="button" data-a="t-fermer" title="Fermer en polygone (ou toucher le premier sommet)">⬡ Fermer</button>
         <button type="button" data-a="t-valider" title="Ajouter ce tracé à la liste">✓</button>
@@ -108,6 +114,8 @@ const AMGT4CEM_LieuxTool = {
     f('contour').addEventListener('change', () => { f('marge').value = f('contour').value === 'union' ? 0.2 : 1.5; this._apercu(); });
     f('marge').addEventListener('change', () => this._apercu());
     f('haut').addEventListener('input', () => this._hauteurListe());
+    try { const v = localStorage.getItem('amgt4cem.lieux.aimant'); if (v !== null && v !== '') f('aimant').value = v; } catch (err) { /* stockage indisponible : valeur par défaut */ }
+    f('aimant').addEventListener('change', () => { try { localStorage.setItem('amgt4cem.lieux.aimant', f('aimant').value); } catch (err) { /* ignoré */ } });
     this._hauteurListe();
     p.addEventListener('click', (e) => {
       const m = e.target.closest('[data-m]');
@@ -146,6 +154,7 @@ const AMGT4CEM_LieuxTool = {
     if (m === 'trace') this._etat("Toucher la carte pour poser les sommets (accrochage aux objets proches) ; glisser un sommet pour le corriger ; toucher le premier sommet ou « Fermer » pour fermer.");
     else if (m === 'objet') this._etat('Toucher un objet UrbIS visible pour l\'ajouter ; le toucher à nouveau pour le retirer.');
     this._traceInfo();
+    if (m === 'trace') this._chargerAimant();
   },
 
   _f(n) { return this._panel.querySelector(`[data-f="${n}"]`); },
@@ -379,7 +388,7 @@ const AMGT4CEM_LieuxTool = {
   },
 
   _tracePoint(latlng) {
-    if (!this._trace) this._trace = { pts: [], ferme: false, group: L.layerGroup().addTo(this._map) };
+    if (!this._trace) this._trace = { pts: [], ferme: false, group: L.layerGroup().addTo(this._map), sommets: L.layerGroup().addTo(this._map) };
     if (this._trace.ferme) return;
     this._trace.pts.push(L.latLng(this._accroche(latlng)));
     this._traceDessin();
@@ -388,6 +397,12 @@ const AMGT4CEM_LieuxTool = {
   _traceLam() { return this._trace.pts.map((q) => { const l = AMGT4CEM_CRS.latLngToLambert(q); return [Math.round(l.x * 100) / 100, Math.round(l.y * 100) / 100]; }); },
 
   _traceDessin() {
+    this._traceLignes();
+    this._traceSommets();
+  },
+
+  /** Lignes et cotes (redessinées en direct pendant qu'on glisse un sommet). */
+  _traceLignes() {
     const t = this._trace;
     t.group.clearLayers();
     if (!t.pts.length) return this._traceInfo();
@@ -400,13 +415,132 @@ const AMGT4CEM_LieuxTool = {
       const mid = L.latLng((t.pts[i].lat + t.pts[(i + 1) % n].lat) / 2, (t.pts[i].lng + t.pts[(i + 1) % n].lng) / 2);
       t.group.addLayer(L.marker(mid, { pane: 'amgtLieuxPane', interactive: false, icon: L.divIcon({ className: 'amgt-lieux-cote', html: this._fmtM(Math.hypot(b[0] - a[0], b[1] - a[1])), iconSize: null }) }));
     }
+    this._traceInfo();
+  },
+
+  _traceSommets() {
+    const t = this._trace;
+    t.sommets.clearLayers();
     t.pts.forEach((q, i) => {
       const mk = L.marker(q, { pane: 'amgtLieuxPane', draggable: true, icon: L.divIcon({ className: 'amgt-lieux-sommet', iconSize: [18, 18] }) });
       mk.on('click', (e) => { L.DomEvent.stopPropagation(e); if (i === 0 && !t.ferme && t.pts.length >= 3) this._traceFermer(); });
-      mk.on('dragend', () => { t.pts[i] = L.latLng(this._accroche(mk.getLatLng(), i)); this._traceDessin(); });
-      t.group.addLayer(mk);
+      mk.on('dragstart', () => this._aimantDebut(i));
+      mk.on('drag', () => this._aimantDrag(mk, i));
+      mk.on('dragend', () => {
+        const P = this._am && this._am.accroche;
+        t.pts[i] = L.latLng(P || this._accroche(mk.getLatLng(), i));
+        this._aimantFin();
+        this._traceDessin();
+      });
+      t.sommets.addLayer(mk);
     });
-    this._traceInfo();
+  },
+
+  // ------------------------------------------------------------ aimant
+  // En glissant un sommet : si le doigt reste 1 s à moins de X m d'un point remarquable (sommet d'un objet UrbIS
+  // visible, d'un objet de la liste ou du tracé), le sommet est attiré dessus ; il est libéré dès que le doigt
+  // s'en éloigne de plus de 2 X. X est réglable (🧲, 0 = sans aimant), mémorisé sur l'appareil.
+  AIMANT_DELAI_MS: 1000,
+
+  _aimantRayon() {
+    const v = Number(this._f('aimant').value);
+    return Number.isFinite(v) ? Math.max(0, v) : 0;
+  },
+
+  /** Objets UrbIS visibles autour de la vue, chargés une fois par vue : leurs sommets servent à l'aimant. */
+  async _chargerAimant() {
+    if (!this._active || this._modeActif !== 'trace') return;
+    const bnds = this._map.getBounds().pad(0.2);
+    const sw = AMGT4CEM_CRS.latLngToLambert(bnds.getSouthWest());
+    const ne = AMGT4CEM_CRS.latLngToLambert(bnds.getNorthEast());
+    if (Math.abs(ne.x - sw.x) > 600) { this._aimantPts = []; return; } // trop dézoomé : pas d'aimant sur UrbIS
+    const jeton = (this._aimantJeton = (this._aimantJeton || 0) + 1);
+    const { objets } = await this._wfs(Math.min(sw.x, ne.x), Math.min(sw.y, ne.y), Math.max(sw.x, ne.x), Math.max(sw.y, ne.y));
+    if (jeton !== this._aimantJeton || !objets) return;
+    this._aimantPts = objets.flatMap((o) => o.lignes.flat());
+  },
+
+  _aimantVue() {
+    clearTimeout(this._aimantTimer);
+    this._aimantTimer = setTimeout(() => this._chargerAimant(), 400);
+  },
+
+  _pointsRemarquables(sauf) {
+    const pts = [...(this._aimantPts || [])];
+    for (const c of this._cands.values()) for (const l of c.lignes) pts.push(...l);
+    if (this._trace) this._traceLam().forEach((q, i) => { if (i !== sauf) pts.push(q); });
+    return pts;
+  },
+
+  _aimantDebut(i) {
+    this._am = { i, pts: this._pointsRemarquables(i), cible: null, timer: null, accroche: null, ring: null, doigt: null };
+  },
+
+  _aimantDrag(mk, i) {
+    const am = this._am;
+    const t = this._trace;
+    if (!am || !t) return;
+    const X = this._aimantRayon();
+    const l = AMGT4CEM_CRS.latLngToLambert(mk.getLatLng());
+    am.doigt = [l.x, l.y];
+    if (am.accroche) {
+      // Attiré : on reste sur la cible tant que le doigt ne s'en éloigne pas de plus de 2 X.
+      if (Math.hypot(am.doigt[0] - am.cible[0], am.doigt[1] - am.cible[1]) <= 2 * X) {
+        mk.setLatLng(am.accroche);
+        t.pts[i] = am.accroche;
+        this._traceLignes();
+        return;
+      }
+      this._aimantLiberer();
+    }
+    const c = X > 0 ? this._plusProche(am.doigt, am.pts, X) : null;
+    if (!c) { this._aimantReset(); } else if (!am.cible || am.cible[0] !== c[0] || am.cible[1] !== c[1]) {
+      this._aimantReset();
+      am.cible = c;
+      am.ring = L.circleMarker(AMGT4CEM_CRS.lambertToLatLng(c), { pane: 'amgtLieuxPane', radius: 13, color: '#e65100', weight: 2, fill: false, dashArray: '4 3', interactive: false }).addTo(this._map);
+      am.timer = setTimeout(() => this._aimantAttirer(mk, i), this.AIMANT_DELAI_MS);
+    }
+    t.pts[i] = mk.getLatLng();
+    this._traceLignes();
+  },
+
+  _plusProche(p, pts, X) {
+    let best = null; let dmin = X;
+    for (const q of pts) { const d = Math.hypot(q[0] - p[0], q[1] - p[1]); if (d <= dmin) { dmin = d; best = q; } }
+    return best;
+  },
+
+  /** Fin du délai : si le doigt est toujours près de la même cible, le sommet s'y accroche. */
+  _aimantAttirer(mk, i) {
+    const am = this._am;
+    if (!am || !am.cible || am.accroche || !this._trace) return;
+    const X = this._aimantRayon();
+    if (Math.hypot(am.doigt[0] - am.cible[0], am.doigt[1] - am.cible[1]) > X) return this._aimantReset();
+    am.accroche = AMGT4CEM_CRS.lambertToLatLng(am.cible);
+    mk.setLatLng(am.accroche);
+    this._trace.pts[i] = am.accroche;
+    if (am.ring) am.ring.setStyle({ dashArray: null, fill: true, fillColor: '#e65100', fillOpacity: 0.3 });
+    this._traceLignes();
+  },
+
+  _aimantReset() {
+    const am = this._am;
+    if (!am) return;
+    clearTimeout(am.timer);
+    am.timer = null;
+    am.cible = null;
+    if (am.ring) { this._map.removeLayer(am.ring); am.ring = null; }
+  },
+
+  _aimantLiberer() {
+    if (this._am) this._am.accroche = null;
+    this._aimantReset();
+  },
+
+  _aimantFin() {
+    if (!this._am) return;
+    this._aimantReset();
+    this._am = null;
   },
 
   _traceInfo() {
@@ -441,7 +575,9 @@ const AMGT4CEM_LieuxTool = {
 
   _traceAbandon() {
     if (!this._trace) return;
+    this._aimantFin();
     this._map.removeLayer(this._trace.group);
+    this._map.removeLayer(this._trace.sommets);
     this._trace = null;
     if (this._panel) this._traceInfo();
   },
