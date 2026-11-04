@@ -65,12 +65,28 @@ const AMGT4CEM_LieuxTool = {
   },
 
   async _readLieux() {
+    let lus = {};
     try {
       const r = await fetch(`${this.FILE}?t=${Date.now()}`);
-      this._lieux = r.ok ? ((await r.json()).lieux || {}) : {};
+      lus = r.ok ? ((await r.json()).lieux || {}) : {};
     } catch (err) {
-      this._lieux = {};
+      lus = {};
     }
+    this._lieux = this._recents(lus);
+  },
+
+  // Après un enregistrement, le fichier du site n'est mis à jour qu'après le déploiement (environ une minute) : le relire
+  // aussitôt ferait réapparaître un lieu supprimé (et le renvoyer au prochain enregistrement) ou perdre un renommage.
+  // Le dernier état envoyé est donc gardé par l'onglet (sessionStorage) et prévaut sur le fichier pendant 10 minutes,
+  // ou jusqu'à ce que le fichier le rattrape. Même règle dans patrimoineLayer.js (_lieuxRecents).
+  CLE_ENVOYE: 'amgt4cem.lieux.envoye',
+  _recents(lus) {
+    try {
+      const e = JSON.parse(sessionStorage.getItem(this.CLE_ENVOYE) || 'null');
+      if (!e || Date.now() - e.at > 10 * 60 * 1000) return lus;
+      if (JSON.stringify(e.lieux) === JSON.stringify(lus)) { sessionStorage.removeItem(this.CLE_ENVOYE); return lus; }
+      return e.lieux;
+    } catch (err) { return lus; }
   },
 
   // ---------------------------------------------------------------- panneau
@@ -109,7 +125,7 @@ const AMGT4CEM_LieuxTool = {
     this._panel = p;
     const f = (n) => p.querySelector(`[data-f="${n}"]`);
     const sel = f('existant');
-    sel.innerHTML = '<option value="">— nouveau lieu —</option>' + Object.entries(this._lieux).map(([k, l]) => `<option value="${k}">${l.nom}</option>`).join('');
+    this._majListe('');
     const known = AMGT4CEM_PeLabelAnchors.getAdminCode();
     if (known) f('code').value = known;
     sel.addEventListener('change', () => this._chargerLieu(sel.value));
@@ -171,9 +187,19 @@ const AMGT4CEM_LieuxTool = {
   },
 
   _f(n) { return this._panel.querySelector(`[data-f="${n}"]`); },
+
+  /** Reconstruit la liste des lieux existants (après un enregistrement, un renommage ou une suppression) et sélectionne `slug`. */
+  _majListe(slug) {
+    const sel = this._f('existant');
+    sel.textContent = '';
+    sel.append(new Option('— nouveau lieu —', ''));
+    for (const [k, l] of Object.entries(this._lieux)) sel.append(new Option(l.nom, k));
+    sel.value = slug && this._lieux[slug] ? slug : '';
+  },
   _etat(t, err) { const e = this._f('etat'); e.textContent = t; e.style.color = err ? '#b3261e' : '#0b5c75'; },
 
   _chargerLieu(slug) {
+    this._traceAbandon(); // un tracé en cours (ou en édition) resterait sinon dessiné sur la carte
     this._clearCands();
     if (!slug) { this._f('nom').value = ''; this._renderListe(); return; }
     const l = this._lieux[slug];
@@ -969,22 +995,39 @@ const AMGT4CEM_LieuxTool = {
     await AMGT4CEM_PeLabelAnchors.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, this.ROUTE, { version: 1, crs: 'EPSG:31370', lieux }, code);
     AMGT4CEM_PeLabelAnchors.setAdminCode(code);
     this._lieux = lieux;
+    try { sessionStorage.setItem(this.CLE_ENVOYE, JSON.stringify({ at: Date.now(), lieux })); } catch (err) { /* stockage indisponible : on se fie au fichier */ }
+    // La couche « Plans patrimoine » garde les lieux en mémoire : sans cela, un lieu supprimé ou renommé y resterait jusqu'au rechargement.
+    if (typeof AMGT4CEM_PatrimoineLayer !== 'undefined') AMGT4CEM_PatrimoineLayer.reloadLieux();
   },
 
   async _enregistrer() {
     const nom = this._f('nom').value.trim();
     const slug = this._slug(nom);
+    const ancien = this._f('existant').value; // lieu existant choisi (vide = nouveau lieu)
     const objets = [...this._cands.values()].filter((c) => c.sel).map((c) => ({ id: c.id, couche: c.couche, code: c.code, type: c.type, lignes: c.lignes }));
     if (!slug) return this._etat('Donner un nom au lieu.', true);
     if (!objets.length) return this._etat('Aucun objet coché.', true);
+    // Nom modifié sur un lieu existant = renommage : l'ancienne entrée est remplacée (pas de doublon).
+    const renomme = !!(ancien && this._lieux[ancien] && slug !== ancien);
+    if (renomme) {
+      if (this._lieux[slug]) return this._etat(`Un lieu « ${this._lieux[slug].nom} » existe déjà sous ce nom.`, true);
+      if (!confirm(`Renommer le lieu « ${this._lieux[ancien].nom} » en « ${nom} » ?`)) return;
+    }
     const tol = Math.max(0, Math.min(50, Number(this._f('tol').value) || 0));
     try {
       this._etat('Enregistrement…');
       const contour = this._contour();
       const lieu = { nom, tolerance_m: tol, objets };
       if (contour.length) Object.assign(lieu, { contour_methode: this._f('contour').value, contour_marge: Number(this._f('marge').value) || 0, contour });
-      await this._envoyer({ ...this._lieux, [slug]: lieu });
-      this._etat(`Lieu « ${nom} » enregistré (${objets.length} objets). La carte le lira après le déploiement (environ une minute).`);
+      const suite = { ...this._lieux };
+      if (renomme) delete suite[ancien];
+      suite[slug] = lieu;
+      const ancienNom = renomme ? this._lieux[ancien].nom : '';
+      await this._envoyer(suite);
+      this._majListe(slug);
+      this._etat(renomme
+        ? `Lieu « ${ancienNom} » renommé en « ${nom} » et enregistré (${objets.length} objets). La carte le lira après le déploiement (environ une minute).`
+        : `Lieu « ${nom} » enregistré (${objets.length} objets). La carte le lira après le déploiement (environ une minute).`);
     } catch (err) {
       this._etat(err.message, true);
     }

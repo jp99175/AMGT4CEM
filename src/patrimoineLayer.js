@@ -228,11 +228,39 @@ const AMGT4CEM_PatrimoineLayer = {
     return out;
   },
 
+  /**
+   * Recharge les lieux constitués (couches du catalogue qui ont `lieuxFile`) après un enregistrement de l'outil
+   * « Constituer un lieu » : sans cela, un lieu supprimé ou renommé resterait affiché jusqu'au rechargement de la page.
+   */
+  reloadLieux() {
+    for (const e of AMGT4CEM_PATRIMOINE_CATALOG) {
+      if (!e.lieuxFile) continue;
+      delete this._cache[e.id];
+      if (this._subGroups[e.id]) {
+        this._group.removeLayer(this._subGroups[e.id]);
+        delete this._subGroups[e.id];
+      }
+    }
+    return this.refresh();
+  },
+
+  /**
+   * Dernier état envoyé par l'outil (sessionStorage) : prioritaire sur le fichier du site pendant 10 minutes, car
+   * celui-ci ne change qu'après le déploiement (voir lieuxTool.js, _recents).
+   */
+  _lieuxRecents(lus) {
+    try {
+      const e = JSON.parse(sessionStorage.getItem('amgt4cem.lieux.envoye') || 'null');
+      if (!e || Date.now() - e.at > 10 * 60 * 1000) return lus;
+      if (JSON.stringify(e.lieux) === JSON.stringify(lus)) return lus;
+      return e.lieux;
+    } catch (err) { return lus; }
+  },
+
   async _loadLieux(file) {
     try {
-      const r = await fetch(file);
-      if (!r.ok) return [];
-      const lieux = (await r.json()).lieux || {};
+      const r = await fetch(`${file}?t=${Date.now()}`); // jamais depuis le cache du navigateur
+      const lieux = this._lieuxRecents(r.ok ? ((await r.json()).lieux || {}) : {});
       return Object.values(lieux).flatMap((l) => (l.contour && l.contour.length
         // Polygone fermé enregistré : il remplace l'amas de lignes.
         ? l.contour.map((ring) => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: { genre: 'lieu', name_fr: l.nom } }))
