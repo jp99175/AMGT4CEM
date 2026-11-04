@@ -1284,3 +1284,10 @@ html, body {
 .amgt-lieux-aimant-ic svg { display: block; }
 .amgt-lieux-aimant-ic--on { opacity: 1; color: #e65100; }
 #amgt-lieux-panel .amgt-lieux-aimant-lab svg { vertical-align: middle; color: #0b5c75; }
+
+/* Tracé : petits points pendant le dessin, poignées à l'édition (le point sélectionné est orange) */
+.amgt-lieux-pt { background: #fff; border: 1.5px solid #0b5c75; border-radius: 50%; box-sizing: border-box; }
+.amgt-lieux-poignee { background: #fff; border: 2px solid #0b5c75; border-radius: 50%; box-sizing: border-box; }
+.amgt-lieux-poignee--sel { background: #e65100; border-color: #fff; box-shadow: 0 0 0 2px #e65100; }
+.amgt-lieux-mid { background: rgba(255,255,255,.55); border: 1.5px dashed #0b5c75; border-radius: 50%; box-sizing: border-box; }
+#amgt-lieux-panel .amgt-lieux-edit { margin-left: 6px; padding: 0 6px; }
