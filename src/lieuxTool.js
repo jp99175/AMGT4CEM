@@ -253,12 +253,12 @@ const AMGT4CEM_LieuxTool = {
     for (const b of this._panel.querySelectorAll('[data-m]')) b.classList.toggle('amgt-lieux-actif', b.dataset.m === m);
     this._f('tracebarre').classList.toggle('amgt-hidden', m !== 'trace');
     this._f('polybarre').classList.toggle('amgt-hidden', m !== 'poly');
-    if (m === 'poly') this._etat('Polygone : réglez le comblement, puis « Valider » remplace les objets de construction par ce polygone.');
+    if (m === 'poly') this._etat('Polygone : réglez le comblement ; toucher une surface fermée (cour…) la retranche du polygone ; « Valider » remplace les objets de construction par ce polygone.');
     else if (m === 'trace') this._etat("1er point : viseur au-dessus du doigt. Ensuite : il part du dernier point et suit le doigt ; relâcher pour poser. ✋ = déplacer la carte.");
     else if (m === 'objet') this._etat('Toucher un objet UrbIS visible pour l\'ajouter ; le toucher à nouveau pour le retirer.');
     this._traceInfo();
     this._apercu();
-    if (m === 'trace') this._chargerAimant();
+    if (m === 'trace' || m === 'poly') this._chargerAimant();
   },
 
   _f(n) { return this._panel.querySelector(`[data-f="${n}"]`); },
@@ -548,6 +548,7 @@ const AMGT4CEM_LieuxTool = {
 
   _surClic(e) {
     if (this._modeActif === 'objet') this._pick(e.latlng);
+    else if (this._modeActif === 'poly') this._videClic(e.latlng);
   },
 
   // --------------------------------------------- chaîne d'arpenteur (tracé)
@@ -765,7 +766,7 @@ const AMGT4CEM_LieuxTool = {
 
   /** Objets UrbIS visibles autour de la vue, chargés une fois par vue : leurs sommets servent à l'aimant. */
   async _chargerAimant() {
-    if (!this._active || this._modeActif !== 'trace') return;
+    if (!this._active || (this._modeActif !== 'trace' && this._modeActif !== 'poly')) return;
     const bnds = this._map.getBounds().pad(0.2);
     const sw = AMGT4CEM_CRS.latLngToLambert(bnds.getSouthWest());
     const ne = AMGT4CEM_CRS.latLngToLambert(bnds.getNorthEast());
@@ -1076,13 +1077,88 @@ const AMGT4CEM_LieuxTool = {
   // ------------------------------------------------------------------ contour
   /** Contour enregistré : anneaux des polygones générés (« Polygone du lieu ») parmi les objets cochés ; [] si aucun. */
   _contour() {
-    return [...this._cands.values()].filter((c) => c.sel && c.type === this.TYPE_POLY).flatMap((c) => c.lignes);
+    const rings = (t) => [...this._cands.values()].filter((c) => c.sel && c.type === t).flatMap((c) => c.lignes);
+    const polys = rings(this.TYPE_POLY);
+    return polys.length ? [...polys, ...rings(this.TYPE_VIDE)] : []; // les vides sont des anneaux de plus : remplissage pair-impair
   },
   TYPE_POLY: 'Polygone du lieu',
+  TYPE_VIDE: 'Vide du lieu',
+
+  /**
+   * Vide à retirer du polygone : toucher la carte dans la surface à évacuer (cour, patio…). La zone fermée qui entoure le point
+   * (lignes des objets de la liste et objets UrbIS visibles, ouvertures plus étroites que « Comblement » comblées) devient un
+   * « Vide du lieu » : anneau retranché du polygone à l'enregistrement. Le polygone généré lui-même ne sert pas de mur.
+   */
+  _videClic(latlng) {
+    const p = AMGT4CEM_CRS.latLngToLambert(latlng);
+    const marge = Math.max(0, Number(this._f('marge').value) || 0);
+    const murs = [...(this._aimantLignes || [])];
+    for (const c of this._cands.values()) if (c.type !== this.TYPE_POLY && c.type !== this.TYPE_VIDE) murs.push(...c.lignes);
+    const R = 120; // seules les lignes proches du point comptent
+    const proches = murs.filter((l) => l.some((q) => Math.abs(q[0] - p.x) < R && Math.abs(q[1] - p.y) < R));
+    if (!proches.length) return this._etat('Aucune ligne autour : afficher des objets UrbIS ou les cocher dans la liste.', true);
+    let x0 = p.x; let y0 = p.y; let x1 = p.x; let y1 = p.y;
+    for (const l of proches) for (const q of l) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
+    const c = Math.max(0.1, (Math.max(x1 - x0, y1 - y0) + 2 * marge) / 700);
+    const r = Math.max(0, Math.ceil(marge / c));
+    const ox = x0 - marge - 2 * c; const oy = y0 - marge - 2 * c;
+    const W = Math.ceil((x1 - x0 + 2 * marge) / c) + 5; const H = Math.ceil((y1 - y0 + 2 * marge) / c) + 5;
+    const m = new Uint8Array(W * H);
+    const stamp = (cx, cy) => {
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (dx * dx + dy * dy > r * r) continue;
+        const X = cx + dx; const Y = cy + dy;
+        if (X >= 0 && Y >= 0 && X < W && Y < H) m[Y * W + X] = 1;
+      }
+    };
+    for (const l of proches) for (let i = 0; i < l.length - 1; i++) {
+      const [ax, ay] = l[i]; const [bx, by] = l[i + 1];
+      const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / (c / 2)));
+      for (let k = 0; k <= n; k++) stamp(Math.floor((ax + (bx - ax) * k / n - ox) / c), Math.floor((ay + (by - ay) * k / n - oy) / c));
+    }
+    const sx = Math.floor((p.x - ox) / c); const sy = Math.floor((p.y - oy) / c);
+    if (m[sy * W + sx]) return this._etat('Toucher à l\'intérieur de la surface, pas sur une ligne.', true);
+    // Remplissage depuis le point : si la zone atteint le bord de la grille, elle n'est pas fermée.
+    const reg = new Uint8Array(W * H);
+    const pile = [sy * W + sx];
+    reg[pile[0]] = 1;
+    let ouvert = false; let n = 0;
+    while (pile.length) {
+      const i = pile.pop(); n++;
+      const X = i % W; const Y = (i - X) / W;
+      if (X <= 1 || Y <= 1 || X >= W - 2 || Y >= H - 2) { ouvert = true; break; }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const j = (Y + dy) * W + X + dx;
+        if (!reg[j] && !m[j]) { reg[j] = 1; pile.push(j); }
+      }
+    }
+    if (ouvert) return this._etat('Zone non fermée : augmenter « Comblement » ou ajouter une ligne qui ferme la surface.', true);
+    // La zone libre est amincie par l'épaisseur des lignes : on la regonfle de r cellules pour rejoindre les lignes.
+    const plein = (X, Y) => {
+      if (X < 0 || Y < 0 || X >= W || Y >= H) return false;
+      if (reg[Y * W + X]) return true;
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (dx * dx + dy * dy > r * r) continue;
+        const A = X + dx; const B = Y + dy;
+        if (A >= 0 && B >= 0 && A < W && B < H && reg[B * W + A]) return true;
+      }
+      return false;
+    };
+    const pl = new Uint8Array(W * H);
+    for (let Y = 0; Y < H; Y++) for (let X = 0; X < W; X++) if (plein(X, Y)) pl[Y * W + X] = 1;
+    const anneaux = this._masqueVersAnneaux((X, Y) => X >= 0 && Y >= 0 && X < W && Y < H && pl[Y * W + X] === 1, W, H, ox, oy, c, Math.max(1.5, 0.2 * marge / c));
+    if (!anneaux.length) return this._etat('Zone trop petite.', true);
+    this._snap();
+    const base = `V${Date.now().toString(36)}`;
+    anneaux.forEach((rg, k) => this._addCand({ id: anneaux.length > 1 ? `${base}-${k + 1}` : base, couche: 'Trace', code: 'TRACE', type: this.TYPE_VIDE, lignes: [rg] }, true));
+    this._renderListe();
+    this._apercu();
+    this._etat(`Vide ajouté (${anneaux.length}) : il sera retranché du polygone. ↶ pour l'annuler.`);
+  },
 
   /** Polygone fermé délimité par les objets cochés (hors polygones déjà générés) : ouvertures plus étroites que « Comblement » comblées par des segments. */
   _polyCalc() {
-    const lignes = [...this._cands.values()].filter((c) => c.sel && c.type !== this.TYPE_POLY).flatMap((c) => c.lignes);
+    const lignes = [...this._cands.values()].filter((c) => c.sel && c.type !== this.TYPE_POLY && c.type !== this.TYPE_VIDE).flatMap((c) => c.lignes);
     if (!lignes.length) return [];
     return this._enveloppeSerree(lignes, Math.max(0, Number(this._f('marge').value) || 0), false);
   },
@@ -1093,7 +1169,7 @@ const AMGT4CEM_LieuxTool = {
     if (!anneaux.length) return this._etat('Aucun polygone : cocher des objets (ou tracer une chaîne) avant de valider.', true);
     this._snap();
     this._traceAbandon();
-    for (const c of [...this._cands.values()]) if (c.sel && c.type !== this.TYPE_POLY) { for (const l of c.layers) this._group.removeLayer(l); this._cands.delete(c.key); }
+    for (const c of [...this._cands.values()]) if (c.sel && c.type !== this.TYPE_POLY && c.type !== this.TYPE_VIDE) { for (const l of c.layers) this._group.removeLayer(l); this._cands.delete(c.key); }
     const base = `P${Date.now().toString(36)}`;
     anneaux.forEach((rg, i) => this._addCand({ id: anneaux.length > 1 ? `${base}-${i + 1}` : base, couche: 'Trace', code: 'TRACE', type: this.TYPE_POLY, lignes: [rg] }, true));
     this._renderListe();
@@ -1170,6 +1246,12 @@ const AMGT4CEM_LieuxTool = {
     }
     const seuil = 0.6 * r;
     const plein = (X, Y) => X >= 0 && Y >= 0 && X < W && Y < H && dist[Y * W + X] > seuil;
+    const eps = fin ? 1.5 : Math.max(2.5, (0.25 * marge) / c); // tolérance de simplification, en cellules de grille
+    return this._masqueVersAnneaux(plein, W, H, ox, oy, c, eps);
+  },
+
+  /** Contours (anneaux Lambert fermés, aire > 0) des cellules `plein` d'une grille W × H (origine ox, oy ; cellule c m) ; `eps` : simplification en cellules. */
+  _masqueVersAnneaux(plein, W, H, ox, oy, c, eps) {
     // Arêtes de bord, orientées pour avoir le plein à gauche, puis chaînées en anneaux.
     const suiv = new Map();
     const ajout = (a, b) => { const k = `${a[0]},${a[1]}`; if (!suiv.has(k)) suiv.set(k, []); suiv.get(k).push(b); };
@@ -1210,7 +1292,6 @@ const AMGT4CEM_LieuxTool = {
     };
     return anneaux.filter((rg) => aire(rg) > 0).map((rg) => {
       const mid = Math.floor(rg.length / 2);
-      const eps = fin ? 1.5 : Math.max(2.5, (0.25 * marge) / c); // tolérance de simplification, en cellules de grille
       const h1 = dp(rg.slice(0, mid + 1), eps); const h2 = dp(rg.slice(mid).concat([rg[0]]), eps);
       const simple = h1.slice(0, -1).concat(h2); // se ferme sur le premier point
       const out = simple.map((q) => [Math.round((ox + q[0] * c) * 100) / 100, Math.round((oy + q[1] * c) * 100) / 100]);
@@ -1226,8 +1307,9 @@ const AMGT4CEM_LieuxTool = {
     if (this._modeActif !== 'poly') return;
     const anneaux = this._polyCalc();
     if (!anneaux.length) return this._etat('Polygone : aucun objet coché.', true);
-    this._apercuLayer = L.polygon(anneaux.map((rg) => rg.map((q) => AMGT4CEM_CRS.lambertToLatLng(q))), { pane: 'amgtLieuxPane', interactive: false, color: '#0b5c75', weight: 2, dashArray: '6 4', fillColor: '#0b5c75', fillOpacity: 0.2 }).addTo(this._map);
-    this._etat(`Polygone : ${anneaux.length} contour(s) calculé(s). « Valider » remplace les objets de construction.`);
+    const vides = [...this._cands.values()].filter((c) => c.sel && c.type === this.TYPE_VIDE).flatMap((c) => c.lignes);
+    this._apercuLayer = L.polygon([...anneaux, ...vides].map((rg) => rg.map((q) => AMGT4CEM_CRS.lambertToLatLng(q))), { pane: 'amgtLieuxPane', interactive: false, color: '#0b5c75', weight: 2, dashArray: '6 4', fillColor: '#0b5c75', fillOpacity: 0.2, fillRule: 'evenodd' }).addTo(this._map);
+    this._etat(`Polygone : ${anneaux.length} contour(s), ${vides.length} vide(s). Toucher une surface fermée pour la retrancher ; « Valider » remplace les objets de construction.`);
   },
 
   // ----------------------------------------------------------- enregistrement
