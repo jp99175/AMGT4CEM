@@ -154,68 +154,6 @@
         ]
       ]
     },
-    "PASSERELLE-POELAERT": {
-      "nom": "Passerelle POELAERT",
-      "tolerance_m": 5,
-      "objets": [
-        {
-          "id": "Tmw1us5yp",
-          "couche": "Trace",
-          "code": "TRACE",
-          "type": "Tracé (ligne)",
-          "lignes": [
-            [
-              [
-                148760.53,
-                169728.14
-              ],
-              [
-                148787.89,
-                169704.64
-              ],
-              [
-                148786.07,
-                169702.36
-              ],
-              [
-                148758.52,
-                169725.77
-              ],
-              [
-                148760.53,
-                169728.14
-              ]
-            ]
-          ]
-        }
-      ],
-      "contour_methode": "serre",
-      "contour_marge": 0,
-      "contour": [
-        [
-          [
-            148785.77,
-            169702.11
-          ],
-          [
-            148788.27,
-            169704.86
-          ],
-          [
-            148760.77,
-            169728.61
-          ],
-          [
-            148758.27,
-            169725.36
-          ],
-          [
-            148785.77,
-            169702.11
-          ]
-        ]
-      ]
-    },
     "AUVENT-ROGIER": {
       "nom": "Auvent ROGIER",
       "tolerance_m": 5,
