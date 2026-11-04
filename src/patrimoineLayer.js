@@ -262,8 +262,8 @@ const AMGT4CEM_PatrimoineLayer = {
       const r = await fetch(`${file}?t=${Date.now()}`); // jamais depuis le cache du navigateur
       const lieux = this._lieuxRecents(r.ok ? ((await r.json()).lieux || {}) : {});
       return Object.values(lieux).flatMap((l) => (l.contour && l.contour.length
-        // Polygone fermé enregistré : il remplace l'amas de lignes.
-        ? l.contour.map((ring) => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: { genre: 'lieu', name_fr: l.nom } }))
+        // Contour enregistré (surfaces moins vides) : un seul polygone dont les anneaux sont remplis en pair-impair (les trous restent vides).
+        ? [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: l.contour }, properties: { genre: 'lieu', name_fr: l.nom } }]
         : l.objets.map((o) => ({
         type: 'Feature',
         geometry: { type: 'MultiLineString', coordinates: o.lignes },
@@ -272,6 +272,30 @@ const AMGT4CEM_PatrimoineLayer = {
     } catch (err) {
       return [];
     }
+  },
+
+  /**
+   * Géométries (Lambert 72) des couches affichées, pour l'outil « Constituer un lieu » : [{ id, nom, polygones: [[ext, trous…]], lignes }].
+   * Les lieux constitués (genre « lieu » / « urbis ») en sont exclus (l'outil les lit directement) ; les planches 1/500e,
+   * construites par metroLayer.js, n'y figurent pas.
+   */
+  geometriesAffichees() {
+    const out = [];
+    if (!this._group || !this._map || !this._map.hasLayer(this._group)) return out;
+    for (const id of Object.keys(this._subGroups || {})) {
+      (this._cache[id] || []).forEach((f, i) => {
+        const g = f.geometry;
+        const p = f.properties || {};
+        if (!g || p.genre === 'lieu' || p.genre === 'urbis') return;
+        const nom = p.name_fr || p.genre || id;
+        const r = (l) => l.map((q) => [q[0], q[1]]);
+        if (g.type === 'Polygon') out.push({ id: `${id}-${i}`, nom, polygones: [g.coordinates.map(r)], lignes: g.coordinates.map(r) });
+        else if (g.type === 'MultiPolygon') out.push({ id: `${id}-${i}`, nom, polygones: g.coordinates.map((pg) => pg.map(r)), lignes: g.coordinates.flat().map(r) });
+        else if (g.type === 'LineString') out.push({ id: `${id}-${i}`, nom, polygones: [], lignes: [r(g.coordinates)] });
+        else if (g.type === 'MultiLineString') out.push({ id: `${id}-${i}`, nom, polygones: [], lignes: g.coordinates.map(r) });
+      });
+    }
+    return out;
   },
 
   _bandeau(texte) {

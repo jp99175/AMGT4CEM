@@ -144,6 +144,7 @@ const AMGT4CEM_CONFIG = {
         './vendor/leaflet/leaflet.js',
         './vendor/proj4/proj4.js',
         './vendor/proj4leaflet/proj4leaflet.js',
+        './vendor/polygon-clipping/polygon-clipping.umd.min.js',
         './vendor/html2canvas/html2canvas.min.js',
         './src/buildInfo.js',
         './config/urbis-topo/catalogue.js',
