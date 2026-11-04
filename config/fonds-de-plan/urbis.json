@@ -1,12 +1,19 @@
 {
   "version": 1,
   "date": "2026-11-04",
-  "note": "Fond de plan de référence grisé : service WMS public UrbIS (CIRB/CIBG), le même que celui de MobiGIS. URL dans services.json (clé « urbis »).",
+  "note": "Fond de plan de référence grisé : par défaut les TUILES UrbIS (WMTS GeoWebCache, cache mensuel, CC0), grille Web Mercator EPSG:900913 déclarée dans le GetCapabilities du service (relevé du 04/11/2026), couche UrbISFrenchLabeledGray = équivalent de urbisFRGray. Autres couches du service : UrbISDutchLabeled{Gray,Color}, UrbISFrenchDutchLabeled{Gray,Color}, UrbISNotLabeled{Gray,Color}, UrbISFrenchLabeledColor. Repli automatique sur le WMS public UrbIS (le même que MobiGIS ; URL dans services.json, clé « urbis », couche `layers`) si les tuiles ne répondent pas. Pour revenir au seul WMS, supprimer le bloc `tuiles`.",
   "id": "urbis-grey",
   "label": "UrbIS",
   "type": "wms",
   "layers": "urbisFRGray",
   "wmsVersion": "1.3.0",
   "format": "image/png",
-  "attribution": "&copy; CIRB/CIBG &ndash; UrbIS"
+  "attribution": "&copy; CIRB/CIBG &ndash; UrbIS",
+  "tuiles": {
+    "type": "wmts-kvp",
+    "url": "https://geoservices-basemap.irisnet.be/geowebcache/service/wmts",
+    "layer": "UrbISFrenchLabeledGray",
+    "tileMatrixSet": "EPSG:900913",
+    "format": "image/png"
+  }
 }

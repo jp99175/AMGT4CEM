@@ -103,7 +103,42 @@ const AMGT4CEM_Basemap = {
    * Affiche le fond UrbIS (remplace le fond courant s'il y en a un).
    */
   showUrbis() {
-    this._setActiveLayer(this._buildLayer(AMGT4CEM_CONFIG.basemaps.urbis));
+    this._setActiveLayer(this._buildUrbisLayer());
+  },
+
+  /**
+   * Fond UrbIS : tuiles pré-calculées (WMTS, config.basemaps.urbis.tuiles) si elles sont configurées, avec repli
+   * automatique sur le WMS si les premières tuiles échouent toutes (service injoignable, couche renommée...) ;
+   * sinon WMS seul. Les tuiles sont demandées en Web Mercator (grille EPSG:900913 du service) : aucun changement
+   * du système de coordonnées d'affichage de la carte.
+   */
+  _buildUrbisLayer() {
+    const cfg = AMGT4CEM_CONFIG.basemaps.urbis;
+    const t = cfg.tuiles;
+    if (!t || t.type !== 'wmts-kvp' || !t.url) return this._buildLayer(cfg);
+
+    const sep = t.url.includes('?') ? '&' : '?';
+    const template = `${t.url}${sep}service=WMTS&request=GetTile&version=1.0.0&layer=${encodeURIComponent(t.layer)}&style=`
+      + `&tilematrixset=${encodeURIComponent(t.tileMatrixSet)}&tilematrix=${encodeURIComponent(t.tileMatrixSet)}:{z}`
+      + `&tilerow={y}&tilecol={x}&format=${encodeURIComponent(t.format || 'image/png')}`;
+    const layer = new this._CorsTileLayer(template, {
+      attribution: cfg.attribution,
+      maxZoom: AMGT4CEM_CONFIG.maxZoom,
+    });
+
+    // Repli : 3 tuiles en erreur sans qu'aucune n'ait chargé -> on remet le WMS à la place.
+    let chargees = 0;
+    let erreurs = 0;
+    let basculé = false;
+    layer.on('tileload', () => { chargees += 1; });
+    layer.on('tileerror', () => {
+      erreurs += 1;
+      if (basculé || chargees > 0 || erreurs < 3) return;
+      basculé = true;
+      console.warn('[AMGT4CEM] Tuiles UrbIS indisponibles, repli sur le WMS.');
+      if (this._currentLayer === layer) this._setActiveLayer(this._buildLayer(cfg));
+    });
+    return layer;
   },
 
   /**
@@ -347,6 +382,21 @@ const AMGT4CEM_Basemap = {
         return;
       }
       L.TileLayer.WMS.prototype._tileOnError.call(this, done, tile, e);
+    },
+  }),
+
+  /** Couche de tuiles (WMTS) : même gestion de CORS que _CorsWmsLayer (capture d'écran de la mesure). */
+  _CorsTileLayer: L.TileLayer.extend({
+    options: { crossOrigin: 'anonymous' },
+    _tileOnError(done, tile, e) {
+      if (tile.getAttribute('crossorigin') !== null && !tile._amgtSansCors) {
+        tile._amgtSansCors = true;
+        const src = tile.src;
+        tile.removeAttribute('crossorigin');
+        tile.src = src;
+        return;
+      }
+      L.TileLayer.prototype._tileOnError.call(this, done, tile, e);
     },
   }),
 

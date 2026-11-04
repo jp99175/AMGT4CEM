@@ -96,6 +96,7 @@ const AMGT4CEM_Services = {
         version: u.wmsVersion || '1.3.0',
         format: u.format,
         attribution: u.attribution,
+        tuiles: u.tuiles || null, // service de tuiles (WMTS) ; absent = WMS seul
       },
       // Ligne du temps unique : Bruciel historique (1935-1996) puis orthophotos récentes UrbIS (2004-2022).
       bruciel: { entries: [...orthoEntries('bruciel', 'bruciel'), ...orthoEntries('urbis-orthophotos', 'bruxelles')] },
