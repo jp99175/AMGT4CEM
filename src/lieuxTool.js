@@ -451,20 +451,28 @@ const AMGT4CEM_LieuxTool = {
   _set(c, v) {
     c.sel = v;
     if (c.cb) c.cb.checked = v;
-    for (const l of c.layers) l.setStyle(this._style(v));
+    for (const l of c.layers) l.setStyle(this._style(v, c));
     const n = [...this._cands.values()].filter((x) => x.sel).length;
     this._f('compte').textContent = `${n} coché(s) / ${this._cands.size}`;
     this._apercu();
   },
 
-  _style(sel) { return sel ? { color: '#e65100', weight: 6, opacity: 0.95 } : { color: '#757575', weight: 4, opacity: 0.7 }; },
+  /** Style d'un objet : trait orange (coché) ou gris ; une surface est remplie, un vide est hachuré (trait pointillé, sans remplissage). */
+  _style(sel, c) {
+    const st = sel ? { color: '#e65100', weight: 6, opacity: 0.95 } : { color: '#757575', weight: 4, opacity: 0.7 };
+    if (c && this._estSurface(c)) return { ...st, weight: 3, fill: true, fillColor: st.color, fillOpacity: sel ? 0.3 : 0.12 };
+    if (c && c.type === this.TYPE_VIDE) return { ...st, weight: 3, dashArray: '5 4', fill: false };
+    return { ...st, fill: false };
+  },
 
   _addCand(o, sel) {
     const key = `${o.couche}:${o.id}`;
     if (this._cands.has(key)) { if (sel) this._set(this._cands.get(key), true); return; }
     const c = { key, ...o, sel, layers: [] };
     for (const ligne of o.lignes) {
-      const pl = L.polyline(ligne.map((q) => AMGT4CEM_CRS.lambertToLatLng(q)), { pane: 'amgtLieuxPane', ...this._style(sel) });
+      const ll = ligne.map((q) => AMGT4CEM_CRS.lambertToLatLng(q));
+      const st = { pane: 'amgtLieuxPane', ...this._style(sel, { ...c, layers: [] }) };
+      const pl = this._estSurface(c) && o.lignes.length === 1 ? L.polygon(ll, st) : L.polyline(ll, st);
       pl.on('click', (e) => {
         if (this._modeActif !== 'objet') return; // dans les autres outils, le clic poursuit vers la carte (sommet, remplissage, opérande…)
         L.DomEvent.stopPropagation(e);
@@ -1278,7 +1286,7 @@ const AMGT4CEM_LieuxTool = {
   _opsMaj() {
     if (!this._panel) return;
     const ops = (this._ops = (this._ops || []).filter((k) => this._cands.has(k)));
-    for (const c of this._cands.values()) for (const l of c.layers) l.setStyle(ops.includes(c.key) ? { color: '#7b1fa2', weight: 7, opacity: 1 } : this._style(c.sel));
+    for (const c of this._cands.values()) for (const l of c.layers) l.setStyle(ops.includes(c.key) ? { color: '#7b1fa2', weight: 4, opacity: 1, fill: true, fillColor: '#7b1fa2', fillOpacity: 0.3 } : this._style(c.sel, c));
     const nom = (k) => { const c = this._cands.get(k); return `${c.type} #${c.id}`; };
     const info = this._f('opsinfo');
     const sous = this._modeActif === 'soustraire';
@@ -1460,7 +1468,7 @@ const AMGT4CEM_LieuxTool = {
     if (this._apercuLayer) { this._map.removeLayer(this._apercuLayer); this._apercuLayer = null; }
     const anneaux = this._contour();
     if (!anneaux.length) return;
-    this._apercuLayer = L.polygon(anneaux.map((rg) => rg.map((q) => AMGT4CEM_CRS.lambertToLatLng(q))), { pane: 'amgtLieuxPane', interactive: false, color: '#0b5c75', weight: 2, dashArray: '6 4', fillColor: '#0b5c75', fillOpacity: 0.2, fillRule: 'evenodd' }).addTo(this._map);
+    this._apercuLayer = L.polygon(anneaux.map((rg) => rg.map((q) => AMGT4CEM_CRS.lambertToLatLng(q))), { pane: 'amgtLieuxPane', interactive: false, color: '#0b5c75', weight: 2, dashArray: '6 4', fillColor: '#0b5c75', fillOpacity: 0.1, fillRule: 'evenodd' }).addTo(this._map);
   },
 
   // ----------------------------------------------------------- enregistrement
