@@ -101,6 +101,26 @@ const AMGT4CEM_LieuxTool = {
     } catch (err) { return lus; }
   },
 
+  // ---------------------------------------------------------------- icônes harmonisées
+  // Mêmes icônes que les autres menus : 23 px, trait de 0,8 px, bleu des boutons, sans cadre. Crayon, poubelle, main et
+  // sélecteur viennent de src/annotate/icons (masques colorés par currentColor).
+  _svg(c) { return `<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round">${c}</svg>`; },
+  _msk(nom) { return `<span class="amgt-lieux-ic" aria-hidden="true" style="--m:url(src/annotate/icons/icone-${nom}.svg)"></span>`; },
+  get ICO() {
+    return {
+      disquette: this._svg('<path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/>'),
+      fermer: this._svg('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'),
+      annuler: this._svg('<g transform="matrix(-1 0 0 1 24 0)"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/></g>'),
+      replier: this._svg('<path d="M6 9l6 6 6-6"/>'),
+      deplier: this._svg('<path d="M6 15l6-6 6 6"/>'),
+      polygone: this._svg('<path d="M12 3.5l7.5 4.3v8.4L12 20.5l-7.5-4.3V7.8z"/>'),
+      crayon: this._msk('crayon'),
+      poubelle: this._msk('poubelle'),
+      main: this._msk('deplacer'),
+      objet: this._msk('selection'),
+    };
+  },
+
   // ---------------------------------------------------------------- panneau
   _buildPanel() {
     const p = document.createElement('div');
@@ -131,7 +151,7 @@ const AMGT4CEM_LieuxTool = {
           <button type="button" data-a="t-fermer" title="Fermer en polygone (ou toucher le premier sommet)">⬡ Fermer</button>
           <button type="button" data-a="t-suppr" class="amgt-lieux-edonly amgt-hidden" title="Supprimer la poignée sélectionnée">🗑 Point</button>
           <button type="button" data-a="t-valider" title="Passer à l'édition du schéma">Éditer ▸</button>
-          <button type="button" data-a="t-abandon" title="Abandonner ce tracé">✕</button></div>
+          <button type="button" data-a="t-abandon" title="Abandonner ce tracé">Abandonner</button></div>
         <div class="amgt-lieux-row amgt-lieux-poly amgt-hidden" data-f="polybarre">
           <label title="Comble les ouvertures plus étroites que cette distance par des segments de droite">Comblement <input data-f="marge" type="number" min="0" max="10" step="0.5" value="1.5" /> m</label>
           <label title="Zone autour du lieu dans laquelle un point est considéré comme faisant partie du lieu">Tolérance <input data-f="tol" type="number" min="0" max="50" step="1" value="5" /> m</label>
@@ -148,6 +168,22 @@ const AMGT4CEM_LieuxTool = {
     document.body.appendChild(p);
     this._panel = p;
     const f = (n) => p.querySelector(`[data-f="${n}"]`);
+    const I = this.ICO;
+    const mettre = (sel, html, garder, cadre) => { for (const el of p.querySelectorAll(sel)) { const t = garder ? el.textContent.replace(/^\S+\s*/, '') : ''; el.innerHTML = html + (t ? ` <span>${t}</span>` : ''); if (!cadre) el.classList.add('amgt-ic-btn'); } };
+    mettre('[data-a="retour"]', I.annuler);
+    mettre('[data-a="enreg"]', I.disquette);
+    mettre('[data-a="fermer"]', I.fermer);
+    mettre('[data-a="t-abandon"]', '', false, true);
+    p.querySelector('[data-a="t-abandon"]').textContent = 'Abandonner';
+    mettre('[data-a="t-main"]', I.main);
+    mettre('[data-a="t-fermer"]', I.polygone, true, true);
+    mettre('[data-a="t-suppr"]', I.poubelle, true, true);
+    mettre('[data-a="reduire"]', I.replier);
+    p.querySelector('[data-a="combo"] [aria-hidden]').innerHTML = I.replier;
+    for (const [m, ic] of [['objet', I.objet], ['trace', I.crayon], ['poly', I.polygone]]) {
+      const b = p.querySelector(`[data-m="${m}"]`);
+      b.innerHTML = `${ic} <span>${b.textContent.replace(/^\S+\s*/, '')}</span>`;
+    }
     this._comboRender();
     f('nom').addEventListener('input', () => this._touch());
     f('marge').addEventListener('change', () => this._apercu());
@@ -196,7 +232,7 @@ const AMGT4CEM_LieuxTool = {
   /** Réduit la fenêtre à sa première ligne (liste des lieux, retour, redéployer) ; un second appui la redéploie. */
   _reduire() {
     const r = this._panel.classList.toggle('amgt-lieux-reduit');
-    this._panel.querySelector('[data-a="reduire"]').textContent = r ? '▴' : '▾';
+    this._panel.querySelector('[data-a="reduire"]').innerHTML = r ? this.ICO.deplier : this.ICO.replier;
     this._comboFermer();
   },
 
@@ -249,9 +285,9 @@ const AMGT4CEM_LieuxTool = {
       li.appendChild(t);
       if (slug) {
         const ed = document.createElement('button');
-        ed.type = 'button'; ed.dataset.a = 'l-edit'; ed.textContent = '✎'; ed.title = 'Éditer ce lieu (reprendre l\'édition)'; ed.setAttribute('aria-label', `Éditer ${nom}`);
+        ed.type = 'button'; ed.dataset.a = 'l-edit'; ed.innerHTML = this.ICO.crayon; ed.className = 'amgt-ic-btn'; ed.title = 'Éditer ce lieu (reprendre l\'édition)'; ed.setAttribute('aria-label', `Éditer ${nom}`);
         const del = document.createElement('button');
-        del.type = 'button'; del.dataset.a = 'l-del'; del.textContent = '🗑'; del.title = 'Supprimer ce lieu'; del.setAttribute('aria-label', `Supprimer ${nom}`);
+        del.type = 'button'; del.dataset.a = 'l-del'; del.innerHTML = this.ICO.poubelle; del.className = 'amgt-ic-btn'; del.title = 'Supprimer ce lieu'; del.setAttribute('aria-label', `Supprimer ${nom}`);
         li.append(ed, del);
       }
       return li;
@@ -383,9 +419,9 @@ const AMGT4CEM_LieuxTool = {
       // ✎ sur toute ligne de la liste : un tracé s'édite tel quel ; un objet UrbIS est d'abord converti en tracé modifiable.
       const ed = document.createElement('button');
       ed.type = 'button';
-      ed.textContent = '✎';
+      ed.innerHTML = this.ICO.crayon;
       ed.title = c.couche === 'Trace' ? 'Éditer ce tracé (poignées)' : 'Éditer cet objet UrbIS : il devient un tracé dont on déplace, ajoute ou retire les points';
-      ed.className = 'amgt-lieux-edit';
+      ed.className = 'amgt-lieux-edit amgt-ic-btn';
       ed.addEventListener('click', (ev) => { ev.preventDefault(); this._editerCand(c); });
       lab.appendChild(ed);
       liste.appendChild(lab);

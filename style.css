@@ -1316,3 +1316,18 @@ html, body {
 .amgt-lieux-poignee--sel { background: #e65100; border-color: #fff; box-shadow: 0 0 0 2px #e65100; }
 .amgt-lieux-mid { background: rgba(255,255,255,.55); border: 1.5px dashed #0b5c75; border-radius: 50%; box-sizing: border-box; }
 #amgt-lieux-panel .amgt-lieux-edit { margin-left: 6px; padding: 0 6px; }
+
+/* Lieux : icônes harmonisées (boutons réduits à leur icône, sans cadre) */
+.amgt-lieux-ic { display: inline-block; width: 20px; height: 20px; background: currentColor; -webkit-mask: var(--m) center / contain no-repeat; mask: var(--m) center / contain no-repeat; vertical-align: middle; }
+#amgt-lieux-panel button.amgt-ic-btn { border: none; background: none; padding: 4px; gap: 4px; color: #0b5c75; }
+#amgt-lieux-panel button.amgt-ic-btn:hover { background: #f0f2f4; }
+#amgt-lieux-panel .amgt-lieux-modes button { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #b8c7cf; background: #fff; padding: 4px 8px; }
+#amgt-lieux-panel .amgt-lieux-modes button.amgt-lieux-actif { background: #0b5c75; color: #fff; }
+#amgt-lieux-panel button.amgt-lieux-actif.amgt-ic-btn { background: #0b5c75; color: #fff; }
+#amgt-lieux-panel .amgt-lieux-trace button { display: inline-flex; align-items: center; }
+#amgt-lieux-panel .amgt-lieux-combo-btn { align-items: center; }
+#amgt-lieux-panel .amgt-lieux-combo-btn svg { display: block; }
+#amgt-lieux-panel .amgt-lieux-edit { margin-left: 6px; padding: 0 4px; }
+#amgt-lieux-panel .amgt-lieux-modes { flex-wrap: wrap; }
+#amgt-lieux-panel .amgt-lieux-modes [data-f="compte"] { font-size: 12px; white-space: nowrap; }
+#amgt-lieux-panel .amgt-lieux-trace button:not(.amgt-ic-btn) { gap: 4px; padding: 4px 8px; }
