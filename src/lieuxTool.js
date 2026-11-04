@@ -1081,8 +1081,12 @@ const AMGT4CEM_LieuxTool = {
     this._traceAbandon();
     this._snap();
     this._addCand({ id, couche: 'Trace', code: 'TRACE', type: ferme ? this.TYPE_SURF : 'Tracé (ligne)', lignes: [lam] }, true);
+    // Une ligne ouverte qui ferme une zone avec d'autres lignes (liste, UrbIS visible) forme aussitôt la surface.
+    let zones = [];
+    if (!ferme) { try { zones = this._zonesFermeesPar([lam], `Trace:${id}`); } catch (err) { zones = []; } }
+    if (zones.length) this._ajouterMulti(zones.map((rg) => [rg]));
     this._renderListe();
-    this._etat(ferme ? 'Surface créée.' : 'Ligne ajoutée à la liste.');
+    this._etat(ferme ? 'Surface créée.' : zones.length ? `Zone fermée : ${zones.length} surface(s) créée(s).` : 'Ligne ajoutée à la liste.');
   },
 
   /**
@@ -1246,6 +1250,99 @@ const AMGT4CEM_LieuxTool = {
     const anneaux = this._masqueVersAnneaux((X, Y) => X >= 0 && Y >= 0 && X < W && Y < H && pl[Y * W + X] === 1, W, H, ox, oy, c, Math.max(1.5, 0.2 * marge / c));
     if (!anneaux.length) return this._err('Zone trop petite.', true);
     return anneaux;
+  },
+
+  /**
+   * Zones que la ligne `nouvelle` vient de fermer : cellules enfermées par les murs AVEC la ligne mais pas SANS elle
+   * (lignes de la liste + objets UrbIS visibles ; ouvertures plus étroites que « Comblement » comblées). Retourne des anneaux
+   * (Lambert) pour les zones qui ne sont pas déjà une surface, ou [] (zone plus grande que la fenêtre de calcul : non fermée).
+   */
+  _zonesFermeesPar(nouvelle, cleNouvelle) {
+    const marge = Math.max(0, Number(this._f('marge').value) || 0);
+    const base = [...(this._aimantLignes || [])];
+    for (const c of this._cands.values()) if (c.key !== cleNouvelle && !this._estSurface(c) && c.type !== this.TYPE_VIDE) base.push(...c.lignes);
+    let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity;
+    for (const l of nouvelle) for (const q of l) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
+    const R = 120;
+    const proches = base.filter((l) => l.some((q) => q[0] > x0 - R && q[0] < x1 + R && q[1] > y0 - R && q[1] < y1 + R));
+    for (const l of proches) for (const q of l) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
+    const c = Math.max(0.1, (Math.max(x1 - x0, y1 - y0) + 2 * marge) / 700);
+    const r = Math.max(0, Math.ceil(marge / c));
+    const ox = x0 - marge - 2 * c; const oy = y0 - marge - 2 * c;
+    const W = Math.ceil((x1 - x0 + 2 * marge) / c) + 5; const H = Math.ceil((y1 - y0 + 2 * marge) / c) + 5;
+    const raster = (lignes) => {
+      const m = new Uint8Array(W * H);
+      const stamp = (cx, cy) => {
+        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+          if (dx * dx + dy * dy > r * r) continue;
+          const X = cx + dx; const Y = cy + dy;
+          if (X >= 0 && Y >= 0 && X < W && Y < H) m[Y * W + X] = 1;
+        }
+      };
+      for (const l of lignes) for (let i = 0; i < l.length - 1; i++) {
+        const [ax, ay] = l[i]; const [bx, by] = l[i + 1];
+        const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / (c / 2)));
+        for (let k = 0; k <= n; k++) stamp(Math.floor((ax + (bx - ax) * k / n - ox) / c), Math.floor((ay + (by - ay) * k / n - oy) / c));
+      }
+      return m;
+    };
+    // Cellules vides reliées au bord = extérieur ; les autres cellules vides sont enfermées.
+    const enferme = (m) => {
+      const ext = new Uint8Array(W * H);
+      const pile = [0];
+      ext[0] = 1;
+      while (pile.length) {
+        const i = pile.pop(); const X = i % W; const Y = (i - X) / W;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const A = X + dx; const B = Y + dy;
+          if (A < 0 || B < 0 || A >= W || B >= H) continue;
+          const j = B * W + A;
+          if (!ext[j] && !m[j]) { ext[j] = 1; pile.push(j); }
+        }
+      }
+      return (i) => !m[i] && !ext[i];
+    };
+    const mSans = raster(proches.length ? proches : []);
+    const mAvec = raster([...proches, ...nouvelle]);
+    const encSans = enferme(mSans); const encAvec = enferme(mAvec);
+    const nouv = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) if (encAvec(i) && !encSans(i)) nouv[i] = 1;
+    const vu = new Uint8Array(W * H);
+    const surfaces = [...this._cands.values()].filter((x) => this._estSurface(x)).map((x) => x.lignes[0]);
+    const dedans = (ring, px, py) => { let ok = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i]; const [xj, yj] = ring[j]; if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) ok = !ok; } return ok; };
+    const out = [];
+    for (let s0 = 0; s0 < W * H; s0++) {
+      if (!nouv[s0] || vu[s0]) continue;
+      const comp = new Uint8Array(W * H);
+      const pile = [s0]; vu[s0] = 1; comp[s0] = 1;
+      let n = 0;
+      while (pile.length) {
+        const i = pile.pop(); n++;
+        const X = i % W; const Y = (i - X) / W;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const A = X + dx; const B = Y + dy;
+          if (A < 0 || B < 0 || A >= W || B >= H) continue;
+          const j = B * W + A;
+          if (nouv[j] && !vu[j]) { vu[j] = 1; comp[j] = 1; pile.push(j); }
+        }
+      }
+      if (n * c * c < 1) continue; // moins d'1 m² : bruit
+      const px = ox + ((s0 % W) + 0.5) * c; const py = oy + (Math.floor(s0 / W) + 0.5) * c;
+      if (surfaces.some((rg) => dedans(rg, px, py))) continue; // déjà couverte par une surface
+      const gonfle = (X, Y) => {
+        if (X < 0 || Y < 0 || X >= W || Y >= H) return false;
+        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+          if (dx * dx + dy * dy > r * r) continue;
+          const A = X + dx; const B = Y + dy;
+          if (A >= 0 && B >= 0 && A < W && B < H && comp[B * W + A]) return true;
+        }
+        return false;
+      };
+      const pl = new Uint8Array(W * H);
+      for (let Y = 0; Y < H; Y++) for (let X = 0; X < W; X++) if (gonfle(X, Y)) pl[Y * W + X] = 1;
+      out.push(...this._masqueVersAnneaux((X, Y) => X >= 0 && Y >= 0 && X < W && Y < H && pl[Y * W + X] === 1, W, H, ox, oy, c, Math.max(1.5, 0.2 * marge / c)));
+    }
+    return out;
   },
 
   /** Enveloppe des objets cochés (hors surfaces et vides) : ouvertures plus étroites que « Comblement » comblées. */
