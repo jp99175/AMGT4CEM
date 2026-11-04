@@ -1269,7 +1269,6 @@ html, body {
 /* Curseur vertical : hauteur de la liste (0 = repliée) */
 #amgt-lieux-panel .amgt-lieux-haut { writing-mode: vertical-lr; direction: rtl; width: 22px; padding: 0; border: 0; }
 .amgt-lieux-sommet { background: #fff; border: 2px solid #0b5c75; border-radius: 50%; box-sizing: border-box; }
-.amgt-lieux-cote { background: rgba(255,255,255,.9); border: 1px solid #0b5c75; border-radius: 4px; padding: 0 3px; font: 11px sans-serif; color: #0b5c75; white-space: nowrap; transform: translate(-50%, -50%); width: auto !important; height: auto !important; }
 
 #amgt-lieux-panel .amgt-lieux-aimant { white-space: nowrap; font-size: 13px; }
 #amgt-lieux-panel .amgt-lieux-aimant input { width: 46px; }
