@@ -2,8 +2,8 @@
  * Outil d'administration « Constituer un lieu » (usage exceptionnel, réservé aux administrateurs).
  *
  * Un lieu (auvent, passerelle, ascenseur...) est un ENSEMBLE d'objets UrbIS Topo (lignes). L'outil permet de
- * choisir ces objets : tracer un rectangle autour de l'ouvrage (presser-glisser-relâcher) fait proposer tous les
- * objets qu'il touche, cochés s'ils sont entièrement dedans ; toucher un objet sur la carte le coche / décoche.
+ * choisir ces objets : toucher un objet UrbIS Topo affiché sur la carte l'ajoute au lieu (ou le retire) ;
+ * le tracé au viseur (chaîne d'arpenteur) dessine une forme à la main.
  * L'enregistrement écrit data/lieux/lieux.json via le relais (route shared/lieux/lieux, code administrateur) :
  *   { version: 1, crs: 'EPSG:31370', lieux: { SLUG: { nom, tolerance_m, objets: [{ id, couche, code, type, lignes }] } } }
  * `lignes` = géométrie en Lambert 72 (mètres, au cm) : le calcul « ce point est-il dans le lieu ? » (zone = objets
@@ -18,13 +18,10 @@ const AMGT4CEM_LieuxTool = {
   _active: false,
   _panel: null,
   _group: null, // objets candidats (cliquables)
-  _rectLayer: null,
   _cands: new Map(), // clé « couche:id » -> { key, id, couche, code, type, lignes (Lambert), sel, layers[] }
   _lieux: {},
-  _armed: false,
   _viseurOn: true, // tracé au viseur (✋ : déplacer la carte à la place)
   DECALAGE_PX: 60, // décalage du viseur au-dessus du doigt (pas à la souris)
-  _start: null,
 
   init(map, btn) {
     this._map = map;
@@ -58,7 +55,6 @@ const AMGT4CEM_LieuxTool = {
     this._viseurStop();
     this._modeActif = null;
     this._btn.classList.remove('amgt-btn--active');
-    this._disarm();
     this._syncDrag();
     this._group.clearLayers();
     this._cands.clear();
@@ -88,7 +84,6 @@ const AMGT4CEM_LieuxTool = {
         <input data-f="tol" type="number" min="0" max="50" step="1" value="5" title="Tolérance autour des objets (m)" /><span>m</span></div>
       <div class="amgt-lieux-row amgt-lieux-modes">
         <button type="button" data-m="objet" title="Toucher un objet UrbIS visible pour l'ajouter">☝ Objet</button>
-        <button type="button" data-a="rect" title="Tracer un rectangle : propose les objets visibles qu'il touche">▭ Rectangle</button>
         <button type="button" data-m="trace" title="Dessiner une ligne brisée (chaîne d'arpenteur), à fermer en polygone">✎ Tracé</button>
         <span data-f="compte"></span></div>
       <div class="amgt-lieux-row amgt-lieux-trace amgt-hidden" data-f="tracebarre">
@@ -132,7 +127,6 @@ const AMGT4CEM_LieuxTool = {
       if (!a) return;
       if (a.dataset.a === 'fermer') this.close();
       else if (a.dataset.a === 'reduire') this._reduire();
-      else if (a.dataset.a === 'rect') this._arm();
       else if (a.dataset.a === 't-annuler') this._traceAnnuler();
       else if (a.dataset.a === 't-main') { this._viseurOn = !this._viseurOn; a.classList.toggle('amgt-lieux-actif', !this._viseurOn); this._syncDrag(); this._etat(this._viseurOn ? 'Viseur actif.' : 'Carte déplaçable au doigt : ✋ à nouveau pour reprendre le tracé.'); }
       else if (a.dataset.a === 't-fermer') this._traceFermer();
@@ -241,7 +235,7 @@ const AMGT4CEM_LieuxTool = {
     for (const ligne of o.lignes) {
       const pl = L.polyline(ligne.map((q) => AMGT4CEM_CRS.lambertToLatLng(q)), { pane: 'amgtLieuxPane', ...this._style(sel) });
       pl.on('click', (e) => {
-        if (this._modeActif === 'trace' || this._armed || Date.now() - (this._rectAt || 0) < 400) return; // le clic poursuit vers la carte (sommet du tracé)
+        if (this._modeActif === 'trace') return; // le clic poursuit vers la carte (sommet du tracé)
         L.DomEvent.stopPropagation(e);
         this._set(c, !c.sel);
       });
@@ -251,65 +245,10 @@ const AMGT4CEM_LieuxTool = {
     this._cands.set(key, c);
   },
 
-  // -------------------------------------------------------------- rectangle
-  _arm() {
-    if (this._armed) return this._disarm();
-    this._armed = true;
-    const m = this._map;
-    m.dragging.disable();
-    m.touchZoom.disable();
-    m.doubleClickZoom.disable();
-    const el = m.getContainer();
-    el.style.touchAction = 'none';
-    el.style.cursor = 'crosshair';
-    this._handlers = {
-      down: (e) => {
-        if (e.target.closest && e.target.closest('#amgt-lieux-panel')) return;
-        this._start = m.mouseEventToLatLng(e);
-        el.setPointerCapture && el.setPointerCapture(e.pointerId);
-        e.preventDefault();
-      },
-      move: (e) => {
-        if (!this._start) return;
-        const b = L.latLngBounds(this._start, m.mouseEventToLatLng(e));
-        if (this._rectLayer) this._rectLayer.setBounds(b);
-        else this._rectLayer = L.rectangle(b, { pane: 'amgtLieuxPane', color: '#0b5c75', weight: 2, dashArray: '6 4', fillOpacity: 0.08 }).addTo(m);
-      },
-      up: (e) => {
-        if (!this._start) return;
-        const b = L.latLngBounds(this._start, m.mouseEventToLatLng(e));
-        this._start = null;
-        this._rectAt = Date.now();
-        this._disarm();
-        this._chercher(b);
-      },
-    };
-    el.addEventListener('pointerdown', this._handlers.down);
-    el.addEventListener('pointermove', this._handlers.move);
-    el.addEventListener('pointerup', this._handlers.up);
-    this._etat('Presser-glisser-relâcher sur la carte pour tracer le rectangle.');
-  },
-
-  _disarm() {
-    if (!this._armed) return;
-    this._armed = false;
-    const m = this._map;
-    const el = m.getContainer();
-    el.removeEventListener('pointerdown', this._handlers.down);
-    el.removeEventListener('pointermove', this._handlers.move);
-    el.removeEventListener('pointerup', this._handlers.up);
-    el.style.touchAction = '';
-    el.style.cursor = '';
-    m.dragging.enable();
-    m.touchZoom.enable();
-    m.doubleClickZoom.enable();
-    this._syncDrag();
-  },
-
   /** Le glisser de la carte est coupé pendant le tracé au viseur (✋ le rend) : un doigt pose / déplace, deux doigts zooment. */
   _syncDrag() {
     const m = this._map;
-    if (!m || this._armed) return;
+    if (!m) return;
     const viseur = this._active && this._modeActif === 'trace' && this._viseurOn;
     if (viseur) { m.dragging.disable(); m.doubleClickZoom.disable(); } else { m.dragging.enable(); m.doubleClickZoom.enable(); }
     // Sans glisser Leaflet, le navigateur reprendrait le geste (défilement) et l'annulerait au bout de quelques pixels
@@ -357,24 +296,6 @@ const AMGT4CEM_LieuxTool = {
     return { objets, notes };
   },
 
-  async _chercher(bounds) {
-    const sw = AMGT4CEM_CRS.latLngToLambert(bounds.getSouthWest());
-    const ne = AMGT4CEM_CRS.latLngToLambert(bounds.getNorthEast());
-    const [x0, x1] = [Math.min(sw.x, ne.x), Math.max(sw.x, ne.x)];
-    const [y0, y1] = [Math.min(sw.y, ne.y), Math.max(sw.y, ne.y)];
-    if (this._rectLayer) { this._map.removeLayer(this._rectLayer); this._rectLayer = null; }
-    if (x1 - x0 < 1 || y1 - y0 < 1) return this._etat('Rectangle trop petit.', true);
-    this._etat('Recherche des objets UrbIS…');
-    const { objets, notes } = await this._wfs(x0, y0, x1, y1);
-    if (!objets) return this._etat("Aucun type linéaire UrbIS Topo n'est affiché : les sélectionner d'abord (☰ Carte > UrbIS Topo).", true);
-    for (const o of objets) {
-      const dedans = o.lignes.every((l) => l.every((q) => q[0] >= x0 && q[0] <= x1 && q[1] >= y0 && q[1] <= y1));
-      this._addCand(o, dedans);
-    }
-    this._renderListe();
-    this._etat(`Objets trouvés (types affichés) — ${notes.join(' ; ')}. Cochés : ceux qui sont entièrement dans le rectangle.`);
-  },
-
   /** Distance (m) d'un point à une ligne brisée, en Lambert. */
   _distLigne(p, l) {
     let dmin = Infinity;
@@ -409,7 +330,6 @@ const AMGT4CEM_LieuxTool = {
   },
 
   _surClic(e) {
-    if (this._armed || Date.now() - (this._rectAt || 0) < 400) return;
     if (this._modeActif === 'objet') this._pick(e.latlng);
   },
 
@@ -507,7 +427,7 @@ const AMGT4CEM_LieuxTool = {
   },
 
   _vDown(e) {
-    if (!this._viseurOn || this._armed || this._modeActif !== 'trace') return;
+    if (!this._viseurOn || this._modeActif !== 'trace') return;
     if (e.button > 0 || (e.target.closest && e.target.closest('button, a, .leaflet-control'))) return;
     this._ptrs = this._ptrs || new Set();
     this._ptrs.add(e.pointerId);
