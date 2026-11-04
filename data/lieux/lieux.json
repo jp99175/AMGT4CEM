@@ -423,6 +423,48 @@
           ]
         ]
       ]
+    },
+    "PASSERELLE-POELAERT": {
+      "nom": "Passerelle POELAERT",
+      "tolerance_m": 5,
+      "objets": [
+        {
+          "id": 1817683,
+          "couche": "TopoLines",
+          "code": "BR03L",
+          "type": "Pont/passerelle/culée (BR03L)",
+          "lignes": [
+            [
+              [
+                148786.07,
+                169702.36
+              ],
+              [
+                148758.39,
+                169725.88
+              ]
+            ]
+          ]
+        },
+        {
+          "id": 1817504,
+          "couche": "TopoLines",
+          "code": "BR03L",
+          "type": "Pont/passerelle/culée (BR03L)",
+          "lignes": [
+            [
+              [
+                148760.38,
+                169728.27
+              ],
+              [
+                148787.89,
+                169704.64
+              ]
+            ]
+          ]
+        }
+      ]
     }
   }
 }
