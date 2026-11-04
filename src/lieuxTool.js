@@ -22,6 +22,8 @@ const AMGT4CEM_LieuxTool = {
   _cands: new Map(), // clé « couche:id » -> { key, id, couche, code, type, lignes (Lambert), sel, layers[] }
   _lieux: {},
   _armed: false,
+  _viseurOn: true, // tracé au viseur (✋ : déplacer la carte à la place)
+  DECALAGE_PX: 60, // décalage du viseur au-dessus du doigt (pas à la souris)
   _start: null,
 
   init(map, btn) {
@@ -53,8 +55,11 @@ const AMGT4CEM_LieuxTool = {
     clearTimeout(this._aimantTimer);
     this._aimantPts = [];
     this._traceAbandon();
+    this._viseurStop();
+    this._modeActif = null;
     this._btn.classList.remove('amgt-btn--active');
     this._disarm();
+    this._syncDrag();
     this._group.clearLayers();
     this._cands.clear();
     if (this._apercuLayer) { this._map.removeLayer(this._apercuLayer); this._apercuLayer = null; }
@@ -88,8 +93,9 @@ const AMGT4CEM_LieuxTool = {
         <span data-f="compte"></span></div>
       <div class="amgt-lieux-row amgt-lieux-trace amgt-hidden" data-f="tracebarre">
         <span data-f="chaine"></span>
-        <label class="amgt-lieux-aimant" title="Aimant : un sommet glissé s'accroche au point remarquable proche si le doigt y reste 1 s (0 = sans aimant)">🧲 <input data-f="aimant" type="number" min="0" max="50" step="1" value="5" /> m</label>
-        <button type="button" data-a="t-annuler" title="Retirer le dernier sommet">↶</button>
+        <label class="amgt-lieux-aimant" title="Aimant : le viseur s'accroche au point remarquable proche s'il y reste 1 s (0 = sans aimant)"><span class="amgt-lieux-aimant-lab"></span><input data-f="aimant" type="number" min="0" max="50" step="1" value="5" /> m</label>
+        <button type="button" data-a="t-main" title="Déplacer la carte au doigt (désactive le viseur)">✋</button>
+        <button type="button" data-a="t-annuler" title="Retour : annuler la dernière action du tracé">↶ Retour</button>
         <button type="button" data-a="t-fermer" title="Fermer en polygone (ou toucher le premier sommet)">⬡ Fermer</button>
         <button type="button" data-a="t-valider" title="Ajouter ce tracé à la liste">✓</button>
         <button type="button" data-a="t-abandon" title="Abandonner ce tracé">✕</button></div>
@@ -114,6 +120,7 @@ const AMGT4CEM_LieuxTool = {
     f('contour').addEventListener('change', () => { f('marge').value = f('contour').value === 'union' ? 0.2 : 1.5; this._apercu(); });
     f('marge').addEventListener('change', () => this._apercu());
     f('haut').addEventListener('input', () => this._hauteurListe());
+    f('tracebarre').querySelector('.amgt-lieux-aimant-lab').innerHTML = this.SVG_AIMANT;
     try { const v = localStorage.getItem('amgt4cem.lieux.aimant'); if (v !== null && v !== '') f('aimant').value = v; } catch (err) { /* stockage indisponible : valeur par défaut */ }
     f('aimant').addEventListener('change', () => { try { localStorage.setItem('amgt4cem.lieux.aimant', f('aimant').value); } catch (err) { /* ignoré */ } });
     this._hauteurListe();
@@ -126,6 +133,7 @@ const AMGT4CEM_LieuxTool = {
       else if (a.dataset.a === 'reduire') this._reduire();
       else if (a.dataset.a === 'rect') this._arm();
       else if (a.dataset.a === 't-annuler') this._traceAnnuler();
+      else if (a.dataset.a === 't-main') { this._viseurOn = !this._viseurOn; a.classList.toggle('amgt-lieux-actif', !this._viseurOn); this._syncDrag(); this._etat(this._viseurOn ? 'Viseur actif.' : 'Carte déplaçable au doigt : ✋ à nouveau pour reprendre le tracé.'); }
       else if (a.dataset.a === 't-fermer') this._traceFermer();
       else if (a.dataset.a === 't-valider') this._traceValider();
       else if (a.dataset.a === 't-abandon') this._traceAbandon();
@@ -154,11 +162,13 @@ const AMGT4CEM_LieuxTool = {
 
   /** Mode de la carte : 'objet' (toucher un objet visible) ou 'trace' (chaîne d'arpenteur). */
   _mode(m) {
-    if (this._modeActif === 'trace' && m !== 'trace') this._traceAbandon();
+    if (this._modeActif === 'trace' && m !== 'trace') { this._traceAbandon(); this._viseurStop(); }
     this._modeActif = m;
+    if (m === 'trace') this._viseurStart();
+    this._syncDrag();
     for (const b of this._panel.querySelectorAll('[data-m]')) b.classList.toggle('amgt-lieux-actif', b.dataset.m === m);
     this._f('tracebarre').classList.toggle('amgt-hidden', m !== 'trace');
-    if (m === 'trace') this._etat("Toucher la carte pour poser les sommets (accrochage aux objets proches) ; glisser un sommet pour le corriger ; toucher le premier sommet ou « Fermer » pour fermer.");
+    if (m === 'trace') this._etat("Poser le doigt : le viseur apparaît au-dessus ; le déplacer, relâcher pour poser le sommet. Presser un sommet pour le déplacer ; toucher le premier sommet ou « Fermer » pour fermer. ✋ = déplacer la carte.");
     else if (m === 'objet') this._etat('Toucher un objet UrbIS visible pour l\'ajouter ; le toucher à nouveau pour le retirer.');
     this._traceInfo();
     if (m === 'trace') this._chargerAimant();
@@ -282,6 +292,15 @@ const AMGT4CEM_LieuxTool = {
     m.dragging.enable();
     m.touchZoom.enable();
     m.doubleClickZoom.enable();
+    this._syncDrag();
+  },
+
+  /** Le glisser de la carte est coupé pendant le tracé au viseur (✋ le rend) : un doigt pose / déplace, deux doigts zooment. */
+  _syncDrag() {
+    const m = this._map;
+    if (!m || this._armed) return;
+    const viseur = this._active && this._modeActif === 'trace' && this._viseurOn;
+    if (viseur) { m.dragging.disable(); m.doubleClickZoom.disable(); } else { m.dragging.enable(); m.doubleClickZoom.enable(); }
   },
 
   /**
@@ -378,7 +397,6 @@ const AMGT4CEM_LieuxTool = {
   _surClic(e) {
     if (this._armed || Date.now() - (this._rectAt || 0) < 400) return;
     if (this._modeActif === 'objet') this._pick(e.latlng);
-    else if (this._modeActif === 'trace') this._tracePoint(e.latlng);
   },
 
   // --------------------------------------------- chaîne d'arpenteur (tracé)
@@ -392,13 +410,6 @@ const AMGT4CEM_LieuxTool = {
     for (const c of this._cands.values()) for (const l of c.lignes) for (const q of l) test(AMGT4CEM_CRS.lambertToLatLng(q));
     if (this._trace) this._trace.pts.forEach((q, i) => { if (i !== sauf) test(q); });
     return best || latlng;
-  },
-
-  _tracePoint(latlng) {
-    if (!this._trace) this._trace = { pts: [], ferme: false, group: L.layerGroup().addTo(this._map), sommets: L.layerGroup().addTo(this._map) };
-    if (this._trace.ferme) return;
-    this._trace.pts.push(L.latLng(this._accroche(latlng)));
-    this._traceDessin();
   },
 
   _traceLam() { return this._trace.pts.map((q) => { const l = AMGT4CEM_CRS.latLngToLambert(q); return [Math.round(l.x * 100) / 100, Math.round(l.y * 100) / 100]; }); },
@@ -428,19 +439,117 @@ const AMGT4CEM_LieuxTool = {
   _traceSommets() {
     const t = this._trace;
     t.sommets.clearLayers();
-    t.pts.forEach((q, i) => {
-      const mk = L.marker(q, { pane: 'amgtLieuxPane', draggable: true, icon: L.divIcon({ className: 'amgt-lieux-sommet', iconSize: [18, 18] }) });
-      mk.on('click', (e) => { L.DomEvent.stopPropagation(e); if (i === 0 && !t.ferme && t.pts.length >= 3) this._traceFermer(); });
-      mk.on('dragstart', () => this._aimantDebut(i));
-      mk.on('drag', () => this._aimantDrag(mk, i));
-      mk.on('dragend', () => {
-        const P = this._am && this._am.accroche;
-        t.pts[i] = L.latLng(P || this._accroche(mk.getLatLng(), i));
-        this._aimantFin();
-        this._traceDessin();
-      });
-      t.sommets.addLayer(mk);
-    });
+    t.pts.forEach((q) => t.sommets.addLayer(L.marker(q, { pane: 'amgtLieuxPane', interactive: false, icon: L.divIcon({ className: 'amgt-lieux-sommet', iconSize: [18, 18] }) })));
+  },
+
+  // ------------------------------------------------------------ viseur
+  // Au doigt, le sommet est posé sous un VISEUR décalé de DECALAGE_PX au-dessus du point de contact (le doigt ne cache
+  // plus ce qu'on fait) ; il suit le doigt, l'aimant s'applique à lui, le relâcher pose (ou dépose) le sommet.
+  // Une presse près d'un sommet existant (24 px) le saisit ; un simple toucher du premier sommet ferme le polygone.
+  SVG_VISEUR: '<svg viewBox="0 0 48 48" width="48" height="48" fill="none" stroke-linecap="round" aria-hidden="true"><g stroke="#fff" stroke-width="4.4"><circle cx="24" cy="24" r="11" /><path d="M24 4v12M24 32v12M4 24h12M32 24h12" /></g><g stroke="#0b5c75" stroke-width="1.6"><circle cx="24" cy="24" r="11" /><path d="M24 4v12M24 32v12M4 24h12M32 24h12" /></g><circle cx="24" cy="24" r="1.6" fill="#e65100" /></svg>',
+
+  _viseurStart() {
+    if (this._vh) return;
+    const el = this._map.getContainer();
+    this._vh = { down: (e) => this._vDown(e), move: (e) => this._vMove(e), up: (e) => this._vUp(e), cancel: (e) => this._vCancel(e) };
+    el.addEventListener('pointerdown', this._vh.down);
+    el.addEventListener('pointermove', this._vh.move);
+    el.addEventListener('pointerup', this._vh.up);
+    el.addEventListener('pointercancel', this._vh.cancel);
+  },
+
+  _viseurStop() {
+    if (!this._vh) return;
+    const el = this._map.getContainer();
+    el.removeEventListener('pointerdown', this._vh.down);
+    el.removeEventListener('pointermove', this._vh.move);
+    el.removeEventListener('pointerup', this._vh.up);
+    el.removeEventListener('pointercancel', this._vh.cancel);
+    this._vh = null;
+    this._viseurAnnule();
+  },
+
+  _vPos(e, g) {
+    const pt = this._map.mouseEventToContainerPoint(e);
+    const dec = e.pointerType === 'mouse' ? 0 : this.DECALAGE_PX;
+    return this._map.containerPointToLatLng(L.point(pt.x, pt.y - dec));
+  },
+
+  _vDown(e) {
+    if (!this._viseurOn || this._armed || this._modeActif !== 'trace') return;
+    if (e.button > 0 || (e.target.closest && e.target.closest('button, a, .leaflet-control'))) return;
+    this._ptrs = this._ptrs || new Set();
+    this._ptrs.add(e.pointerId);
+    if (this._ptrs.size > 1) return this._viseurAnnule(); // deux doigts : zoom de la carte, pas de tracé
+    const pt = this._map.mouseEventToContainerPoint(e);
+    let t = this._trace;
+    let i = -1;
+    if (t) {
+      let dmin = 24;
+      t.pts.forEach((q, k) => { const d = pt.distanceTo(this._map.latLngToContainerPoint(q)); if (d <= dmin) { dmin = d; i = k; } });
+    }
+    if (i < 0 && t && t.ferme) return this._etat('Polygone fermé : ↶ Retour pour le rouvrir, ✓ pour l\'ajouter.');
+    if (!t) t = this._trace = { pts: [], ferme: false, hist: [], group: L.layerGroup().addTo(this._map), sommets: L.layerGroup().addTo(this._map) };
+    this._traceMemo();
+    const g = { id: e.pointerId, nouveau: i < 0, i, depart: pt, bouge: false };
+    if (g.nouveau) { t.pts.push(this._vPos(e)); g.i = t.pts.length - 1; }
+    g.viseur = L.marker(g.nouveau ? t.pts[g.i] : this._vPos(e), { pane: 'amgtLieuxPane', interactive: false, keyboard: false, zIndexOffset: 1000, icon: L.divIcon({ className: 'amgt-lieux-viseur', html: this.SVG_VISEUR, iconSize: [48, 48], iconAnchor: [24, 24] }) }).addTo(this._map);
+    this._g = g;
+    this._aimantDebut(g.i);
+    this._aimantDrag(g.viseur, g.i); // initialise l'aimant (délai d'1 s même sans bouger) et place le sommet sous le viseur
+    this._traceSommets();
+    try { this._map.getContainer().setPointerCapture(e.pointerId); } catch (err) { /* ignoré */ }
+    e.preventDefault();
+  },
+
+  _vMove(e) {
+    const g = this._g;
+    if (!g || e.pointerId !== g.id || !this._trace) return;
+    if (!g.bouge && this._map.mouseEventToContainerPoint(e).distanceTo(g.depart) > 6) g.bouge = true;
+    g.viseur.setLatLng(this._vPos(e));
+    this._aimantDrag(g.viseur, g.i); // met le sommet à la position du viseur (ou de l'aimant) et redessine lignes et cotes
+    this._traceSommets();
+    e.preventDefault();
+  },
+
+  _vUp(e) {
+    if (this._ptrs) this._ptrs.delete(e.pointerId);
+    const g = this._g;
+    if (!g || e.pointerId !== g.id) return;
+    const t = this._trace;
+    this._g = null;
+    this._map.removeLayer(g.viseur);
+    if (!t) return;
+    if (!g.nouveau && !g.bouge) {
+      // Simple toucher d'un sommet existant : le sommet revient où il était ; le premier ferme le polygone.
+      const h = t.hist.pop();
+      t.pts = h.pts;
+      this._aimantFin();
+      if (g.i === 0 && t.pts.length >= 3 && !t.ferme) this._traceFermer(); else this._traceDessin();
+      return;
+    }
+    const P = this._am && this._am.accroche;
+    t.pts[g.i] = L.latLng(P || this._accroche(g.viseur.getLatLng(), g.i));
+    this._aimantFin();
+    this._traceDessin();
+  },
+
+  _vCancel(e) {
+    if (this._ptrs) this._ptrs.delete(e.pointerId);
+    if (this._g && e.pointerId === this._g.id) this._viseurAnnule();
+  },
+
+  /** Abandonne le geste en cours (deux doigts, annulation système, fin du mode) et restaure l'état d'avant. */
+  _viseurAnnule() {
+    const g = this._g;
+    this._g = null;
+    this._ptrs = new Set();
+    if (!g) return;
+    if (g.viseur) this._map.removeLayer(g.viseur);
+    const t = this._trace;
+    if (t && t.hist && t.hist.length) { const h = t.hist.pop(); t.pts = h.pts; t.ferme = h.ferme; }
+    this._aimantFin();
+    if (t) this._traceDessin();
   },
 
   // ------------------------------------------------------------ aimant
@@ -448,6 +557,8 @@ const AMGT4CEM_LieuxTool = {
   // visible, d'un objet de la liste ou du tracé), le sommet est attiré dessus ; il est libéré dès que le doigt
   // s'en éloigne de plus de 2 X. X est réglable (🧲, 0 = sans aimant), mémorisé sur l'appareil.
   AIMANT_DELAI_MS: 1000,
+  // Aimant en fer à cheval (23 px, trait fin, #0b5c75 comme les autres icônes).
+  SVG_AIMANT: '<svg viewBox="0 0 48 48" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 6v18a11 11 0 0 0 22 0V6" /><path d="M9 6h8v9H9zM31 6h8v9h-8z" /><line x1="9" y1="11" x2="17" y2="11" /><line x1="31" y1="11" x2="39" y2="11" /></svg>',
 
   _aimantRayon() {
     const v = Number(this._f('aimant').value);
@@ -504,7 +615,10 @@ const AMGT4CEM_LieuxTool = {
     if (!c) { this._aimantReset(); } else if (!am.cible || am.cible[0] !== c[0] || am.cible[1] !== c[1]) {
       this._aimantReset();
       am.cible = c;
-      am.ring = L.circleMarker(AMGT4CEM_CRS.lambertToLatLng(c), { pane: 'amgtLieuxPane', radius: 13, color: '#e65100', weight: 2, fill: false, dashArray: '4 3', interactive: false }).addTo(this._map);
+      const ll = AMGT4CEM_CRS.lambertToLatLng(c);
+      am.ring = L.circleMarker(ll, { pane: 'amgtLieuxPane', radius: 15, color: '#e65100', weight: 2, fill: false, dashArray: '4 3', interactive: false }).addTo(this._map);
+      // Petit aimant dessiné sur le point visé : pâle pendant l'attente, plein une fois attiré.
+      am.icone = L.marker(ll, { pane: 'amgtLieuxPane', interactive: false, keyboard: false, icon: L.divIcon({ className: 'amgt-lieux-aimant-ic', html: this.SVG_AIMANT, iconSize: [23, 23], iconAnchor: [11.5, 28] }) }).addTo(this._map);
       am.timer = setTimeout(() => this._aimantAttirer(mk, i), this.AIMANT_DELAI_MS);
     }
     t.pts[i] = mk.getLatLng();
@@ -527,6 +641,7 @@ const AMGT4CEM_LieuxTool = {
     mk.setLatLng(am.accroche);
     this._trace.pts[i] = am.accroche;
     if (am.ring) am.ring.setStyle({ dashArray: null, fill: true, fillColor: '#e65100', fillOpacity: 0.3 });
+    if (am.icone && am.icone.getElement()) am.icone.getElement().classList.add('amgt-lieux-aimant-ic--on');
     this._traceLignes();
   },
 
@@ -537,6 +652,7 @@ const AMGT4CEM_LieuxTool = {
     am.timer = null;
     am.cible = null;
     if (am.ring) { this._map.removeLayer(am.ring); am.ring = null; }
+    if (am.icone) { this._map.removeLayer(am.icone); am.icone = null; }
   },
 
   _aimantLiberer() {
@@ -566,22 +682,34 @@ const AMGT4CEM_LieuxTool = {
     } else el.textContent = `${lam.length} sommet(s) · ${this._fmtM(total)}`;
   },
 
-  _traceAnnuler() {
+  /** Mémorise l'état du tracé avant une modification (bouton ↶ : revenir d'un pas en arrière). */
+  _traceMemo() {
     const t = this._trace;
     if (!t) return;
-    if (t.ferme) t.ferme = false; else t.pts.pop();
+    (t.hist = t.hist || []).push({ pts: t.pts.map((q) => L.latLng(q.lat, q.lng)), ferme: t.ferme });
+  },
+
+  _traceAnnuler() {
+    const t = this._trace;
+    if (!t || !t.hist || !t.hist.length) return this._etat('Rien à annuler.', true);
+    const h = t.hist.pop();
+    t.pts = h.pts;
+    t.ferme = h.ferme;
     this._traceDessin();
   },
 
   _traceFermer() {
     const t = this._trace;
     if (!t || t.pts.length < 3) return this._etat('Un polygone demande au moins 3 sommets.', true);
+    if (t.ferme) return;
+    this._traceMemo();
     t.ferme = true;
     this._traceDessin();
   },
 
   _traceAbandon() {
     if (!this._trace) return;
+    this._viseurAnnule();
     this._aimantFin();
     this._map.removeLayer(this._trace.group);
     this._map.removeLayer(this._trace.sommets);
