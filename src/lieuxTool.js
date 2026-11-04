@@ -171,7 +171,7 @@ const AMGT4CEM_LieuxTool = {
       }
       const a = e.target.closest('[data-a]');
       if (!a) return;
-      if (a.dataset.a === 'combo') this._f('combolist').classList.toggle('amgt-hidden');
+      if (a.dataset.a === 'combo') this._comboBasculer(a);
       else if (a.dataset.a === 'fermer') this._demanderFermeture();
       else if (a.dataset.a === 'reduire') this._reduire();
       else if (a.dataset.a === 'retour') this._retour();
@@ -259,6 +259,17 @@ const AMGT4CEM_LieuxTool = {
     ul.appendChild(ligne('', '＋ Créer un nouveau lieu'));
     for (const [k, l] of Object.entries(this._lieux)) ul.appendChild(ligne(k, l.nom));
     this._f('combolab').textContent = this._cur && this._lieux[this._cur] ? this._lieux[this._cur].nom : 'Créer un nouveau lieu';
+  },
+  /** Ouvre / ferme la liste ; elle est en position fixe (au-dessus du bouton) pour ne pas être rognée par le défilement du panneau. */
+  _comboBasculer(btn) {
+    const ul = this._f('combolist');
+    if (!ul.classList.contains('amgt-hidden')) return ul.classList.add('amgt-hidden');
+    const r = btn.getBoundingClientRect();
+    ul.classList.remove('amgt-hidden');
+    ul.style.left = `${r.left}px`;
+    ul.style.width = `${r.width}px`;
+    ul.style.bottom = `${window.innerHeight - r.top + 2}px`;
+    ul.style.maxHeight = `${Math.max(120, r.top - 70)}px`;
   },
   _comboFermer() { if (this._panel) this._f('combolist').classList.add('amgt-hidden'); },
 
