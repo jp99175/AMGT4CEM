@@ -17,6 +17,15 @@ const AMGT4CEM_SearchTool = {
     const panel = document.getElementById('amgt-search-panel');
     const input = document.getElementById('amgt-search-input');
     const resultsEl = document.getElementById('amgt-search-results');
+    this._input = input;
+
+    // Liste de résultats pilotable au clavier : le focus reste dans le champ (on peut continuer à taper),
+    // la ligne active est désignée par aria-activedescendant.
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-expanded', 'true');
+    input.setAttribute('aria-controls', 'amgt-search-results');
+    input.setAttribute('aria-autocomplete', 'list');
+    resultsEl.setAttribute('role', 'listbox');
 
     const open = () => {
       panel.classList.remove('amgt-hidden');
@@ -24,6 +33,7 @@ const AMGT4CEM_SearchTool = {
       toggleBtn.classList.add('amgt-btn--active');
       input.value = '';
       resultsEl.innerHTML = '';
+      this._setActive(resultsEl, null);
       input.focus();
     };
     const close = () => {
@@ -45,13 +55,25 @@ const AMGT4CEM_SearchTool = {
     });
 
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') close();
+      if (e.key === 'Escape') { close(); return; }
+      const items = [...resultsEl.querySelectorAll('.amgt-search-result')];
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        if (items.length === 0) return;
+        e.preventDefault();
+        const i = items.findIndex((li) => li.dataset.key === this._activeKey);
+        if (e.key === 'ArrowDown') this._setActive(resultsEl, items[Math.min(i + 1, items.length - 1)]);
+        else this._setActive(resultsEl, i <= 0 ? null : items[i - 1]); // ↑ sur la première ligne : retour au champ
+      } else if (e.key === 'Enter') {
+        const actif = items.find((li) => li.dataset.key === this._activeKey);
+        if (actif) { e.preventDefault(); actif.click(); }
+      }
     });
 
     input.addEventListener('input', async () => {
       const query = input.value.trim();
       clearTimeout(this._geocodeTimer);
       const token = ++this._searchToken;
+      this._setActive(resultsEl, null); // nouvelle frappe : la sélection au clavier repart du champ
 
       if (!query) {
         resultsEl.innerHTML = '';
@@ -145,7 +167,8 @@ const AMGT4CEM_SearchTool = {
         return {
           kind: 'address',
           label: parts.join(', ') || query,
-          latlng: bounds ? null : AMGT4CEM_CRS.lambertToLatLng([entry.point.x, entry.point.y]),
+          // Le point sert au pointeur posé sur l'adresse ; l'emprise, au recentrage quand elle existe.
+          latlng: entry.point ? AMGT4CEM_CRS.lambertToLatLng([entry.point.x, entry.point.y]) : bounds ? bounds.getCenter() : null,
           bounds,
         };
       });
@@ -185,6 +208,9 @@ const AMGT4CEM_SearchTool = {
       for (const result of results.filter((r) => r.kind === k)) {
         const li = document.createElement('li');
         li.className = 'amgt-search-result';
+        li.setAttribute('role', 'option');
+        li.id = `amgt-search-opt-${resultsEl.querySelectorAll('.amgt-search-result').length}`;
+        li.dataset.key = `${result.kind}|${result.label}`;
         const labelSpan = document.createElement('span');
         labelSpan.className = 'amgt-search-label';
         labelSpan.textContent = result.label;
@@ -195,10 +221,49 @@ const AMGT4CEM_SearchTool = {
           } else if (result.latlng) {
             this._map.setView(result.latlng, 19);
           }
+          if (result.kind === 'address' && result.latlng) this._placePin(result.latlng, result.label);
           close();
         });
         resultsEl.appendChild(li);
       }
     }
+
+    // Les adresses arrivent après les résultats locaux et la liste est reconstruite : la ligne active est retrouvée
+    // par son type et son libellé, pour ne pas sauter pendant la navigation au clavier.
+    const gardee = this._activeKey && [...resultsEl.querySelectorAll('.amgt-search-result')].find((li) => li.dataset.key === this._activeKey);
+    this._setActive(resultsEl, gardee || null);
+  },
+
+  /** Ligne active de la liste (null = aucune, le champ garde la main). */
+  _setActive(resultsEl, li) {
+    resultsEl.querySelectorAll('.amgt-search-result--active').forEach((el) => {
+      el.classList.remove('amgt-search-result--active');
+      el.removeAttribute('aria-selected');
+    });
+    this._activeKey = li ? li.dataset.key : null;
+    if (li) {
+      li.classList.add('amgt-search-result--active');
+      li.setAttribute('aria-selected', 'true');
+      li.scrollIntoView({ block: 'nearest' });
+      if (this._input) this._input.setAttribute('aria-activedescendant', li.id);
+    } else if (this._input) {
+      this._input.removeAttribute('aria-activedescendant');
+    }
+  },
+
+  // Pointeur : 23 px de haut, trait 0,8 px (bleu des icônes de l'app), partie pleine blanche, cercle transparent.
+  // La pointe est l'ancre (8, 23) : elle tombe sur l'adresse.
+  SVG_POINTEUR: '<svg viewBox="0 0 16 23" width="16" height="23" aria-hidden="true" focusable="false"><path d="M8 22 L1.94 11.5 A7 7 0 1 1 14.06 11.5 Z M12 8 A4 4 0 1 0 4 8 A4 4 0 1 0 12 8 Z" fill="#ffffff" fill-rule="evenodd" stroke="#0b5c75" stroke-width="0.8" stroke-linejoin="round" /></svg>',
+
+  /** Pose (ou déplace) l'unique pointeur sur l'adresse choisie ; un clic dessus l'efface. */
+  _placePin(latlng, label) {
+    if (this._pin) this._pin.remove();
+    this._pin = L.marker(latlng, {
+      keyboard: false,
+      zIndexOffset: 1000,
+      icon: L.divIcon({ className: 'amgt-address-pin', html: this.SVG_POINTEUR, iconSize: [16, 23], iconAnchor: [8, 23] }),
+    }).addTo(this._map);
+    this._pin.bindTooltip(label, { direction: 'top', offset: [0, -23] });
+    this._pin.on('click', () => { this._pin.remove(); this._pin = null; });
   },
 };
