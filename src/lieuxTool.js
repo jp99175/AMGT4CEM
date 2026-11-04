@@ -511,8 +511,7 @@ const AMGT4CEM_LieuxTool = {
     const pt = this._map.latLngToContainerPoint(latlng);
     let best = null; let dmin = 12;
     const test = (q) => { const d = pt.distanceTo(this._map.latLngToContainerPoint(q)); if (d < dmin) { dmin = d; best = q; } };
-    for (const q of this._aimantPts || []) test(AMGT4CEM_CRS.lambertToLatLng(q));
-    if (this._trace) this._trace.pts.forEach((q, i) => { if (i !== sauf) test(q); });
+    for (const q of this._pointsRemarquables(sauf)) test(AMGT4CEM_CRS.lambertToLatLng(q));
     return best || latlng;
   },
 
@@ -723,12 +722,13 @@ const AMGT4CEM_LieuxTool = {
     const bnds = this._map.getBounds().pad(0.2);
     const sw = AMGT4CEM_CRS.latLngToLambert(bnds.getSouthWest());
     const ne = AMGT4CEM_CRS.latLngToLambert(bnds.getNorthEast());
-    if (Math.abs(ne.x - sw.x) > 600) { this._aimantPts = []; return; } // trop dézoomé : pas d'aimant sur UrbIS
+    if (Math.abs(ne.x - sw.x) > 600) { this._aimantPts = []; this._aimantLignes = []; return; } // trop dézoomé : pas d'aimant sur UrbIS
     const jeton = (this._aimantJeton = (this._aimantJeton || 0) + 1);
     const { objets } = await this._wfs(Math.min(sw.x, ne.x), Math.min(sw.y, ne.y), Math.max(sw.x, ne.x), Math.max(sw.y, ne.y));
     if (jeton !== this._aimantJeton || !objets) return;
     const lignes = objets.flatMap((o) => o.lignes);
     // Bouts de segments (sommets des lignes) + intersections entre segments visibles.
+    this._aimantLignes = lignes; // lignes UrbIS visibles ; les points sont calculés à chaque usage avec la liste et le tracé (_pointsRemarquables)
     this._aimantPts = [...lignes.flat(), ...this._intersections(lignes)];
   },
 
@@ -774,8 +774,24 @@ const AMGT4CEM_LieuxTool = {
     this._aimantTimer = setTimeout(() => this._chargerAimant(), 400);
   },
 
+  /**
+   * Points d'accroche : extrémités (sommets) et intersections de lignes, uniquement entre objets VISIBLES — objets UrbIS affichés,
+   * objets de la liste (cochés ou non, ils sont dessinés) et segments du tracé en cours. Le sommet `sauf` (celui qu'on déplace)
+   * et les segments qui y touchent sont exclus. Aucune accroche sur le fond de plan.
+   */
   _pointsRemarquables(sauf) {
-    return this._aimantPts || []; // seulement les bouts de segments et les intersections des objets UrbIS visibles
+    const lignes = [...(this._aimantLignes || [])];
+    for (const c of this._cands.values()) lignes.push(...c.lignes);
+    const t = this._trace;
+    const pts = [];
+    if (t && t.pts.length) {
+      const lam = this._traceLam();
+      const n = lam.length;
+      lam.forEach((q, k) => { if (k !== sauf) pts.push(q); });
+      const nb = t.ferme ? n : n - 1;
+      for (let k = 0; k < nb; k++) { const k2 = (k + 1) % n; if (k !== sauf && k2 !== sauf) lignes.push([lam[k], lam[k2]]); }
+    }
+    return [...lignes.flat(), ...pts, ...this._intersections(lignes)];
   },
 
   _aimantDebut(i) {
