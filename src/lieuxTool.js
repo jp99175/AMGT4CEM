@@ -301,6 +301,9 @@ const AMGT4CEM_LieuxTool = {
     if (!m || this._armed) return;
     const viseur = this._active && this._modeActif === 'trace' && this._viseurOn;
     if (viseur) { m.dragging.disable(); m.doubleClickZoom.disable(); } else { m.dragging.enable(); m.doubleClickZoom.enable(); }
+    // Sans glisser Leaflet, le navigateur reprendrait le geste (défilement) et l'annulerait au bout de quelques pixels
+    // (pointercancel) : le viseur disparaîtrait. touch-action: none le garde ; le zoom à deux doigts reste géré par Leaflet.
+    m.getContainer().style.touchAction = viseur ? 'none' : '';
   },
 
   /**
@@ -439,7 +442,8 @@ const AMGT4CEM_LieuxTool = {
   _traceSommets() {
     const t = this._trace;
     t.sommets.clearLayers();
-    t.pts.forEach((q) => t.sommets.addLayer(L.marker(q, { pane: 'amgtLieuxPane', interactive: false, icon: L.divIcon({ className: 'amgt-lieux-sommet', iconSize: [18, 18] }) })));
+    // Le sommet tenu sous le viseur n'est pas dessiné : le réticule reste transparent, on voit la carte à travers.
+    t.pts.forEach((q, k) => { if (this._g && this._g.i === k) return; t.sommets.addLayer(L.marker(q, { pane: 'amgtLieuxPane', interactive: false, icon: L.divIcon({ className: 'amgt-lieux-sommet', iconSize: [18, 18] }) })); });
   },
 
   // ------------------------------------------------------------ viseur
@@ -640,7 +644,7 @@ const AMGT4CEM_LieuxTool = {
     am.accroche = AMGT4CEM_CRS.lambertToLatLng(am.cible);
     mk.setLatLng(am.accroche);
     this._trace.pts[i] = am.accroche;
-    if (am.ring) am.ring.setStyle({ dashArray: null, fill: true, fillColor: '#e65100', fillOpacity: 0.3 });
+    if (am.ring) am.ring.setStyle({ dashArray: null, weight: 3 }); // trait plein, toujours sans remplissage
     if (am.icone && am.icone.getElement()) am.icone.getElement().classList.add('amgt-lieux-aimant-ic--on');
     this._traceLignes();
   },

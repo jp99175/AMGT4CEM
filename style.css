@@ -1280,7 +1280,7 @@ html, body {
 #amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-etat { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .amgt-lieux-viseur svg { display: block; }
-.amgt-lieux-aimant-ic { color: #0b5c75; background: rgba(255,255,255,.92); border: 1px solid #0b5c75; border-radius: 50%; box-sizing: border-box; padding: 0; opacity: .6; width: 25px !important; height: 25px !important; display: flex; align-items: center; justify-content: center; }
+.amgt-lieux-aimant-ic { color: #0b5c75; background: none; border: 0; padding: 0; opacity: .7; width: 25px !important; height: 25px !important; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff); }
 .amgt-lieux-aimant-ic svg { display: block; }
-.amgt-lieux-aimant-ic--on { opacity: 1; color: #e65100; border-color: #e65100; background: #fff; }
+.amgt-lieux-aimant-ic--on { opacity: 1; color: #e65100; }
 #amgt-lieux-panel .amgt-lieux-aimant-lab svg { vertical-align: middle; color: #0b5c75; }
