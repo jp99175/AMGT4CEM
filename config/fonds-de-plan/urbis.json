@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "date": "2026-10-07",
+  "date": "2026-11-04",
   "note": "Fond de plan de référence grisé : service WMS public UrbIS (CIRB/CIBG), le même que celui de MobiGIS. URL dans services.json (clé « urbis »).",
   "id": "urbis-grey",
   "label": "UrbIS",
   "type": "wms",
-  "layers": "urbisFRGray",
+  "layers": "urbisFRLight",
   "wmsVersion": "1.3.0",
   "format": "image/png",
   "attribution": "&copy; CIRB/CIBG &ndash; UrbIS"
