@@ -1,12 +1,7 @@
 {
   "version": 1,
   "selection": {
-    "BR14L": "#1e88e5",
-    "BB01L": "#00897b",
-    "BB02L": "#6d4c41",
-    "BB10L": "#e64a19",
-    "BB1001P": "#8e24aa",
-    "BB0201P": "#c0ca33"
+    "BR14L": "#1e88e5"
   },
   "extra": {}
 }
