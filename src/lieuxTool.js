@@ -39,11 +39,15 @@ const AMGT4CEM_LieuxTool = {
     this._btn.classList.add('amgt-btn--active');
     this._group.addTo(this._map);
     await this._readLieux();
+    this._clickH = (e) => this._surClic(e);
+    this._map.on('click', this._clickH);
     this._buildPanel();
   },
 
   close() {
     this._active = false;
+    if (this._clickH) this._map.off('click', this._clickH);
+    this._traceAbandon();
     this._btn.classList.remove('amgt-btn--active');
     this._disarm();
     this._group.clearLayers();
@@ -72,11 +76,24 @@ const AMGT4CEM_LieuxTool = {
       <div class="amgt-lieux-row"><select data-f="existant"></select></div>
       <div class="amgt-lieux-row"><input data-f="nom" placeholder="Nom du lieu (ex. Ascenseur POELAERT)" />
         <input data-f="tol" type="number" min="0" max="50" step="1" value="5" title="Tolérance autour des objets (m)" /><span>m</span></div>
-      <div class="amgt-lieux-row"><button type="button" data-a="rect">▭ Tracer un rectangle</button><span data-f="compte"></span></div>
-      <div class="amgt-lieux-liste" data-f="liste"></div>
+      <div class="amgt-lieux-row amgt-lieux-modes">
+        <button type="button" data-m="objet" title="Toucher un objet UrbIS visible pour l'ajouter">☝ Objet</button>
+        <button type="button" data-a="rect" title="Tracer un rectangle : propose les objets visibles qu'il touche">▭ Rectangle</button>
+        <button type="button" data-m="trace" title="Dessiner une ligne brisée (chaîne d'arpenteur), à fermer en polygone">✎ Tracé</button>
+        <span data-f="compte"></span></div>
+      <div class="amgt-lieux-row amgt-lieux-trace amgt-hidden" data-f="tracebarre">
+        <span data-f="chaine"></span>
+        <button type="button" data-a="t-annuler" title="Retirer le dernier sommet">↶</button>
+        <button type="button" data-a="t-fermer" title="Fermer en polygone (ou toucher le premier sommet)">⬡ Fermer</button>
+        <button type="button" data-a="t-valider" title="Ajouter ce tracé à la liste">✓</button>
+        <button type="button" data-a="t-abandon" title="Abandonner ce tracé">✕</button></div>
+      <div class="amgt-lieux-corps">
+        <div class="amgt-lieux-liste" data-f="liste"></div>
+        <input class="amgt-lieux-haut" data-f="haut" type="range" min="0" max="100" value="35" orient="vertical" title="Hauteur de la liste" aria-label="Hauteur de la liste" />
+      </div>
       <div class="amgt-lieux-row"><select data-f="contour" title="Forme du lieu">
-        <option value="">Lignes seules</option><option value="serre">Polygone fermé : enveloppe serrée</option><option value="convexe">Polygone fermé : enveloppe convexe</option></select>
-        <input data-f="marge" type="number" min="0" max="10" step="0.5" value="1.5" title="Comble les vides de cette largeur (m)" /><span>m</span></div>
+        <option value="">Lignes seules</option><option value="union">Polygone : union des polygones cochés</option><option value="serre">Polygone : enveloppe serrée</option><option value="convexe">Polygone : enveloppe convexe</option></select>
+        <input data-f="marge" type="number" min="0" max="10" step="0.5" value="1.5" title="Comble les vides étroits (m) : 1,5 enveloppe serrée, 0,2 union" /><span>m</span></div>
       <div class="amgt-lieux-row"><input data-f="code" type="password" placeholder="Code administrateur" autocomplete="off" /></div>
       <div class="amgt-lieux-row"><button type="button" data-a="enreg">💾 Enregistrer</button><button type="button" data-a="suppr">Supprimer le lieu</button></div>
       <div class="amgt-lieux-etat" data-f="etat"></div>`;
@@ -88,18 +105,47 @@ const AMGT4CEM_LieuxTool = {
     const known = AMGT4CEM_PeLabelAnchors.getAdminCode();
     if (known) f('code').value = known;
     sel.addEventListener('change', () => this._chargerLieu(sel.value));
-    for (const n of ['contour', 'marge']) f(n).addEventListener('change', () => this._apercu());
+    f('contour').addEventListener('change', () => { f('marge').value = f('contour').value === 'union' ? 0.2 : 1.5; this._apercu(); });
+    f('marge').addEventListener('change', () => this._apercu());
+    f('haut').addEventListener('input', () => this._hauteurListe());
+    this._hauteurListe();
     p.addEventListener('click', (e) => {
+      const m = e.target.closest('[data-m]');
+      if (m) return this._mode(m.dataset.m);
       const a = e.target.closest('[data-a]');
       if (!a) return;
       if (a.dataset.a === 'fermer') this.close();
       else if (a.dataset.a === 'rect') this._arm();
+      else if (a.dataset.a === 't-annuler') this._traceAnnuler();
+      else if (a.dataset.a === 't-fermer') this._traceFermer();
+      else if (a.dataset.a === 't-valider') this._traceValider();
+      else if (a.dataset.a === 't-abandon') this._traceAbandon();
       else if (a.dataset.a === 'enreg') this._enregistrer();
       else if (a.dataset.a === 'suppr') this._supprimer();
     });
     L.DomEvent.disableClickPropagation(p);
     L.DomEvent.disableScrollPropagation(p);
     this._renderListe();
+    this._mode('objet');
+  },
+
+  /** Hauteur de la liste : curseur vertical sur le côté (0 = liste repliée). */
+  _hauteurListe() {
+    const v = Number(this._f('haut').value);
+    const l = this._f('liste');
+    l.style.maxHeight = `${Math.round(v * 0.5)}vh`;
+    l.style.display = v === 0 ? 'none' : '';
+  },
+
+  /** Mode de la carte : 'objet' (toucher un objet visible) ou 'trace' (chaîne d'arpenteur). */
+  _mode(m) {
+    if (this._modeActif === 'trace' && m !== 'trace') this._traceAbandon();
+    this._modeActif = m;
+    for (const b of this._panel.querySelectorAll('[data-m]')) b.classList.toggle('amgt-lieux-actif', b.dataset.m === m);
+    this._f('tracebarre').classList.toggle('amgt-hidden', m !== 'trace');
+    if (m === 'trace') this._etat("Toucher la carte pour poser les sommets (accrochage aux objets proches) ; glisser un sommet pour le corriger ; toucher le premier sommet ou « Fermer » pour fermer.");
+    else if (m === 'objet') this._etat('Toucher un objet UrbIS visible pour l\'ajouter ; le toucher à nouveau pour le retirer.');
+    this._traceInfo();
   },
 
   _f(n) { return this._panel.querySelector(`[data-f="${n}"]`); },
@@ -157,7 +203,11 @@ const AMGT4CEM_LieuxTool = {
     const c = { key, ...o, sel, layers: [] };
     for (const ligne of o.lignes) {
       const pl = L.polyline(ligne.map((q) => AMGT4CEM_CRS.lambertToLatLng(q)), { pane: 'amgtLieuxPane', ...this._style(sel) });
-      pl.on('click', (e) => { L.DomEvent.stopPropagation(e); this._set(c, !c.sel); });
+      pl.on('click', (e) => {
+        if (this._modeActif === 'trace' || this._armed || Date.now() - (this._rectAt || 0) < 400) return; // le clic poursuit vers la carte (sommet du tracé)
+        L.DomEvent.stopPropagation(e);
+        this._set(c, !c.sel);
+      });
       this._group.addLayer(pl);
       c.layers.push(pl);
     }
@@ -192,6 +242,7 @@ const AMGT4CEM_LieuxTool = {
         if (!this._start) return;
         const b = L.latLngBounds(this._start, m.mouseEventToLatLng(e));
         this._start = null;
+        this._rectAt = Date.now();
         this._disarm();
         this._chercher(b);
       },
@@ -217,15 +268,12 @@ const AMGT4CEM_LieuxTool = {
     m.doubleClickZoom.enable();
   },
 
-  async _chercher(bounds) {
-    const sw = AMGT4CEM_CRS.latLngToLambert(bounds.getSouthWest());
-    const ne = AMGT4CEM_CRS.latLngToLambert(bounds.getNorthEast());
-    const [x0, x1] = [Math.min(sw.x, ne.x), Math.max(sw.x, ne.x)];
-    const [y0, y1] = [Math.min(sw.y, ne.y), Math.max(sw.y, ne.y)];
-    if (x1 - x0 < 1 || y1 - y0 < 1) return this._etat('Rectangle trop petit.', true);
-    this._etat('Recherche des objets UrbIS…');
+  /**
+   * Interroge UrbIS Topo (types actuellement affichés seulement) dans une emprise Lambert.
+   * @returns {Promise<{objets: object[]|null, notes: string[]}>} objets null si aucun type linéaire n'est affiché
+   */
+  async _wfs(x0, y0, x1, y1) {
     const { wfsUrl, version, typeAttribute } = AMGT4CEM_CONFIG.urbisTopo;
-    // Seuls les types UrbIS Topo actuellement affichés (sélection de la carte) sont proposés.
     const selection = AMGT4CEM_UrbisTopoSelectionStore.getSelection();
     const cat = {};
     for (const e of AMGT4CEM_URBISTOPO_CATALOG) cat[e.code] = e;
@@ -235,10 +283,9 @@ const AMGT4CEM_LieuxTool = {
       if (g === 'ligne') parCouche.TopoLines.push(code);
       else if (g === 'polygone') parCouche.TopoShapes.push(code);
     }
-    if (!parCouche.TopoLines.length && !parCouche.TopoShapes.length) {
-      return this._etat("Aucun type linéaire UrbIS Topo n'est affiché : les sélectionner d'abord (☰ Carte > UrbIS Topo).", true);
-    }
+    if (!parCouche.TopoLines.length && !parCouche.TopoShapes.length) return { objets: null, notes: [] };
     const notes = [];
+    const objets = [];
     for (const ft of ['TopoLines', 'TopoShapes']) {
       if (!parCouche[ft].length) continue;
       try {
@@ -252,16 +299,162 @@ const AMGT4CEM_LieuxTool = {
           const lignes = this._lignes(f.geometry);
           if (!lignes.length) continue;
           const code = (f.properties || {})[typeAttribute];
-          const dedans = lignes.every((l) => l.every((q) => q[0] >= x0 && q[0] <= x1 && q[1] >= y0 && q[1] <= y1));
-          this._addCand({ id: (f.properties || {}).ID, couche: ft, code, type: `${(cat[code] && cat[code].label) || (f.properties || {}).DESCRFRE || code} (${code})`, lignes }, dedans);
+          objets.push({ id: (f.properties || {}).ID, couche: ft, code, type: `${(cat[code] && cat[code].label) || (f.properties || {}).DESCRFRE || code} (${code})`, lignes });
         }
       } catch (err) {
         notes.push(`${ft} : erreur ${err.message}`);
       }
     }
+    return { objets, notes };
+  },
+
+  async _chercher(bounds) {
+    const sw = AMGT4CEM_CRS.latLngToLambert(bounds.getSouthWest());
+    const ne = AMGT4CEM_CRS.latLngToLambert(bounds.getNorthEast());
+    const [x0, x1] = [Math.min(sw.x, ne.x), Math.max(sw.x, ne.x)];
+    const [y0, y1] = [Math.min(sw.y, ne.y), Math.max(sw.y, ne.y)];
     if (this._rectLayer) { this._map.removeLayer(this._rectLayer); this._rectLayer = null; }
+    if (x1 - x0 < 1 || y1 - y0 < 1) return this._etat('Rectangle trop petit.', true);
+    this._etat('Recherche des objets UrbIS…');
+    const { objets, notes } = await this._wfs(x0, y0, x1, y1);
+    if (!objets) return this._etat("Aucun type linéaire UrbIS Topo n'est affiché : les sélectionner d'abord (☰ Carte > UrbIS Topo).", true);
+    for (const o of objets) {
+      const dedans = o.lignes.every((l) => l.every((q) => q[0] >= x0 && q[0] <= x1 && q[1] >= y0 && q[1] <= y1));
+      this._addCand(o, dedans);
+    }
     this._renderListe();
     this._etat(`Objets trouvés (types affichés) — ${notes.join(' ; ')}. Cochés : ceux qui sont entièrement dans le rectangle.`);
+  },
+
+  /** Distance (m) d'un point à une ligne brisée, en Lambert. */
+  _distLigne(p, l) {
+    let dmin = Infinity;
+    for (let i = 0; i < l.length - 1; i++) {
+      const [ax, ay] = l[i]; const [bx, by] = l[i + 1];
+      const dx = bx - ax; const dy = by - ay;
+      const t = dx || dy ? Math.max(0, Math.min(1, ((p.x - ax) * dx + (p.y - ay) * dy) / (dx * dx + dy * dy))) : 0;
+      dmin = Math.min(dmin, Math.hypot(p.x - (ax + t * dx), p.y - (ay + t * dy)));
+    }
+    return dmin;
+  },
+
+  /** Mode « Objet » : l'objet UrbIS visible le plus proche du point touché (dans ~16 px) est ajouté / retiré. */
+  async _pick(latlng) {
+    const pt = this._map.latLngToContainerPoint(latlng);
+    const a = AMGT4CEM_CRS.latLngToLambert(latlng);
+    const b = AMGT4CEM_CRS.latLngToLambert(this._map.containerPointToLatLng(L.point(pt.x + 16, pt.y)));
+    const tol = Math.max(0.3, Math.hypot(b.x - a.x, b.y - a.y));
+    // Objet déjà dans la liste : on le bascule sans interroger UrbIS.
+    let proche = null; let dmin = tol;
+    for (const c of this._cands.values()) for (const l of c.lignes) { const d = this._distLigne(a, l); if (d < dmin) { dmin = d; proche = c; } }
+    if (proche) { this._set(proche, !proche.sel); return; }
+    this._etat('Recherche de l\'objet touché…');
+    const { objets, notes } = await this._wfs(a.x - tol, a.y - tol, a.x + tol, a.y + tol);
+    if (!objets) return this._etat("Aucun type linéaire UrbIS Topo n'est affiché : les sélectionner d'abord (☰ Carte > UrbIS Topo).", true);
+    let meilleur = null; dmin = Infinity;
+    for (const o of objets) for (const l of o.lignes) { const d = this._distLigne(a, l); if (d < dmin) { dmin = d; meilleur = o; } }
+    if (!meilleur || dmin > tol) return this._etat(`Aucun objet affiché à cet endroit (${notes.join(' ; ')}).`, true);
+    this._addCand(meilleur, true);
+    this._renderListe();
+    this._etat(`Ajouté : ${meilleur.type} #${meilleur.id}.`);
+  },
+
+  _surClic(e) {
+    if (this._armed || Date.now() - (this._rectAt || 0) < 400) return;
+    if (this._modeActif === 'objet') this._pick(e.latlng);
+    else if (this._modeActif === 'trace') this._tracePoint(e.latlng);
+  },
+
+  // --------------------------------------------- chaîne d'arpenteur (tracé)
+  _fmtM(m) { return `${m.toFixed(2).replace('.', ',')} m`; },
+
+  /** Accroche au sommet le plus proche (objets de la liste, sommets du tracé) dans 12 px, sinon le point lui-même. */
+  _accroche(latlng, sauf) {
+    const pt = this._map.latLngToContainerPoint(latlng);
+    let best = null; let dmin = 12;
+    const test = (q) => { const d = pt.distanceTo(this._map.latLngToContainerPoint(q)); if (d < dmin) { dmin = d; best = q; } };
+    for (const c of this._cands.values()) for (const l of c.lignes) for (const q of l) test(AMGT4CEM_CRS.lambertToLatLng(q));
+    if (this._trace) this._trace.pts.forEach((q, i) => { if (i !== sauf) test(q); });
+    return best || latlng;
+  },
+
+  _tracePoint(latlng) {
+    if (!this._trace) this._trace = { pts: [], ferme: false, group: L.layerGroup().addTo(this._map) };
+    if (this._trace.ferme) return;
+    this._trace.pts.push(L.latLng(this._accroche(latlng)));
+    this._traceDessin();
+  },
+
+  _traceLam() { return this._trace.pts.map((q) => { const l = AMGT4CEM_CRS.latLngToLambert(q); return [Math.round(l.x * 100) / 100, Math.round(l.y * 100) / 100]; }); },
+
+  _traceDessin() {
+    const t = this._trace;
+    t.group.clearLayers();
+    if (!t.pts.length) return this._traceInfo();
+    const opt = { pane: 'amgtLieuxPane', color: '#0b5c75', weight: 3, interactive: false };
+    t.group.addLayer(t.ferme ? L.polygon(t.pts, { ...opt, fillColor: '#0b5c75', fillOpacity: 0.15 }) : L.polyline(t.pts, opt));
+    const lam = this._traceLam();
+    const n = lam.length;
+    for (let i = 0; i < (t.ferme ? n : n - 1); i++) {
+      const a = lam[i]; const b = lam[(i + 1) % n];
+      const mid = L.latLng((t.pts[i].lat + t.pts[(i + 1) % n].lat) / 2, (t.pts[i].lng + t.pts[(i + 1) % n].lng) / 2);
+      t.group.addLayer(L.marker(mid, { pane: 'amgtLieuxPane', interactive: false, icon: L.divIcon({ className: 'amgt-lieux-cote', html: this._fmtM(Math.hypot(b[0] - a[0], b[1] - a[1])), iconSize: null }) }));
+    }
+    t.pts.forEach((q, i) => {
+      const mk = L.marker(q, { pane: 'amgtLieuxPane', draggable: true, icon: L.divIcon({ className: 'amgt-lieux-sommet', iconSize: [18, 18] }) });
+      mk.on('click', (e) => { L.DomEvent.stopPropagation(e); if (i === 0 && !t.ferme && t.pts.length >= 3) this._traceFermer(); });
+      mk.on('dragend', () => { t.pts[i] = L.latLng(this._accroche(mk.getLatLng(), i)); this._traceDessin(); });
+      t.group.addLayer(mk);
+    });
+    this._traceInfo();
+  },
+
+  _traceInfo() {
+    const el = this._panel && this._f('chaine');
+    if (!el) return;
+    const t = this._trace;
+    if (!t || !t.pts.length) { el.textContent = ''; return; }
+    const lam = this._traceLam();
+    let total = 0;
+    for (let i = 0; i < lam.length - 1; i++) total += Math.hypot(lam[i + 1][0] - lam[i][0], lam[i + 1][1] - lam[i][1]);
+    if (t.ferme) {
+      const a = lam.length;
+      total += Math.hypot(lam[0][0] - lam[a - 1][0], lam[0][1] - lam[a - 1][1]);
+      const aire = Math.abs(lam.reduce((s, q, i) => { const n = lam[(i + 1) % a]; return s + q[0] * n[1] - n[0] * q[1]; }, 0) / 2);
+      el.textContent = `${a} sommets · périmètre ${this._fmtM(total)} · ${aire.toFixed(1).replace('.', ',')} m²`;
+    } else el.textContent = `${lam.length} sommet(s) · ${this._fmtM(total)}`;
+  },
+
+  _traceAnnuler() {
+    const t = this._trace;
+    if (!t) return;
+    if (t.ferme) t.ferme = false; else t.pts.pop();
+    this._traceDessin();
+  },
+
+  _traceFermer() {
+    const t = this._trace;
+    if (!t || t.pts.length < 3) return this._etat('Un polygone demande au moins 3 sommets.', true);
+    t.ferme = true;
+    this._traceDessin();
+  },
+
+  _traceAbandon() {
+    if (!this._trace) return;
+    this._map.removeLayer(this._trace.group);
+    this._trace = null;
+    if (this._panel) this._traceInfo();
+  },
+
+  _traceValider() {
+    const t = this._trace;
+    if (!t || t.pts.length < 2) return this._etat('Poser au moins 2 sommets.', true);
+    const lam = this._traceLam();
+    if (t.ferme) lam.push(lam[0]);
+    this._traceAbandon();
+    this._addCand({ id: `T${Date.now().toString(36)}`, couche: 'Trace', code: 'TRACE', type: t.ferme ? 'Tracé fermé (polygone)' : 'Tracé (ligne)', lignes: [lam] }, true);
+    this._renderListe();
+    this._etat(t.ferme ? 'Polygone ajouté à la liste.' : 'Ligne ajoutée à la liste.');
   },
 
   /** Géométrie GeoJSON -> liste de lignes [[x,y],...] (Lambert), arrondies au cm ; les anneaux des surfaces comptent comme lignes. */
@@ -283,7 +476,14 @@ const AMGT4CEM_LieuxTool = {
     const lignes = [...this._cands.values()].filter((c) => c.sel).flatMap((c) => c.lignes);
     if (!mode || !lignes.length) return [];
     if (mode === 'convexe') return [this._enveloppeConvexe(lignes.flat())];
-    return this._enveloppeSerree(lignes, Math.max(0, Number(this._f('marge').value) || 0));
+    const marge = Math.max(0, Number(this._f('marge').value) || 0);
+    if (mode === 'union') {
+      // Seuls les polygones (lignes fermées) sont fusionnés ; les lignes ouvertes sont ignorées.
+      const fermees = lignes.filter((l) => l.length >= 4 && l[0][0] === l[l.length - 1][0] && l[0][1] === l[l.length - 1][1]);
+      this._ouvertes = lignes.length - fermees.length;
+      return fermees.length ? this._enveloppeSerree(fermees, Math.max(0.05, marge), true) : [];
+    }
+    return this._enveloppeSerree(lignes, marge, false);
   },
 
   _enveloppeConvexe(pts) {
@@ -303,10 +503,10 @@ const AMGT4CEM_LieuxTool = {
    * étroits que 2 × marge), l'intérieur est rempli, puis le contour de chaque ensemble est relevé et simplifié
    * (Douglas-Peucker). Une érosion ramène ensuite le polygone au plus près des objets.
    */
-  _enveloppeSerree(lignes, marge) {
+  _enveloppeSerree(lignes, marge, fin) {
     let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity;
     for (const l of lignes) for (const q of l) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
-    const c = Math.max(0.25, (Math.max(x1 - x0, y1 - y0) + 2 * marge) / 700); // taille de cellule (m)
+    const c = fin ? Math.max(0.05, (Math.max(x1 - x0, y1 - y0) + 2 * marge) / 1200) : Math.max(0.25, (Math.max(x1 - x0, y1 - y0) + 2 * marge) / 700); // taille de cellule (m)
     const r = Math.max(1, Math.ceil(marge / c));
     const ox = x0 - marge - 2 * c; const oy = y0 - marge - 2 * c;
     const W = Math.ceil((x1 - x0 + 2 * marge) / c) + 5; const H = Math.ceil((y1 - y0 + 2 * marge) / c) + 5;
@@ -395,11 +595,11 @@ const AMGT4CEM_LieuxTool = {
     };
     return anneaux.filter((rg) => aire(rg) > 0).map((rg) => {
       const mid = Math.floor(rg.length / 2);
-      const eps = Math.max(2.5, (0.25 * marge) / c); // tolérance de simplification, en cellules de grille
+      const eps = fin ? 1.5 : Math.max(2.5, (0.25 * marge) / c); // tolérance de simplification, en cellules de grille
       const h1 = dp(rg.slice(0, mid + 1), eps); const h2 = dp(rg.slice(mid).concat([rg[0]]), eps);
       const simple = h1.slice(0, -1).concat(h2); // se ferme sur le premier point
       const out = simple.map((q) => [Math.round((ox + q[0] * c) * 100) / 100, Math.round((oy + q[1] * c) * 100) / 100]);
-      out.push(out[0]); // anneau fermé
+      if (out[0][0] !== out[out.length - 1][0] || out[0][1] !== out[out.length - 1][1]) out.push(out[0]); // anneau fermé
       return out;
     });
   },
@@ -407,7 +607,13 @@ const AMGT4CEM_LieuxTool = {
   _apercu() {
     if (!this._panel) return;
     if (this._apercuLayer) { this._map.removeLayer(this._apercuLayer); this._apercuLayer = null; }
+    this._ouvertes = 0;
     const anneaux = this._contour();
+    if (this._f('contour').value === 'union') {
+      if (!anneaux.length) this._etat('Union : aucun polygone (ligne fermée) coché.', true);
+      else if (this._ouvertes) this._etat(`Union : ${anneaux.length} polygone(s) obtenu(s) ; ${this._ouvertes} ligne(s) ouverte(s) ignorée(s).`);
+      else this._etat(`Union : ${anneaux.length} polygone(s) obtenu(s).`);
+    }
     if (!anneaux.length) return;
     this._apercuLayer = L.polygon(anneaux.map((rg) => rg.map((q) => AMGT4CEM_CRS.lambertToLatLng(q))), { pane: 'amgtLieuxPane', interactive: false, color: '#0b5c75', weight: 2, dashArray: '6 4', fillColor: '#0b5c75', fillOpacity: 0.2 }).addTo(this._map);
   },

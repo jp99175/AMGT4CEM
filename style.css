@@ -1259,3 +1259,14 @@ html, body {
 #amgt-lieux-panel .amgt-lieux-liste { max-height: 26vh; overflow: auto; border: 1px solid #e0e7ea; border-radius: 6px; padding: 3px 6px; }
 #amgt-lieux-panel .amgt-lieux-liste label { display: block; padding: 2px 0; }
 #amgt-lieux-panel .amgt-lieux-etat { font-size: 12px; min-height: 1.2em; }
+
+#amgt-lieux-panel { max-height: 70vh; overflow: auto; }
+#amgt-lieux-panel .amgt-lieux-modes button.amgt-lieux-actif, #amgt-lieux-panel .amgt-lieux-trace button:active { background: #0b5c75; color: #fff; }
+#amgt-lieux-panel .amgt-lieux-trace { flex-wrap: wrap; }
+#amgt-lieux-panel .amgt-lieux-trace [data-f="chaine"] { flex: 1 1 100%; font-size: 12px; }
+#amgt-lieux-panel .amgt-lieux-corps { display: flex; gap: 6px; align-items: stretch; }
+#amgt-lieux-panel .amgt-lieux-corps .amgt-lieux-liste { flex: 1; min-width: 0; }
+/* Curseur vertical : hauteur de la liste (0 = repliée) */
+#amgt-lieux-panel .amgt-lieux-haut { writing-mode: vertical-lr; direction: rtl; width: 22px; padding: 0; border: 0; }
+.amgt-lieux-sommet { background: #fff; border: 2px solid #0b5c75; border-radius: 50%; box-sizing: border-box; }
+.amgt-lieux-cote { background: rgba(255,255,255,.9); border: 1px solid #0b5c75; border-radius: 4px; padding: 0 3px; font: 11px sans-serif; color: #0b5c75; white-space: nowrap; transform: translate(-50%, -50%); width: auto !important; height: auto !important; }
