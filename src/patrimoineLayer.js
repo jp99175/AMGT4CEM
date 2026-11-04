@@ -233,11 +233,14 @@ const AMGT4CEM_PatrimoineLayer = {
       const r = await fetch(file);
       if (!r.ok) return [];
       const lieux = (await r.json()).lieux || {};
-      return Object.values(lieux).flatMap((l) => l.objets.map((o) => ({
+      return Object.values(lieux).flatMap((l) => (l.contour && l.contour.length
+        // Polygone fermé enregistré : il remplace l'amas de lignes.
+        ? l.contour.map((ring) => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: { genre: 'lieu', name_fr: l.nom } }))
+        : l.objets.map((o) => ({
         type: 'Feature',
         geometry: { type: 'MultiLineString', coordinates: o.lignes },
         properties: { genre: 'urbis', name_fr: l.nom, urbis_id: o.id, urbis_code: o.code },
-      })));
+      }))));
     } catch (err) {
       return [];
     }
