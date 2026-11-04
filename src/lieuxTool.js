@@ -32,7 +32,7 @@ const AMGT4CEM_LieuxTool = {
   },
 
   async toggle() {
-    if (this._active) return this.close();
+    if (this._active) return this._demanderFermeture();
     if (!(await AMGT4CEM_Admin.requestAccess())) return;
     this._active = true;
     this._btn.classList.add('amgt-btn--active');
@@ -42,7 +42,16 @@ const AMGT4CEM_LieuxTool = {
     this._map.on('click', this._clickH);
     this._vueH = () => this._aimantVue();
     this._map.on('moveend', this._vueH);
+    this._cur = '';
+    this._dirty = false;
+    this._hist = [];
     this._buildPanel();
+  },
+
+  /** Fermeture demandée par l'utilisateur (✕ ou bouton de la barre) : confirmation s'il y a des modifications non enregistrées. */
+  _demanderFermeture() {
+    if (this._dirty && !confirm('Fermer l\'outil et abandonner les modifications non enregistrées ?')) return;
+    this.close();
   },
 
   close() {
@@ -59,6 +68,9 @@ const AMGT4CEM_LieuxTool = {
     this._group.clearLayers();
     this._cands.clear();
     if (this._apercuLayer) { this._map.removeLayer(this._apercuLayer); this._apercuLayer = null; }
+    this._vueClear();
+    if (this._docClic) { document.removeEventListener('click', this._docClic); this._docClic = null; }
+    this._cur = ''; this._dirty = false; this._hist = [];
     this._map.removeLayer(this._group);
     if (this._panel) this._panel.remove();
     this._panel = null;
@@ -94,74 +106,98 @@ const AMGT4CEM_LieuxTool = {
     const p = document.createElement('div');
     p.id = 'amgt-lieux-panel';
     p.innerHTML = `
-      <div class="amgt-lieux-row"><strong>Constituer un lieu</strong><button type="button" data-a="reduire" title="Réduire en bandeau / agrandir" aria-label="Réduire">▾</button><button type="button" data-a="fermer" aria-label="Fermer">✕</button></div>
-      <div class="amgt-lieux-row amgt-lieux-sec"><select data-f="existant"></select></div>
-      <div class="amgt-lieux-row amgt-lieux-sec"><input data-f="nom" placeholder="Nom du lieu (ex. Ascenseur POELAERT)" />
-        <input data-f="tol" type="number" min="0" max="50" step="1" value="5" title="Tolérance autour des objets (m)" /><span>m</span></div>
-      <div class="amgt-lieux-row amgt-lieux-modes">
-        <button type="button" data-m="objet" title="Toucher un objet UrbIS visible pour l'ajouter">☝ Objet</button>
-        <button type="button" data-m="trace" title="Dessiner une ligne brisée (chaîne d'arpenteur), à fermer en polygone">✎ Tracé</button>
-        <span data-f="compte"></span></div>
-      <div class="amgt-lieux-row amgt-lieux-trace amgt-hidden" data-f="tracebarre">
-        <span data-f="chaine"></span>
-        <label class="amgt-lieux-aimant" title="Aimant : le viseur s'accroche au point remarquable proche s'il y reste 1 s (0 = sans aimant)"><span class="amgt-lieux-aimant-lab"></span><input data-f="aimant" type="number" min="0" max="50" step="1" value="5" /> m</label>
-        <button type="button" data-a="t-main" title="Déplacer la carte au doigt (désactive le viseur)">✋</button>
-        <button type="button" data-a="t-annuler" title="Retour : annuler la dernière action du tracé">↶ Retour</button>
-        <button type="button" data-a="t-fermer" title="Fermer en polygone (ou toucher le premier sommet)">⬡ Fermer</button>
-        <button type="button" data-a="t-suppr" class="amgt-lieux-edonly amgt-hidden" title="Supprimer la poignée sélectionnée">🗑 Point</button>
-        <button type="button" data-a="t-valider" title="Passer à l'édition du schéma">Éditer ▸</button>
-        <button type="button" data-a="t-abandon" title="Abandonner ce tracé">✕</button></div>
-      <div class="amgt-lieux-corps amgt-lieux-sec">
-        <div class="amgt-lieux-liste" data-f="liste"></div>
-        <input class="amgt-lieux-haut" data-f="haut" type="range" min="0" max="100" value="35" orient="vertical" title="Hauteur de la liste" aria-label="Hauteur de la liste" />
+      <div class="amgt-lieux-row amgt-lieux-l1">
+        <div class="amgt-lieux-combo">
+          <button type="button" data-a="combo" class="amgt-lieux-combo-btn" aria-haspopup="listbox" title="Créer un lieu, ou afficher / éditer / supprimer un lieu enregistré"><span data-f="combolab">Créer un nouveau lieu</span><span aria-hidden="true">▾</span></button>
+          <ul class="amgt-lieux-combo-liste amgt-hidden" data-f="combolist" role="listbox"></ul>
+        </div>
+        <button type="button" data-a="retour" class="amgt-lieux-l1-retour" title="Retour : annuler la dernière opération" aria-label="Retour">↶</button>
+        <button type="button" data-a="reduire" title="Réduire à cette ligne / redéployer la fenêtre" aria-label="Réduire">▾</button>
       </div>
-      <div class="amgt-lieux-row amgt-lieux-sec"><select data-f="contour" title="Forme du lieu">
-        <option value="">Lignes seules</option><option value="union">Polygone : union des polygones cochés</option><option value="serre">Polygone : enveloppe serrée</option><option value="convexe">Polygone : enveloppe convexe</option></select>
-        <input data-f="marge" type="number" min="0" max="10" step="0.5" value="1.5" title="Comble les vides étroits (m) : 1,5 enveloppe serrée, 0,2 union" /><span>m</span></div>
-      <div class="amgt-lieux-row amgt-lieux-sec"><input data-f="code" type="password" placeholder="Code administrateur" autocomplete="off" /></div>
-      <div class="amgt-lieux-row amgt-lieux-sec"><button type="button" data-a="enreg">💾 Enregistrer</button><button type="button" data-a="suppr">Supprimer le lieu</button></div>
-      <div class="amgt-lieux-etat" data-f="etat"></div>`;
+      <div class="amgt-lieux-sec amgt-lieux-body">
+        <div class="amgt-lieux-row"><input data-f="nom" placeholder="Nom du lieu (ex. Ascenseur POELAERT)" /></div>
+        <div class="amgt-lieux-corps">
+          <div class="amgt-lieux-liste" data-f="liste"></div>
+          <input class="amgt-lieux-haut" data-f="haut" type="range" min="0" max="100" value="35" orient="vertical" title="Hauteur de la liste" aria-label="Hauteur de la liste" />
+        </div>
+        <div class="amgt-lieux-row amgt-lieux-modes">
+          <button type="button" data-m="objet" title="Toucher un objet UrbIS visible pour l'ajouter ou le retirer">☝ Objet</button>
+          <button type="button" data-m="trace" title="Dessiner une ligne brisée (chaîne d'arpenteur), à fermer en polygone ; elle s'ajoute aux objets">✎ Chaîne</button>
+          <button type="button" data-m="poly" title="Définir le polygone fermé qui entoure les objets cochés">⬡ Polygone</button>
+          <span data-f="compte"></span></div>
+        <div class="amgt-lieux-row amgt-lieux-trace amgt-hidden" data-f="tracebarre">
+          <span data-f="chaine"></span>
+          <button type="button" data-a="t-main" title="Déplacer la carte au doigt (désactive le viseur)">✋</button>
+          <button type="button" data-a="t-fermer" title="Fermer en polygone (ou toucher le premier sommet)">⬡ Fermer</button>
+          <button type="button" data-a="t-suppr" class="amgt-lieux-edonly amgt-hidden" title="Supprimer la poignée sélectionnée">🗑 Point</button>
+          <button type="button" data-a="t-valider" title="Passer à l'édition du schéma">Éditer ▸</button>
+          <button type="button" data-a="t-abandon" title="Abandonner ce tracé">✕</button></div>
+        <div class="amgt-lieux-row amgt-lieux-poly amgt-hidden" data-f="polybarre">
+          <label title="Comble les ouvertures plus étroites que cette distance par des segments de droite">Comblement <input data-f="marge" type="number" min="0" max="10" step="0.5" value="1.5" /> m</label>
+          <label title="Zone autour du lieu dans laquelle un point est considéré comme faisant partie du lieu">Tolérance <input data-f="tol" type="number" min="0" max="50" step="1" value="5" /> m</label>
+          <button type="button" data-a="p-def" title="Recalculer le polygone">Définir</button>
+          <button type="button" data-a="p-valider" title="Valider : remplace les objets et tracés de construction par ce polygone">Valider</button></div>
+        <div class="amgt-lieux-row amgt-lieux-l9">
+          <label class="amgt-lieux-aimant" title="Aimant : le viseur s'accroche au point remarquable proche s'il y reste 1 s (0 = sans aimant)"><span class="amgt-lieux-aimant-lab"></span><input data-f="aimant" type="number" min="0" max="50" step="1" value="5" /> m</label>
+          <span class="amgt-lieux-sp"></span>
+          <button type="button" data-a="retour" title="Retour : annuler la dernière opération" aria-label="Retour">↶</button>
+          <button type="button" data-a="enreg" title="Enregistrer le lieu" aria-label="Enregistrer">💾</button>
+          <button type="button" data-a="fermer" title="Fermer l'outil en abandonnant les modifications non enregistrées" aria-label="Fermer">✕</button></div>
+        <div class="amgt-lieux-etat" data-f="etat"></div>
+      </div>`;
     document.body.appendChild(p);
     this._panel = p;
     const f = (n) => p.querySelector(`[data-f="${n}"]`);
-    const sel = f('existant');
-    this._majListe('');
-    const known = AMGT4CEM_PeLabelAnchors.getAdminCode();
-    if (known) f('code').value = known;
-    sel.addEventListener('change', () => this._chargerLieu(sel.value));
-    f('contour').addEventListener('change', () => { f('marge').value = f('contour').value === 'union' ? 0.2 : 1.5; this._apercu(); });
+    this._comboRender();
+    f('nom').addEventListener('input', () => this._touch());
     f('marge').addEventListener('change', () => this._apercu());
     f('haut').addEventListener('input', () => this._hauteurListe());
-    f('tracebarre').querySelector('.amgt-lieux-aimant-lab').innerHTML = this.SVG_AIMANT;
+    p.querySelector('.amgt-lieux-aimant-lab').innerHTML = this.SVG_AIMANT;
     try { const v = localStorage.getItem('amgt4cem.lieux.aimant'); if (v !== null && v !== '') f('aimant').value = v; } catch (err) { /* stockage indisponible : valeur par défaut */ }
     f('aimant').addEventListener('change', () => { try { localStorage.setItem('amgt4cem.lieux.aimant', f('aimant').value); } catch (err) { /* ignoré */ } });
     this._hauteurListe();
     p.addEventListener('click', (e) => {
       const m = e.target.closest('[data-m]');
       if (m) return this._mode(m.dataset.m);
+      // Liste déroulante des lieux : crayon / corbeille d'une ligne, ou la ligne elle-même (afficher).
+      const lig = e.target.closest('.amgt-lieux-combo-liste li');
+      if (lig) {
+        const slug = lig.dataset.slug || '';
+        const act = e.target.closest('[data-a]');
+        this._comboFermer();
+        if (act && act.dataset.a === 'l-edit') return this._editerLieu(slug);
+        if (act && act.dataset.a === 'l-del') return this._supprimerLieu(slug);
+        return slug ? this._afficherLieu(slug) : this._nouveauLieu();
+      }
       const a = e.target.closest('[data-a]');
       if (!a) return;
-      if (a.dataset.a === 'fermer') this.close();
+      if (a.dataset.a === 'combo') this._f('combolist').classList.toggle('amgt-hidden');
+      else if (a.dataset.a === 'fermer') this._demanderFermeture();
       else if (a.dataset.a === 'reduire') this._reduire();
-      else if (a.dataset.a === 't-annuler') this._traceAnnuler();
+      else if (a.dataset.a === 'retour') this._retour();
       else if (a.dataset.a === 't-main') { this._viseurOn = !this._viseurOn; a.classList.toggle('amgt-lieux-actif', !this._viseurOn); this._syncDrag(); this._etat(this._viseurOn ? 'Viseur actif.' : 'Carte déplaçable au doigt : ✋ à nouveau pour reprendre le tracé.'); }
       else if (a.dataset.a === 't-fermer') this._traceFermer();
       else if (a.dataset.a === 't-valider') this._traceValider();
       else if (a.dataset.a === 't-suppr') this._traceSupprimer();
       else if (a.dataset.a === 't-abandon') this._traceAbandon();
+      else if (a.dataset.a === 'p-def') this._apercu();
+      else if (a.dataset.a === 'p-valider') this._polyValider();
       else if (a.dataset.a === 'enreg') this._enregistrer();
-      else if (a.dataset.a === 'suppr') this._supprimer();
     });
+    // Un clic ailleurs referme la liste déroulante.
+    this._docClic = (e) => { if (this._panel && !e.target.closest('.amgt-lieux-combo')) this._comboFermer(); };
+    document.addEventListener('click', this._docClic);
     L.DomEvent.disableClickPropagation(p);
     L.DomEvent.disableScrollPropagation(p);
     this._renderListe();
     this._mode('objet');
   },
 
-  /** Bandeau : ne garde que les modes, la barre du tracé et le message ; le reste du panneau est masqué. */
+  /** Réduit la fenêtre à sa première ligne (liste des lieux, retour, redéployer) ; un second appui la redéploie. */
   _reduire() {
     const r = this._panel.classList.toggle('amgt-lieux-reduit');
     this._panel.querySelector('[data-a="reduire"]').textContent = r ? '▴' : '▾';
+    this._comboFermer();
   },
 
   /** Hauteur de la liste : curseur vertical sur le côté (0 = liste repliée). */
@@ -172,7 +208,7 @@ const AMGT4CEM_LieuxTool = {
     l.style.display = v === 0 ? 'none' : '';
   },
 
-  /** Mode de la carte : 'objet' (toucher un objet visible) ou 'trace' (chaîne d'arpenteur). */
+  /** Mode de la carte : 'objet' (toucher un objet visible), 'trace' (chaîne d'arpenteur) ou 'poly' (polygone du lieu). */
   _mode(m) {
     if (this._modeActif === 'trace' && m !== 'trace') { this._traceAbandon(); this._viseurStop(); }
     this._modeActif = m;
@@ -180,38 +216,145 @@ const AMGT4CEM_LieuxTool = {
     this._syncDrag();
     for (const b of this._panel.querySelectorAll('[data-m]')) b.classList.toggle('amgt-lieux-actif', b.dataset.m === m);
     this._f('tracebarre').classList.toggle('amgt-hidden', m !== 'trace');
-    if (m === 'trace') this._etat("1er point : viseur au-dessus du doigt. Ensuite : il part du dernier point et suit le doigt ; relâcher pour poser. ✋ = déplacer la carte.");
+    this._f('polybarre').classList.toggle('amgt-hidden', m !== 'poly');
+    if (m === 'poly') this._etat('Polygone : réglez le comblement, puis « Valider » remplace les objets de construction par ce polygone.');
+    else if (m === 'trace') this._etat("1er point : viseur au-dessus du doigt. Ensuite : il part du dernier point et suit le doigt ; relâcher pour poser. ✋ = déplacer la carte.");
     else if (m === 'objet') this._etat('Toucher un objet UrbIS visible pour l\'ajouter ; le toucher à nouveau pour le retirer.');
     this._traceInfo();
+    this._apercu();
     if (m === 'trace') this._chargerAimant();
   },
 
   _f(n) { return this._panel.querySelector(`[data-f="${n}"]`); },
 
-  /** Reconstruit la liste des lieux existants (après un enregistrement, un renommage ou une suppression) et sélectionne `slug`. */
+  /** Après un enregistrement, un renommage ou une suppression : lieu en cours d'édition = `slug`, liste déroulante reconstruite. */
   _majListe(slug) {
-    const sel = this._f('existant');
-    sel.textContent = '';
-    sel.append(new Option('— nouveau lieu —', ''));
-    for (const [k, l] of Object.entries(this._lieux)) sel.append(new Option(l.nom, k));
-    sel.value = slug && this._lieux[slug] ? slug : '';
+    this._cur = slug && this._lieux[slug] ? slug : '';
+    this._comboRender();
   },
   _etat(t, err) { const e = this._f('etat'); e.textContent = t; e.style.color = err ? '#b3261e' : '#0b5c75'; },
 
+  // ------------------------------------------------------ liste déroulante des lieux
+  _comboRender() {
+    const ul = this._f('combolist');
+    ul.textContent = '';
+    const ligne = (slug, nom) => {
+      const li = document.createElement('li');
+      li.dataset.slug = slug;
+      li.setAttribute('role', 'option');
+      if (slug === (this._cur || '')) li.classList.add('amgt-lieux-combo-cur');
+      const t = document.createElement('span');
+      t.className = 'amgt-lieux-combo-nom';
+      t.textContent = nom;
+      li.appendChild(t);
+      if (slug) {
+        const ed = document.createElement('button');
+        ed.type = 'button'; ed.dataset.a = 'l-edit'; ed.textContent = '✎'; ed.title = 'Éditer ce lieu (reprendre l\'édition)'; ed.setAttribute('aria-label', `Éditer ${nom}`);
+        const del = document.createElement('button');
+        del.type = 'button'; del.dataset.a = 'l-del'; del.textContent = '🗑'; del.title = 'Supprimer ce lieu'; del.setAttribute('aria-label', `Supprimer ${nom}`);
+        li.append(ed, del);
+      }
+      return li;
+    };
+    ul.appendChild(ligne('', '＋ Créer un nouveau lieu'));
+    for (const [k, l] of Object.entries(this._lieux)) ul.appendChild(ligne(k, l.nom));
+    this._f('combolab').textContent = this._cur && this._lieux[this._cur] ? this._lieux[this._cur].nom : 'Créer un nouveau lieu';
+  },
+  _comboFermer() { if (this._panel) this._f('combolist').classList.add('amgt-hidden'); },
+
+  _confirmerAbandon() { return !this._dirty || confirm('Des modifications ne sont pas enregistrées. Les abandonner ?'); },
+
+  /** Vue en lecture seule d'un lieu enregistré : ses objets et lignes de construction, ou le polygone généré. */
+  _vueClear() { if (this._vue) { this._map.removeLayer(this._vue); this._vue = null; } },
+  _afficherLieu(slug) {
+    const l = this._lieux[slug];
+    if (!l) return;
+    this._vueClear();
+    const ll = (r) => r.map((q) => AMGT4CEM_CRS.lambertToLatLng(q));
+    const g = L.layerGroup();
+    const st = { pane: 'amgtLieuxPane', interactive: false, color: '#0b5c75', weight: 3, opacity: 0.9 };
+    if (l.contour && l.contour.length) L.polygon(l.contour.map(ll), { ...st, dashArray: '6 4', fillColor: '#0b5c75', fillOpacity: 0.2 }).addTo(g);
+    else for (const o of l.objets) for (const r of o.lignes) L.polyline(ll(r), st).addTo(g);
+    this._vue = g.addTo(this._map);
+    const pts = l.objets.flatMap((o) => o.lignes.flat()).map((q) => AMGT4CEM_CRS.lambertToLatLng(q));
+    if (pts.length) this._map.fitBounds(L.latLngBounds(pts).pad(0.3));
+    this._etat(`Lieu « ${l.nom} » affiché (lecture seule). ✎ pour l'éditer.`);
+  },
+
+  _nouveauLieu() {
+    if (!this._confirmerAbandon()) return;
+    this._vueClear();
+    this._traceAbandon();
+    this._clearCands();
+    this._cur = '';
+    this._f('nom').value = '';
+    this._f('tol').value = 5;
+    this._hist = []; this._dirty = false;
+    this._comboRender();
+    this._renderListe();
+    this._etat('Nouveau lieu : nommer le lieu puis toucher des objets, ou tracer une chaîne.');
+  },
+
+  _editerLieu(slug) {
+    if (slug === this._cur ? false : !this._confirmerAbandon()) return;
+    this._chargerLieu(slug);
+  },
+
+  async _supprimerLieu(slug) {
+    const l = this._lieux[slug];
+    if (!l) return;
+    if (!confirm(`Supprimer définitivement le lieu « ${l.nom} » ?`)) return;
+    const reste = { ...this._lieux };
+    delete reste[slug];
+    try {
+      this._etat('Suppression…');
+      await this._envoyer(reste);
+      this._vueClear();
+      if (slug === this._cur) { this._dirty = false; this._nouveauLieu(); } else this._comboRender();
+      this._etat(`Lieu « ${l.nom} » supprimé.`);
+    } catch (err) {
+      this._etat(err.message, true);
+    }
+  },
+
+  // ------------------------------------------------------------- retour arrière
+  _touch() { this._dirty = true; },
+  _snap() {
+    this._dirty = true;
+    const o = [...this._cands.values()].map((c) => ({ id: c.id, couche: c.couche, code: c.code, type: c.type, lignes: c.lignes.map((l) => l.map((q) => [q[0], q[1]])), sel: c.sel }));
+    (this._hist = this._hist || []).push(o);
+    if (this._hist.length > 60) this._hist.shift();
+  },
+  /** ↶ : annule la dernière opération (point du tracé en cours, sinon état précédent de la liste des objets). */
+  _retour() {
+    const t = this._trace;
+    if (t && t.hist && t.hist.length) return this._traceAnnuler();
+    if (!this._hist || !this._hist.length) return this._etat('Rien à annuler.', true);
+    if (t) this._traceAbandon();
+    const o = this._hist.pop();
+    this._clearCands();
+    for (const x of o) this._addCand({ id: x.id, couche: x.couche, code: x.code, type: x.type, lignes: x.lignes }, x.sel);
+    this._renderListe();
+    this._etat('Opération annulée.');
+  },
+
   _chargerLieu(slug) {
     this._traceAbandon(); // un tracé en cours (ou en édition) resterait sinon dessiné sur la carte
+    this._vueClear();
     this._clearCands();
-    if (!slug) { this._f('nom').value = ''; this._renderListe(); return; }
+    this._cur = slug && this._lieux[slug] ? slug : '';
+    this._hist = []; this._dirty = false;
+    this._comboRender();
+    if (!this._cur) { this._f('nom').value = ''; this._renderListe(); return; }
     const l = this._lieux[slug];
     this._f('nom').value = l.nom;
     this._f('tol').value = l.tolerance_m;
-    this._f('contour').value = l.contour_methode || '';
     if (l.contour_marge !== undefined) this._f('marge').value = l.contour_marge;
     for (const o of l.objets) this._addCand({ id: o.id, couche: o.couche, code: o.code, type: o.type, lignes: o.lignes }, true);
     this._renderListe();
-    this._apercu();
     const pts = l.objets.flatMap((o) => o.lignes.flat()).map((q) => AMGT4CEM_CRS.lambertToLatLng(q));
     if (pts.length) this._map.fitBounds(L.latLngBounds(pts).pad(0.3));
+    this._etat(`Lieu « ${l.nom} » en édition.`);
   },
 
   _clearCands() { this._group.clearLayers(); this._cands.clear(); },
@@ -224,7 +367,7 @@ const AMGT4CEM_LieuxTool = {
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.checked = c.sel;
-      cb.addEventListener('change', () => this._set(c, cb.checked));
+      cb.addEventListener('change', () => { this._snap(); this._set(c, cb.checked); });
       lab.append(cb, ` ${c.type || c.code} #${c.id}`);
       // ✎ sur toute ligne de la liste : un tracé s'édite tel quel ; un objet UrbIS est d'abord converti en tracé modifiable.
       const ed = document.createElement('button');
@@ -262,6 +405,7 @@ const AMGT4CEM_LieuxTool = {
       pl.on('click', (e) => {
         if (this._modeActif === 'trace') return; // le clic poursuit vers la carte (sommet du tracé)
         L.DomEvent.stopPropagation(e);
+        this._snap();
         this._set(c, !c.sel);
       });
       this._group.addLayer(pl);
@@ -342,13 +486,14 @@ const AMGT4CEM_LieuxTool = {
     // Objet déjà dans la liste : on le bascule sans interroger UrbIS.
     let proche = null; let dmin = tol;
     for (const c of this._cands.values()) for (const l of c.lignes) { const d = this._distLigne(a, l); if (d < dmin) { dmin = d; proche = c; } }
-    if (proche) { this._set(proche, !proche.sel); return; }
+    if (proche) { this._snap(); this._set(proche, !proche.sel); return; }
     this._etat('Recherche de l\'objet touché…');
     const { objets, notes } = await this._wfs(a.x - tol, a.y - tol, a.x + tol, a.y + tol);
     if (!objets) return this._etat("Aucun type linéaire UrbIS Topo n'est affiché : les sélectionner d'abord (☰ Carte > UrbIS Topo).", true);
     let meilleur = null; dmin = Infinity;
     for (const o of objets) for (const l of o.lignes) { const d = this._distLigne(a, l); if (d < dmin) { dmin = d; meilleur = o; } }
     if (!meilleur || dmin > tol) return this._etat(`Aucun objet affiché à cet endroit (${notes.join(' ; ')}).`, true);
+    this._snap();
     this._addCand(meilleur, true);
     this._renderListe();
     this._etat(`Ajouté : ${meilleur.type} #${meilleur.id}.`);
@@ -805,6 +950,7 @@ const AMGT4CEM_LieuxTool = {
     const id = t.editId || `T${Date.now().toString(36)}`;
     const ferme = t.ferme;
     this._traceAbandon();
+    this._snap();
     this._addCand({ id, couche: 'Trace', code: 'TRACE', type: ferme ? 'Tracé fermé (polygone)' : 'Tracé (ligne)', lignes: [lam] }, true);
     this._renderListe();
     this._etat(ferme ? 'Polygone ajouté à la liste.' : 'Ligne ajoutée à la liste.');
@@ -817,6 +963,7 @@ const AMGT4CEM_LieuxTool = {
    * restent dans la liste avec leur propre ✎.
    */
   _editerCand(c) {
+    this._snap();
     if (c.couche === 'Trace') return this._traceEditer(c);
     if (this._trace) this._traceAbandon();
     const fermee = (l) => l.length >= 4 && l[0][0] === l[l.length - 1][0] && l[0][1] === l[l.length - 1][1];
@@ -864,20 +1011,31 @@ const AMGT4CEM_LieuxTool = {
   },
 
   // ------------------------------------------------------------------ contour
-  /** Contour fermé des objets cochés : [] si « lignes seules », sinon liste d'anneaux [[x,y],...] (Lambert, fermés). */
+  /** Contour enregistré : anneaux des polygones générés (« Polygone du lieu ») parmi les objets cochés ; [] si aucun. */
   _contour() {
-    const mode = this._f('contour').value;
-    const lignes = [...this._cands.values()].filter((c) => c.sel).flatMap((c) => c.lignes);
-    if (!mode || !lignes.length) return [];
-    if (mode === 'convexe') return [this._enveloppeConvexe(lignes.flat())];
-    const marge = Math.max(0, Number(this._f('marge').value) || 0);
-    if (mode === 'union') {
-      // Seuls les polygones (lignes fermées) sont fusionnés ; les lignes ouvertes sont ignorées.
-      const fermees = lignes.filter((l) => l.length >= 4 && l[0][0] === l[l.length - 1][0] && l[0][1] === l[l.length - 1][1]);
-      this._ouvertes = lignes.length - fermees.length;
-      return fermees.length ? this._enveloppeSerree(fermees, Math.max(0.05, marge), true) : [];
-    }
-    return this._enveloppeSerree(lignes, marge, false);
+    return [...this._cands.values()].filter((c) => c.sel && c.type === this.TYPE_POLY).flatMap((c) => c.lignes);
+  },
+  TYPE_POLY: 'Polygone du lieu',
+
+  /** Polygone fermé délimité par les objets cochés (hors polygones déjà générés) : ouvertures plus étroites que « Comblement » comblées par des segments. */
+  _polyCalc() {
+    const lignes = [...this._cands.values()].filter((c) => c.sel && c.type !== this.TYPE_POLY).flatMap((c) => c.lignes);
+    if (!lignes.length) return [];
+    return this._enveloppeSerree(lignes, Math.max(0, Number(this._f('marge').value) || 0), false);
+  },
+
+  /** Valide le polygone : les objets et tracés de construction cochés sont remplacés par le(s) polygone(s) obtenu(s). */
+  _polyValider() {
+    const anneaux = this._polyCalc();
+    if (!anneaux.length) return this._etat('Aucun polygone : cocher des objets (ou tracer une chaîne) avant de valider.', true);
+    this._snap();
+    this._traceAbandon();
+    for (const c of [...this._cands.values()]) if (c.sel && c.type !== this.TYPE_POLY) { for (const l of c.layers) this._group.removeLayer(l); this._cands.delete(c.key); }
+    const base = `P${Date.now().toString(36)}`;
+    anneaux.forEach((rg, i) => this._addCand({ id: anneaux.length > 1 ? `${base}-${i + 1}` : base, couche: 'Trace', code: 'TRACE', type: this.TYPE_POLY, lignes: [rg] }, true));
+    this._renderListe();
+    this._mode('objet');
+    this._etat(`Polygone validé (${anneaux.length}) : objets de construction supprimés. ↶ pour revenir en arrière, 💾 pour enregistrer.`);
   },
 
   _enveloppeConvexe(pts) {
@@ -998,27 +1156,24 @@ const AMGT4CEM_LieuxTool = {
     });
   },
 
+  /** Aperçu du polygone (mode « Polygone » uniquement). */
   _apercu() {
     if (!this._panel) return;
     if (this._apercuLayer) { this._map.removeLayer(this._apercuLayer); this._apercuLayer = null; }
-    this._ouvertes = 0;
-    const anneaux = this._contour();
-    if (this._f('contour').value === 'union') {
-      if (!anneaux.length) this._etat('Union : aucun polygone (ligne fermée) coché.', true);
-      else if (this._ouvertes) this._etat(`Union : ${anneaux.length} polygone(s) obtenu(s) ; ${this._ouvertes} ligne(s) ouverte(s) ignorée(s).`);
-      else this._etat(`Union : ${anneaux.length} polygone(s) obtenu(s).`);
-    }
-    if (!anneaux.length) return;
+    if (this._modeActif !== 'poly') return;
+    const anneaux = this._polyCalc();
+    if (!anneaux.length) return this._etat('Polygone : aucun objet coché.', true);
     this._apercuLayer = L.polygon(anneaux.map((rg) => rg.map((q) => AMGT4CEM_CRS.lambertToLatLng(q))), { pane: 'amgtLieuxPane', interactive: false, color: '#0b5c75', weight: 2, dashArray: '6 4', fillColor: '#0b5c75', fillOpacity: 0.2 }).addTo(this._map);
+    this._etat(`Polygone : ${anneaux.length} contour(s) calculé(s). « Valider » remplace les objets de construction.`);
   },
 
   // ----------------------------------------------------------- enregistrement
   _slug(nom) { return nom.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, ''); },
 
   async _envoyer(lieux) {
-    const code = this._f('code').value.trim();
+    const code = (AMGT4CEM_PeLabelAnchors.getAdminCode() || '').trim();
+    if (!code) throw new Error('Code administrateur manquant : le saisir dans Réglages > Services et relais.');
     await AMGT4CEM_PeLabelAnchors.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, this.ROUTE, { version: 1, crs: 'EPSG:31370', lieux }, code);
-    AMGT4CEM_PeLabelAnchors.setAdminCode(code);
     this._lieux = lieux;
     try { sessionStorage.setItem(this.CLE_ENVOYE, JSON.stringify({ at: Date.now(), lieux })); } catch (err) { /* stockage indisponible : on se fie au fichier */ }
     // La couche « Plans patrimoine » garde les lieux en mémoire : sans cela, un lieu supprimé ou renommé y resterait jusqu'au rechargement.
@@ -1028,7 +1183,7 @@ const AMGT4CEM_LieuxTool = {
   async _enregistrer() {
     const nom = this._f('nom').value.trim();
     const slug = this._slug(nom);
-    const ancien = this._f('existant').value; // lieu existant choisi (vide = nouveau lieu)
+    const ancien = this._cur; // lieu en cours d'édition (vide = nouveau lieu)
     const objets = [...this._cands.values()].filter((c) => c.sel).map((c) => ({ id: c.id, couche: c.couche, code: c.code, type: c.type, lignes: c.lignes }));
     if (!slug) return this._etat('Donner un nom au lieu.', true);
     if (!objets.length) return this._etat('Aucun objet coché.', true);
@@ -1043,12 +1198,13 @@ const AMGT4CEM_LieuxTool = {
       this._etat('Enregistrement…');
       const contour = this._contour();
       const lieu = { nom, tolerance_m: tol, objets };
-      if (contour.length) Object.assign(lieu, { contour_methode: this._f('contour').value, contour_marge: Number(this._f('marge').value) || 0, contour });
+      if (contour.length) Object.assign(lieu, { contour_methode: 'polygone', contour_marge: Number(this._f('marge').value) || 0, contour });
       const suite = { ...this._lieux };
       if (renomme) delete suite[ancien];
       suite[slug] = lieu;
       const ancienNom = renomme ? this._lieux[ancien].nom : '';
       await this._envoyer(suite);
+      this._dirty = false;
       this._majListe(slug);
       this._etat(renomme
         ? `Lieu « ${ancienNom} » renommé en « ${nom} » et enregistré (${objets.length} objets). La carte le lira après le déploiement (environ une minute).`
@@ -1058,18 +1214,4 @@ const AMGT4CEM_LieuxTool = {
     }
   },
 
-  async _supprimer() {
-    const slug = this._f('existant').value;
-    if (!slug) return this._etat('Choisir un lieu existant à supprimer.', true);
-    if (!confirm(`Supprimer le lieu « ${this._lieux[slug].nom} » ?`)) return;
-    const reste = { ...this._lieux };
-    delete reste[slug];
-    try {
-      await this._envoyer(reste);
-      this._etat('Lieu supprimé.');
-      this.close();
-    } catch (err) {
-      this._etat(err.message, true);
-    }
-  },
 };

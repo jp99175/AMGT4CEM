@@ -1285,10 +1285,24 @@ html, body {
 #amgt-lieux-panel .amgt-lieux-aimant { white-space: nowrap; font-size: 13px; }
 #amgt-lieux-panel .amgt-lieux-aimant input { width: 46px; }
 
-/* Bandeau : seuls l'en-tête, les modes, la barre du tracé et le message restent visibles */
+/* Fenêtre réduite : seule la première ligne reste (liste des lieux, ↶ retour, redéployer) */
 #amgt-lieux-panel.amgt-lieux-reduit { max-height: none; overflow: visible; bottom: 72px; padding: 4px 8px; }
-#amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-sec { display: none; }
-#amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-etat { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-body { display: none; }
+#amgt-lieux-panel .amgt-lieux-l1-retour { display: none; }
+#amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-l1-retour { display: inline-block; }
+#amgt-lieux-panel .amgt-lieux-sp { flex: 1; }
+#amgt-lieux-panel .amgt-lieux-combo { position: relative; flex: 1; min-width: 0; }
+#amgt-lieux-panel .amgt-lieux-combo-btn { width: 100%; display: flex; justify-content: space-between; gap: 6px; text-align: left; }
+#amgt-lieux-panel .amgt-lieux-combo-btn [data-f="combolab"] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#amgt-lieux-panel .amgt-lieux-combo-liste { position: absolute; left: 0; right: 0; bottom: 100%; margin: 0 0 2px; padding: 2px 0; list-style: none; max-height: 40vh; overflow: auto; background: #fff; border: 1px solid #b8c7cf; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.25); z-index: 5; }
+#amgt-lieux-panel .amgt-lieux-combo-liste li { display: flex; align-items: center; gap: 4px; padding: 3px 6px; cursor: pointer; }
+#amgt-lieux-panel .amgt-lieux-combo-liste li:hover { background: #e8f1f4; }
+#amgt-lieux-panel .amgt-lieux-combo-liste li.amgt-lieux-combo-cur { font-weight: 600; }
+#amgt-lieux-panel .amgt-lieux-combo-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#amgt-lieux-panel .amgt-lieux-combo-liste li button { padding: 0 6px; }
+#amgt-lieux-panel .amgt-lieux-poly { flex-wrap: wrap; }
+#amgt-lieux-panel .amgt-lieux-poly input { width: 54px; }
+#amgt-lieux-panel .amgt-lieux-poly label { font-size: 13px; white-space: nowrap; }
 
 .amgt-lieux-viseur svg { display: block; }
 .amgt-lieux-aimant-ic { color: #0b5c75; background: none; border: 0; padding: 0; opacity: .7; width: 25px !important; height: 25px !important; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff); }
