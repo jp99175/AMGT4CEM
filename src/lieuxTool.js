@@ -226,15 +226,14 @@ const AMGT4CEM_LieuxTool = {
       cb.checked = c.sel;
       cb.addEventListener('change', () => this._set(c, cb.checked));
       lab.append(cb, ` ${c.type || c.code} #${c.id}`);
-      if (c.couche === 'Trace') {
-        const ed = document.createElement('button');
-        ed.type = 'button';
-        ed.textContent = '✎';
-        ed.title = 'Éditer ce tracé (poignées)';
-        ed.className = 'amgt-lieux-edit';
-        ed.addEventListener('click', (ev) => { ev.preventDefault(); this._traceEditer(c); });
-        lab.appendChild(ed);
-      }
+      // ✎ sur toute ligne de la liste : un tracé s'édite tel quel ; un objet UrbIS est d'abord converti en tracé modifiable.
+      const ed = document.createElement('button');
+      ed.type = 'button';
+      ed.textContent = '✎';
+      ed.title = c.couche === 'Trace' ? 'Éditer ce tracé (poignées)' : 'Éditer cet objet UrbIS : il devient un tracé dont on déplace, ajoute ou retire les points';
+      ed.className = 'amgt-lieux-edit';
+      ed.addEventListener('click', (ev) => { ev.preventDefault(); this._editerCand(c); });
+      lab.appendChild(ed);
       liste.appendChild(lab);
       c.cb = cb;
     }
@@ -809,6 +808,32 @@ const AMGT4CEM_LieuxTool = {
     this._addCand({ id, couche: 'Trace', code: 'TRACE', type: ferme ? 'Tracé fermé (polygone)' : 'Tracé (ligne)', lignes: [lam] }, true);
     this._renderListe();
     this._etat(ferme ? 'Polygone ajouté à la liste.' : 'Ligne ajoutée à la liste.');
+  },
+
+  /**
+   * Édition d'une ligne de la liste (✎). Un tracé s'ouvre directement. Un objet UrbIS (lieu constitué en touchant des
+   * objets) est converti en tracé(s) : sa géométrie enregistrée devient modifiable (poignées, « + », 🗑) et il ne
+   * dépend plus d'UrbIS. Un objet de plusieurs parties donne un tracé par partie ; le premier s'ouvre, les autres
+   * restent dans la liste avec leur propre ✎.
+   */
+  _editerCand(c) {
+    if (c.couche === 'Trace') return this._traceEditer(c);
+    if (this._trace) this._traceAbandon();
+    const fermee = (l) => l.length >= 4 && l[0][0] === l[l.length - 1][0] && l[0][1] === l[l.length - 1][1];
+    const base = `T${Date.now().toString(36)}`;
+    for (const l of c.layers) this._group.removeLayer(l);
+    this._cands.delete(c.key);
+    const nouveaux = c.lignes.map((ligne, i) => ({
+      id: `${base}${c.lignes.length > 1 ? `-${i + 1}` : ''}`,
+      couche: 'Trace',
+      code: 'TRACE',
+      type: fermee(ligne) ? 'Tracé fermé (polygone)' : 'Tracé (ligne)',
+      lignes: [ligne.map((q) => [q[0], q[1]])],
+    }));
+    for (const o of nouveaux) this._addCand(o, c.sel);
+    this._renderListe();
+    this._traceEditer(this._cands.get(`Trace:${nouveaux[0].id}`));
+    if (nouveaux.length > 1) this._etat(`Objet converti en ${nouveaux.length} tracés (un par partie) : le premier est en édition, les autres sont dans la liste (✎).`);
   },
 
   /** Rouvre un tracé de la liste pour l'éditer (bouton ✎ de sa ligne). */
