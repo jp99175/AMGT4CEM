@@ -140,8 +140,7 @@ const AMGT4CEM_LieuxTool = {
         <button type="button" data-a="reduire" title="Réduire à cette ligne / redéployer la fenêtre" aria-label="Réduire">▾</button>
       </div>
       <div class="amgt-lieux-sec amgt-lieux-body">
-        <div class="amgt-lieux-row"><input data-f="nom" placeholder="Nom du lieu (ex. Ascenseur POELAERT)" />
-          <label class="amgt-lieux-tol" title="Tolérance : zone autour du lieu dans laquelle un point est considéré comme faisant partie du lieu">Tol. <input data-f="tol" type="number" min="0" max="50" step="1" value="5" /> m</label></div>
+        <div class="amgt-lieux-row"><input data-f="nom" placeholder="Nom du lieu (ex. Ascenseur POELAERT)" /></div>
         <div class="amgt-lieux-corps">
           <div class="amgt-lieux-liste" data-f="liste"></div>
           <input class="amgt-lieux-haut" data-f="haut" type="range" min="0" max="100" value="35" orient="vertical" title="Hauteur de la liste" aria-label="Hauteur de la liste" />
@@ -157,10 +156,8 @@ const AMGT4CEM_LieuxTool = {
         <div class="amgt-lieux-row amgt-lieux-trace amgt-hidden" data-f="tracebarre">
           <span data-f="chaine"></span>
           <button type="button" data-a="t-main" title="Déplacer la carte au doigt (désactive le viseur)">✋</button>
-          <button type="button" data-a="t-fermer" title="Fermer en polygone (ou toucher le premier sommet)">⬡ Fermer</button>
-          <button type="button" data-a="t-suppr" class="amgt-lieux-edonly amgt-hidden" title="Supprimer la poignée sélectionnée">🗑 Point</button>
-          <button type="button" data-a="t-valider" title="Passer à l'édition du schéma">Éditer ▸</button>
-          <button type="button" data-a="t-abandon" title="Abandonner ce tracé">Abandonner</button></div>
+          <button type="button" data-a="t-suppr" class="amgt-lieux-edonly amgt-hidden" title="Supprimer le point sélectionné">🗑 Point</button>
+          <button type="button" data-a="t-valider" class="amgt-lieux-edonly amgt-hidden" title="Terminer la modification">✓ Terminer</button></div>
         <div class="amgt-lieux-row amgt-lieux-poly amgt-hidden" data-f="remplirbarre">
           <label title="Comble les ouvertures plus étroites que cette distance par des segments de droite">Comblement <input data-f="marge" type="number" min="0" max="10" step="0.5" value="1.5" /> m</label>
           <button type="button" data-a="r-enveloppe" title="Surface qui englobe tous les objets cochés (ouvertures proches comblées)">Enveloppe des cochés</button></div>
@@ -184,10 +181,7 @@ const AMGT4CEM_LieuxTool = {
     mettre('[data-a="retour"]', I.annuler);
     mettre('[data-a="enreg"]', I.disquette);
     mettre('[data-a="fermer"]', I.fermer);
-    mettre('[data-a="t-abandon"]', '', false, true);
-    p.querySelector('[data-a="t-abandon"]').textContent = 'Abandonner';
     mettre('[data-a="t-main"]', I.main);
-    mettre('[data-a="t-fermer"]', I.polygone, true, true);
     mettre('[data-a="t-suppr"]', I.poubelle, true, true);
     mettre('[data-a="reduire"]', I.replier);
     p.querySelector('[data-a="combo"] [aria-hidden]').innerHTML = I.replier;
@@ -219,10 +213,8 @@ const AMGT4CEM_LieuxTool = {
       else if (a.dataset.a === 'reduire') this._reduire();
       else if (a.dataset.a === 'retour') this._retour();
       else if (a.dataset.a === 't-main') { this._viseurOn = !this._viseurOn; a.classList.toggle('amgt-lieux-actif', !this._viseurOn); this._syncDrag(); this._etat(this._viseurOn ? 'Viseur actif.' : 'Carte déplaçable au doigt : ✋ à nouveau pour reprendre le tracé.'); }
-      else if (a.dataset.a === 't-fermer') this._traceFermer();
-      else if (a.dataset.a === 't-valider') this._traceValider();
+      else if (a.dataset.a === 't-valider') this._traceTerminer();
       else if (a.dataset.a === 't-suppr') this._traceSupprimer();
-      else if (a.dataset.a === 't-abandon') this._traceAbandon();
       else if (a.dataset.a === 'r-enveloppe') this._enveloppe();
       else if (a.dataset.a === 'o-appliquer') this._opsAppliquer();
       else if (a.dataset.a === 'o-vider') { this._opsVider(); }
@@ -254,10 +246,12 @@ const AMGT4CEM_LieuxTool = {
 
   /** Outil actif : 'objet' | 'trace' | 'remplir' | 'unir' | 'soustraire' | 'modifier' (un seul à la fois). */
   _mode(m) {
-    if (this._modeActif === 'trace' && m !== 'trace') { this._traceAbandon(); this._viseurStop(); }
+    const tr = (x) => x === 'trace' || x === 'modifier'; // outils qui utilisent le viseur
+    if (this._trace && m !== this._modeActif) this._traceTerminer(); // changer d'outil valide le tracé en cours
+    if (tr(this._modeActif) && !tr(m)) this._viseurStop();
     this._modeActif = m;
     this._ops = [];
-    if (m === 'trace') this._viseurStart();
+    if (tr(m)) this._viseurStart();
     this._syncDrag();
     for (const b of this._panel.querySelectorAll('[data-m]')) b.classList.toggle('amgt-lieux-actif', b.dataset.m === m);
     this._f('tracebarre').classList.toggle('amgt-hidden', m !== 'trace');
@@ -265,17 +259,17 @@ const AMGT4CEM_LieuxTool = {
     this._f('opsbarre').classList.toggle('amgt-hidden', m !== 'unir' && m !== 'soustraire');
     const aide = {
       objet: 'Sélection : toucher un objet visible (UrbIS, autre lieu, patrimoine) pour l\'ajouter ; le toucher à nouveau pour le retirer.',
-      trace: '1er point : viseur au-dessus du doigt. Ensuite : il part du dernier point et suit le doigt ; relâcher pour poser. Fermer la ligne en fait une surface.',
+      trace: 'Glisser : le viseur pose un point au relâcher. Toucher le premier point ferme la surface ; toucher le dernier point (ou changer d\'outil) termine la ligne.',
       remplir: 'Remplir : toucher une zone fermée (lignes de la liste, objets UrbIS visibles) pour en faire une surface.',
       unir: 'Unir : toucher les surfaces à fusionner (carte ou liste), puis Appliquer.',
       soustraire: 'Soustraire : toucher la surface de base, puis celles à retrancher, puis Appliquer.',
-      modifier: 'Modifier : toucher une ligne ou un contour pour déplacer, ajouter ou retirer ses points.',
+      modifier: 'Modifier : toucher une ligne ou un contour de la liste, puis déplacer ses points (poignées), ajouter (« + ») ou retirer (🗑 Point). ✓ Terminer ou autre outil pour finir.',
     };
     this._etat(aide[m] || '');
     this._traceInfo();
     this._opsMaj();
     this._apercu();
-    if (m === 'trace' || m === 'remplir') this._chargerAimant();
+    if (m === 'trace' || m === 'remplir' || m === 'modifier') this._chargerAimant();
   },
 
   _f(n) { return this._panel.querySelector(`[data-f="${n}"]`); },
@@ -353,7 +347,6 @@ const AMGT4CEM_LieuxTool = {
     this._clearCands();
     this._cur = '';
     this._f('nom').value = '';
-    this._f('tol').value = 5;
     this._hist = []; this._dirty = false;
     this._comboRender();
     this._renderListe();
@@ -413,7 +406,6 @@ const AMGT4CEM_LieuxTool = {
     if (!this._cur) { this._f('nom').value = ''; this._renderListe(); return; }
     const l = this._lieux[slug];
     this._f('nom').value = l.nom;
-    this._f('tol').value = l.tolerance_m;
     if (l.contour_marge !== undefined) this._f('marge').value = l.contour_marge;
     for (const o of l.objets) this._addCand({ id: o.id, couche: o.couche, code: o.code, type: o.type, lignes: o.lignes }, true);
     this._renderListe();
@@ -489,7 +481,7 @@ const AMGT4CEM_LieuxTool = {
   _syncDrag() {
     const m = this._map;
     if (!m) return;
-    const viseur = this._active && this._modeActif === 'trace' && this._viseurOn;
+    const viseur = this._active && (this._modeActif === 'trace' || (this._modeActif === 'modifier' && !!this._trace)) && this._viseurOn;
     if (viseur) { m.dragging.disable(); m.doubleClickZoom.disable(); } else { m.dragging.enable(); m.doubleClickZoom.enable(); }
     // Sans glisser Leaflet, le navigateur reprendrait le geste (défilement) et l'annulerait au bout de quelques pixels
     // (pointercancel) : le viseur disparaîtrait. touch-action: none le garde ; le zoom à deux doigts reste géré par Leaflet.
@@ -721,7 +713,8 @@ const AMGT4CEM_LieuxTool = {
   },
 
   _vDown(e) {
-    if (!this._viseurOn || this._modeActif !== 'trace') return;
+    if (!this._viseurOn || (this._modeActif !== 'trace' && this._modeActif !== 'modifier')) return;
+    if (this._modeActif === 'modifier' && !this._trace) return; // rien en édition : le toucher choisit l'objet (clic de la carte)
     if (e.button > 0 || (e.target.closest && e.target.closest('button, a, .leaflet-control'))) return;
     this._ptrs = this._ptrs || new Set();
     this._ptrs.add(e.pointerId);
@@ -740,7 +733,7 @@ const AMGT4CEM_LieuxTool = {
       }
     }
     if (edition && i < 0 && !milieu) { t.sel = null; this._traceSommets(); return; } // édition : pas de nouveau sommet en touchant le vide
-    if (!edition && i < 0 && t && t.ferme) return this._etat('Polygone fermé : ↶ Retour pour le rouvrir, Éditer ▸ pour continuer.');
+    if (!edition && i < 0 && t && t.ferme) return this._etat('Polygone fermé.');
     if (!t) t = this._trace = { pts: [], ferme: false, hist: [], phase: 'dessin', sel: null, group: L.layerGroup().addTo(this._map), sommets: L.layerGroup().addTo(this._map) };
     this._traceMemo();
     const g = { id: e.pointerId, nouveau: i < 0 && !milieu, i, depart: pt, bouge: false, origine: i >= 0 ? t.pts[i] : null };
@@ -800,7 +793,9 @@ const AMGT4CEM_LieuxTool = {
       t.pts[g.i] = g.origine;
       if (!g.insere && g.insere !== 0) t.hist.pop(); // rien n'a changé (sauf insertion d'un sommet au milieu)
       if (t.phase === 'edition') { t.sel = g.i; this._traceDessin(); this._etat('Point sélectionné : le presser pour le déplacer, 🗑 pour le supprimer.'); return; }
-      if (g.i === 0 && t.pts.length >= 3 && !t.ferme) this._traceFermer(); else this._traceDessin();
+      if (g.i === 0 && t.pts.length >= 3 && !t.ferme) this._traceTerminer(true); // premier point : la surface est créée
+      else if (g.i === t.pts.length - 1 && t.pts.length >= 2 && !t.ferme) this._traceTerminer(); // dernier point : la ligne est terminée
+      else this._traceDessin();
       return;
     }
     const P = this._am && this._am.accroche;
@@ -843,7 +838,7 @@ const AMGT4CEM_LieuxTool = {
 
   /** Objets UrbIS visibles autour de la vue, chargés une fois par vue : leurs sommets servent à l'aimant. */
   async _chargerAimant() {
-    if (!this._active || (this._modeActif !== 'trace' && this._modeActif !== 'remplir')) return;
+    if (!this._active || (this._modeActif !== 'trace' && this._modeActif !== 'remplir' && this._modeActif !== 'modifier')) return;
     const bnds = this._map.getBounds().pad(0.2);
     const sw = AMGT4CEM_CRS.latLngToLambert(bnds.getSouthWest());
     const ne = AMGT4CEM_CRS.latLngToLambert(bnds.getNorthEast());
@@ -1015,17 +1010,12 @@ const AMGT4CEM_LieuxTool = {
     }
   },
 
-  /** Libellés et boutons de la barre selon la phase (dessin / édition). */
+  /** En édition seulement : 🗑 Point et ✓ Terminer. */
   _traceBarre() {
     const bar = this._panel && this._f('tracebarre');
     if (!bar) return;
-    const t = this._trace;
-    const ed = !!t && t.phase === 'edition';
+    const ed = !!this._trace && this._trace.phase === 'edition';
     for (const b of bar.querySelectorAll('.amgt-lieux-edonly')) b.classList.toggle('amgt-hidden', !ed);
-    const v = bar.querySelector('[data-a="t-valider"]');
-    v.textContent = ed ? '✓ Terminer' : 'Éditer ▸';
-    v.title = ed ? 'Terminer : ajouter ce tracé à la liste' : "Passer à l'édition du schéma (déplacer, supprimer, ajouter des points)";
-    bar.querySelector('[data-a="t-fermer"]').textContent = t && t.ferme ? '⬡ Ouvrir' : '⬡ Fermer';
   },
 
   /** Mémorise l'état du tracé avant une modification (bouton ↶ : revenir d'un pas en arrière). */
@@ -1041,15 +1031,6 @@ const AMGT4CEM_LieuxTool = {
     const h = t.hist.pop();
     t.pts = h.pts;
     t.ferme = h.ferme;
-    t.sel = null;
-    this._traceDessin();
-  },
-
-  _traceFermer() {
-    const t = this._trace;
-    if (!t || t.pts.length < 3) return this._etat('Un polygone demande au moins 3 sommets.', true);
-    this._traceMemo();
-    t.ferme = !t.ferme; // fermer / rouvrir
     t.sel = null;
     this._traceDessin();
   },
@@ -1073,19 +1054,18 @@ const AMGT4CEM_LieuxTool = {
     this._map.removeLayer(this._trace.group);
     this._map.removeLayer(this._trace.sommets);
     this._trace = null;
-    if (this._panel) this._traceInfo();
+    if (this._panel) { this._traceInfo(); this._syncDrag(); }
   },
 
-  /** Dessin → « Éditer ▸ » passe à l'édition du schéma ; édition → « ✓ Terminer » ajoute le tracé à la liste. */
-  _traceValider() {
+  /**
+   * Termine le tracé : une ligne fermée devient une surface, une ligne ouverte un tracé de la liste. `fermer` ferme d'abord
+   * la ligne (toucher le premier point). Moins de 2 points : le tracé est simplement abandonné.
+   */
+  _traceTerminer(fermer) {
     const t = this._trace;
-    if (!t || t.pts.length < 2) return this._etat('Poser au moins 2 sommets.', true);
-    if (t.phase === 'dessin') {
-      t.phase = 'edition';
-      t.sel = null;
-      this._traceDessin();
-      return this._etat('Édition : presser une poignée pour la déplacer ou la sélectionner (🗑 la supprime), presser un « + » entre deux poignées pour ajouter un point. ✓ Terminer ajoute à la liste.');
-    }
+    if (!t) return;
+    if (t.pts.length < 2) return this._traceAbandon();
+    if (fermer && t.pts.length >= 3) t.ferme = true;
     const lam = this._traceLam();
     if (t.ferme) lam.push(lam[0]);
     const id = t.editId || `T${Date.now().toString(36)}`;
@@ -1094,7 +1074,7 @@ const AMGT4CEM_LieuxTool = {
     this._snap();
     this._addCand({ id, couche: 'Trace', code: 'TRACE', type: ferme ? this.TYPE_SURF : 'Tracé (ligne)', lignes: [lam] }, true);
     this._renderListe();
-    this._etat(ferme ? 'Surface ajoutée à la liste.' : 'Ligne ajoutée à la liste.');
+    this._etat(ferme ? 'Surface créée.' : 'Ligne ajoutée à la liste.');
   },
 
   /**
@@ -1104,9 +1084,9 @@ const AMGT4CEM_LieuxTool = {
    * restent dans la liste avec leur propre ✎.
    */
   _editerCand(c) {
+    if (this._trace) this._traceTerminer();
     this._snap();
     if (c.couche === 'Trace') return this._traceEditer(c);
-    if (this._trace) this._traceAbandon();
     const fermee = (l) => l.length >= 4 && l[0][0] === l[l.length - 1][0] && l[0][1] === l[l.length - 1][1];
     const base = `T${Date.now().toString(36)}`;
     for (const l of c.layers) this._group.removeLayer(l);
@@ -1126,8 +1106,8 @@ const AMGT4CEM_LieuxTool = {
 
   /** Rouvre un tracé de la liste pour l'éditer (bouton ✎ de sa ligne). */
   _traceEditer(c) {
-    if (this._trace) this._traceAbandon();
-    this._mode('trace');
+    if (this._trace) this._traceTerminer();
+    if (this._modeActif !== 'modifier') this._mode('modifier');
     for (const l of c.layers) this._group.removeLayer(l);
     this._cands.delete(c.key);
     const ring = c.lignes[0];
@@ -1136,6 +1116,7 @@ const AMGT4CEM_LieuxTool = {
     this._trace = { pts, ferme, hist: [], phase: 'edition', sel: null, editId: c.id, group: L.layerGroup().addTo(this._map), sommets: L.layerGroup().addTo(this._map) };
     this._renderListe();
     this._traceDessin();
+    this._syncDrag();
     this._etat('Édition du tracé : poignées à déplacer, 🗑 pour supprimer, « + » pour ajouter ; ✓ Terminer le remet dans la liste.');
   },
 
@@ -1339,6 +1320,7 @@ const AMGT4CEM_LieuxTool = {
 
   /** Modifier : toucher une ligne (ou l'intérieur d'une surface) pour éditer ses points. */
   _modifierClic(latlng) {
+    if (this._trace) return; // une modification est en cours : ✓ Terminer ou autre outil pour la finir
     const pt = this._map.latLngToContainerPoint(latlng);
     const a = AMGT4CEM_CRS.latLngToLambert(latlng);
     const b = AMGT4CEM_CRS.latLngToLambert(this._map.containerPointToLatLng(L.point(pt.x + 16, pt.y)));
@@ -1507,7 +1489,7 @@ const AMGT4CEM_LieuxTool = {
       if (this._lieux[slug]) return this._etat(`Un lieu « ${this._lieux[slug].nom} » existe déjà sous ce nom.`, true);
       if (!confirm(`Renommer le lieu « ${this._lieux[ancien].nom} » en « ${nom} » ?`)) return;
     }
-    const tol = Math.max(0, Math.min(50, Number(this._f('tol').value) || 0));
+    const tol = (this._cur && this._lieux[this._cur] && this._lieux[this._cur].tolerance_m !== undefined) ? this._lieux[this._cur].tolerance_m : 5; // réservé (non utilisé pour l'instant)
     try {
       this._etat('Enregistrement…');
       const contour = this._contour();
