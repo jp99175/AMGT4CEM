@@ -252,7 +252,8 @@ const AMGT4CEM_LieuxTool = {
     if (this._trace && m !== this._modeActif) this._traceTerminer(); // changer d'outil valide le tracé en cours
     if (tr(this._modeActif) && !tr(m)) this._viseurStop();
     this._modeActif = m;
-    this._ops = [];
+    // Unir : les surfaces cochées dans la liste sont présélectionnées (on peut en toucher d'autres ou en désélectionner).
+    this._ops = m === 'unir' ? [...this._cands.values()].filter((c) => c.sel && this._estSurface(c)).map((c) => c.key) : [];
     if (tr(m)) this._viseurStart();
     this._syncDrag();
     // Remplir / Unir / Soustraire : pointeur normal de la souris (pas la main de Leaflet, ni sur les tracés)
@@ -263,7 +264,7 @@ const AMGT4CEM_LieuxTool = {
     const aide = {
       trace: 'Lignes : glisser, le viseur pose un point au relâcher. Toucher le dernier point (ou changer d\'outil) termine la ligne ; toucher le premier point la ferme. Une ligne reste une ligne : les surfaces se font avec Remplir.',
       remplir: 'Remplir : toucher une zone fermée par des lignes visibles (UrbIS, autres lieux, tes lignes) pour en faire une surface.',
-      unir: 'Unir : toucher les surfaces à fusionner (les toucher à nouveau pour les désélectionner), puis Appliquer.',
+      unir: 'Unir : les surfaces cochées sont présélectionnées ; toucher d\'autres surfaces pour les ajouter, ou à nouveau pour les désélectionner, puis Appliquer.',
       soustraire: 'Soustraire : toucher la surface de base, puis celles à retrancher (les toucher à nouveau pour désélectionner), puis Appliquer.',
       modifier: 'Modifier : toucher une ligne ou un contour de la liste, puis déplacer ses points (poignées), ajouter (« + ») ou retirer (🗑 Point). ✓ Terminer ou autre outil pour finir.',
     };
