@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "note": "Référentiel de l'essai test_shapefile : id -> nom (le shapefile ne porte que le champ id). Généré depuis data/lieux/lieux.json.",
+  "entites": {
+    "T000001": {
+      "nom": "Auvent FLAGEY",
+      "source": "data/lieux/lieux.json",
+      "lieu": "AUVENT-FLAGEY"
+    },
+    "T000002": {
+      "nom": "Auvent ROGIER",
+      "source": "data/lieux/lieux.json",
+      "lieu": "AUVENT-ROGIER"
+    },
+    "T000003": {
+      "nom": "Passerelle BEEKKANT",
+      "source": "data/lieux/lieux.json",
+      "lieu": "PASSERELLE-BEEKKANT"
+    },
+    "T000004": {
+      "nom": "Ascenseur POELAERT",
+      "source": "data/lieux/lieux.json",
+      "lieu": "ASCENSEUR-POELAERT"
+    },
+    "T000005": {
+      "nom": "Station DELTA",
+      "source": "data/lieux/lieux.json",
+      "lieu": "STATION-DELTA"
+    },
+    "T000006": {
+      "nom": "Complexe DELTA",
+      "source": "data/lieux/lieux.json",
+      "lieu": "COMPLEXE-DELTA"
+    }
+  }
+}

@@ -87,9 +87,37 @@ const AMGT4CEM_PatrimoinePicker = {
     const selection = this._selection();
     this._content.innerHTML = '';
     this._content.appendChild(this._buildGlobalToggle(AMGT4CEM_PATRIMOINE_CATALOG, selection));
-    for (const entry of AMGT4CEM_PATRIMOINE_CATALOG) {
-      this._content.appendChild(this._buildRow(entry, selection));
+    // Rubriques (INFRAVIEW, Autres...), comme le sélecteur UrbIS Topo ; une entrée sans rubrique va dans « Autres ».
+    for (const theme of AMGT4CEM_PATRIMOINE_THEME_ORDER) {
+      const entries = AMGT4CEM_PATRIMOINE_CATALOG.filter((e) => (e.theme || 'Autres') === theme);
+      if (!entries.length) continue;
+      const section = document.createElement('section');
+      section.className = 'amgt-topo-theme';
+      section.appendChild(this._buildThemeHeading(theme, entries, selection));
+      for (const entry of entries) section.appendChild(this._buildRow(entry, selection));
+      this._content.appendChild(section);
     }
+  },
+
+  /** En-tête d'une rubrique avec sa case « tout cocher/décocher » (coché, indéterminé ou vide selon la sélection). */
+  _buildThemeHeading(theme, entries, selection) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'amgt-topo-theme-heading';
+    const ids = entries.map((e) => e.id);
+    const n = ids.filter((id) => selection[id]).length;
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = n === ids.length;
+    checkbox.indeterminate = n > 0 && n < ids.length;
+    checkbox.title = `Tout cocher/décocher — ${theme}`;
+    checkbox.addEventListener('change', () => {
+      this._setMany(ids, checkbox.checked);
+      this._render();
+    });
+    const heading = document.createElement('h4');
+    heading.textContent = theme;
+    wrapper.append(checkbox, heading);
+    return wrapper;
   },
 
   /** Case « Tout (dé)sélectionner » au-dessus de la liste : coché si tout l'est, indéterminé si une partie. */

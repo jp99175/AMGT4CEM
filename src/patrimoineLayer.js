@@ -173,6 +173,19 @@ const AMGT4CEM_PatrimoineLayer = {
 
   async _loadFeatures(entry) {
     if (this._cache[entry.id]) return this._cache[entry.id];
+    if (entry.shapefile) {
+      // Couche lue dans un shapefile (champ `id` seul) + petit référentiel JSON (nom) : voir src/shpLoader.js.
+      const fc = await AMGT4CEM_ShpLoader.load(entry.shapefile);
+      let entites = {};
+      if (entry.referentiel) {
+        try { entites = (await (await fetch(`${entry.referentiel}?t=${Date.now()}`)).json()).entites || {}; } catch (err) { /* sans nom : l'id sert d'étiquette */ }
+      }
+      this._cache[entry.id] = fc.features.map((f) => ({
+        ...f,
+        properties: { ...f.properties, genre: 'shapefile', name_fr: ((entites[f.properties.id] || {}).nom || f.properties.id) + ` (${f.properties.id})` },
+      }));
+      return this._cache[entry.id];
+    }
     const response = await fetch(entry.file);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const geojson = await response.json();

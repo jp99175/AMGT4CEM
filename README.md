@@ -499,7 +499,7 @@ Avec un compte connecté, la couche corrigée (shapefile + référentiel) et les
 de « Plans patrimoine » remplacent la couche publique, sans recharger la page ; elles
 cèdent la place à la couche publique à la déconnexion (`src/app.js`, `loadNetwork`).
 La couche **« Plans patrimoine » tout entière** (planches, numéros interstation,
-`temp_DELTA_mod`) est **réservée aux comptes connectés** : sans connexion, elle n'est ni
+`Zones à intégrer`, essai `test_shapefile`) est **réservée aux comptes connectés** : sans connexion, elle n'est ni
 affichée ni lue, et sa ligne du menu « Couches » (case, curseur d'opacité, « modifier la
 sélection ») et son sélecteur sont masqués (`AMGT4CEM_PatrimoineLayer.setAccess`).
 Il en va de même pour **« Points métier »** (signalements et demandes) : titre, ligne du

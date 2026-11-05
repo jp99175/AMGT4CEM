@@ -17,10 +17,14 @@
  *
  * Liste volontairement ouverte : d'autres plans pourront s'y ajouter au fur et à mesure.
  */
+/** Rubriques du sélecteur « Plans patrimoine » (ordre d'affichage), comme les thèmes d'UrbIS Topo. */
+const AMGT4CEM_PATRIMOINE_THEME_ORDER = ['INFRAVIEW', 'Autres'];
+
 const AMGT4CEM_PATRIMOINE_CATALOG = [
   {
     id: 'numero-interstation',
     label: 'Numéros interstation',
+    theme: 'INFRAVIEW',
     file: './data/plans-patrimoine/numeros-interstation.legacy.json',
     // Rendu spécifique (src/interstation.js) : texte souligné à taille réelle
     // constante + ligne de repère jusqu'au centre du tronçon, au lieu du
@@ -32,7 +36,8 @@ const AMGT4CEM_PATRIMOINE_CATALOG = [
   },
   {
     id: 'temp_DELTA_mod',
-    label: 'temp_DELTA_mod (emprise DELTA recalée + ouvrages atypiques, provisoire)',
+    label: 'Zones à intégrer',
+    theme: 'Autres',
     // Couche des lieux : l'ancienne emprise provisoire (copie translatée de P000150) est devenue le lieu
     // « Station DELTA » de data/lieux/lieux.json (05/11/2026) ; temp-delta-mod.json est conservé vide,
     // car la couche le lit encore avant d'ajouter les lieux enregistrés.
@@ -52,8 +57,18 @@ const AMGT4CEM_PATRIMOINE_CATALOG = [
     ],
   },
   {
+    // ESSAI (05/11/2026) : shapefile provisoire généré depuis les zones ci-dessus (data/shapefile-test/), pour
+    // éprouver la lecture d'un shapefile et, plus tard, l'écriture. N'entre ni dans polygones.shp ni dans le référentiel.
+    id: 'test_shapefile',
+    label: 'test_shapefile (essai : zones à intégrer en shapefile)',
+    theme: 'Autres',
+    shapefile: './data/shapefile-test/test_shapefile',
+    referentiel: './data/shapefile-test/test_shapefile.json',
+  },
+  {
     id: 'plans-ensemble-500e',
     label: "Plans d'ensemble (1/500e)",
+    theme: 'INFRAVIEW',
     external: true,
   },
 ];
