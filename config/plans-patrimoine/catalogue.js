@@ -33,9 +33,9 @@ const AMGT4CEM_PATRIMOINE_CATALOG = [
   {
     id: 'temp_DELTA_mod',
     label: 'temp_DELTA_mod (emprise DELTA recalée + ouvrages atypiques, provisoire)',
-    // Couche TEMPORAIRE : copie translatée de P000150 (data/plans-patrimoine/temp-delta-mod.json,
-    // Lambert 72), affichée en polygone de la couleur choisie dans le sélecteur. N'entre ni dans
-    // polygones.shp ni dans le référentiel ; à retirer une fois l'emprise corrigée reportée dans AutoCAD.
+    // Couche des lieux : l'ancienne emprise provisoire (copie translatée de P000150) est devenue le lieu
+    // « Station DELTA » de data/lieux/lieux.json (05/11/2026) ; temp-delta-mod.json est conservé vide,
+    // car la couche le lit encore avant d'ajouter les lieux enregistrés.
     file: './data/plans-patrimoine/temp-delta-mod.json',
     // Ouvrages atypiques ajoutés à la même couche : objets UrbIS Topo (TopoLines) lus au vol par
     // identifiant (le service n'est joignable que depuis un navigateur) et dessinés avec la même
