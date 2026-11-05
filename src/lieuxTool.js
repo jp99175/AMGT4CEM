@@ -63,6 +63,7 @@ const AMGT4CEM_LieuxTool = {
     this._traceAbandon();
     this._viseurStop();
     this._modeActif = null;
+    this._map.getContainer().classList.remove('amgt-lieux-ptr');
     this._btn.classList.remove('amgt-btn--active');
     this._syncDrag();
     this._group.clearLayers();
@@ -252,6 +253,8 @@ const AMGT4CEM_LieuxTool = {
     this._ops = [];
     if (tr(m)) this._viseurStart();
     this._syncDrag();
+    // Remplir / Unir / Soustraire : pointeur normal de la souris (pas la main de Leaflet, ni sur les tracés)
+    this._map.getContainer().classList.toggle('amgt-lieux-ptr', m === 'remplir' || m === 'unir' || m === 'soustraire');
     for (const b of this._panel.querySelectorAll('[data-m]')) b.classList.toggle('amgt-lieux-actif', b.dataset.m === m);
     this._f('tracebarre').classList.toggle('amgt-hidden', m !== 'trace');
     this._f('remplirbarre').classList.toggle('amgt-hidden', m !== 'remplir');

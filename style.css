@@ -1342,3 +1342,6 @@ html, body {
 #amgt-lieux-panel .amgt-lieux-tol input { width: 44px; }
 #amgt-lieux-panel .amgt-lieux-liste label.amgt-lieux-op { background: #f3e5f5; border-radius: 4px; }
 #amgt-lieux-panel [data-f="opsinfo"] { flex: 1 1 100%; font-size: 12px; }
+
+/* Constituer un lieu : Remplir / Unir / Soustraire gardent le pointeur normal (Leaflet met une main « grab » / « pointer ») */
+.amgt-lieux-ptr.leaflet-grab, .amgt-lieux-ptr .leaflet-grab, .amgt-lieux-ptr .leaflet-interactive, .amgt-lieux-ptr.leaflet-dragging .leaflet-grab { cursor: default !important; }
