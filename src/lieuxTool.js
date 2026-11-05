@@ -69,6 +69,7 @@ const AMGT4CEM_LieuxTool = {
     this._group.clearLayers();
     this._cands.clear();
     if (this._apercuLayer) { this._map.removeLayer(this._apercuLayer); this._apercuLayer = null; }
+    if (this._opsApercuLayer) { this._map.removeLayer(this._opsApercuLayer); this._opsApercuLayer = null; }
     if (this._refLayer) { this._map.removeLayer(this._refLayer); this._refLayer = null; }
     if (this._docClic) { document.removeEventListener('click', this._docClic); this._docClic = null; }
     this._cur = ''; this._dirty = false; this._hist = [];
@@ -162,8 +163,7 @@ const AMGT4CEM_LieuxTool = {
           <button type="button" data-a="t-valider" class="amgt-lieux-edonly amgt-hidden" title="Terminer la modification">✓ Terminer</button></div>
         <div class="amgt-lieux-row amgt-lieux-poly amgt-hidden" data-f="opsbarre">
           <span data-f="opsinfo"></span>
-          <button type="button" data-a="o-appliquer" title="Appliquer l'opération">Appliquer</button>
-          <button type="button" data-a="o-vider" title="Vider la sélection d'opérandes">Vider</button></div>
+          <button type="button" data-a="o-appliquer" title="Confirmer l'opération proposée">Confirmer</button></div>
         <div class="amgt-lieux-row amgt-lieux-l9">
           <label class="amgt-lieux-aimant" data-f="aimantlab" title="Aimant : le viseur s'accroche au point remarquable proche s'il y reste 1 s (0 = sans aimant)"><span class="amgt-lieux-aimant-lab"></span><input data-f="aimant" type="number" min="0" max="50" step="1" value="5" /> m</label>
           <span class="amgt-lieux-sp"></span>
@@ -216,7 +216,6 @@ const AMGT4CEM_LieuxTool = {
       else if (a.dataset.a === 't-valider') this._traceTerminer();
       else if (a.dataset.a === 't-suppr') this._traceSupprimer();
       else if (a.dataset.a === 'o-appliquer') this._opsAppliquer();
-      else if (a.dataset.a === 'o-vider') { this._opsVider(); }
       else if (a.dataset.a === 'enreg') this._enregistrer();
     });
     // Un clic ailleurs referme la liste déroulante.
@@ -262,8 +261,8 @@ const AMGT4CEM_LieuxTool = {
     const aide = {
       trace: 'Lignes : glisser, le viseur pose un point au relâcher. Toucher le dernier point (ou changer d\'outil) termine la ligne ; toucher le premier point la ferme. Une ligne reste une ligne : les surfaces se font avec Remplir.',
       remplir: 'Remplir : toucher une zone fermée par des lignes visibles (UrbIS Topo affiché, autres lieux non masqués, tes lignes) pour en faire une surface ; les îlots restent vides.',
-      unir: 'Unir : les surfaces cochées sont présélectionnées ; toucher d\'autres surfaces pour les ajouter, ou à nouveau pour les désélectionner, puis Appliquer.',
-      soustraire: 'Soustraire : toucher la surface de base, puis celles à retrancher (les toucher à nouveau pour désélectionner), puis Appliquer.',
+      unir: 'Unir : les surfaces cochées sont présélectionnées ; toucher d\'autres surfaces pour les ajouter, ou à nouveau pour les désélectionner. L\'union proposée s\'affiche : la confirmer.',
+      soustraire: 'Soustraire : toucher la surface de base, puis celles à retrancher (les toucher à nouveau pour désélectionner). Le résultat proposé s\'affiche : le confirmer.',
       modifier: 'Modifier : toucher une ligne ou un contour de la liste, puis déplacer ses points (poignées), ajouter (« + ») ou retirer (🗑 Point). ✓ Terminer ou autre outil pour finir.',
     };
     this._etat(aide[m] || 'Aucun outil actif : choisir un outil, ou cocher / décocher des objets de la liste.');
@@ -421,7 +420,7 @@ const AMGT4CEM_LieuxTool = {
       cb.addEventListener('change', () => { this._snap(); this._set(c, cb.checked); });
       lab.dataset.key = c.key;
       const tx = document.createElement('span');
-      tx.textContent = ` ${c.type || c.code} #${c.id}`;
+      tx.textContent = ` ${c.type || c.code} #${c.id}${c.type === this.TYPE_SURF && c.lignes.length > 1 ? ` (${c.lignes.length - 1} vide${c.lignes.length > 2 ? 's' : ''})` : ''}`;
       // Unir / Soustraire : toucher le nom d'une surface la désigne comme opérande (la case reste la sélection du lieu).
       tx.addEventListener('click', (ev) => { if (this._modeActif === 'unir' || this._modeActif === 'soustraire') { ev.preventDefault(); this._opsToggle(c); } });
       lab.append(cb, tx);
@@ -463,6 +462,14 @@ const AMGT4CEM_LieuxTool = {
     const key = `${o.couche}:${o.id}`;
     if (this._cands.has(key)) { if (sel) this._set(this._cands.get(key), true); return; }
     const c = { key, ...o, sel, layers: [] };
+    if (c.type === this.TYPE_SURF && this._estSurface(c)) {
+      // Surface : un seul polygone ; les anneaux suivants sont ses vides (trous).
+      const pl = L.polygon(o.lignes.map((l) => l.map((q) => AMGT4CEM_CRS.lambertToLatLng(q))), { pane: 'amgtLieuxPane', ...this._style(sel, { ...c, layers: [] }) });
+      this._group.addLayer(pl);
+      c.layers.push(pl);
+      this._cands.set(key, c);
+      return;
+    }
     for (const ligne of o.lignes) {
       const ll = ligne.map((q) => AMGT4CEM_CRS.lambertToLatLng(q));
       const st = { pane: 'amgtLieuxPane', ...this._style(sel, { ...c, layers: [] }) };
@@ -614,6 +621,7 @@ const AMGT4CEM_LieuxTool = {
     if (!t.pts.length) return this._traceInfo();
     const opt = { pane: 'amgtLieuxPane', color: '#0b5c75', weight: 3, interactive: false };
     t.group.addLayer(t.ferme ? L.polygon(t.pts, { ...opt, fillColor: '#0b5c75', fillOpacity: 0.15 }) : L.polyline(t.pts, opt));
+    for (const h of t.trous || []) t.group.addLayer(L.polyline(h.map((q) => AMGT4CEM_CRS.lambertToLatLng(q)), { ...opt, weight: 2, dashArray: '5 4' })); // vides de la surface (non modifiables ici)
     this._traceInfo();
   },
 
@@ -1053,7 +1061,7 @@ const AMGT4CEM_LieuxTool = {
     const tTrace = t;
     this._traceAbandon();
     this._snap();
-    this._addCand({ id, couche: 'Trace', code: 'TRACE', type: tTrace.type || this.TYPE_LIGNE, lignes: [lam] }, true);
+    this._addCand({ id, couche: 'Trace', code: 'TRACE', type: tTrace.type || this.TYPE_LIGNE, lignes: [lam, ...(tTrace.trous || [])] }, true); // les vides de la surface sont conservés
     this._renderListe();
     this._etat(tTrace.type === this.TYPE_SURF ? 'Surface modifiée.' : ferme ? 'Ligne fermée ajoutée. Remplir en fait une surface.' : 'Ligne ajoutée à la liste.');
   },
@@ -1094,7 +1102,7 @@ const AMGT4CEM_LieuxTool = {
     const ring = c.lignes[0];
     const ferme = ring.length >= 4 && ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1];
     const pts = (ferme ? ring.slice(0, -1) : ring).map((q) => AMGT4CEM_CRS.lambertToLatLng(q));
-    this._trace = { pts, ferme, hist: [], phase: 'edition', sel: null, editId: c.id, type: c.type, group: L.layerGroup().addTo(this._map), sommets: L.layerGroup().addTo(this._map) };
+    this._trace = { pts, ferme, hist: [], phase: 'edition', sel: null, editId: c.id, type: c.type, trous: c.type === this.TYPE_SURF ? c.lignes.slice(1).map((l) => l.map((q) => [q[0], q[1]])) : [], group: L.layerGroup().addTo(this._map), sommets: L.layerGroup().addTo(this._map) };
     this._renderListe();
     this._traceDessin();
     this._syncDrag();
@@ -1127,17 +1135,13 @@ const AMGT4CEM_LieuxTool = {
   _pc() { return typeof polygonClipping !== 'undefined' ? polygonClipping : null; },
   _arrondi(rg) { return rg.map((q) => [Math.round(q[0] * 100) / 100, Math.round(q[1] * 100) / 100]); },
 
-  /** Multipolygone (polygon-clipping) -> cands : anneau extérieur = surface, trous = vides. Retourne le nombre de surfaces ajoutées. */
+  /** Multipolygone (polygon-clipping) -> cands : une surface par polygone ; ses trous sont des vides DE cette surface (même objet). Retourne le nombre de surfaces ajoutées. */
   _ajouterMulti(multi, nomType) {
     const base = `S${Date.now().toString(36)}`;
     let n = 0;
     multi.forEach((poly) => {
-      poly.forEach((rg, k) => {
-        const ring = this._arrondi(rg);
-        if (!this._fermee(ring)) ring.push(ring[0]);
-        const surf = k === 0;
-        this._addCand({ id: `${base}-${n}${surf ? '' : 'v'}${k}`, couche: 'Trace', code: 'TRACE', type: surf ? (nomType || this.TYPE_SURF) : this.TYPE_VIDE, lignes: [ring] }, true);
-      });
+      const lignes = poly.map((rg) => { const r = this._arrondi(rg); if (!this._fermee(r)) r.push(r[0]); return r; });
+      this._addCand({ id: `${base}-${n}`, couche: 'Trace', code: 'TRACE', type: nomType || this.TYPE_SURF, lignes }, true);
       n++;
     });
     return n;
@@ -1159,7 +1163,7 @@ const AMGT4CEM_LieuxTool = {
       for (const sf of surfaces) { if (!this._dansAnneau(sf.lignes[0], pt[0], pt[1])) continue; const a = aire(sf.lignes[0]); if (a < amin) { amin = a; best = sf; } }
       if (best === c) vides.push(v);
     }
-    const base = [c.lignes[0]];
+    const base = c.type === this.TYPE_SURF ? c.lignes : [c.lignes[0]]; // surface 'Surface' : anneaux suivants = ses vides
     return { geom: vides.length ? pc.difference(base, ...vides.map((v) => [v.lignes[0]])) : [base], vides };
   },
 
@@ -1373,9 +1377,28 @@ const AMGT4CEM_LieuxTool = {
     const nom = (k) => { const c = this._cands.get(k); return `${c.type} #${c.id}`; };
     const info = this._f('opsinfo');
     const sous = this._modeActif === 'soustraire';
-    if (!ops.length) info.textContent = sous ? 'Toucher la surface de base, puis celles à retrancher.' : 'Toucher les surfaces à unir (2 au moins).';
-    else if (sous) info.textContent = `Base : ${nom(ops[0])}${ops.length > 1 ? ` − ${ops.slice(1).map(nom).join(', ')}` : ''}`;
-    else info.textContent = `À unir : ${ops.map(nom).join(' + ')}`;
+    const btn = this._panel.querySelector('[data-a="o-appliquer"]');
+    btn.textContent = sous ? 'Confirmer la soustraction' : 'Confirmer l\'union';
+    if (this._opsApercuLayer) { this._map.removeLayer(this._opsApercuLayer); this._opsApercuLayer = null; }
+    let pret = false;
+    if (ops.length < 2) {
+      if (!ops.length) info.textContent = sous ? 'Toucher la surface de base, puis celles à retrancher.' : 'Toucher les surfaces à unir (2 au moins).';
+      else info.textContent = sous ? `Base : ${nom(ops[0])}. Toucher les surfaces à retrancher.` : `${nom(ops[0])} : toucher au moins une autre surface.`;
+    } else {
+      // Résultat proposé, dessiné en pointillés violets : il suffit de le confirmer.
+      const r = this._opsResultat();
+      if (r.erreur) info.textContent = r.erreur;
+      else if (!r.res.length) info.textContent = 'Résultat vide : les surfaces se recouvrent entièrement.';
+      else {
+        pret = true;
+        const aire = (rg) => Math.abs(rg.reduce((a, q, i) => { const n = rg[(i + 1) % rg.length]; return a + q[0] * n[1] - n[0] * q[1]; }, 0) / 2);
+        const m2 = r.res.reduce((t, poly) => t + poly.reduce((a, rg, k) => a + (k === 0 ? aire(rg) : -aire(rg)), 0), 0);
+        const vides = r.res.reduce((t, poly) => t + poly.length - 1, 0);
+        info.textContent = `${sous ? 'Soustraction' : 'Union'} proposée : ${r.res.length} surface${r.res.length > 1 ? 's' : ''}, ${vides} vide${vides > 1 ? 's' : ''}, ${Math.round(m2).toLocaleString('fr-BE')} m². Confirmer pour l'appliquer.`;
+        this._opsApercuLayer = L.polygon(r.res.map((poly) => poly.map((rg) => rg.map((q) => AMGT4CEM_CRS.lambertToLatLng(q)))), { pane: 'amgtLieuxPane', interactive: false, color: '#4a148c', weight: 3, dashArray: '6 4', fillColor: '#7b1fa2', fillOpacity: 0.3 }).addTo(this._map);
+      }
+    }
+    btn.disabled = !pret;
     for (const r of this._panel.querySelectorAll('.amgt-lieux-liste label[data-key]')) r.classList.toggle('amgt-lieux-op', ops.includes(r.dataset.key));
   },
   _opsClic(latlng) {
@@ -1384,7 +1407,7 @@ const AMGT4CEM_LieuxTool = {
     const dedans = (ring) => { let ok = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i]; const [xj, yj] = ring[j]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) ok = !ok; } return ok; };
     const aire = (r) => Math.abs(r.reduce((s2, q, i) => { const n = r[(i + 1) % r.length]; return s2 + q[0] * n[1] - n[0] * q[1]; }, 0) / 2);
     let best = null; let amin = Infinity;
-    for (const c of this._cands.values()) if (this._estSurface(c) && dedans(c.lignes[0])) { const ar = aire(c.lignes[0]); if (ar < amin) { amin = ar; best = c; } }
+    for (const c of this._cands.values()) if (this._estSurface(c) && dedans(c.lignes[0]) && !(c.type === this.TYPE_SURF && c.lignes.slice(1).some(dedans))) { const ar = aire(c.lignes[0]); if (ar < amin) { amin = ar; best = c; } }
     if (!best) return this._etat('Aucune surface à cet endroit.', true);
     this._opsToggle(best);
   },
@@ -1412,20 +1435,28 @@ const AMGT4CEM_LieuxTool = {
     return ok;
   },
 
+  /** Résultat proposé par les opérandes choisis : { res (multipolygone), videsUtilises, cands } ou { erreur }. */
+  _opsResultat() {
+    const ops = this._ops || [];
+    const sous = this._modeActif === 'soustraire';
+    const pc = this._pc();
+    if (!pc) return { erreur: 'Bibliothèque de géométrie absente : opération impossible.' };
+    const cands = ops.map((k) => this._cands.get(k));
+    try {
+      // Chaque surface compte avec ses vides : ceux qu'aucune autre surface ne recouvre restent vides dans le résultat.
+      const formes = cands.map((c) => this._formeEffective(c));
+      const res = sous ? pc.difference(formes[0].geom, ...formes.slice(1).map((f) => f.geom)) : pc.union(...formes.map((f) => f.geom));
+      return { res, videsUtilises: formes.flatMap((f) => f.vides), cands };
+    } catch (err) { return { erreur: `Opération impossible : ${err.message}` }; }
+  },
+
   async _opsAppliquer() {
     const ops = this._ops || [];
     const sous = this._modeActif === 'soustraire';
     if (ops.length < 2) return this._etat(sous ? 'Choisir une base et au moins une surface à retrancher.' : 'Choisir au moins 2 surfaces à unir.', true);
-    const pc = this._pc();
-    if (!pc) return this._etat('Bibliothèque de géométrie absente : opération impossible.', true);
-    const cands = ops.map((k) => this._cands.get(k));
-    let res; let videsUtilises = [];
-    try {
-      // Chaque surface compte avec ses vides : ceux qu'aucune autre surface ne recouvre restent vides dans le résultat.
-      const formes = cands.map((c) => this._formeEffective(c));
-      videsUtilises = formes.flatMap((f) => f.vides);
-      res = sous ? pc.difference(formes[0].geom, ...formes.slice(1).map((f) => f.geom)) : pc.union(...formes.map((f) => f.geom));
-    } catch (err) { return this._etat(`Opération impossible : ${err.message}`, true); }
+    const r = this._opsResultat();
+    if (r.erreur) return this._etat(r.erreur, true);
+    const { res, videsUtilises, cands } = r;
     if (!res.length) return this._etat('Résultat vide : les surfaces se recouvrent entièrement.', true);
     this._snap();
     for (const c of [...cands, ...videsUtilises]) { for (const l of c.layers) this._group.removeLayer(l); this._cands.delete(c.key); }
