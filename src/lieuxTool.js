@@ -69,8 +69,6 @@ const AMGT4CEM_LieuxTool = {
     this._group.clearLayers();
     this._cands.clear();
     if (this._apercuLayer) { this._map.removeLayer(this._apercuLayer); this._apercuLayer = null; }
-    this._vueClear();
-    this._visTout();
     if (this._refLayer) { this._map.removeLayer(this._refLayer); this._refLayer = null; }
     if (this._docClic) { document.removeEventListener('click', this._docClic); this._docClic = null; }
     this._cur = ''; this._dirty = false; this._hist = [];
@@ -202,7 +200,7 @@ const AMGT4CEM_LieuxTool = {
       if (lig) {
         const slug = lig.dataset.slug || '';
         const act = e.target.closest('[data-a]');
-        if (act && act.dataset.a === 'l-oeil') return this._oeil(slug); // la liste reste ouverte : on peut en afficher plusieurs
+        if (act && act.dataset.a === 'l-oeil') return this._oeil(slug); // la liste reste ouverte : on peut en basculer plusieurs
         this._comboFermer();
         if (act && act.dataset.a === 'l-edit') return this._editerLieu(slug);
         if (act && act.dataset.a === 'l-del') return this._supprimerLieu(slug);
@@ -330,43 +328,17 @@ const AMGT4CEM_LieuxTool = {
 
   _confirmerAbandon() { return !this._dirty || confirm('Des modifications ne sont pas enregistrées. Les abandonner ?'); },
 
-  /** Vue en lecture seule d'un lieu enregistré : ses objets et lignes de construction, ou le polygone généré. */
-  _vueClear() { if (this._vue) { this._map.removeLayer(this._vue); this._vue = null; } this._vueSlug = ''; },
-  /** Dessin en lecture seule d'un lieu enregistré (contour, ou à défaut ses lignes). */
-  _lieuGroupe(l) {
-    const ll = (r) => r.map((q) => AMGT4CEM_CRS.lambertToLatLng(q));
-    const g = L.layerGroup();
-    const st = { pane: 'amgtLieuxPane', interactive: false, color: '#0b5c75', weight: 3, opacity: 0.9 };
-    if (l.contour && l.contour.length) L.polygon(l.contour.map(ll), { ...st, dashArray: '6 4', fillColor: '#0b5c75', fillOpacity: 0.2 }).addTo(g);
-    else for (const o of l.objets) for (const r of o.lignes) L.polyline(ll(r), st).addTo(g);
-    return g;
-  },
-  // Œil de la liste : lieux affichés en lecture seule, sans quitter l'édition en cours.
-  _estVisible(slug) { return (!!slug && slug === this._cur) || this._vueSlug === slug || !!(this._vis && this._vis.has(slug)); },
-  _visRetirer(slug) { if (this._vis && this._vis.has(slug)) { this._map.removeLayer(this._vis.get(slug)); this._vis.delete(slug); } },
-  _visTout() { if (this._vis) for (const g of this._vis.values()) this._map.removeLayer(g); this._vis = new Map(); },
-  /** Redessine les lieux affichés après un enregistrement (contour modifié, lieu renommé ou supprimé). */
-  _visRafraichir() {
-    for (const slug of [...(this._vis || new Map()).keys()]) {
-      this._visRetirer(slug);
-      if (this._lieux[slug] && slug !== this._cur) this._vis.set(slug, this._lieuGroupe(this._lieux[slug]).addTo(this._map));
-    }
-    this._comboRender();
-  },
+  // Œil de la liste : affiche ou masque ce lieu dans la couche des lieux de la carte (réglage propre à cet appareil,
+  // géré par patrimoineLayer.js). Œil ouvert = lieu affiché ; œil barré = lieu masqué.
+  _estVisible(slug) { return !AMGT4CEM_PatrimoineLayer.lieuMasque(slug); },
   _oeil(slug) {
-    const l = this._lieux[slug];
-    if (!l) return;
-    if (!this._vis) this._vis = new Map();
-    if (this._vueSlug === slug) this._vueClear();
-    else if (this._vis.has(slug)) this._visRetirer(slug);
-    else if (slug !== this._cur) this._vis.set(slug, this._lieuGroupe(l).addTo(this._map));
-    else return this._etat(`Le lieu « ${l.nom} » est en cours d'édition : il est déjà affiché.`);
+    if (!this._lieux[slug]) return;
+    AMGT4CEM_PatrimoineLayer.masquerLieu(slug, this._estVisible(slug));
     this._comboRender();
   },
 
   _nouveauLieu() {
     if (!this._confirmerAbandon()) return;
-    this._vueClear();
     this._traceAbandon();
     this._clearCands();
     this._cur = '';
@@ -392,8 +364,6 @@ const AMGT4CEM_LieuxTool = {
     try {
       this._etat('Suppression…');
       await this._envoyer(reste);
-      this._vueClear();
-      this._visRetirer(slug);
       if (slug === this._cur) { this._dirty = false; this._nouveauLieu(); } else this._comboRender();
       this._etat(`Lieu « ${l.nom} » supprimé.`);
     } catch (err) {
@@ -424,8 +394,6 @@ const AMGT4CEM_LieuxTool = {
 
   _chargerLieu(slug) {
     this._traceAbandon(); // un tracé en cours (ou en édition) resterait sinon dessiné sur la carte
-    this._vueClear();
-    this._visRetirer(slug); // le lieu édité est déjà dessiné par ses objets
     this._clearCands();
     this._cur = slug && this._lieux[slug] ? slug : '';
     this._hist = []; this._dirty = false;
@@ -1475,7 +1443,6 @@ const AMGT4CEM_LieuxTool = {
       await this._envoyer(suite);
       this._dirty = false;
       this._majListe(slug);
-      this._visRafraichir();
       this._etat(renomme
         ? `Lieu « ${ancienNom} » renommé en « ${nom} » et enregistré (${objets.length} objets). La carte le lira après le déploiement (environ une minute).`
         : `Lieu « ${nom} » enregistré (${objets.length} objets). La carte le lira après le déploiement (environ une minute).`);

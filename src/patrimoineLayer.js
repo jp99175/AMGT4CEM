@@ -159,7 +159,7 @@ const AMGT4CEM_PatrimoineLayer = {
           subGroup = AMGT4CEM_Interstation.buildSubGroup(selection[id], this._opacityFactor);
         } else {
           const features = await this._loadFeatures(entry);
-          subGroup = this._buildSubGroup(features, selection[id]);
+          subGroup = this._buildSubGroup(entry.lieuxFile ? features.filter((f) => !this.lieuMasque(f.properties && f.properties.slug)) : features, selection[id]);
         }
         this._subGroups[id] = subGroup;
         subGroup.addTo(this._group);
@@ -228,6 +228,25 @@ const AMGT4CEM_PatrimoineLayer = {
     return out;
   },
 
+  // Lieux masqués par l'œil de l'outil « Constituer un lieu » : réglage local (cet appareil), par identifiant de lieu.
+  CLE_LIEUX_MASQUES: 'amgt4cem.lieux.masques.v1',
+  _lieuxMasques() {
+    try { const a = JSON.parse(localStorage.getItem(this.CLE_LIEUX_MASQUES) || '[]'); return Array.isArray(a) ? a : []; } catch (err) { return []; }
+  },
+  lieuMasque(slug) { return !!slug && this._lieuxMasques().includes(slug); },
+  /** Masque (true) ou ré-affiche (false) un lieu dans la couche des lieux, aussitôt (les données restent en cache). */
+  masquerLieu(slug, masque) {
+    const l = this._lieuxMasques().filter((x) => x !== slug);
+    if (masque) l.push(slug);
+    try { localStorage.setItem(this.CLE_LIEUX_MASQUES, JSON.stringify(l)); } catch (err) { /* valable pour la session seulement */ }
+    for (const e of AMGT4CEM_PATRIMOINE_CATALOG) {
+      if (!e.lieuxFile || !this._subGroups[e.id]) continue;
+      this._group.removeLayer(this._subGroups[e.id]);
+      delete this._subGroups[e.id];
+    }
+    return this.refresh();
+  },
+
   /**
    * Recharge les lieux constitués (couches du catalogue qui ont `lieuxFile`) après un enregistrement de l'outil
    * « Constituer un lieu » : sans cela, un lieu supprimé ou renommé resterait affiché jusqu'au rechargement de la page.
@@ -261,13 +280,13 @@ const AMGT4CEM_PatrimoineLayer = {
     try {
       const r = await fetch(`${file}?t=${Date.now()}`); // jamais depuis le cache du navigateur
       const lieux = this._lieuxRecents(r.ok ? ((await r.json()).lieux || {}) : {});
-      return Object.values(lieux).flatMap((l) => (l.contour && l.contour.length
+      return Object.entries(lieux).flatMap(([slug, l]) => (l.contour && l.contour.length
         // Contour enregistré (surfaces moins vides) : un seul polygone dont les anneaux sont remplis en pair-impair (les trous restent vides).
-        ? [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: l.contour }, properties: { genre: 'lieu', name_fr: l.nom } }]
+        ? [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: l.contour }, properties: { genre: 'lieu', name_fr: l.nom, slug } }]
         : l.objets.map((o) => ({
         type: 'Feature',
         geometry: { type: 'MultiLineString', coordinates: o.lignes },
-        properties: { genre: 'urbis', name_fr: l.nom, urbis_id: o.id, urbis_code: o.code },
+        properties: { genre: 'urbis', name_fr: l.nom, slug, urbis_id: o.id, urbis_code: o.code },
       }))));
     } catch (err) {
       return [];
