@@ -21,6 +21,8 @@ const AMGT4CEM_UrbisTopoLayer = {
   _enabled: true,
   _fetchToken: 0,
   _moveTimer: null,
+  _abort: null, // requête WFS en cours (annulée dès que la vue ou la sélection change)
+  _cache: null, // { sig, bbox, tronque } de ce qui est actuellement affiché : évite de recharger quand on reste dans la zone déjà chargée
   _catalogIndexCache: null,
   // Opacité de base (à facteur 1, réglage par défaut) des styles construits
   // par _pointStyle/_lineStyle — le facteur réglable (icône curseurs du menu
@@ -61,11 +63,18 @@ const AMGT4CEM_UrbisTopoLayer = {
     });
   },
 
+  /** Efface l'affichage et oublie ce qui avait été chargé. */
+  _vider() {
+    if (this._abort) { this._abort.abort(); this._abort = null; }
+    this._cache = null;
+    this._group.clearLayers();
+  },
+
   async refresh() {
     const token = ++this._fetchToken;
-    this._group.clearLayers();
 
     if (!this._enabled) {
+      this._vider();
       this._map.removeLayer(this._group);
       return;
     }
@@ -74,33 +83,50 @@ const AMGT4CEM_UrbisTopoLayer = {
     const codes = Object.keys(selection);
 
     if (codes.length === 0) {
+      this._vider();
       this._map.removeLayer(this._group);
       return;
     }
     this._group.addTo(this._map);
 
-    if (this._map.getZoom() < AMGT4CEM_ZoomThresholds.get('urbistopo', AMGT4CEM_CONFIG.urbisTopo.minZoom)) return;
+    if (this._map.getZoom() < AMGT4CEM_ZoomThresholds.get('urbistopo', AMGT4CEM_CONFIG.urbisTopo.minZoom)) {
+      this._vider();
+      return;
+    }
 
     const catalogByCode = this._catalogIndex();
     const pointCodes = codes.filter((c) => catalogByCode[c] && catalogByCode[c].geometry === 'point');
     const lineCodes = codes.filter((c) => catalogByCode[c] && catalogByCode[c].geometry === 'ligne');
 
     const bbox = AMGT4CEM_CRS.boundsToLambertBbox(this._map.getBounds());
+    const sig = JSON.stringify(selection);
+    // Déjà chargé : même sélection, vue entièrement dans la zone chargée et résultat non plafonné -> rien à redemander.
+    const c = this._cache;
+    if (c && c.sig === sig && !c.tronque && bbox[0] >= c.bbox[0] && bbox[1] >= c.bbox[1] && bbox[2] <= c.bbox[2] && bbox[3] <= c.bbox[3]) return;
+
     const queries = [];
     if (pointCodes.length) queries.push({ featureType: 'urbistopo:TopoPoints', codes: pointCodes });
     if (lineCodes.length) queries.push({ featureType: 'urbistopo:TopoLines', codes: lineCodes });
 
-    for (const query of queries) {
-      let features;
-      try {
-        features = await this._fetchFeatures(query, bbox);
-      } catch (err) {
-        console.warn('[AMGT4CEM] Couches UrbIS Topo indisponibles :', err);
-        continue;
-      }
-      if (token !== this._fetchToken) return; // la vue a changé entre-temps
+    // Requête précédente abandonnée (elle ne sert plus et encombrerait le réseau) ; points et lignes demandés en parallèle.
+    if (this._abort) this._abort.abort();
+    const ctrl = (this._abort = new AbortController());
+    const resultats = await Promise.all(queries.map((query) => this._fetchFeatures(query, bbox, ctrl.signal).catch((err) => {
+      if (err && err.name !== 'AbortError') console.warn('[AMGT4CEM] Couches UrbIS Topo indisponibles :', err);
+      return null;
+    })));
+    if (token !== this._fetchToken) return; // la vue a changé entre-temps
+
+    // L'ancien affichage reste en place jusqu'à l'arrivée des nouvelles données (pas de carte vide pendant le chargement).
+    this._group.clearLayers();
+    const max = AMGT4CEM_CONFIG.urbisTopo.maxFeaturesPerQuery;
+    let complet = true; let tronque = false;
+    for (const features of resultats) {
+      if (features === null) { complet = false; continue; }
+      if (features.length >= max) tronque = true;
       this._renderFeatures(features, selection, catalogByCode);
     }
+    this._cache = complet ? { sig, bbox, tronque } : null;
   },
 
   _catalogIndex() {
@@ -111,7 +137,7 @@ const AMGT4CEM_UrbisTopoLayer = {
     return this._catalogIndexCache;
   },
 
-  async _fetchFeatures(query, [minX, minY, maxX, maxY]) {
+  async _fetchFeatures(query, [minX, minY, maxX, maxY], signal) {
     const { wfsUrl, version, typeAttribute, maxFeaturesPerQuery } = AMGT4CEM_CONFIG.urbisTopo;
     const codesList = query.codes.map((c) => `'${c}'`).join(',');
     const cql = `${typeAttribute} IN (${codesList}) AND BBOX(geom,${minX},${minY},${maxX},${maxY})`;
@@ -126,7 +152,7 @@ const AMGT4CEM_UrbisTopoLayer = {
       CQL_FILTER: cql,
     });
 
-    const response = await fetch(`${wfsUrl}?${params.toString()}`);
+    const response = await fetch(`${wfsUrl}?${params.toString()}`, { signal });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const geojson = await response.json();
     return geojson.features || [];
@@ -141,7 +167,8 @@ const AMGT4CEM_UrbisTopoLayer = {
 
       const leafletLayer = this._buildLeafletLayer(feature.geometry, color);
       if (!leafletLayer) continue;
-      leafletLayer.bindPopup(this._buildPopup(feature.properties || {}, catalogByCode[code]));
+      const props = feature.properties || {};
+      leafletLayer.bindPopup(() => this._buildPopup(props, catalogByCode[code])); // construit à l'ouverture seulement (jusqu'à 500 objets par requête)
       this._group.addLayer(leafletLayer);
     }
   },
