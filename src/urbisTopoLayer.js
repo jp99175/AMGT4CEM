@@ -68,6 +68,28 @@ const AMGT4CEM_UrbisTopoLayer = {
     if (this._abort) { this._abort.abort(); this._abort = null; }
     this._cache = null;
     this._group.clearLayers();
+    this._masquerPlafond();
+  },
+
+  /** Petit pop-up (bannière d'information) quand le plafond d'objets par requête est atteint : l'affichage est partiel. */
+  _signalerPlafond(max) {
+    if (!this._bandeau) {
+      const parent = (document.getElementById('amgt-load-error') || document.getElementById('map')).parentElement;
+      this._bandeau = document.createElement('div');
+      this._bandeau.className = 'amgt-banner amgt-banner--plafond amgt-hidden';
+      this._bandeau.setAttribute('role', 'status');
+      this._bandeau.title = 'Toucher pour fermer';
+      this._bandeau.addEventListener('click', () => this._masquerPlafond());
+      parent.appendChild(this._bandeau);
+    }
+    this._bandeau.textContent = `UrbIS Topo : affichage partiel, plafond de ${max} objets atteint. Zoomer ou réduire la sélection de types pour tout voir.`;
+    this._bandeau.classList.remove('amgt-hidden');
+    clearTimeout(this._bandeauTimer);
+    this._bandeauTimer = setTimeout(() => this._masquerPlafond(), 8000);
+  },
+  _masquerPlafond() {
+    clearTimeout(this._bandeauTimer);
+    if (this._bandeau) this._bandeau.classList.add('amgt-hidden');
   },
 
   async refresh() {
@@ -121,12 +143,14 @@ const AMGT4CEM_UrbisTopoLayer = {
     this._group.clearLayers();
     const max = AMGT4CEM_CONFIG.urbisTopo.maxFeaturesPerQuery;
     let complet = true; let tronque = false;
-    for (const features of resultats) {
-      if (features === null) { complet = false; continue; }
-      if (features.length >= max) tronque = true;
+    queries.forEach((query, i) => {
+      const features = resultats[i];
+      if (features === null) { complet = false; return; }
+      if (features.tronque) tronque = true;
       this._renderFeatures(features, selection, catalogByCode);
-    }
+    });
     this._cache = complet ? { sig, bbox, tronque } : null;
+    if (tronque) this._signalerPlafond(max); else this._masquerPlafond();
   },
 
   _catalogIndex() {
@@ -148,14 +172,18 @@ const AMGT4CEM_UrbisTopoLayer = {
       request: 'GetFeature',
       typeNames: query.featureType,
       outputFormat: 'application/json',
-      count: String(maxFeaturesPerQuery),
+      count: String(maxFeaturesPerQuery + 1), // un objet de trop sert à détecter que le plafond est atteint
       CQL_FILTER: cql,
     });
 
     const response = await fetch(`${wfsUrl}?${params.toString()}`, { signal });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const geojson = await response.json();
-    return geojson.features || [];
+    const features = geojson.features || [];
+    const tronque = features.length > maxFeaturesPerQuery;
+    const liste = tronque ? features.slice(0, maxFeaturesPerQuery) : features;
+    liste.tronque = tronque;
+    return liste;
   },
 
   _renderFeatures(features, selection, catalogByCode) {
