@@ -146,9 +146,8 @@ const AMGT4CEM_LieuxTool = {
           <input class="amgt-lieux-haut" data-f="haut" type="range" min="0" max="100" value="35" orient="vertical" title="Hauteur de la liste" aria-label="Hauteur de la liste" />
         </div>
         <div class="amgt-lieux-row amgt-lieux-modes" role="toolbar" aria-label="Outils">
-          <button type="button" data-m="objet" title="Sélectionner : toucher un objet visible (UrbIS, autre lieu, patrimoine) pour l'ajouter ou le retirer"><span data-i="objet"></span><small>Sélection</small></button>
-          <button type="button" data-m="trace" title="Dessiner une ligne ; la fermer en fait une surface"><span data-i="trace"></span><small>Dessiner</small></button>
-          <button type="button" data-m="remplir" title="Remplir : toucher une zone fermée pour en faire une surface"><span data-i="remplir"></span><small>Remplir</small></button>
+          <button type="button" data-m="trace" title="Dessiner des lignes (chaîne d'arpenteur) ; les surfaces se font avec Remplir"><span data-i="trace"></span><small>Lignes</small></button>
+          <button type="button" data-m="remplir" title="Remplir : toucher une zone fermée par des lignes visibles pour en faire une surface"><span data-i="remplir"></span><small>Remplir</small></button>
           <button type="button" data-m="unir" title="Unir des surfaces"><span data-i="unir"></span><small>Unir</small></button>
           <button type="button" data-m="soustraire" title="Soustraire des surfaces à une surface de base"><span data-i="soustraire"></span><small>Soustraire</small></button>
           <button type="button" data-m="modifier" title="Modifier les points d'une ligne ou d'un contour"><span data-i="modifier"></span><small>Modifier</small></button></div>
@@ -226,7 +225,7 @@ const AMGT4CEM_LieuxTool = {
     L.DomEvent.disableClickPropagation(p);
     L.DomEvent.disableScrollPropagation(p);
     this._renderListe();
-    this._mode('objet');
+    this._mode('remplir');
   },
 
   /** Réduit la fenêtre à sa première ligne (liste des lieux, retour, redéployer) ; un second appui la redéploie. */
@@ -244,7 +243,7 @@ const AMGT4CEM_LieuxTool = {
     l.style.display = v === 0 ? 'none' : '';
   },
 
-  /** Outil actif : 'objet' | 'trace' | 'remplir' | 'unir' | 'soustraire' | 'modifier' (un seul à la fois). */
+  /** Outil actif : 'trace' (lignes) | 'remplir' | 'unir' | 'soustraire' | 'modifier' (un seul à la fois). */
   _mode(m) {
     const tr = (x) => x === 'trace' || x === 'modifier'; // outils qui utilisent le viseur
     if (this._trace && m !== this._modeActif) this._traceTerminer(); // changer d'outil valide le tracé en cours
@@ -258,11 +257,10 @@ const AMGT4CEM_LieuxTool = {
     this._f('remplirbarre').classList.toggle('amgt-hidden', m !== 'remplir');
     this._f('opsbarre').classList.toggle('amgt-hidden', m !== 'unir' && m !== 'soustraire');
     const aide = {
-      objet: 'Sélection : toucher un objet visible (UrbIS, autre lieu, patrimoine) pour l\'ajouter ; le toucher à nouveau pour le retirer.',
-      trace: 'Glisser : le viseur pose un point au relâcher. Toucher le premier point ferme la surface ; toucher le dernier point (ou changer d\'outil) termine la ligne.',
-      remplir: 'Remplir : toucher une zone fermée (lignes de la liste, objets UrbIS visibles) pour en faire une surface.',
-      unir: 'Unir : toucher les surfaces à fusionner (carte ou liste), puis Appliquer.',
-      soustraire: 'Soustraire : toucher la surface de base, puis celles à retrancher, puis Appliquer.',
+      trace: 'Lignes : glisser, le viseur pose un point au relâcher. Toucher le dernier point (ou changer d\'outil) termine la ligne ; toucher le premier point la ferme. Une ligne reste une ligne : les surfaces se font avec Remplir.',
+      remplir: 'Remplir : toucher une zone fermée par des lignes visibles (UrbIS, autres lieux, tes lignes) pour en faire une surface.',
+      unir: 'Unir : toucher les surfaces à fusionner (les toucher à nouveau pour les désélectionner), puis Appliquer.',
+      soustraire: 'Soustraire : toucher la surface de base, puis celles à retrancher (les toucher à nouveau pour désélectionner), puis Appliquer.',
       modifier: 'Modifier : toucher une ligne ou un contour de la liste, puis déplacer ses points (poignées), ajouter (« + ») ou retirer (🗑 Point). ✓ Terminer ou autre outil pour finir.',
     };
     this._etat(aide[m] || '');
@@ -473,12 +471,6 @@ const AMGT4CEM_LieuxTool = {
       const ll = ligne.map((q) => AMGT4CEM_CRS.lambertToLatLng(q));
       const st = { pane: 'amgtLieuxPane', ...this._style(sel, { ...c, layers: [] }) };
       const pl = this._estSurface(c) && o.lignes.length === 1 ? L.polygon(ll, st) : L.polyline(ll, st);
-      pl.on('click', (e) => {
-        if (this._modeActif !== 'objet') return; // dans les autres outils, le clic poursuit vers la carte (sommet, remplissage, opérande…)
-        L.DomEvent.stopPropagation(e);
-        this._snap();
-        this._set(c, !c.sel);
-      });
       this._group.addLayer(pl);
       c.layers.push(pl);
     }
@@ -578,52 +570,8 @@ const AMGT4CEM_LieuxTool = {
     return AMGT4CEM_PatrimoineLayer.geometriesAffichees().map((g) => ({ kind: 'patri', nom: g.nom, id: g.id, polys: g.polygones, lignes: g.lignes }));
   },
 
-  /** Mode « Sélection » : l'objet visible le plus proche du point touché (dans ~16 px) est ajouté / retiré : liste, UrbIS Topo, autres lieux, couche patrimoine. */
-  async _pick(latlng) {
-    const pt = this._map.latLngToContainerPoint(latlng);
-    const a = AMGT4CEM_CRS.latLngToLambert(latlng);
-    const b = AMGT4CEM_CRS.latLngToLambert(this._map.containerPointToLatLng(L.point(pt.x + 16, pt.y)));
-    const tol = Math.max(0.3, Math.hypot(b.x - a.x, b.y - a.y));
-    // Objet déjà dans la liste : on le bascule sans interroger UrbIS.
-    let proche = null; let dmin = tol;
-    for (const c of this._cands.values()) for (const l of c.lignes) { const d = this._distLigne(a, l); if (d < dmin) { dmin = d; proche = c; } }
-    if (proche) { this._snap(); this._set(proche, !proche.sel); return; }
-    this._etat('Recherche de l\'objet touché…');
-    const dedans = (ring) => { let ok = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i]; const [xj, yj] = ring[j]; if ((yi > a.y) !== (yj > a.y) && a.x < ((xj - xi) * (a.y - yi)) / (yj - yi) + xi) ok = !ok; } return ok; };
-    // Score : distance à la ligne la plus proche si elle est dans la tolérance, sinon tol pour une surface qui contient le point.
-    const score = (src) => {
-      let d = Infinity;
-      for (const l of src.lignes) d = Math.min(d, this._distLigne(a, l));
-      if (d <= tol) return d;
-      return (src.polys || []).some((poly) => dedans(poly[0]) && !poly.slice(1).some(dedans)) ? tol : Infinity;
-    };
-    const sources = [...this._refsLieux(), ...this._refsPatrimoine()];
-    const { objets, notes } = await this._wfs(a.x - tol, a.y - tol, a.x + tol, a.y + tol);
-    for (const o of objets || []) sources.push({ kind: 'urbis', o, lignes: o.lignes, polys: [] });
-    let meilleur = null; let smin = Infinity;
-    for (const src of sources) { const sc = score(src); if (sc < smin) { smin = sc; meilleur = src; } }
-    if (!meilleur || smin === Infinity) return this._etat(objets ? `Aucun objet visible à cet endroit (${notes.join(' ; ')}).` : "Rien à cet endroit : afficher un type UrbIS Topo (☰ Carte > UrbIS Topo), un autre lieu ou une couche patrimoine.", true);
-    this._snap();
-    if (meilleur.kind === 'urbis') {
-      this._addCand(meilleur.o, true);
-      this._renderListe();
-      return this._etat(`Ajouté : ${meilleur.o.type} #${meilleur.o.id}.`);
-    }
-    const nom = meilleur.nom || 'objet';
-    if (meilleur.polys && meilleur.polys.length) {
-      const n = this._ajouterMulti(meilleur.polys, `Surface (copie : ${nom})`);
-      this._renderListe();
-      return this._etat(`Surface copiée depuis « ${nom} » (${n}) : elle est modifiable sans toucher à l'original.`);
-    }
-    if (meilleur.kind === 'lieu') for (const o of meilleur.objets) this._addCand({ id: `${meilleur.slug}:${o.id}`, couche: o.couche, code: o.code, type: o.type, lignes: o.lignes }, true);
-    else this._addCand({ id: `${meilleur.id}`, couche: 'Trace', code: 'TRACE', type: `Patrimoine : ${nom}`, lignes: meilleur.lignes }, true);
-    this._renderListe();
-    this._etat(`Ajouté depuis « ${nom} ».`);
-  },
-
   _surClic(e) {
-    if (this._modeActif === 'objet') this._pick(e.latlng);
-    else if (this._modeActif === 'remplir') this._remplirClic(e.latlng);
+    if (this._modeActif === 'remplir') this._remplirClic(e.latlng);
     else if (this._modeActif === 'unir' || this._modeActif === 'soustraire') this._opsClic(e.latlng);
     else if (this._modeActif === 'modifier') this._modifierClic(e.latlng);
   },
@@ -1070,30 +1018,16 @@ const AMGT4CEM_LieuxTool = {
    * Termine le tracé : une ligne fermée devient une surface, une ligne ouverte un tracé de la liste. `fermer` ferme d'abord
    * la ligne (toucher le premier point). Moins de 2 points : le tracé est simplement abandonné.
    */
-  /**
-   * Après la pose d'un point : s'il retombe sur le premier point, la surface est créée ; s'il touche une autre ligne (ou la
-   * chaîne elle-même) et que la chaîne ferme ainsi une zone, la ligne est terminée et la surface créée.
-   */
+  /** Après la pose d'un point : s'il retombe sur le premier point, la ligne est fermée et terminée (elle reste une ligne). */
   _fermetureAuto() {
     const t = this._trace;
-    if (!t || t.pts.length < 3) return;
+    if (!t || t.pts.length < 4) return;
     const n = t.pts.length;
     const px = (q) => this._map.latLngToContainerPoint(q);
-    if (n >= 4 && px(t.pts[n - 1]).distanceTo(px(t.pts[0])) <= 12) { t.pts.pop(); return this._traceTerminer(true); }
-    const lam = this._traceLam();
-    const e = lam[n - 1];
-    const a = AMGT4CEM_CRS.latLngToLambert(t.pts[n - 1]);
-    const b = AMGT4CEM_CRS.latLngToLambert(this._map.containerPointToLatLng(L.point(px(t.pts[n - 1]).x + 12, px(t.pts[n - 1]).y)));
-    const tol = Math.max(0.2, Math.hypot(b.x - a.x, b.y - a.y));
-    const murs = this._murs(e[0], e[1], e[0], e[1], null);
-    for (let k = 0; k < n - 2; k++) murs.push([lam[k], lam[k + 1]]); // la chaîne elle-même (sans son dernier segment)
-    if (!murs.some((l) => this._distLigne({ x: e[0], y: e[1] }, l) <= tol)) return;
-    let zones = [];
-    try { zones = this._zonesFermeesPar([lam], null); } catch (err) { zones = []; }
-    if (zones.length) this._traceTerminer(false, zones);
+    if (px(t.pts[n - 1]).distanceTo(px(t.pts[0])) <= 12) { t.pts.pop(); this._traceTerminer(true); }
   },
 
-  _traceTerminer(fermer, zonesPre) {
+  _traceTerminer(fermer) {
     const t = this._trace;
     if (!t) return;
     if (t.pts.length < 2) return this._traceAbandon();
@@ -1102,15 +1036,12 @@ const AMGT4CEM_LieuxTool = {
     if (t.ferme) lam.push(lam[0]);
     const id = t.editId || `T${Date.now().toString(36)}`;
     const ferme = t.ferme;
+    const tTrace = t;
     this._traceAbandon();
     this._snap();
-    this._addCand({ id, couche: 'Trace', code: 'TRACE', type: ferme ? this.TYPE_SURF : 'Tracé (ligne)', lignes: [lam] }, true);
-    // Une ligne ouverte qui ferme une zone avec d'autres lignes (liste, UrbIS visible) forme aussitôt la surface.
-    let zones = [];
-    if (!ferme) { if (zonesPre) zones = zonesPre; else { try { zones = this._zonesFermeesPar([lam], `Trace:${id}`); } catch (err) { zones = []; } } }
-    if (zones.length) this._ajouterMulti(zones.map((rg) => [rg]));
+    this._addCand({ id, couche: 'Trace', code: 'TRACE', type: tTrace.type || this.TYPE_LIGNE, lignes: [lam] }, true);
     this._renderListe();
-    this._etat(ferme ? 'Surface créée.' : zones.length ? `Zone fermée : ${zones.length} surface(s) créée(s).` : 'Ligne ajoutée à la liste.');
+    this._etat(tTrace.type === this.TYPE_SURF ? 'Surface modifiée.' : ferme ? 'Ligne fermée ajoutée. Remplir en fait une surface.' : 'Ligne ajoutée à la liste.');
   },
 
   /**
@@ -1131,7 +1062,7 @@ const AMGT4CEM_LieuxTool = {
       id: `${base}${c.lignes.length > 1 ? `-${i + 1}` : ''}`,
       couche: 'Trace',
       code: 'TRACE',
-      type: fermee(ligne) ? this.TYPE_SURF : 'Tracé (ligne)',
+      type: this.TYPE_LIGNE,
       lignes: [ligne.map((q) => [q[0], q[1]])],
     }));
     for (const o of nouveaux) this._addCand(o, c.sel);
@@ -1149,7 +1080,7 @@ const AMGT4CEM_LieuxTool = {
     const ring = c.lignes[0];
     const ferme = ring.length >= 4 && ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1];
     const pts = (ferme ? ring.slice(0, -1) : ring).map((q) => AMGT4CEM_CRS.lambertToLatLng(q));
-    this._trace = { pts, ferme, hist: [], phase: 'edition', sel: null, editId: c.id, group: L.layerGroup().addTo(this._map), sommets: L.layerGroup().addTo(this._map) };
+    this._trace = { pts, ferme, hist: [], phase: 'edition', sel: null, editId: c.id, type: c.type, group: L.layerGroup().addTo(this._map), sommets: L.layerGroup().addTo(this._map) };
     this._renderListe();
     this._traceDessin();
     this._syncDrag();
@@ -1171,12 +1102,13 @@ const AMGT4CEM_LieuxTool = {
   // ------------------------------------------------------------------ contour
   // ---------------------------------------------------------------- surfaces
   TYPE_SURF: 'Surface',
+  TYPE_LIGNE: 'Tracé (ligne)', // lignes dessinées : jamais des surfaces (Remplir)
   TYPE_POLY: 'Polygone du lieu', // ancien nom des surfaces générées (lieux déjà enregistrés)
   TYPE_VIDE: 'Vide du lieu', // trou retranché des surfaces
 
   _fermee(l) { return !!l && l.length >= 4 && l[0][0] === l[l.length - 1][0] && l[0][1] === l[l.length - 1][1]; },
   /** Une surface = un tracé fermé (dessiné, rempli, uni, soustrait). Un vide est une surface retranchée. */
-  _estSurface(c) { return c.couche === 'Trace' && c.type !== this.TYPE_VIDE && this._fermee(c.lignes[0]); },
+  _estSurface(c) { return c.couche === 'Trace' && c.type !== this.TYPE_LIGNE && c.type !== this.TYPE_VIDE && this._fermee(c.lignes[0]); },
   _err(t) { this._etat(t, true); return null; },
   _pc() { return typeof polygonClipping !== 'undefined' ? polygonClipping : null; },
   _arrondi(rg) { return rg.map((q) => [Math.round(q[0] * 100) / 100, Math.round(q[1] * 100) / 100]); },
@@ -1328,7 +1260,7 @@ const AMGT4CEM_LieuxTool = {
   /** Lignes qui bornent les zones : objets de la liste (hors surfaces et vides) et objets UrbIS visibles, proches de la fenêtre [x0..x1] × [y0..y1] (+ R m). */
   _murs(x0, y0, x1, y1, sauf) {
     const R = 120;
-    const murs = [...(this._aimantLignes || [])];
+    const murs = [...(this._aimantLignes || []), ...this._refsLieux().flatMap((r) => r.lignes), ...this._refsPatrimoine().flatMap((r) => r.lignes)];
     for (const c of this._cands.values()) if (c.key !== sauf && !this._estSurface(c) && c.type !== this.TYPE_VIDE) murs.push(...c.lignes);
     return murs.filter((l) => l.some((q) => q[0] > x0 - R && q[0] < x1 + R && q[1] > y0 - R && q[1] < y1 + R));
   },
@@ -1342,27 +1274,6 @@ const AMGT4CEM_LieuxTool = {
     const faces = this._faces(murs, marge).filter((f) => this._dansAnneau(f.ring, p.x, p.y)).sort((a, b) => a.aire - b.aire);
     if (!faces.length) return this._err('Zone non fermée : augmenter « Comblement » ou ajouter une ligne qui ferme la surface.');
     return [this._arrondi(faces[0].ring)];
-  },
-
-  /** Zones que la ligne `nouvelle` vient de fermer : faces avec la ligne qui n'existaient pas sans elle, et pas déjà couvertes par une surface. */
-  _zonesFermeesPar(nouvelle, cleNouvelle) {
-    const marge = Math.max(0, Number(this._f('marge').value) || 0);
-    let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity;
-    for (const l of nouvelle) for (const q of l) { x0 = Math.min(x0, q[0]); y0 = Math.min(y0, q[1]); x1 = Math.max(x1, q[0]); y1 = Math.max(y1, q[1]); }
-    const murs = this._murs(x0, y0, x1, y1, cleNouvelle);
-    const sans = this._faces(murs, marge);
-    const avec = this._faces([...murs, ...nouvelle], marge);
-    const bb = (ring) => ring.reduce((a, q) => [Math.min(a[0], q[0]), Math.min(a[1], q[1]), Math.max(a[2], q[0]), Math.max(a[3], q[1])], [1e12, 1e12, -1e12, -1e12]);
-    const memes = (f, g) => Math.abs(f.aire - g.aire) < 0.05 && bb(f.ring).every((v, i) => Math.abs(v - bb(g.ring)[i]) < 0.05);
-    const surfaces = [...this._cands.values()].filter((c) => this._estSurface(c)).map((c) => c.lignes[0]);
-    const out = [];
-    for (const f of avec) {
-      if (f.aire < 1 || sans.some((g) => memes(f, g))) continue;
-      const [px, py] = this._pointInterieur(f.ring);
-      if (surfaces.some((rg) => this._dansAnneau(rg, px, py))) continue;
-      out.push(this._arrondi(f.ring));
-    }
-    return out;
   },
 
   /** Enveloppe des objets cochés (hors surfaces et vides) : ouvertures plus étroites que « Comblement » comblées. */
