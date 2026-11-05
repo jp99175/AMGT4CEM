@@ -270,7 +270,7 @@ const AMGT4CEM_LieuxTool = {
     this._traceInfo();
     this._opsMaj();
     this._apercu();
-    if (m === 'trace' || m === 'remplir' || m === 'modifier') this._chargerAimant();
+    if (m === 'trace' || m === 'modifier') this._chargerAimant(); // (Remplir charge ses propres murs autour du point touché)
   },
 
   _f(n) { return this._panel.querySelector(`[data-f="${n}"]`); },
@@ -488,7 +488,7 @@ const AMGT4CEM_LieuxTool = {
    * Interroge UrbIS Topo (types actuellement affichés seulement) dans une emprise Lambert.
    * @returns {Promise<{objets: object[]|null, notes: string[]}>} objets null si aucun type linéaire n'est affiché
    */
-  async _wfs(x0, y0, x1, y1) {
+  async _wfs(x0, y0, x1, y1, signal) {
     const { wfsUrl, version, typeAttribute } = AMGT4CEM_CONFIG.urbisTopo;
     const selection = AMGT4CEM_UrbisTopoSelectionStore.getSelection();
     const cat = {};
@@ -499,29 +499,41 @@ const AMGT4CEM_LieuxTool = {
       if (g === 'ligne') parCouche.TopoLines.push(code);
       else if (g === 'polygone') parCouche.TopoShapes.push(code);
     }
-    if (!parCouche.TopoLines.length && !parCouche.TopoShapes.length) return { objets: null, notes: [] };
-    const notes = [];
-    const objets = [];
-    for (const ft of ['TopoLines', 'TopoShapes']) {
-      if (!parCouche[ft].length) continue;
+    if (!parCouche.TopoLines.length && !parCouche.TopoShapes.length) return { objets: null, notes: [], tronque: false };
+    const MAX = 400;
+    // Lignes et surfaces demandées en même temps ; une requête qui ne répond pas en 30 s est abandonnée (message clair).
+    const lire = async (ft) => {
+      const ctl = new AbortController();
+      let delai = false;
+      const timer = setTimeout(() => { delai = true; ctl.abort(); }, 30000);
+      if (signal) signal.addEventListener('abort', () => ctl.abort());
       try {
         const codes = parCouche[ft].map((c) => `'${c}'`).join(',');
-        const params = new URLSearchParams({ service: 'WFS', version, request: 'GetFeature', typeNames: `urbistopo:${ft}`, outputFormat: 'application/json', count: '400', CQL_FILTER: `${typeAttribute} IN (${codes}) AND BBOX(geom,${x0},${y0},${x1},${y1})` });
-        const r = await fetch(`${wfsUrl}?${params.toString()}`);
+        const params = new URLSearchParams({ service: 'WFS', version, request: 'GetFeature', typeNames: `urbistopo:${ft}`, outputFormat: 'application/json', count: String(MAX + 1), CQL_FILTER: `${typeAttribute} IN (${codes}) AND BBOX(geom,${x0},${y0},${x1},${y1})` });
+        const r = await fetch(`${wfsUrl}?${params.toString()}`, { signal: ctl.signal });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const feats = (await r.json()).features || [];
-        notes.push(`${ft} : ${feats.length}`);
-        for (const f of feats) {
-          const lignes = this._lignes(f.geometry);
-          if (!lignes.length) continue;
-          const code = (f.properties || {})[typeAttribute];
-          objets.push({ id: (f.properties || {}).ID, couche: ft, code, type: `${(cat[code] && cat[code].label) || (f.properties || {}).DESCRFRE || code} (${code})`, lignes });
-        }
+        return { ft, feats: feats.slice(0, MAX), tronque: feats.length > MAX };
       } catch (err) {
-        notes.push(`${ft} : erreur ${err.message}`);
+        return { ft, erreur: delai ? 'le service UrbIS ne répond pas (30 s)' : (ctl.signal.aborted ? 'annulé' : err.message) };
+      } finally { clearTimeout(timer); }
+    };
+    const resultats = await Promise.all(['TopoLines', 'TopoShapes'].filter((ft) => parCouche[ft].length).map(lire));
+    const notes = [];
+    const objets = [];
+    let tronque = false;
+    for (const res of resultats) {
+      if (res.erreur) { notes.push(`${res.ft} : erreur ${res.erreur}`); continue; }
+      notes.push(`${res.ft} : ${res.feats.length}`);
+      if (res.tronque) tronque = true;
+      for (const f of res.feats) {
+        const lignes = this._lignes(f.geometry);
+        if (!lignes.length) continue;
+        const code = (f.properties || {})[typeAttribute];
+        objets.push({ id: (f.properties || {}).ID, couche: res.ft, code, type: `${(cat[code] && cat[code].label) || (f.properties || {}).DESCRFRE || code} (${code})`, lignes });
       }
     }
-    return { objets, notes };
+    return { objets, notes, tronque };
   },
 
   /** Distance (m) d'un point à une ligne brisée, en Lambert. */
@@ -791,7 +803,7 @@ const AMGT4CEM_LieuxTool = {
 
   /** Objets UrbIS visibles autour de la vue, chargés une fois par vue : leurs sommets servent à l'aimant. */
   async _chargerAimant() {
-    if (!this._active || (this._modeActif !== 'trace' && this._modeActif !== 'remplir' && this._modeActif !== 'modifier')) return;
+    if (!this._active || (this._modeActif !== 'trace' && this._modeActif !== 'modifier')) return;
     const bnds = this._map.getBounds().pad(0.2);
     const sw = AMGT4CEM_CRS.latLngToLambert(bnds.getSouthWest());
     const ne = AMGT4CEM_CRS.latLngToLambert(bnds.getNorthEast());
@@ -1268,9 +1280,19 @@ const AMGT4CEM_LieuxTool = {
     const p = AMGT4CEM_CRS.latLngToLambert(latlng);
     // Les objets UrbIS sont chargés autour du point touché (±200 m), pas sur toute la vue : sur un grand écran (PC) ou en dézoomant,
     // la vue dépasse la limite du chargement de l'aimant (600 m) et Remplir ne verrait plus aucun mur UrbIS.
+    // La zone chargée est gardée : les touchers suivants dans cette zone (à plus de 60 m du bord) n'attendent plus le service.
     const D = 200;
-    const { objets } = await this._wfs(p.x - D, p.y - D, p.x + D, p.y + D);
-    if (!this._active || this._modeActif !== 'remplir') return null;
+    const sig = JSON.stringify(AMGT4CEM_UrbisTopoSelectionStore.getSelection());
+    let z = this._zoneUrbis;
+    if (!(z && z.sig === sig && p.x > z.x0 + 60 && p.x < z.x1 - 60 && p.y > z.y0 + 60 && p.y < z.y1 - 60)) {
+      const res = await this._wfs(p.x - D, p.y - D, p.x + D, p.y + D, this._remplirCtl && this._remplirCtl.signal);
+      if (!this._active || this._modeActif !== 'remplir' || (this._remplirCtl && this._remplirCtl.signal.aborted)) return null; // outil changé ou recherche remplacée
+      if (res.notes.some((n) => n.includes('erreur'))) { this._zoneUrbis = null; return this._err(`UrbIS Topo indisponible (${res.notes.filter((n) => n.includes('erreur')).join(' ; ')}). Réessayer, ou dessiner des lignes.`); }
+      z = this._zoneUrbis = res.objets === null ? null : { sig, x0: p.x - D, y0: p.y - D, x1: p.x + D, y1: p.y + D, objets: res.objets, tronque: res.tronque };
+      if (!z) z = { objets: null, tronque: false };
+    }
+    const objets = z.objets;
+    this._noteRemplir = z.tronque ? ' Plafond d\'objets UrbIS atteint autour du point : des murs ont pu manquer, vérifier la surface.' : '';
     const urbis = objets ? objets.flatMap((o) => o.lignes) : null;
     const murs = this._murs(p.x, p.y, p.x, p.y, null, urbis || []);
     if (!murs.length) return this._err(objets === null ? 'Aucun objet UrbIS affiché : choisir des types dans UrbIS Topo, ou dessiner des lignes.' : 'Aucune ligne autour du point touché : afficher des objets UrbIS ou dessiner des lignes.');
@@ -1283,16 +1305,19 @@ const AMGT4CEM_LieuxTool = {
 
   /** Remplir : toucher une zone fermée (lignes de la liste et objets UrbIS visibles) pour en faire une surface. */
   async _remplirClic(latlng) {
-    if (this._remplirEnCours) return; // un seul calcul à la fois (le chargement UrbIS prend un instant)
-    this._remplirEnCours = true;
-    this._etat('Recherche de la zone…');
+    if (this._remplirCtl) this._remplirCtl.abort(); // un nouveau toucher remplace la recherche en cours
+    const ctl = (this._remplirCtl = new AbortController());
+    const t0 = Date.now();
+    const message = () => this._etat(`Recherche de la zone… ${Math.round((Date.now() - t0) / 1000)} s (chargement UrbIS)`);
+    message();
+    const tic = setInterval(message, 1000);
     let anneaux = null;
-    try { anneaux = await this._zoneFermee(latlng); } finally { this._remplirEnCours = false; }
-    if (!anneaux || !this._active) return;
+    try { anneaux = await this._zoneFermee(latlng); } finally { clearInterval(tic); if (this._remplirCtl === ctl) this._remplirCtl = null; }
+    if (ctl.signal.aborted || !anneaux || !this._active) return;
     this._snap();
     this._ajouterMulti(anneaux.map((rg) => [rg]));
     this._renderListe();
-    this._etat(`Surface ajoutée (${anneaux.length}). ↶ pour l'annuler ; Unir / Soustraire pour la combiner.`);
+    this._etat(`Surface ajoutée (${anneaux.length}). ↶ pour l'annuler ; Unir / Soustraire pour la combiner.${this._noteRemplir || ''}`, !!this._noteRemplir);
   },
 
   // ----- Unir / Soustraire : opérandes touchés sur la carte ou dans la liste
