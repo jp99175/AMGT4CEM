@@ -20,6 +20,7 @@
  * Une ligne peut aussi ouvrir un SOUS-ÉCRAN (bouton « ‹ Réglages » pour revenir) :
  *   { texte, aide?, ecran: { id, titre, persistant?, monter: (conteneur) => void | Promise } }
  * `persistant` : le conteneur est gardé d'une ouverture à l'autre (utile pour une page qui s'attache à un élément une fois).
+ * `pastille: 'Plans'` affiche le droit requis à côté du nom ; `desactive: 'raison'` grise la ligne (sans action).
  * Une ligne peut enfin porter un champ de réglage de l'appareil : { texte, aide?, champ: { unite, min, max, valeur(), enregistrer(n) } }.
  *
  * Étape 1 (27/10/2026) : « Mon appareil » (compte, version).
@@ -206,12 +207,20 @@ function ligneChamp(l) {
 }
 
 function corpsLigne(l) {
-  return h('span', { class: 'rgl-row__body' }, h('span', { class: 'rgl-row__text', text: l.texte }), l.aide ? h('span', { class: 'rgl-row__aide', text: l.aide }) : null);
+  // `pastille` : droit requis, affiché à côté du nom (même teinte que les droits de la page Utilisateurs).
+  const nom = l.pastille
+    ? h('span', { class: 'rgl-row__text rgl-row__text--pastille' }, h('span', { text: l.texte }), h('span', { class: 'rgl-pastille', text: l.pastille }))
+    : h('span', { class: 'rgl-row__text', text: l.texte });
+  return h('span', { class: 'rgl-row__body' }, nom, l.aide ? h('span', { class: 'rgl-row__aide', text: l.aide }) : null);
 }
 
 function ligne(l) {
   if (l.champ) return ligneChamp(l);
   const corps = corpsLigne(l);
+  if (l.desactive) {
+    // Partie du menu réservée à un droit que le compte n'a pas : grisée, sans action.
+    return h('div', { class: 'rgl-row rgl-row--off', 'aria-disabled': 'true', title: l.desactive }, corps, h('span', { class: 'rgl-row__chevron', 'aria-hidden': 'true', text: '›' }));
+  }
   if (l.href || l.onClick || l.ecran) {
     const el = h(l.href ? 'a' : 'button', l.href ? { class: 'rgl-row rgl-row--action', href: l.href } : { class: 'rgl-row rgl-row--action', type: 'button' },
       corps, h('span', { class: 'rgl-row__chevron', 'aria-hidden': 'true', text: '›' }));

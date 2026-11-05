@@ -150,6 +150,7 @@ const AMGT4CEM_CONFIG = {
         './config/urbis-topo/catalogue.js',
         './config/plans-patrimoine/catalogue.js',
         './src/admin.js',
+        './src/plansPrefs.js',
         './src/services.js',
         './src/layerOpacityStore.js',
         './src/crs.js',
@@ -300,7 +301,7 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       template: 'amgt-tpl-reglages',
       nav: true,
       styles: ['./src/auth/auth.css', ...NAV_STYLES, './src/reglages/reglages.css'],
-      scripts: ['./src/buildInfo.js', './src/services.js', './src/peLabelAnchors.js', './src/auth/auth.js', './src/auth/authUi.js', ...NAV_SCRIPTS, './src/reglages/reglages.js', './src/reglages/serveur.js'],
+      scripts: ['./src/buildInfo.js', './src/services.js', './src/peLabelAnchors.js', './src/auth/auth.js', './src/auth/authUi.js', './src/plansPrefs.js', ...NAV_SCRIPTS, './src/reglages/reglages.js', './src/reglages/serveur.js'],
     },
   };
 })(AMGT4CEM_CONFIG.apps);

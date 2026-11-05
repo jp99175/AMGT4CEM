@@ -98,16 +98,41 @@ async function monter(conteneur) {
     h('div', { class: 'rgl-actions' }, tester, enregistrer));
 }
 
+/** Écran « Adaptations de plans » : outils de la page carte réservés au droit « plans » (paramètres locaux, src/plansPrefs.js). */
+function monterPlans(conteneur) {
+  conteneur.textContent = '';
+  const P = AMGT4CEM_PlansPrefs;
+  const case_ = h('input', { type: 'checkbox', class: 'rgl-check' });
+  case_.checked = P.lieuxActif();
+  case_.addEventListener('change', () => P.fixerLieuxActif(case_.checked));
+  conteneur.append(
+    h('p', { class: 'rgl-note', text: 'Outils d\'adaptation de la carte, réservés au droit « plans ». Ces réglages sont propres à cet appareil et à votre compte : ils ne changent rien pour les autres agents.' }),
+    h('section', { class: 'rgl-bloc rgl-bloc--formulaire' },
+      h('label', { class: 'rgl-row' },
+        h('span', { class: 'rgl-row__body' },
+          h('span', { class: 'rgl-row__text', text: 'Outil « Constituer un lieu »' }),
+          h('span', { class: 'rgl-row__aide', text: 'Affiche le bouton de création de lieux sur la page Carte (sous le bouton de forage).' })),
+        case_)));
+}
+
 Reglages.register({
   id: 'services',
   ordre: 90,
   titre: 'Avancé',
-  droit: 'utilisateurs',
-  lignes: () => [
-    {
+  droit: null, // chaque ligne porte son propre droit
+  lignes: (s) => [
+    // Services et relais : droit « utilisateurs » (la ligne n'apparaît pas sans lui).
+    ...(AMGT4CEM_Auth.aDroit('utilisateurs', s) ? [{
       texte: 'Services et relais',
       aide: 'Adresses des services externes (UrbIS, orthophotos, géocodeur) et du relais d\'enregistrement.',
       ecran: { id: 'services', titre: 'Services et relais', monter },
+    }] : []),
+    // Adaptations de plans : droit « plans » ; grisée sans lui.
+    {
+      texte: 'Adaptations de plans',
+      pastille: 'Plans',
+      aide: 'Outils d\'adaptation de la carte (constitution de lieux).',
+      ...(AMGT4CEM_Auth.aDroit('plans', s) ? { ecran: { id: 'plans', titre: 'Adaptations de plans', monter: monterPlans } } : { desactive: 'Réservé aux comptes disposant du droit « plans ».' }),
     },
   ],
 });

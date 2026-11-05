@@ -33,7 +33,7 @@ const AMGT4CEM_LieuxTool = {
 
   async toggle() {
     if (this._active) return this._demanderFermeture();
-    if (!(await AMGT4CEM_Admin.requestAccess())) return;
+    if (!AMGT4CEM_PlansPrefs.outilLieuxDisponible()) return; // droit « plans » + case cochée dans les Réglages
     this._active = true;
     this._btn.classList.add('amgt-btn--active');
     this._group.addTo(this._map);
