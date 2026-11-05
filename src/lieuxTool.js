@@ -1258,19 +1258,25 @@ const AMGT4CEM_LieuxTool = {
   },
 
   /** Lignes qui bornent les zones : objets de la liste (hors surfaces et vides) et objets UrbIS visibles, proches de la fenêtre [x0..x1] × [y0..y1] (+ R m). */
-  _murs(x0, y0, x1, y1, sauf) {
+  _murs(x0, y0, x1, y1, sauf, urbis) {
     const R = 120;
-    const murs = [...(this._aimantLignes || []), ...this._refsLieux().flatMap((r) => r.lignes), ...this._refsPatrimoine().flatMap((r) => r.lignes)];
+    const murs = [...(urbis || this._aimantLignes || []), ...this._refsLieux().flatMap((r) => r.lignes), ...this._refsPatrimoine().flatMap((r) => r.lignes)];
     for (const c of this._cands.values()) if (c.key !== sauf && !this._estSurface(c) && c.type !== this.TYPE_VIDE) murs.push(...c.lignes);
     return murs.filter((l) => l.some((q) => q[0] > x0 - R && q[0] < x1 + R && q[1] > y0 - R && q[1] < y1 + R));
   },
 
   /** Remplir : la face (zone fermée) qui contient le point touché ; ses limites suivent exactement les lignes visibles. */
-  _zoneFermee(latlng) {
+  async _zoneFermee(latlng) {
     const p = AMGT4CEM_CRS.latLngToLambert(latlng);
     const marge = Math.max(0, Number(this._f('marge').value) || 0);
-    const murs = this._murs(p.x, p.y, p.x, p.y, null);
-    if (!murs.length) return this._err('Aucune ligne autour : afficher des objets UrbIS ou les cocher dans la liste.');
+    // Les objets UrbIS sont chargés autour du point touché (±200 m), pas sur toute la vue : sur un grand écran (PC) ou en dézoomant,
+    // la vue dépasse la limite du chargement de l'aimant (600 m) et Remplir ne verrait plus aucun mur UrbIS.
+    const D = 200;
+    const { objets } = await this._wfs(p.x - D, p.y - D, p.x + D, p.y + D);
+    if (!this._active || this._modeActif !== 'remplir') return null;
+    const urbis = objets ? objets.flatMap((o) => o.lignes) : null;
+    const murs = this._murs(p.x, p.y, p.x, p.y, null, urbis || []);
+    if (!murs.length) return this._err(objets === null ? 'Aucun objet UrbIS affiché : choisir des types dans UrbIS Topo, ou dessiner des lignes.' : 'Aucune ligne autour du point touché : afficher des objets UrbIS ou dessiner des lignes.');
     const faces = this._faces(murs, marge).filter((f) => this._dansAnneau(f.ring, p.x, p.y)).sort((a, b) => a.aire - b.aire);
     if (!faces.length) return this._err('Zone non fermée : augmenter « Comblement » ou ajouter une ligne qui ferme la surface.');
     return [this._arrondi(faces[0].ring)];
@@ -1293,9 +1299,13 @@ const AMGT4CEM_LieuxTool = {
   },
 
   /** Remplir : toucher une zone fermée (lignes de la liste et objets UrbIS visibles) pour en faire une surface. */
-  _remplirClic(latlng) {
-    const anneaux = this._zoneFermee(latlng);
-    if (!anneaux) return;
+  async _remplirClic(latlng) {
+    if (this._remplirEnCours) return; // un seul calcul à la fois (le chargement UrbIS prend un instant)
+    this._remplirEnCours = true;
+    this._etat('Recherche de la zone…');
+    let anneaux = null;
+    try { anneaux = await this._zoneFermee(latlng); } finally { this._remplirEnCours = false; }
+    if (!anneaux || !this._active) return;
     this._snap();
     this._ajouterMulti(anneaux.map((rg) => [rg]));
     this._renderListe();
