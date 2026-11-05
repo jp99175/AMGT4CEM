@@ -1139,20 +1139,38 @@ const AMGT4CEM_LieuxTool = {
     return n;
   },
 
+  /**
+   * Chaque vide appartient à la plus petite surface qui le contient. Forme effective d'une surface = elle moins ses vides
+   * (`gardeVide(v)` filtre les vides pris en compte). Retourne { geom, vides: [cands des vides utilisés] }.
+   */
+  _formeEffective(c, gardeVide) {
+    const pc = this._pc();
+    const aire = (r) => Math.abs(r.reduce((a, q, i) => { const n = r[(i + 1) % r.length]; return a + q[0] * n[1] - n[0] * q[1]; }, 0) / 2);
+    const surfaces = [...this._cands.values()].filter((x) => this._estSurface(x));
+    const vides = [];
+    for (const v of this._cands.values()) {
+      if (v.type !== this.TYPE_VIDE || !this._fermee(v.lignes[0]) || (gardeVide && !gardeVide(v))) continue;
+      const pt = this._pointInterieur(v.lignes[0]);
+      let best = null; let amin = Infinity;
+      for (const sf of surfaces) { if (!this._dansAnneau(sf.lignes[0], pt[0], pt[1])) continue; const a = aire(sf.lignes[0]); if (a < amin) { amin = a; best = sf; } }
+      if (best === c) vides.push(v);
+    }
+    const base = [c.lignes[0]];
+    return { geom: vides.length ? pc.difference(base, ...vides.map((v) => [v.lignes[0]])) : [base], vides };
+  },
+
   /** Contour enregistré : (union des surfaces cochées) − (union des vides cochés), en anneaux (extérieurs et trous, remplissage pair-impair). [] sans surface. */
   _contour() {
     const cochees = [...this._cands.values()].filter((c) => c.sel);
-    const surf = cochees.filter((c) => this._estSurface(c)).map((c) => [c.lignes[0]]);
+    const surf = cochees.filter((c) => this._estSurface(c));
     if (!surf.length) return [];
-    const vides = cochees.filter((c) => c.type === this.TYPE_VIDE && this._fermee(c.lignes[0])).map((c) => [c.lignes[0]]);
     const pc = this._pc();
-    if (!pc) return surf.map((x) => x[0]);
+    if (!pc) return surf.map((c) => c.lignes[0]);
     try {
-      let g = pc.union(...surf);
-      if (vides.length) g = pc.difference(g, pc.union(...vides));
+      const g = pc.union(...surf.map((c) => this._formeEffective(c, (v) => v.sel).geom));
       return g.flatMap((poly) => poly.map((rg) => this._arrondi(rg)));
     } catch (err) {
-      return surf.map((x) => x[0]);
+      return surf.map((c) => c.lignes[0]);
     }
   },
 
@@ -1229,7 +1247,7 @@ const AMGT4CEM_LieuxTool = {
     });
     for (const n of noeuds.values()) { n.nb.sort((m, o) => Math.atan2(m.y - n.y, m.x - n.x) - Math.atan2(o.y - n.y, o.x - n.x)); }
     // Faces : demi-arêtes parcourues avec la face à gauche ; aire > 0 = face bornée.
-    const faits = new Set(); const faces = [];
+    const faits = new Set(); const faces = []; const bords = []; // bords : contour extérieur de chaque ensemble de lignes connectées (îlots)
     for (const u0 of noeuds.values()) for (const v0 of u0.nb) {
       if (faits.has(`${u0.k}>${v0.k}`)) continue;
       const chemin = []; let u = u0; let v = v0; let garde = 0;
@@ -1244,8 +1262,12 @@ const AMGT4CEM_LieuxTool = {
       }
       if (chemin.length < 3) continue;
       const aire = chemin.reduce((acc, p, i) => { const q = chemin[(i + 1) % chemin.length]; return acc + p.x * q.y - q.x * p.y; }, 0) / 2;
-      if (aire > 1e-3) faces.push({ ring: [...chemin.map((p) => [p.x + ox, p.y + oy]), [chemin[0].x + ox, chemin[0].y + oy]], aire });
+      const ring = [...chemin.map((p) => [p.x + ox, p.y + oy]), [chemin[0].x + ox, chemin[0].y + oy]];
+      const cles = new Set(chemin.map((p) => p.k));
+      if (aire > 1e-3) faces.push({ ring, aire, cles });
+      else if (aire < -1e-3) bords.push({ ring, aire: -aire, cles });
     }
+    faces.bords = bords;
     return faces;
   },
 
@@ -1296,9 +1318,19 @@ const AMGT4CEM_LieuxTool = {
     const urbis = objets ? objets.flatMap((o) => o.lignes) : null;
     const murs = this._murs(p.x, p.y, p.x, p.y, null, urbis || []);
     if (!murs.length) return this._err(objets === null ? 'Aucun objet UrbIS affiché : choisir des types dans UrbIS Topo, ou dessiner des lignes.' : 'Aucune ligne autour du point touché : afficher des objets UrbIS ou dessiner des lignes.');
-    const faces = this._faces(murs, this.COMBLEMENT_M).filter((f) => this._dansAnneau(f.ring, p.x, p.y)).sort((a, b) => a.aire - b.aire);
+    const toutes = this._faces(murs, this.COMBLEMENT_M);
+    const faces = toutes.filter((f) => this._dansAnneau(f.ring, p.x, p.y)).sort((a, b) => a.aire - b.aire);
+    faces.bords = toutes.bords;
     if (!faces.length) return this._err('Zone non fermée : ajouter une ligne qui ferme la surface.');
-    return [this._arrondi(faces[0].ring)];
+    // Îlots (bâtiment, cour... tracés par des lignes séparées de la zone) : ils restent vides. Un îlot = le contour extérieur d'un
+    // ensemble de lignes qui ne touche pas la zone et qui est dedans ; les îlots dans un îlot ne comptent pas (le vide les contient).
+    const f = faces[0];
+    const candidats = (faces.bords || [])
+      .filter((b) => ![...b.cles].some((k) => f.cles.has(k)) && b.ring.every((q) => this._dansAnneau(f.ring, q[0], q[1]))) // entièrement dans la zone, sans la toucher
+      .sort((a, c) => c.aire - a.aire);
+    const gardes = [];
+    for (const b of candidats) if (!gardes.some((g) => this._dansAnneau(g.ring, b.ring[0][0], b.ring[0][1]))) gardes.push(b);
+    return [[this._arrondi(f.ring), ...gardes.map((b) => this._arrondi(b.ring))]];
   },
 
 
@@ -1315,9 +1347,10 @@ const AMGT4CEM_LieuxTool = {
     try { anneaux = await this._zoneFermee(latlng); } finally { clearInterval(tic); if (this._remplirCtl === ctl) this._remplirCtl = null; }
     if (ctl.signal.aborted || !anneaux || !this._active) return;
     this._snap();
-    this._ajouterMulti(anneaux.map((rg) => [rg]));
+    this._ajouterMulti(anneaux);
+    const vides = anneaux.reduce((n, poly) => n + poly.length - 1, 0);
     this._renderListe();
-    this._etat(`Surface ajoutée (${anneaux.length}). ↶ pour l'annuler ; Unir / Soustraire pour la combiner.${this._noteRemplir || ''}`, !!this._noteRemplir);
+    this._etat(`Surface ajoutée${vides ? ` (${vides} vide${vides > 1 ? 's' : ''} laissé${vides > 1 ? 's' : ''})` : ''}. ↶ pour l'annuler ; Unir / Soustraire pour la combiner.${this._noteRemplir || ''}`, !!this._noteRemplir);
   },
 
   // ----- Unir / Soustraire : opérandes touchés sur la carte ou dans la liste
@@ -1382,13 +1415,16 @@ const AMGT4CEM_LieuxTool = {
     const pc = this._pc();
     if (!pc) return this._etat('Bibliothèque de géométrie absente : opération impossible.', true);
     const cands = ops.map((k) => this._cands.get(k));
-    let res;
+    let res; let videsUtilises = [];
     try {
-      res = sous ? pc.difference([cands[0].lignes[0]], ...cands.slice(1).map((c) => [c.lignes[0]])) : pc.union(...cands.map((c) => [c.lignes[0]]));
+      // Chaque surface compte avec ses vides : ceux qu'aucune autre surface ne recouvre restent vides dans le résultat.
+      const formes = cands.map((c) => this._formeEffective(c));
+      videsUtilises = formes.flatMap((f) => f.vides);
+      res = sous ? pc.difference(formes[0].geom, ...formes.slice(1).map((f) => f.geom)) : pc.union(...formes.map((f) => f.geom));
     } catch (err) { return this._etat(`Opération impossible : ${err.message}`, true); }
     if (!res.length) return this._etat('Résultat vide : les surfaces se recouvrent entièrement.', true);
     this._snap();
-    for (const c of cands) { for (const l of c.layers) this._group.removeLayer(l); this._cands.delete(c.key); }
+    for (const c of [...cands, ...videsUtilises]) { for (const l of c.layers) this._group.removeLayer(l); this._cands.delete(c.key); }
     this._ops = [];
     const n = this._ajouterMulti(res);
     this._renderListe();
