@@ -261,7 +261,7 @@ const AMGT4CEM_LieuxTool = {
     this._f('opsbarre').classList.toggle('amgt-hidden', m !== 'unir' && m !== 'soustraire');
     const aide = {
       trace: 'Lignes : glisser, le viseur pose un point au relâcher. Toucher le dernier point (ou changer d\'outil) termine la ligne ; toucher le premier point la ferme. Une ligne reste une ligne : les surfaces se font avec Remplir.',
-      remplir: 'Remplir : toucher une zone fermée par des lignes visibles (UrbIS, autres lieux, tes lignes) pour en faire une surface.',
+      remplir: 'Remplir : toucher une zone fermée par des lignes visibles (UrbIS Topo affiché, autres lieux non masqués, tes lignes) pour en faire une surface ; les îlots restent vides.',
       unir: 'Unir : les surfaces cochées sont présélectionnées ; toucher d\'autres surfaces pour les ajouter, ou à nouveau pour les désélectionner, puis Appliquer.',
       soustraire: 'Soustraire : toucher la surface de base, puis celles à retrancher (les toucher à nouveau pour désélectionner), puis Appliquer.',
       modifier: 'Modifier : toucher une ligne ou un contour de la liste, puis déplacer ses points (poignées), ajouter (« + ») ou retirer (🗑 Point). ✓ Terminer ou autre outil pour finir.',
@@ -488,8 +488,12 @@ const AMGT4CEM_LieuxTool = {
    * Interroge UrbIS Topo (types actuellement affichés seulement) dans une emprise Lambert.
    * @returns {Promise<{objets: object[]|null, notes: string[]}>} objets null si aucun type linéaire n'est affiché
    */
+  /** Objets UrbIS Topo actuellement affichés sur la carte ? (couche activée, types choisis, zoom suffisant, opacité > 0) */
+  _urbisAffiche() { return typeof AMGT4CEM_UrbisTopoLayer !== 'undefined' && AMGT4CEM_UrbisTopoLayer.estAffichee(); },
+
   async _wfs(x0, y0, x1, y1, signal) {
     const { wfsUrl, version, typeAttribute } = AMGT4CEM_CONFIG.urbisTopo;
+    if (!this._urbisAffiche()) return { objets: null, notes: [], tronque: false }; // seuls les objets UrbIS Topo visibles comptent
     const selection = AMGT4CEM_UrbisTopoSelectionStore.getSelection();
     const cat = {};
     for (const e of AMGT4CEM_URBISTOPO_CATALOG) cat[e.code] = e;
@@ -558,7 +562,7 @@ const AMGT4CEM_LieuxTool = {
 
   /** Autres lieux enregistrés, en sources sélectionnables : surface(s) si le lieu a un contour, sinon ses lignes. */
   _refsLieux() {
-    return Object.entries(this._lieux || {}).filter(([k]) => k !== this._cur).map(([k, l]) => ({
+    return Object.entries(this._lieux || {}).filter(([k]) => k !== this._cur && !(typeof AMGT4CEM_PatrimoineLayer !== 'undefined' && AMGT4CEM_PatrimoineLayer.lieuMasque(k))).map(([k, l]) => ({
       kind: 'lieu', nom: l.nom, slug: k,
       polys: l.contour && l.contour.length ? this._polysDepuisAnneaux(l.contour) : [],
       lignes: l.contour && l.contour.length ? l.contour : l.objets.flatMap((o) => o.lignes),
@@ -1304,7 +1308,7 @@ const AMGT4CEM_LieuxTool = {
     // la vue dépasse la limite du chargement de l'aimant (600 m) et Remplir ne verrait plus aucun mur UrbIS.
     // La zone chargée est gardée : les touchers suivants dans cette zone (à plus de 60 m du bord) n'attendent plus le service.
     const D = 200;
-    const sig = JSON.stringify(AMGT4CEM_UrbisTopoSelectionStore.getSelection());
+    const sig = `${this._urbisAffiche() ? 'v' : 'x'}${JSON.stringify(AMGT4CEM_UrbisTopoSelectionStore.getSelection())}`; // masquer la couche invalide la zone gardée
     let z = this._zoneUrbis;
     if (!(z && z.sig === sig && p.x > z.x0 + 60 && p.x < z.x1 - 60 && p.y > z.y0 + 60 && p.y < z.y1 - 60)) {
       const res = await this._wfs(p.x - D, p.y - D, p.x + D, p.y + D, this._remplirCtl && this._remplirCtl.signal);
@@ -1317,7 +1321,7 @@ const AMGT4CEM_LieuxTool = {
     this._noteRemplir = z.tronque ? ' Plafond d\'objets UrbIS atteint autour du point : des murs ont pu manquer, vérifier la surface.' : '';
     const urbis = objets ? objets.flatMap((o) => o.lignes) : null;
     const murs = this._murs(p.x, p.y, p.x, p.y, null, urbis || []);
-    if (!murs.length) return this._err(objets === null ? 'Aucun objet UrbIS affiché : choisir des types dans UrbIS Topo, ou dessiner des lignes.' : 'Aucune ligne autour du point touché : afficher des objets UrbIS ou dessiner des lignes.');
+    if (!murs.length) return this._err(objets === null ? (this._urbisAffiche() ? 'Aucun objet UrbIS affiché' : 'UrbIS Topo n\'est pas affiché (couche masquée, aucun type choisi ou zoom trop faible)') + ' : afficher des objets UrbIS ou dessiner des lignes.' : 'Aucune ligne autour du point touché : afficher des objets UrbIS ou dessiner des lignes.');
     const toutes = this._faces(murs, this.COMBLEMENT_M);
     const faces = toutes.filter((f) => this._dansAnneau(f.ring, p.x, p.y)).sort((a, b) => a.aire - b.aire);
     faces.bords = toutes.bords;

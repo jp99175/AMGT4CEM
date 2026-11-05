@@ -46,6 +46,17 @@ const AMGT4CEM_UrbisTopoLayer = {
     this.refresh();
   },
 
+  /**
+   * Les objets UrbIS Topo sont-ils réellement visibles sur la carte (couche activée, au moins un type choisi, zoom
+   * suffisant, opacité non nulle) ? L'outil « Constituer un lieu » (Remplir, aimant) ne s'appuie que sur ce qui se voit.
+   */
+  estAffichee() {
+    if (!this._enabled || !this._map || !this._map.hasLayer(this._group)) return false;
+    if (!Object.keys(AMGT4CEM_UrbisTopoSelectionStore.getSelection()).length) return false;
+    if (this._map.getZoom() < AMGT4CEM_ZoomThresholds.get('urbistopo', AMGT4CEM_CONFIG.urbisTopo.minZoom)) return false;
+    return this._opacityFactor > 0;
+  },
+
   setEnabled(enabled) {
     this._enabled = enabled;
     this.refresh();
