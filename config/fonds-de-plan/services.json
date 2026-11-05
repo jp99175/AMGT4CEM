@@ -6,8 +6,12 @@
     "url": "https://amgt4cem-relay.jp99175.workers.dev"
   },
   "services": {
+    "urbis-tuiles": {
+      "libelle": "UrbIS — fond de plan grisé (tuiles WMTS, service principal)",
+      "url": "https://geoservices-basemap.irisnet.be/geowebcache/service/wmts"
+    },
     "urbis": {
-      "libelle": "UrbIS — fond de plan grisé (WMS)",
+      "libelle": "UrbIS — fond de plan grisé (WMS, repli si les tuiles ne répondent pas)",
       "url": "https://geoservices-urbis.irisnet.be/geoserver/Urbis/wms"
     },
     "bruciel": {

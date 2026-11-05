@@ -20,8 +20,10 @@ const h = (tag, attrs, ...kids) => {
 };
 
 const CHAMPS = [
-  { cle: 'urbisUrl', libelle: 'Fond UrbIS — adresse du service WMS' },
-  { cle: 'urbisLayers', libelle: 'Fond UrbIS — nom de la couche' },
+  { cle: 'urbisTuilesUrl', libelle: 'Fond UrbIS — adresse du service de tuiles (WMTS)' },
+  { cle: 'urbisTuilesLayer', libelle: 'Fond UrbIS — nom de la couche de tuiles' },
+  { cle: 'urbisUrl', libelle: 'Fond UrbIS, repli — adresse du service WMS' },
+  { cle: 'urbisLayers', libelle: 'Fond UrbIS, repli — nom de la couche WMS' },
   { cle: 'brucielHistoriqueUrl', libelle: 'Orthophotos historiques (1935–1996) — adresse du service WMS' },
   { cle: 'brucielRecentUrl', libelle: 'Orthophotos récentes (2004–2022) — adresse du service WMS' },
   { cle: 'flandreUrl', libelle: 'Orthophotos Flandre (2000–2025) — adresse du service WMS' },
@@ -87,9 +89,9 @@ async function monter(conteneur) {
 
   conteneur.append(
     h('p', { class: 'rgl-note', text: 'Réglages communs à tous les agents, enregistrés sur le serveur. À modifier uniquement si l\'un de ces services externes change d\'adresse.' }),
-    h('section', { class: 'rgl-bloc rgl-bloc--formulaire' }, h('h2', { class: 'rgl-bloc__titre', text: 'Services externes' }), ...CHAMPS.slice(0, 6).map(ligne)),
+    h('section', { class: 'rgl-bloc rgl-bloc--formulaire' }, h('h2', { class: 'rgl-bloc__titre', text: 'Services externes' }), h('p', { class: 'rgl-aide', text: 'Le fond UrbIS s\'affiche par défaut avec les tuiles. Le service WMS n\'est utilisé qu\'en repli, si les tuiles ne répondent pas.' }), ...CHAMPS.slice(0, -1).map(ligne)),
     h('section', { class: 'rgl-bloc rgl-bloc--formulaire' }, h('h2', { class: 'rgl-bloc__titre', text: 'Relais d\'enregistrement' }),
-      ligne(CHAMPS[6]),
+      ligne(CHAMPS[CHAMPS.length - 1]),
       h('label', { class: 'rgl-champ' }, h('span', { text: 'Code administrateur' }), code),
       h('p', { class: 'rgl-aide', text: 'Le code n\'est jamais enregistré : il n\'est gardé que le temps de cet onglet du navigateur.' })),
     statut,

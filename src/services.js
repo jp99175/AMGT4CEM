@@ -96,7 +96,8 @@ const AMGT4CEM_Services = {
         version: u.wmsVersion || '1.3.0',
         format: u.format,
         attribution: u.attribution,
-        tuiles: u.tuiles || null, // service de tuiles (WMTS) ; absent = WMS seul
+        // Service de tuiles (WMTS) ; absent = WMS seul. L'adresse vient de services.json (clé « urbis-tuiles »), celle de urbis.json ne sert que de secours.
+        tuiles: u.tuiles ? { ...u.tuiles, url: this._url('urbis-tuiles') || u.tuiles.url } : null,
       },
       // Ligne du temps unique : Bruciel historique (1935-1996) puis orthophotos récentes UrbIS (2004-2022).
       bruciel: { entries: [...orthoEntries('bruciel', 'bruciel'), ...orthoEntries('urbis-orthophotos', 'bruxelles')] },
@@ -137,7 +138,10 @@ const AMGT4CEM_Services = {
 
   /** Valeurs actuellement en vigueur, pour les champs de « ⚙ Paramètres ». */
   current() {
+    const tuiles = this._sources.urbis && this._sources.urbis.tuiles;
     return {
+      urbisTuilesUrl: this._url('urbis-tuiles') || (tuiles && tuiles.url) || '',
+      urbisTuilesLayer: (tuiles && tuiles.layer) || '',
       urbisUrl: this._url('urbis'),
       urbisLayers: this._sources.urbis ? this._sources.urbis.layers || '' : '',
       brucielHistoriqueUrl: this._url('bruciel'),
@@ -160,6 +164,7 @@ const AMGT4CEM_Services = {
   async save(values, relayUrl, adminCode) {
     const isUrl = (v) => /^(https:\/\/[^\s]+|http:\/\/localhost(:\d+)?(\/[^\s]*)?)$/.test(v) && v.length <= 400;
     const urlFields = {
+      urbisTuilesUrl: 'urbis-tuiles',
       urbisUrl: 'urbis',
       brucielHistoriqueUrl: 'bruciel',
       brucielRecentUrl: 'urbis-orthophotos',
@@ -180,6 +185,8 @@ const AMGT4CEM_Services = {
 
     const layers = (values.urbisLayers || '').trim();
     if (layers && !/^[\w:.,-]{1,100}$/.test(layers)) throw new Error(`Nom de couche invalide : ${layers}`);
+    const tuilesLayer = (values.urbisTuilesLayer || '').trim();
+    if (tuilesLayer && !/^[\w:.,-]{1,100}$/.test(tuilesLayer)) throw new Error(`Nom de couche de tuiles invalide : ${tuilesLayer}`);
 
     const strip = (o) => JSON.stringify({ ...o, date: undefined });
     const today = new Date().toISOString().slice(0, 10);
@@ -187,10 +194,18 @@ const AMGT4CEM_Services = {
       await AMGT4CEM_PeLabelAnchors.putToRelay(relayUrl, 'shared/fonds-de-plan/services', { ...services, version: 1, date: today }, adminCode);
       this._services = { ...services, version: 1, date: today };
     }
-    if (layers && this._sources.urbis && layers !== this._sources.urbis.layers) {
-      const urbis = { ...this._sources.urbis, layers, date: today };
-      await AMGT4CEM_PeLabelAnchors.putToRelay(relayUrl, 'shared/fonds-de-plan/urbis', urbis, adminCode);
-      this._sources.urbis = urbis;
+    // urbis.json : couche WMS (repli) et/ou couche de tuiles, réécrit seulement si l'une des deux change.
+    const cur = this._sources.urbis;
+    if (cur) {
+      const layersChange = layers && layers !== cur.layers;
+      const tuilesChange = tuilesLayer && cur.tuiles && tuilesLayer !== cur.tuiles.layer;
+      if (layersChange || tuilesChange) {
+        const urbis = { ...cur, date: today };
+        if (layersChange) urbis.layers = layers;
+        if (tuilesChange) urbis.tuiles = { ...cur.tuiles, layer: tuilesLayer };
+        await AMGT4CEM_PeLabelAnchors.putToRelay(relayUrl, 'shared/fonds-de-plan/urbis', urbis, adminCode);
+        this._sources.urbis = urbis;
+      }
     }
     if (relay) AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl = relay; // prise en compte immédiate
   },
