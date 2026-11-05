@@ -1357,7 +1357,31 @@ const AMGT4CEM_LieuxTool = {
     if (!best) return this._etat('Aucune surface à cet endroit.', true);
     this._opsToggle(best);
   },
-  _opsAppliquer() {
+  // ----- Traits de construction : lignes dessinées (hors surfaces et vides), à supprimer une fois les surfaces faites (après confirmation)
+  _traitsConstruction() {
+    return [...this._cands.values()].filter((c) => c.couche === 'Trace' && c.type === this.TYPE_LIGNE);
+  },
+  /** Traits dont tous les segments longent (à 0,1 m) le bord d'une des surfaces `sources` (lignes Lambert). */
+  _traitsUtilises(sources) {
+    const bords = sources.flatMap((c) => c.lignes);
+    const sur = (q) => bords.some((b) => this._distLigne({ x: q[0], y: q[1] }, b) <= 0.1);
+    return this._traitsConstruction().filter((c) => c.lignes.every((l) => l.length > 1 && l.every((q, i) => sur(q) && (i === 0 || sur([(q[0] + l[i - 1][0]) / 2, (q[1] + l[i - 1][1]) / 2])))));
+  },
+  /** Met les traits en évidence (magenta épais), demande confirmation, puis les supprime ou leur rend leur style. */
+  async _confirmerTraits(traits, question) {
+    if (!traits.length) return false;
+    const evidence = { color: '#d81b60', weight: 7, opacity: 1, dashArray: '2 7', fill: false };
+    for (const c of traits) for (const l of c.layers) { l.setStyle(evidence); if (l.bringToFront) l.bringToFront(); }
+    await new Promise((r) => setTimeout(r, 80)); // laisse la carte se redessiner avant la boîte de dialogue
+    const ok = confirm(`${traits.length} trait(s) de construction en rose sur la carte. ${question}`);
+    if (ok) for (const c of traits) { for (const l of c.layers) this._group.removeLayer(l); this._cands.delete(c.key); }
+    else for (const c of traits) for (const l of c.layers) l.setStyle(this._style(c.sel, c));
+    this._renderListe();
+    this._opsMaj();
+    return ok;
+  },
+
+  async _opsAppliquer() {
     const ops = this._ops || [];
     const sous = this._modeActif === 'soustraire';
     if (ops.length < 2) return this._etat(sous ? 'Choisir une base et au moins une surface à retrancher.' : 'Choisir au moins 2 surfaces à unir.', true);
@@ -1376,6 +1400,8 @@ const AMGT4CEM_LieuxTool = {
     this._renderListe();
     this._opsMaj();
     this._etat(`${sous ? 'Soustraction' : 'Union'} faite : ${n} surface(s). ↶ pour l'annuler.`);
+    const traits = this._traitsUtilises(cands);
+    if (await this._confirmerTraits(traits, 'Ils ont servi à délimiter les surfaces d\'origine : les supprimer ? (↶ annule aussi cette suppression)')) this._etat(`${sous ? 'Soustraction' : 'Union'} faite : ${n} surface(s) ; ${traits.length} trait(s) de construction supprimé(s). ↶ pour tout annuler.`);
   },
 
   /** Modifier : toucher une ligne (ou l'intérieur d'une surface) pour éditer ses points. */
@@ -1420,6 +1446,12 @@ const AMGT4CEM_LieuxTool = {
     const nom = this._f('nom').value.trim();
     const slug = this._slug(nom);
     const ancien = this._cur; // lieu en cours d'édition (vide = nouveau lieu)
+    // Lieu avec surfaces : proposer d'effacer les traits de construction restants (mis en évidence) avant l'enregistrement.
+    const restants = this._traitsConstruction();
+    if (restants.length && [...this._cands.values()].some((c) => this._estSurface(c))) {
+      this._snap();
+      if (!(await this._confirmerTraits(restants, 'Les effacer avant d\'enregistrer le lieu ? OK = effacer puis enregistrer ; Annuler = les garder et enregistrer.'))) this._hist.pop();
+    }
     const objets = [...this._cands.values()].filter((c) => c.sel).map((c) => ({ id: c.id, couche: c.couche, code: c.code, type: c.type, lignes: c.lignes }));
     if (!slug) return this._etat('Donner un nom au lieu.', true);
     if (!objets.length) return this._etat('Aucun objet coché.', true);
