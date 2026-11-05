@@ -1,14 +1,26 @@
 {
-  "version": 3,
-  "date": "2026-10-07",
+  "version": 4,
+  "date": "2026-11-06",
   "genres": {
     "station": {
       "libelle": "Station",
-      "geometrie": "polygone"
+      "geometrie": "polygone",
+      "couleur": "#c0392b"
     },
     "tunnel": {
       "libelle": "Tunnel (tronçon)",
-      "geometrie": "polygone"
+      "geometrie": "polygone",
+      "couleur": "#2c3e50"
+    },
+    "depot": {
+      "libelle": "Dépôt",
+      "geometrie": "polygone",
+      "couleur": "#e67e22"
+    },
+    "ouvrage_atypique": {
+      "libelle": "Ouvrage atypique",
+      "geometrie": "polygone",
+      "couleur": "#8e44ad"
     }
   },
   "niveaux": {

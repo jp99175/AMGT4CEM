@@ -37,6 +37,8 @@
 const AMGT4CEM_METRO_TYPES = {
   MS: { label: 'Stations', color: '#c0392b', fillOpacity: 0.55, weight: 1 },
   MT: { label: 'Tunnels', color: '#2c3e50', fillOpacity: 0.35, weight: 1 },
+  DP: { label: 'Dépôts', color: '#e67e22', fillOpacity: 0.45, weight: 1 },
+  OA: { label: 'Ouvrages atypiques', color: '#8e44ad', fillOpacity: 0.45, weight: 1 },
   PE: { label: "Plans d'ensemble (1/500e)", color: '#b8860b', fillOpacity: 0.06, weight: 1 },
   PE_info: { label: 'Repères tronçons', color: '#575757', fillOpacity: 1, weight: 0 },
 };
@@ -54,7 +56,7 @@ const AMGT4CEM_LABEL_STYLES = {
 };
 
 /** Clé de style / de groupe Leaflet (MS, MT, PE) associée à chaque genre du référentiel ; le genre sert aussi de `kind` à la recherche. */
-const AMGT4CEM_METRO_TYPE_BY_GENRE = { station: 'MS', tunnel: 'MT', planche: 'PE' };
+const AMGT4CEM_METRO_TYPE_BY_GENRE = { station: 'MS', tunnel: 'MT', depot: 'DP', ouvrage_atypique: 'OA', planche: 'PE' };
 
 const AMGT4CEM_MetroLayer = {
   /**
@@ -65,6 +67,8 @@ const AMGT4CEM_MetroLayer = {
     const layersByType = {
       MS: L.layerGroup(),
       MT: L.layerGroup(),
+      DP: L.layerGroup(), // dépôts
+      OA: L.layerGroup(), // ouvrages atypiques
       PE: L.layerGroup(),
       PE_info: L.layerGroup(), // triangles (L.polygon)
       PE_info_text: L.layerGroup(), // codes de tronçon (L.marker, texte)
@@ -95,9 +99,12 @@ const AMGT4CEM_MetroLayer = {
       if (!style || !feature.geometry || feature.geometry.type !== 'Polygon') continue;
       if (type === 'PE') peFeatures.push(feature);
 
-      // Un seul anneau extérieur par polygone dans ce jeu de données.
-      const ring = feature.geometry.coordinates[0];
-      const latlngs = ring.map(AMGT4CEM_CRS.lambertToLatLng);
+      // Un seul anneau extérieur pour les stations, tunnels et planches ; un dépôt ou un ouvrage atypique peut avoir des trous.
+      const rings = feature.geometry.coordinates;
+      const ring = rings[0];
+      const latlngs = rings.length > 1 && (type === 'DP' || type === 'OA')
+        ? rings.map((r) => r.map(AMGT4CEM_CRS.lambertToLatLng))
+        : ring.map(AMGT4CEM_CRS.lambertToLatLng);
 
       const polygon = L.polygon(latlngs, {
         // Couleur du genre (vocabulaires.json, ex. planches), sinon celle du style par défaut.

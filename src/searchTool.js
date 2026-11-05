@@ -179,7 +179,7 @@ const AMGT4CEM_SearchTool = {
   },
 
   _kindLabel(kind) {
-    return { station: 'Station', tunnel: 'Tunnel', planche: 'Planche', point: 'Point métier', address: 'Adresse' }[kind] || kind;
+    return { station: 'Station', tunnel: 'Tunnel', depot: 'Dépôt', ouvrage_atypique: 'Ouvrage atypique', planche: 'Planche', point: 'Point métier', address: 'Adresse' }[kind] || kind;
   },
 
   _renderResults(resultsEl, results, close) {
@@ -193,7 +193,7 @@ const AMGT4CEM_SearchTool = {
     }
 
     // Résultats regroupés par type : la pastille sert de titre au groupe, puis un résultat par ligne.
-    const ordre = ['station', 'tunnel', 'planche', 'point', 'address'];
+    const ordre = ['station', 'tunnel', 'depot', 'ouvrage_atypique', 'planche', 'point', 'address'];
     const rang = (k) => (ordre.indexOf(k) < 0 ? 99 : ordre.indexOf(k));
     const types = [...new Set(results.map((r) => r.kind))].sort((x, y) => rang(x) - rang(y));
     for (const k of types) {

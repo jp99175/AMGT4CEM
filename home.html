@@ -78,6 +78,9 @@
     </div>
     <div class="amgt-opacity-slider-row amgt-hidden" data-layer="metro">
       <input type="range" min="0" max="100" value="100" class="amgt-opacity-slider" />
+      <p class="amgt-topo-edit-hint">
+        <a href="#" id="amgt-metro-edit-link">(modifier la sélection)</a>
+      </p>
     </div>
 
     <div class="amgt-layer-row">
@@ -454,6 +457,19 @@
     </div>
     <div id="amgt-patrimoine-picker-content" class="amgt-fs-picker-content"></div>
     <div id="amgt-patrimoine-picker-default-bar"></div>
+  </div>
+
+  <!-- Sélecteur plein écran des genres de la couche « Métro » (station, tunnel, dépôt, ouvrage atypique) :
+       couleur fixée pour tous (droit « attributs »), voir src/metroPicker.js -->
+  <div id="amgt-metro-picker" class="amgt-hidden amgt-fs-picker">
+    <div class="amgt-fs-picker-header">
+      <h2>Genres du Métro à afficher</h2>
+      <div class="amgt-fs-picker-header-actions">
+        <button id="amgt-metro-picker-close" class="amgt-btn" title="Retour à la carte">✕ Fermer</button>
+      </div>
+    </div>
+    <div id="amgt-metro-picker-content" class="amgt-fs-picker-content"></div>
+    <div id="amgt-metro-picker-couleurs"></div>
   </div>
 
 </template>

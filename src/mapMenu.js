@@ -36,6 +36,11 @@ const AMGT4CEM_MapMenu = {
       AMGT4CEM_UrbisTopoPicker.open();
     });
 
+    document.getElementById('amgt-metro-edit-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      AMGT4CEM_MetroPicker.open();
+    });
+
     document.getElementById('amgt-patrimoine-edit-link').addEventListener('click', (e) => {
       e.preventDefault();
       AMGT4CEM_PatrimoinePicker.open();
@@ -238,14 +243,8 @@ const AMGT4CEM_MapMenu = {
     // carte, court-circuitant le sélecteur "Plans patrimoine".
     document.getElementById('amgt-layer-metro').addEventListener('change', (e) => {
       AMGT4CEM_ScreenshotTool.invalidateBackground();
-      if (!this._metroLayers) return;
-      for (const type of Object.keys(AMGT4CEM_METRO_TYPES)) {
-        if (type === 'PE' || type === 'PE_info' || type === 'PE_label') continue;
-        const group = this._metroLayers[type];
-        if (!group) continue;
-        if (e.target.checked) group.addTo(map);
-        else map.removeLayer(group);
-      }
+      // Stations, tunnels, dépôts et ouvrages atypiques suivent aussi la sélection des genres (src/metroGenres.js).
+      AMGT4CEM_MetroGenres.rafraichir();
     });
 
     document.getElementById('amgt-layer-points').addEventListener('change', (e) => {

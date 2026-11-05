@@ -717,6 +717,13 @@ identifiant. Les anciens identifiants (`ogc_fid`, `id_objet` comme
 pour les anomalies et ce qui n'a pas pu être migré (notamment : aucun nom de
 station rattaché, la source ayant été retirée).
 
+**Genres de la couche Métro.** `config/metro/vocabulaires.json` déclare quatre genres de polygones : `station`, `tunnel`,
+`depot` et `ouvrage_atypique`, chacun avec sa **couleur**, la même pour tout le monde. Dans Couches > Métro, le lien
+« (modifier la sélection) » ouvre la liste des genres (cases et couleurs) : la sélection est propre à l'appareil, avec un
+défaut partagé (`config/metro/selection-par-defaut.json`, droit `utilisateurs`) ; la couleur se change avec le droit
+`attributs` et s'enregistre pour tous par le relais (`shared/metro/vocabulaires`). Voir `src/metroGenres.js` et
+`src/metroPicker.js`. Un dépôt ou un ouvrage atypique n'existe que dans la couche privée (comptes connectés).
+
 **Contrôles.** `python3 tools/verifier-donnees.py` (bibliothèque standard seule,
 code de sortie non nul en cas d'erreur) vérifie : identifiants uniques sur les deux
 fichiers, aucune géométrie sans entrée de référentiel, aucune entrée sans géométrie,
@@ -957,6 +964,7 @@ src/pickerDefaultBar.js      barre « sélection par défaut » (administrateur)
 src/settingsPanel.js         fenêtre "⚙ Paramètres" à onglets (Sources / Serveur / Données)
 src/layerOpacityStore.js     opacité individuelle des couches (icône curseurs, persistée)
 src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
+src/metroGenres.js           genres du Métro à afficher (sélection, couleurs du vocabulaire) ; src/metroPicker.js : leur sélecteur plein écran
 src/shpLoader.js             lecture Shapefile (polygones type 5, polylignes type 3, champ `id` seul), côté navigateur, sans bibliothèque tierce
 src/referentiel.js           chargement des géométries + référentiel JSON, jointure par `id`, contrôles non bloquants
 src/network.js               construction partagée du réseau (stations/tunnels/planches) pour carto et signal

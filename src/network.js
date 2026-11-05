@@ -52,8 +52,7 @@ const AMGT4CEM_Network = {
     AMGT4CEM_PatrimoineLayer.registerExternalLayer('plans-ensemble-500e', peAndInfoGroup);
     AMGT4CEM_Interstation.setMetroFeatures(features); // rattache les numéros d'interstation à leur tronçon (genre « tunnel »)
 
-    layersByType.MS.addTo(map);
-    layersByType.MT.addTo(map);
+    AMGT4CEM_MetroGenres.appliquer(map, layersByType); // genres affichés (station, tunnel, dépôt, ouvrage atypique) : src/metroGenres.js
     return { layersByType, bounds, searchIndex };
   },
 

@@ -99,6 +99,12 @@ const AMGT4CEM_CONFIG = {
     defaultSelectionUrl: './config/urbis-topo/selection-par-defaut.json',
   },
 
+  // --- Genres de la couche Métro (station, tunnel, dépôt, ouvrage atypique) ---
+  metro: {
+    // Sélection par défaut PARTAGÉE des genres affichés (tous, tant qu'elle n'est pas enregistrée), modifiable par un administrateur.
+    defaultSelectionUrl: './config/metro/selection-par-defaut.json',
+  },
+
   // --- Plans patrimoine (à la demande) ---
   // Données de référence LOCALES fournies directement par l'utilisateur
   // (fichiers GeoJSON EPSG:31370, voir config/plans-patrimoine/catalogue.js) : plans
@@ -175,8 +181,10 @@ const AMGT4CEM_CONFIG = {
         './src/nappeSelectionStore.js',
         './src/nappeLayer.js',
         './src/patrimoineSelectionStore.js',
+        './src/metroGenres.js',
         './src/patrimoineLayer.js',
         './src/patrimoinePicker.js',
+        './src/metroPicker.js',
         './src/addPointTool.js',
         './src/measureTool.js',
         './src/lieuxTool.js',
@@ -228,6 +236,7 @@ const AMGT4CEM_CONFIG = {
         './src/urbisTopoSelectionStore.js',
         './src/urbisTopoLayer.js',
         './src/patrimoineSelectionStore.js',
+        './src/metroGenres.js',
         './src/patrimoineLayer.js',
         './src/screenshotTool.js', // basemap.js l'appelle (invalidateBackground) ; jamais initialisé ici
         './src/basemap.js',

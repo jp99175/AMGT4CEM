@@ -14,7 +14,7 @@
   await AMGT4CEM_Services.load();
   // Sélections par défaut PARTAGÉES (UrbIS Topo, Plans patrimoine) : lues avant la création des couches, qui
   // en dépendent pour une première visite. Ne rejette jamais (délai borné).
-  await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared(), AMGT4CEM_OrthoSelectionStore.loadShared(), AMGT4CEM_NappeSelectionStore.loadShared(), AMGT4CEM_MenuPrefs.loadShared()]);
+  await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared(), AMGT4CEM_MetroSelectionStore.loadShared(), AMGT4CEM_OrthoSelectionStore.loadShared(), AMGT4CEM_NappeSelectionStore.loadShared(), AMGT4CEM_MenuPrefs.loadShared()]);
 
   const map = L.map('map', {
     // Pas de contrôle de zoom Leaflet : remplacé par la recherche en haut à
@@ -70,6 +70,7 @@
   AMGT4CEM_Interstation.init(); // charge les numéros d'interstation (associés aux tunnels dans AMGT4CEM_Network.build)
   AMGT4CEM_PatrimoineLayer.init(map);
   AMGT4CEM_PatrimoinePicker.init();
+  AMGT4CEM_MetroPicker.init();
   AMGT4CEM_OrthoPicker.init(); // les orthophotos configurées sont lues à l'ouverture de l'écran
 
   let metroBounds = null;
@@ -126,7 +127,7 @@
   /** Retire de la carte les couches d'un réseau (Stations, Tunnels, et planches de la source privée). */
   function discardNetwork(mode, layersByType) {
     if (!layersByType) return;
-    for (const type of ['MS', 'MT']) if (layersByType[type]) map.removeLayer(layersByType[type]);
+    AMGT4CEM_MetroGenres.retirer(map, layersByType);
     if (mode === 'prive') AMGT4CEM_PatrimoineLayer.unregisterExternalLayer('plans-ensemble-500e');
   }
 
@@ -137,10 +138,8 @@
     AMGT4CEM_MapMenu.setMetroLayers(layersByType);
     AMGT4CEM_SearchTool.setMetroIndex(searchIndex);
 
-    // Case « Métro » décochée avant le changement de source : les nouvelles couches restent masquées.
-    if (!document.getElementById('amgt-layer-metro').checked) {
-      for (const type of ['MS', 'MT']) map.removeLayer(layersByType[type]);
-    }
+    // Case « Métro » décochée ou genre décoché avant le changement de source : les nouvelles couches le restent.
+    AMGT4CEM_MetroGenres.appliquer(map, layersByType);
 
     metroBounds = bounds;
     // Recentrage seulement au premier affichage : un changement de source ne déplace pas la carte.

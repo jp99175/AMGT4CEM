@@ -63,7 +63,7 @@ SIG.MapPicker = {
     this._ready = (async () => {
       await AMGT4CEM_Services.load();
       // Sélections par défaut PARTAGÉES : lues avant la création des couches, qui en dépendent pour une première visite.
-      await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared()]);
+      await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared(), AMGT4CEM_MetroSelectionStore.loadShared()]);
 
       this.map = L.map(this.canvas, {
         attributionControl: false,

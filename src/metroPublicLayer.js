@@ -29,8 +29,7 @@ const AMGT4CEM_MetroPublicLayer = {
   async load(map) {
     const { features, source } = await this._readFeatures();
     const { layersByType, bounds, searchIndex } = this._build(features);
-    layersByType.MS.addTo(map);
-    layersByType.MT.addTo(map);
+    AMGT4CEM_MetroGenres.appliquer(map, layersByType); // Stations et Tunnels selon la sélection des genres (src/metroGenres.js)
     return { layersByType, bounds, searchIndex, source };
   },
 

@@ -109,6 +109,7 @@ const Couches = {
   _selecteurs() {
     const liste = [
       { id: 'amgt-topo-picker', nom: 'UrbIS Topo', store: () => AMGT4CEM_UrbisTopoSelectionStore, rafraichir: () => { AMGT4CEM_UrbisTopoPicker._zoomControl && AMGT4CEM_UrbisTopoPicker._zoomControl.refresh(); AMGT4CEM_UrbisTopoPicker._render(); } },
+      { id: 'amgt-metro-picker', nom: 'Métro', store: () => AMGT4CEM_MetroSelectionStore, rafraichir: () => AMGT4CEM_MetroPicker._render() },
       { id: 'amgt-patrimoine-picker', nom: 'Plans patrimoine', store: () => AMGT4CEM_PatrimoineSelectionStore, rafraichir: () => AMGT4CEM_PatrimoinePicker._render() },
       { id: 'amgt-ortho-picker', nom: 'Orthophotos', store: () => AMGT4CEM_OrthoSelectionStore, rafraichir: () => AMGT4CEM_OrthoPicker._render() },
       { id: 'amgt-nappe-picker', nom: 'Géotechnique', store: () => AMGT4CEM_NappeSelectionStore, rafraichir: () => AMGT4CEM_NappeLayer._renderPicker() },

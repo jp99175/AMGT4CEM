@@ -904,7 +904,7 @@
       if (!ed || (poly && (ed.dragging || ed.step !== 1))) return; // l'axe orange ne s'allume qu'à l'étape « tronçon »
       for (const l of ed.hover) this._map.removeLayer(l);
       ed.hover = [];
-      if (ed.hoverPoly) ed.hoverPoly.setStyle({ color: AMGT4CEM_METRO_TYPES.MT.color, weight: AMGT4CEM_METRO_TYPES.MT.weight });
+      if (ed.hoverPoly) ed.hoverPoly.setStyle({ color: AMGT4CEM_MetroGenres.couleur('tunnel'), weight: AMGT4CEM_METRO_TYPES.MT.weight });
       ed.hoverPoly = poly;
       if (poly) {
         poly.setStyle({ color: '#ff9800', weight: 3 });
