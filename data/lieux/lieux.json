@@ -4,6 +4,7 @@
   "lieux": {
     "AUVENT-FLAGEY": {
       "nom": "Auvent FLAGEY",
+      "genre": "ouvrage_atypique",
       "tolerance_m": 5,
       "objets": [
         {
@@ -36,6 +37,31 @@
             ]
           ]
         }
+      ],
+      "contour_methode": "surfaces",
+      "contour": [
+        [
+          [
+            150200.55,
+            168578.5
+          ],
+          [
+            150222.55,
+            168538.3
+          ],
+          [
+            150232.62,
+            168555.23
+          ],
+          [
+            150210.26,
+            168595.43
+          ],
+          [
+            150200.55,
+            168578.5
+          ]
+        ]
       ]
     },
     "AUVENT-ROGIER": {
