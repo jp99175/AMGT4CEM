@@ -66,6 +66,7 @@
     },
     "AUVENT-ROGIER": {
       "nom": "Auvent ROGIER",
+      "genre": "ouvrage_atypique",
       "tolerance_m": 5,
       "objets": [
         {
