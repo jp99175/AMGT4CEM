@@ -16,5 +16,5 @@
     "tileMatrixSet": "EPSG:900913",
     "format": "image/png"
   },
-  "mode": "tuiles"
+  "mode": "wms"
 }
