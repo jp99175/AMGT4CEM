@@ -110,7 +110,7 @@ function monterPlans(conteneur) {
     h('section', { class: 'rgl-bloc rgl-bloc--formulaire' },
       h('label', { class: 'rgl-row' },
         h('span', { class: 'rgl-row__body' },
-          h('span', { class: 'rgl-row__text', text: 'Outil « Constituer un lieu »' }),
+          h('span', { class: 'rgl-row__text', text: 'Outil « Dessiner une zone »' }),
           h('span', { class: 'rgl-row__aide', text: 'Affiche le bouton de création de lieux sur la page Carte (sous le bouton de forage).' })),
         case_)));
 }

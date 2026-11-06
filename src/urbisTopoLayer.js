@@ -48,7 +48,7 @@ const AMGT4CEM_UrbisTopoLayer = {
 
   /**
    * Les objets UrbIS Topo sont-ils réellement visibles sur la carte (couche activée, au moins un type choisi, zoom
-   * suffisant, opacité non nulle) ? L'outil « Constituer un lieu » (Remplir, aimant) ne s'appuie que sur ce qui se voit.
+   * suffisant, opacité non nulle) ? L'outil « Dessiner une zone » (Remplir, aimant) ne s'appuie que sur ce qui se voit.
    */
   estAffichee() {
     if (!this._enabled || !this._map || !this._map.hasLayer(this._group)) return false;

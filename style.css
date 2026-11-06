@@ -1257,7 +1257,7 @@ html, body {
 .amgt-menu-prefs input { padding: 5px 6px; font-size: 14px; max-width: 160px; }
 .amgt-menu-prefs .amgt-menu-prefs__err { color: #b3261e; }
 
-/* Outil d'administration « Constituer un lieu » (src/lieuxTool.js) */
+/* Outil d'administration « Dessiner une zone » (src/lieuxTool.js) */
 #amgt-lieux-panel {
   position: fixed; left: 8px; right: 8px; bottom: 76px; z-index: 1200; max-width: 480px; margin: 0 auto;
   background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.35); padding: 8px 10px; font: 14px sans-serif; color: #222;
@@ -1343,5 +1343,5 @@ html, body {
 #amgt-lieux-panel .amgt-lieux-liste label.amgt-lieux-op { background: #f3e5f5; border-radius: 4px; }
 #amgt-lieux-panel [data-f="opsinfo"] { flex: 1 1 100%; font-size: 12px; }
 
-/* Constituer un lieu : Remplir / Unir / Soustraire gardent le pointeur normal (Leaflet met une main « grab » / « pointer ») */
+/* Dessiner une zone : Remplir / Unir / Soustraire gardent le pointeur normal (Leaflet met une main « grab » / « pointer ») */
 .amgt-lieux-ptr.leaflet-grab, .amgt-lieux-ptr .leaflet-grab, .amgt-lieux-ptr .leaflet-interactive, .amgt-lieux-ptr.leaflet-dragging .leaflet-grab { cursor: default !important; }

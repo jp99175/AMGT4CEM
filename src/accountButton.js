@@ -9,7 +9,7 @@
  * Ce que la connexion débloque (ce module n'applique que l'affichage ; le serveur de dépôt reste seul juge) :
  *  - « ✚ Ajouter un point » : visible pour tout compte connecté ;
  *  - « ⚙ Paramètres » (menu ☰ Carte) : visible pour un administrateur connecté ;
- *  - « Constituer un lieu » : droit « plans » + case cochée dans les Réglages (paramètre local).
+ *  - « Dessiner une zone » : droit « plans » + case cochée dans les Réglages (paramètre local).
  * À la déconnexion, les outils et fenêtres réservés sont arrêtés et refermés.
  */
 const AMGT4CEM_AccountButton = {
@@ -24,7 +24,7 @@ const AMGT4CEM_AccountButton = {
     AMGT4CEM_Auth.onChange(() => this.refresh(true));
     // Une session expire sans événement : on revérifie quand l'onglet redevient actif.
     document.addEventListener('visibilitychange', () => { if (!document.hidden) this.refresh(false); });
-    // Case « Constituer un lieu » cochée ou décochée dans un autre onglet.
+    // Case « Dessiner une zone » cochée ou décochée dans un autre onglet.
     window.addEventListener('storage', (e) => { if (e.key && e.key.startsWith(AMGT4CEM_PlansPrefs.CLE)) this.refresh(false); });
     this.refresh(false);
   },
@@ -55,7 +55,7 @@ const AMGT4CEM_AccountButton = {
     };
     show('amgt-add-point-btn', !!s);
     show('amgt-settings-btn', AMGT4CEM_Admin.isAdmin());
-    // « Constituer un lieu » : droit « plans » et case cochée dans Réglages > Avancé > Adaptations de plans (src/plansPrefs.js).
+    // « Dessiner une zone » : droit « plans » et case cochée dans Réglages > Avancé > Adaptations de plans (src/plansPrefs.js).
     const lieux = AMGT4CEM_PlansPrefs.outilLieuxDisponible();
     show('amgt-lieux-btn', lieux);
     if (!lieux && typeof AMGT4CEM_LieuxTool !== 'undefined' && AMGT4CEM_LieuxTool._active) AMGT4CEM_LieuxTool.close();

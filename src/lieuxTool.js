@@ -1,5 +1,5 @@
 /**
- * Outil d'administration « Constituer un lieu » (usage exceptionnel, réservé aux administrateurs).
+ * Outil d'administration « Dessiner une zone » (usage exceptionnel, réservé aux administrateurs).
  *
  * Un lieu (auvent, passerelle, ascenseur...) est un ENSEMBLE d'objets UrbIS Topo (lignes). L'outil permet de
  * choisir ces objets : toucher un objet UrbIS Topo affiché sur la carte l'ajoute au lieu (ou le retire) ;

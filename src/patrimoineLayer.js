@@ -241,7 +241,7 @@ const AMGT4CEM_PatrimoineLayer = {
     return out;
   },
 
-  // Lieux masqués par l'œil de l'outil « Constituer un lieu » : réglage local (cet appareil), par identifiant de lieu.
+  // Lieux masqués par l'œil de l'outil « Dessiner une zone » : réglage local (cet appareil), par identifiant de lieu.
   CLE_LIEUX_MASQUES: 'amgt4cem.lieux.masques.v1',
   _lieuxMasques() {
     try { const a = JSON.parse(localStorage.getItem(this.CLE_LIEUX_MASQUES) || '[]'); return Array.isArray(a) ? a : []; } catch (err) { return []; }
@@ -262,7 +262,7 @@ const AMGT4CEM_PatrimoineLayer = {
 
   /**
    * Recharge les lieux constitués (couches du catalogue qui ont `lieuxFile`) après un enregistrement de l'outil
-   * « Constituer un lieu » : sans cela, un lieu supprimé ou renommé resterait affiché jusqu'au rechargement de la page.
+   * « Dessiner une zone » : sans cela, un lieu supprimé ou renommé resterait affiché jusqu'au rechargement de la page.
    */
   reloadLieux() {
     for (const e of AMGT4CEM_PATRIMOINE_CATALOG) {
@@ -307,7 +307,7 @@ const AMGT4CEM_PatrimoineLayer = {
   },
 
   /**
-   * Géométries (Lambert 72) des couches affichées, pour l'outil « Constituer un lieu » : [{ id, nom, polygones: [[ext, trous…]], lignes }].
+   * Géométries (Lambert 72) des couches affichées, pour l'outil « Dessiner une zone » : [{ id, nom, polygones: [[ext, trous…]], lignes }].
    * Les lieux constitués (genre « lieu » / « urbis ») en sont exclus (l'outil les lit directement) ; les planches 1/500e,
    * construites par metroLayer.js, n'y figurent pas.
    */
