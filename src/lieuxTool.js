@@ -137,14 +137,14 @@ const AMGT4CEM_LieuxTool = {
     p.innerHTML = `
       <div class="amgt-lieux-row amgt-lieux-l1">
         <div class="amgt-lieux-combo">
-          <button type="button" data-a="combo" class="amgt-lieux-combo-btn" aria-haspopup="listbox" title="Créer un lieu, ou afficher / éditer / supprimer un lieu enregistré"><span data-f="combolab">Créer un nouveau lieu</span><span aria-hidden="true">▾</span></button>
+          <button type="button" data-a="combo" class="amgt-lieux-combo-btn" aria-haspopup="listbox" title="Créer une zone, ou afficher / éditer / supprimer une zone enregistrée"><span data-f="combolab">Créer une nouvelle zone</span><span aria-hidden="true">▾</span></button>
           <ul class="amgt-lieux-combo-liste amgt-hidden" data-f="combolist" role="listbox"></ul>
         </div>
         <button type="button" data-a="retour" class="amgt-lieux-l1-retour" title="Retour : annuler la dernière opération" aria-label="Retour">↶</button>
         <button type="button" data-a="reduire" title="Réduire à cette ligne / redéployer la fenêtre" aria-label="Réduire">▾</button>
       </div>
       <div class="amgt-lieux-sec amgt-lieux-body">
-        <div class="amgt-lieux-row"><input data-f="nom" placeholder="Nom du lieu (ex. Ascenseur POELAERT)" /></div>
+        <div class="amgt-lieux-row"><input data-f="nom" placeholder="Nom de la zone (ex. Ascenseur POELAERT)" /></div>
         <div class="amgt-lieux-corps">
           <div class="amgt-lieux-liste" data-f="liste"></div>
           <input class="amgt-lieux-haut" data-f="haut" type="range" min="0" max="100" value="35" orient="vertical" title="Hauteur de la liste" aria-label="Hauteur de la liste" />
@@ -168,7 +168,7 @@ const AMGT4CEM_LieuxTool = {
           <label class="amgt-lieux-aimant" data-f="aimantlab" title="Aimant : le viseur s'accroche au point remarquable proche s'il y reste 1 s (0 = sans aimant)"><span class="amgt-lieux-aimant-lab"></span><input data-f="aimant" type="number" min="0" max="50" step="1" value="5" /> m</label>
           <span class="amgt-lieux-sp"></span>
           <button type="button" data-a="retour" title="Retour : annuler la dernière opération" aria-label="Retour">↶</button>
-          <button type="button" data-a="enreg" title="Enregistrer le lieu" aria-label="Enregistrer">💾</button>
+          <button type="button" data-a="enreg" title="Enregistrer la zone" aria-label="Enregistrer">💾</button>
           <button type="button" data-a="fermer" title="Fermer l'outil en abandonnant les modifications non enregistrées" aria-label="Fermer">✕</button></div>
         <div class="amgt-lieux-etat" data-f="etat"></div>
       </div>`;
@@ -260,7 +260,7 @@ const AMGT4CEM_LieuxTool = {
     this._f('opsbarre').classList.toggle('amgt-hidden', m !== 'unir' && m !== 'soustraire');
     const aide = {
       trace: 'Lignes : glisser, le viseur pose un point au relâcher. Toucher le dernier point (ou changer d\'outil) termine la ligne ; toucher le premier point la ferme. Une ligne reste une ligne : les surfaces se font avec Remplir.',
-      remplir: 'Remplir : toucher une zone fermée par des lignes visibles (UrbIS Topo affiché, autres lieux non masqués, tes lignes) pour en faire une surface ; les îlots restent vides.',
+      remplir: 'Remplir : toucher une zone fermée par des lignes visibles (UrbIS Topo affiché, autres zones non masquées, tes lignes) pour en faire une surface ; les îlots restent vides.',
       unir: 'Unir : les surfaces cochées sont présélectionnées ; toucher d\'autres surfaces pour les ajouter, ou à nouveau pour les désélectionner. L\'union proposée s\'affiche : la confirmer.',
       soustraire: 'Soustraire : toucher la surface de base, puis celles à retrancher (les toucher à nouveau pour désélectionner). Le résultat proposé s\'affiche : le confirmer.',
       modifier: 'Modifier : toucher une ligne ou un contour de la liste, puis déplacer ses points (poignées), ajouter (« + ») ou retirer (🗑 Point). ✓ Terminer ou autre outil pour finir.',
@@ -296,20 +296,20 @@ const AMGT4CEM_LieuxTool = {
       li.appendChild(t);
       if (slug) {
         const ed = document.createElement('button');
-        ed.type = 'button'; ed.dataset.a = 'l-edit'; ed.innerHTML = this.ICO.crayon; ed.className = 'amgt-ic-btn'; ed.title = 'Éditer ce lieu (reprendre l\'édition)'; ed.setAttribute('aria-label', `Éditer ${nom}`);
+        ed.type = 'button'; ed.dataset.a = 'l-edit'; ed.innerHTML = this.ICO.crayon; ed.className = 'amgt-ic-btn'; ed.title = 'Éditer cette zone (reprendre l\'édition)'; ed.setAttribute('aria-label', `Éditer ${nom}`);
         const del = document.createElement('button');
-        del.type = 'button'; del.dataset.a = 'l-del'; del.innerHTML = this.ICO.poubelle; del.className = 'amgt-ic-btn'; del.title = 'Supprimer ce lieu'; del.setAttribute('aria-label', `Supprimer ${nom}`);
+        del.type = 'button'; del.dataset.a = 'l-del'; del.innerHTML = this.ICO.poubelle; del.className = 'amgt-ic-btn'; del.title = 'Supprimer cette zone'; del.setAttribute('aria-label', `Supprimer ${nom}`);
         const visible = this._estVisible(slug);
         const oe = document.createElement('button');
         oe.type = 'button'; oe.dataset.a = 'l-oeil'; oe.innerHTML = visible ? this.ICO.oeil : this.ICO.oeilBarre; oe.className = 'amgt-ic-btn';
-        oe.title = visible ? 'Masquer ce lieu sur la carte' : 'Afficher ce lieu sur la carte'; oe.setAttribute('aria-label', `${visible ? 'Masquer' : 'Afficher'} ${nom}`); oe.setAttribute('aria-pressed', visible ? 'true' : 'false');
+        oe.title = visible ? 'Masquer cette zone sur la carte' : 'Afficher cette zone sur la carte'; oe.setAttribute('aria-label', `${visible ? 'Masquer' : 'Afficher'} ${nom}`); oe.setAttribute('aria-pressed', visible ? 'true' : 'false');
         li.append(ed, oe, del);
       }
       return li;
     };
-    ul.appendChild(ligne('', '＋ Créer un nouveau lieu'));
+    ul.appendChild(ligne('', '＋ Créer une nouvelle zone'));
     for (const [k, l] of Object.entries(this._lieux)) ul.appendChild(ligne(k, l.nom));
-    this._f('combolab').textContent = this._cur && this._lieux[this._cur] ? this._lieux[this._cur].nom : 'Créer un nouveau lieu';
+    this._f('combolab').textContent = this._cur && this._lieux[this._cur] ? this._lieux[this._cur].nom : 'Créer une nouvelle zone';
     this._refsMaj();
   },
   /** Ouvre / ferme la liste ; elle est en position fixe (au-dessus du bouton) pour ne pas être rognée par le défilement du panneau. */
@@ -345,7 +345,7 @@ const AMGT4CEM_LieuxTool = {
     this._hist = []; this._dirty = false;
     this._comboRender();
     this._renderListe();
-    this._etat('Nouveau lieu : nommer le lieu puis toucher des objets, ou tracer une chaîne.');
+    this._etat('Nouvelle zone : nommer la zone puis toucher des objets, ou tracer une chaîne.');
   },
 
   _editerLieu(slug) {
@@ -357,14 +357,14 @@ const AMGT4CEM_LieuxTool = {
   async _supprimerLieu(slug) {
     const l = this._lieux[slug];
     if (!l) return;
-    if (!confirm(`Supprimer définitivement le lieu « ${l.nom} » ?`)) return;
+    if (!confirm(`Supprimer définitivement la zone « ${l.nom} » ?`)) return;
     const reste = { ...this._lieux };
     delete reste[slug];
     try {
       this._etat('Suppression…');
       await this._envoyer(reste);
       if (slug === this._cur) { this._dirty = false; this._nouveauLieu(); } else this._comboRender();
-      this._etat(`Lieu « ${l.nom} » supprimé.`);
+      this._etat(`Zone « ${l.nom} » supprimée.`);
     } catch (err) {
       this._etat(err.message, true);
     }
@@ -404,7 +404,7 @@ const AMGT4CEM_LieuxTool = {
     this._renderListe();
     const pts = l.objets.flatMap((o) => o.lignes.flat()).map((q) => AMGT4CEM_CRS.lambertToLatLng(q));
     if (pts.length) this._map.fitBounds(L.latLngBounds(pts).pad(0.3));
-    this._etat(`Lieu « ${l.nom} » en édition.`);
+    this._etat(`Zone « ${l.nom} » en édition.`);
   },
 
   _clearCands() { this._group.clearLayers(); this._cands.clear(); },
@@ -1515,16 +1515,16 @@ const AMGT4CEM_LieuxTool = {
     const restants = this._traitsConstruction();
     if (restants.length && [...this._cands.values()].some((c) => this._estSurface(c))) {
       this._snap();
-      if (!(await this._confirmerTraits(restants, 'Les effacer avant d\'enregistrer le lieu ? OK = effacer puis enregistrer ; Annuler = les garder et enregistrer.'))) this._hist.pop();
+      if (!(await this._confirmerTraits(restants, 'Les effacer avant d\'enregistrer la zone ? OK = effacer puis enregistrer ; Annuler = les garder et enregistrer.'))) this._hist.pop();
     }
     const objets = [...this._cands.values()].filter((c) => c.sel).map((c) => ({ id: c.id, couche: c.couche, code: c.code, type: c.type, lignes: c.lignes }));
-    if (!slug) return this._etat('Donner un nom au lieu.', true);
+    if (!slug) return this._etat('Donner un nom à la zone.', true);
     if (!objets.length) return this._etat('Aucun objet coché.', true);
     // Nom modifié sur un lieu existant = renommage : l'ancienne entrée est remplacée (pas de doublon).
     const renomme = !!(ancien && this._lieux[ancien] && slug !== ancien);
     if (renomme) {
-      if (this._lieux[slug]) return this._etat(`Un lieu « ${this._lieux[slug].nom} » existe déjà sous ce nom.`, true);
-      if (!confirm(`Renommer le lieu « ${this._lieux[ancien].nom} » en « ${nom} » ?`)) return;
+      if (this._lieux[slug]) return this._etat(`Une zone « ${this._lieux[slug].nom} » existe déjà sous ce nom.`, true);
+      if (!confirm(`Renommer la zone « ${this._lieux[ancien].nom} » en « ${nom} » ?`)) return;
     }
     const tol = (this._cur && this._lieux[this._cur] && this._lieux[this._cur].tolerance_m !== undefined) ? this._lieux[this._cur].tolerance_m : 5; // réservé (non utilisé pour l'instant)
     try {
@@ -1540,8 +1540,8 @@ const AMGT4CEM_LieuxTool = {
       this._dirty = false;
       this._majListe(slug);
       this._etat(renomme
-        ? `Lieu « ${ancienNom} » renommé en « ${nom} » et enregistré (${objets.length} objets). La carte le lira après le déploiement (environ une minute).`
-        : `Lieu « ${nom} » enregistré (${objets.length} objets). La carte le lira après le déploiement (environ une minute).`);
+        ? `Zone « ${ancienNom} » renommée en « ${nom} » et enregistrée (${objets.length} objets). La carte le lira après le déploiement (environ une minute).`
+        : `Zone « ${nom} » enregistrée (${objets.length} objets). La carte le lira après le déploiement (environ une minute).`);
     } catch (err) {
       this._etat(err.message, true);
     }

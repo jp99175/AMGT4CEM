@@ -7,7 +7,7 @@
  *  - "tunnel" : emprise de tunnel / tronçon (couche Tunnels) ;
  *  - "planche" : plan d'ensemble au 1/500e, étiquette = `sheet_ref` du référentiel
  *    (affichage piloté par le sélecteur « Plans patrimoine », voir patrimoineLayer.js).
- * Tout le reste (noms FR/NL, liste des noms d'une station, niveau...) vient du référentiel.
+ * Tout le reste (noms FR/NL, références des arrêts d'une station, niveau...) vient du référentiel.
  * Un polygone sans entrée de référentiel n'a pas de genre : il n'est pas affiché.
  * Chaque polygone est un seul anneau extérieur, sans trou. CRS : EPSG:31370 (Belgian Lambert 72).
  *
@@ -161,15 +161,15 @@ const AMGT4CEM_MetroLayer = {
 
       // Une planche (PE) n'a pas de nom FR/NL, seulement sa référence
       // (sheet_ref) : c'est elle qui sert de libellé de recherche. Une station
-      // peut porter plusieurs noms (props.noms) : tous sont cherchables.
+      // a un seul nom ; ses arrêts (un par ligne desservie) portent des références : toutes sont cherchables.
       const label = type === 'PE'
         ? (props.sheet_ref || '(sans référence)')
         : (props.name_fr || props.name_nl || '(sans nom)');
-      const noms = (props.noms || []).flatMap((n) => [n.fr, n.nl, n.reference]);
+      const references = props.references || [];
       searchIndex.push({
         kind: props.genre,
         label,
-        searchText: [props.name_fr, props.name_nl, props.sheet_ref, ...noms].filter(Boolean).join(' '),
+        searchText: [props.name_fr, props.name_nl, props.sheet_ref, ...references].filter(Boolean).join(' '),
         bounds: polygon.getBounds(),
       });
     }
@@ -255,10 +255,8 @@ const AMGT4CEM_MetroLayer = {
     // Données du référentiel (jointes par `id`) : seules les valeurs renseignées sont affichées.
     const row = (label, value) => (value === '' || value === null || value === undefined ? '' : `<tr><th>${label}</th><td>${this._esc(value)}</td></tr>`);
     let rows = row('Nom (FR)', props.name_fr) + row('Nom (NL)', props.name_nl);
-    // Une station peut porter plusieurs noms et références (liste du référentiel).
-    for (const n of props.noms || []) {
-      rows += row('Nom', [n.fr, n.nl].filter(Boolean).join(' / ')) + row('Référence', n.reference);
-    }
+    // Une station a un seul nom ; plusieurs lignes desservies = plusieurs arrêts, désignés par des références.
+    if ((props.references || []).length) rows += row(props.references.length > 1 ? 'Références' : 'Référence', props.references.join(', '));
     rows += row('Niveau', props.niveau);
     // Tunnel (tronçon) : son ou ses numéros d'interstation (les étiquettes de la couche n'ont pas d'infobulle).
     if (props.genre === 'tunnel') {

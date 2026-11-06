@@ -10,8 +10,7 @@
       "ids_externes": {
         "ogc_fid": 1,
         "id_objet": "STA-MONTGOMERY"
-      },
-      "noms": []
+      }
     },
     "P000002": {
       "genre": "tunnel",
@@ -29,8 +28,7 @@
       "ids_externes": {
         "ogc_fid": 3,
         "id_objet": "STA-THIEFFRY"
-      },
-      "noms": []
+      }
     },
     "P000004": {
       "genre": "station",
@@ -39,8 +37,7 @@
       "ids_externes": {
         "ogc_fid": 4,
         "id_objet": "STA-STOCKEL"
-      },
-      "noms": []
+      }
     },
     "P000005": {
       "genre": "tunnel",
@@ -58,8 +55,7 @@
       "ids_externes": {
         "ogc_fid": 6,
         "id_objet": "STA-ALBERT"
-      },
-      "noms": []
+      }
     },
     "P000007": {
       "genre": "station",
@@ -68,8 +64,7 @@
       "ids_externes": {
         "ogc_fid": 7,
         "id_objet": "STA-STUYVENBERGH"
-      },
-      "noms": []
+      }
     },
     "P000008": {
       "genre": "tunnel",
@@ -87,8 +82,7 @@
       "ids_externes": {
         "ogc_fid": 9,
         "id_objet": "STA-DEMEY"
-      },
-      "noms": []
+      }
     },
     "P000010": {
       "genre": "station",
@@ -97,8 +91,7 @@
       "ids_externes": {
         "ogc_fid": 10,
         "id_objet": "STA-ANNEESSENS"
-      },
-      "noms": []
+      }
     },
     "P000011": {
       "genre": "station",
@@ -107,8 +100,7 @@
       "ids_externes": {
         "ogc_fid": 11,
         "id_objet": "STA-EDDY-MERCKX"
-      },
-      "noms": []
+      }
     },
     "P000012": {
       "genre": "station",
@@ -117,8 +109,7 @@
       "ids_externes": {
         "ogc_fid": 12,
         "id_objet": "STA-ETANGS-NOIRS"
-      },
-      "noms": []
+      }
     },
     "P000013": {
       "genre": "tunnel",
@@ -235,8 +226,7 @@
       "ids_externes": {
         "ogc_fid": 24,
         "id_objet": "STA-BEEKKANT"
-      },
-      "noms": []
+      }
     },
     "P000026": {
       "genre": "station",
@@ -245,8 +235,7 @@
       "ids_externes": {
         "ogc_fid": 25,
         "id_objet": "STA-CLEMENCEAU"
-      },
-      "noms": []
+      }
     },
     "P000027": {
       "genre": "station",
@@ -255,8 +244,7 @@
       "ids_externes": {
         "ogc_fid": 26,
         "id_objet": "STA-GARE-DE-L-OUEST"
-      },
-      "noms": []
+      }
     },
     "P000028": {
       "genre": "tunnel",
@@ -274,8 +262,7 @@
       "ids_externes": {
         "ogc_fid": 28,
         "id_objet": "STA-ERASME"
-      },
-      "noms": []
+      }
     },
     "P000030": {
       "genre": "station",
@@ -284,8 +271,7 @@
       "ids_externes": {
         "ogc_fid": 29,
         "id_objet": "STA-SAINT-GUIDON"
-      },
-      "noms": []
+      }
     },
     "P000031": {
       "genre": "station",
@@ -294,8 +280,7 @@
       "ids_externes": {
         "ogc_fid": 30,
         "id_objet": "STA-RIBAUCOURT"
-      },
-      "noms": []
+      }
     },
     "P000032": {
       "genre": "station",
@@ -304,8 +289,7 @@
       "ids_externes": {
         "ogc_fid": 31,
         "id_objet": "STA-MAELBEEK"
-      },
-      "noms": []
+      }
     },
     "P000033": {
       "genre": "station",
@@ -314,8 +298,7 @@
       "ids_externes": {
         "ogc_fid": 32,
         "id_objet": "STA-SCHUMAN"
-      },
-      "noms": []
+      }
     },
     "P000034": {
       "genre": "station",
@@ -324,8 +307,7 @@
       "ids_externes": {
         "ogc_fid": 33,
         "id_objet": "STA-HOTEL-DES-MONNAIES"
-      },
-      "noms": []
+      }
     },
     "P000035": {
       "genre": "station",
@@ -334,8 +316,7 @@
       "ids_externes": {
         "ogc_fid": 34,
         "id_objet": "STA-CRAINHEM"
-      },
-      "noms": []
+      }
     },
     "P000036": {
       "genre": "tunnel",
@@ -362,8 +343,7 @@
       "ids_externes": {
         "ogc_fid": 37,
         "id_objet": "STA-DIAMANT"
-      },
-      "noms": []
+      }
     },
     "P000039": {
       "genre": "tunnel",
@@ -435,8 +415,7 @@
       "ids_externes": {
         "ogc_fid": 45,
         "id_objet": "STA-JOSEPHINE-CHARLOTTE"
-      },
-      "noms": []
+      }
     },
     "P000047": {
       "genre": "station",
@@ -445,8 +424,7 @@
       "ids_externes": {
         "ogc_fid": 46,
         "id_objet": "STA-ROI-BAUDOUIN"
-      },
-      "noms": []
+      }
     },
     "P000048": {
       "genre": "station",
@@ -455,8 +433,7 @@
       "ids_externes": {
         "ogc_fid": 47,
         "id_objet": "STA-ARTS-LOI"
-      },
-      "noms": []
+      }
     },
     "P000049": {
       "genre": "station",
@@ -465,8 +442,7 @@
       "ids_externes": {
         "ogc_fid": 48,
         "id_objet": "STA-BOCKSTAEL"
-      },
-      "noms": []
+      }
     },
     "P000050": {
       "genre": "tunnel",
@@ -565,8 +541,7 @@
       "ids_externes": {
         "ogc_fid": 58,
         "id_objet": "STA-HORTA"
-      },
-      "noms": []
+      }
     },
     "P000061": {
       "genre": "station",
@@ -575,8 +550,7 @@
       "ids_externes": {
         "ogc_fid": 59,
         "id_objet": "STA-SIMONIS"
-      },
-      "noms": []
+      }
     },
     "P000062": {
       "genre": "tunnel",
@@ -612,8 +586,7 @@
       "ids_externes": {
         "ogc_fid": 63,
         "id_objet": "STA-CERIA"
-      },
-      "noms": []
+      }
     },
     "P000066": {
       "genre": "station",
@@ -622,8 +595,7 @@
       "ids_externes": {
         "ogc_fid": 64,
         "id_objet": "STA-BOTANIQUE"
-      },
-      "noms": []
+      }
     },
     "P000067": {
       "genre": "station",
@@ -632,8 +604,7 @@
       "ids_externes": {
         "ogc_fid": 65,
         "id_objet": "STA-BEAULIEU"
-      },
-      "noms": []
+      }
     },
     "P000068": {
       "genre": "station",
@@ -642,8 +613,7 @@
       "ids_externes": {
         "ogc_fid": 66,
         "id_objet": "STA-DELACROIX"
-      },
-      "noms": []
+      }
     },
     "P000069": {
       "genre": "station",
@@ -652,8 +622,7 @@
       "ids_externes": {
         "ogc_fid": 67,
         "id_objet": "STA-GRIBAUMONT"
-      },
-      "noms": []
+      }
     },
     "P000070": {
       "genre": "station",
@@ -662,8 +631,7 @@
       "ids_externes": {
         "ogc_fid": 68,
         "id_objet": "STA-HERMANN-DEBROUX"
-      },
-      "noms": []
+      }
     },
     "P000071": {
       "genre": "station",
@@ -672,8 +640,7 @@
       "ids_externes": {
         "ogc_fid": 69,
         "id_objet": "STA-HEYSEL"
-      },
-      "noms": []
+      }
     },
     "P000072": {
       "genre": "station",
@@ -682,8 +649,7 @@
       "ids_externes": {
         "ogc_fid": 70,
         "id_objet": "STA-TOMBERG"
-      },
-      "noms": []
+      }
     },
     "P000073": {
       "genre": "tunnel",
@@ -773,8 +739,7 @@
       "ids_externes": {
         "ogc_fid": 81,
         "id_objet": "STA-HANKAR"
-      },
-      "noms": []
+      }
     },
     "P000083": {
       "genre": "station",
@@ -783,8 +748,7 @@
       "ids_externes": {
         "ogc_fid": 82,
         "id_objet": "STA-TRONE"
-      },
-      "noms": []
+      }
     },
     "P000084": {
       "genre": "tunnel",
@@ -820,8 +784,7 @@
       "ids_externes": {
         "ogc_fid": 95,
         "id_objet": "STA-GARE-CENTRALE"
-      },
-      "noms": []
+      }
     },
     "P000088": {
       "genre": "tunnel",
@@ -857,8 +820,7 @@
       "ids_externes": {
         "ogc_fid": 89,
         "id_objet": "STA-GEORGES-HENRI"
-      },
-      "noms": []
+      }
     },
     "P000092": {
       "genre": "station",
@@ -867,8 +829,7 @@
       "ids_externes": {
         "ogc_fid": 90,
         "id_objet": "STA-ROGIER"
-      },
-      "noms": []
+      }
     },
     "P000093": {
       "genre": "tunnel",
@@ -886,8 +847,7 @@
       "ids_externes": {
         "ogc_fid": 92,
         "id_objet": "STA-BELGICA"
-      },
-      "noms": []
+      }
     },
     "P000095": {
       "genre": "station",
@@ -896,8 +856,7 @@
       "ids_externes": {
         "ogc_fid": 93,
         "id_objet": "STA-AUMALE"
-      },
-      "noms": []
+      }
     },
     "P000096": {
       "genre": "station",
@@ -906,8 +865,7 @@
       "ids_externes": {
         "ogc_fid": 94,
         "id_objet": "STA-VEEWEYDE"
-      },
-      "noms": []
+      }
     },
     "P000097": {
       "genre": "station",
@@ -916,8 +874,7 @@
       "ids_externes": {
         "ogc_fid": 96,
         "id_objet": "STA-MERODE"
-      },
-      "noms": []
+      }
     },
     "P000098": {
       "genre": "station",
@@ -926,8 +883,7 @@
       "ids_externes": {
         "ogc_fid": 97,
         "id_objet": "STA-LA-ROUE"
-      },
-      "noms": []
+      }
     },
     "P000099": {
       "genre": "station",
@@ -936,8 +892,7 @@
       "ids_externes": {
         "ogc_fid": 98,
         "id_objet": "STA-BOURSE"
-      },
-      "noms": []
+      }
     },
     "P000100": {
       "genre": "station",
@@ -946,8 +901,7 @@
       "ids_externes": {
         "ogc_fid": 99,
         "id_objet": "STA-HOUBA-BRUGMANN"
-      },
-      "noms": []
+      }
     },
     "P000101": {
       "genre": "station",
@@ -956,8 +910,7 @@
       "ids_externes": {
         "ogc_fid": 100,
         "id_objet": "STA-PORTE-DE-NAMUR"
-      },
-      "noms": []
+      }
     },
     "P000102": {
       "genre": "tunnel",
@@ -1056,8 +1009,7 @@
       "ids_externes": {
         "ogc_fid": 111,
         "id_objet": "STA-PANNENHUIS"
-      },
-      "noms": []
+      }
     },
     "P000113": {
       "genre": "station",
@@ -1066,8 +1018,7 @@
       "ids_externes": {
         "ogc_fid": 112,
         "id_objet": "STA-GARE-DU-MIDI"
-      },
-      "noms": []
+      }
     },
     "P000114": {
       "genre": "station",
@@ -1076,8 +1027,7 @@
       "ids_externes": {
         "ogc_fid": 113,
         "id_objet": "STA-VANDERVELDE"
-      },
-      "noms": []
+      }
     },
     "P000115": {
       "genre": "station",
@@ -1086,8 +1036,7 @@
       "ids_externes": {
         "ogc_fid": 114,
         "id_objet": "STA-YSER"
-      },
-      "noms": []
+      }
     },
     "P000116": {
       "genre": "tunnel",
@@ -1141,8 +1090,7 @@
       "ids_externes": {
         "ogc_fid": 119,
         "id_objet": "STA-PORTE-DE-HAL"
-      },
-      "noms": []
+      }
     },
     "P000122": {
       "genre": "station",
@@ -1151,8 +1099,7 @@
       "ids_externes": {
         "ogc_fid": 120,
         "id_objet": "STA-ALMA"
-      },
-      "noms": []
+      }
     },
     "P000123": {
       "genre": "station",
@@ -1161,8 +1108,7 @@
       "ids_externes": {
         "ogc_fid": 121,
         "id_objet": "STA-OSSEGHEM"
-      },
-      "noms": []
+      }
     },
     "P000124": {
       "genre": "station",
@@ -1171,8 +1117,7 @@
       "ids_externes": {
         "ogc_fid": 122,
         "id_objet": "STA-COMTE-DE-FLANDRE"
-      },
-      "noms": []
+      }
     },
     "P000125": {
       "genre": "station",
@@ -1181,8 +1126,7 @@
       "ids_externes": {
         "ogc_fid": 123,
         "id_objet": "STA-DE-BROUCKERE"
-      },
-      "noms": []
+      }
     },
     "P000126": {
       "genre": "station",
@@ -1191,8 +1135,7 @@
       "ids_externes": {
         "ogc_fid": 124,
         "id_objet": "STA-PETILLON"
-      },
-      "noms": []
+      }
     },
     "P000127": {
       "genre": "station",
@@ -1201,8 +1144,7 @@
       "ids_externes": {
         "ogc_fid": 125,
         "id_objet": "STA-BIZET"
-      },
-      "noms": []
+      }
     },
     "P000128": {
       "genre": "station",
@@ -1211,8 +1153,7 @@
       "ids_externes": {
         "ogc_fid": 126,
         "id_objet": "STA-MADOU"
-      },
-      "noms": []
+      }
     },
     "P000129": {
       "genre": "tunnel",
@@ -1257,8 +1198,7 @@
       "ids_externes": {
         "ogc_fid": 133,
         "id_objet": "STA-JACQUES-BREL"
-      },
-      "noms": []
+      }
     },
     "P000134": {
       "genre": "tunnel",
@@ -1312,8 +1252,7 @@
       "ids_externes": {
         "ogc_fid": 137,
         "id_objet": "STA-LEMONNIER"
-      },
-      "noms": []
+      }
     },
     "P000140": {
       "genre": "station",
@@ -1322,8 +1261,7 @@
       "ids_externes": {
         "ogc_fid": 138,
         "id_objet": "STA-ROODEBEEK"
-      },
-      "noms": []
+      }
     },
     "P000141": {
       "genre": "station",
@@ -1332,8 +1270,7 @@
       "ids_externes": {
         "ogc_fid": 139,
         "id_objet": "STA-LOUISE"
-      },
-      "noms": []
+      }
     },
     "P000142": {
       "genre": "station",
@@ -1342,8 +1279,7 @@
       "ids_externes": {
         "ogc_fid": 140,
         "id_objet": "STA-PARVIS-DE-SAINT-GILLES"
-      },
-      "noms": []
+      }
     },
     "P000143": {
       "genre": "station",
@@ -1352,8 +1288,7 @@
       "ids_externes": {
         "ogc_fid": 141,
         "id_objet": "STA-GARE-DU-NORD"
-      },
-      "noms": []
+      }
     },
     "P000144": {
       "genre": "tunnel",
@@ -1389,8 +1324,7 @@
       "ids_externes": {
         "ogc_fid": 147,
         "id_objet": "STA-BOILEAU"
-      },
-      "noms": []
+      }
     },
     "P000148": {
       "genre": "station",
@@ -1399,8 +1333,7 @@
       "ids_externes": {
         "ogc_fid": 148,
         "id_objet": "STA-SAINTE-CATHERINE"
-      },
-      "noms": []
+      }
     },
     "P000149": {
       "genre": "station",
@@ -1409,8 +1342,7 @@
       "ids_externes": {
         "ogc_fid": 149,
         "id_objet": "STA-PARC"
-      },
-      "noms": []
+      }
     },
     "P000150": {
       "genre": "station",
@@ -1419,8 +1351,7 @@
       "ids_externes": {
         "ogc_fid": 150,
         "id_objet": "STA-DELTA"
-      },
-      "noms": []
+      }
     },
     "P000151": {
       "genre": "tunnel",

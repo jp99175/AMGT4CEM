@@ -102,3 +102,24 @@ html[data-app="reglages"] body {
 /* Ligne réservée à un droit que le compte n'a pas : grisée */
 .rgl-row--off { opacity: .45; cursor: not-allowed; }
 .rgl-check { width: 20px; height: 20px; flex: none; }
+
+/* Écran « Attributs » : tableau large, défilant horizontalement sur téléphone */
+#reglages-root:has(.rgl-ecran--attributs) { max-width: 1100px; }
+.rgl-barre { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 10px; }
+.rgl-ic { background: none; border: none; padding: 6px; color: #1f5f99; cursor: pointer; line-height: 0; }
+.rgl-ic:disabled { color: #9aa5b1; cursor: default; }
+.rgl-btn--petit { padding: 7px 12px; font-size: 14px; }
+.rgl-compteur { font-size: 13px; color: #52606d; }
+.rgl-puces { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+.rgl-puce { padding: 6px 12px; border: 1px solid #9aa5b1; border-radius: 16px; background: #fff; font-size: 14px; cursor: pointer; }
+.rgl-puce--on { background: #2c3e50; border-color: #2c3e50; color: #fff; }
+.rgl-recherche { margin: 0 0 10px; }
+.rgl-statut { white-space: pre-line; }
+.rgl-tableau-cadre { overflow: auto; max-height: 70vh; background: #fff; border: 1px solid #cbd2d9; border-radius: 10px; }
+.rgl-tableau { border-collapse: collapse; width: 100%; font-size: 14px; }
+.rgl-tableau th { position: sticky; top: 0; background: #e4e7eb; text-align: left; padding: 8px; font-size: 13px; white-space: nowrap; }
+.rgl-tableau td { padding: 2px 4px; border-top: 1px solid #e4e7eb; }
+.rgl-tableau .rgl-cell { width: 100%; min-width: 9em; box-sizing: border-box; padding: 6px; font: inherit; border: 1px solid transparent; border-radius: 4px; background: transparent; }
+.rgl-tableau .rgl-cell:focus { border-color: #1f5f99; background: #fff; }
+.rgl-tableau .rgl-ro { display: inline-block; padding: 6px; color: #52606d; white-space: nowrap; }
+.rgl-tableau tr.rgl-modif { background: #fff8e1; }

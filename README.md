@@ -39,7 +39,7 @@ bouton de secours : les données ne sont pas chargées).
 1. La carte s'ouvre déjà recentrée sur l'emprise du réseau métro.
 2. Les couches **Stations** et **Tunnels** sont visibles.
 3. Cliquez sur une station ou un tunnel : ses informations du
-   référentiel (noms FR/NL — tous les noms d'une station —, identifiant...)
+   référentiel (noms FR/NL — un seul nom par station ; ses arrêts portent des références —, identifiant...)
    s'affichent dans une popup.
 4. Déplacez la carte (glisser) et zoomez (molette, pincement, ou
    double-clic — pas de boutons +/- dédiés, voir point 7 ci-dessous) : le
@@ -62,7 +62,7 @@ bouton de secours : les données ne sont pas chargées).
    panneau ⚙ Paramètres. Le bouton **⤢ Réinitialiser la vue** revient à
    l'emprise générale du réseau et remet le fond UrbIS grisé.
 6. Bouton **🔍** (haut droite) : ouvre un champ de recherche sur les
-   stations (tous leurs noms, FR et NL), tunnels (référentiel, voir section 4), planches (référence), points
+   stations (nom FR et NL, références des arrêts), tunnels (référentiel, voir section 4), planches (référence), points
    métier et adresses (noms de rues). Tapez un nom (les accents sont
    ignorés dans la recherche, ex.
    "de brouckere" trouve "De Brouckère") : les résultats stations/tunnels/
@@ -1161,3 +1161,7 @@ pré-remplie. Le plugin `signalements` y est désactivé (`enabled: false` dans 
 son menu et ses couches n'y apparaissent plus. Son code reste dans `src/signalements/`, en attendant d'être
 repris par l'interface de saisie ; une couche en lecture seule des signalements du serveur reviendra
 dans la carte une fois le serveur de dépôt branché.
+
+## Attributs des entités (Réglages > Avancé > Attributs)
+
+Tableau filtré (genres, recherche) des attributs des entités du shapefile, réservé au droit « attributs ». Copier / coller natif (texte brut) depuis ou vers un tableur ; la flèche retour annule les modifications une par une ; la disquette enregistre via le relais, après relecture du serveur pour détecter un conflit. Une station a un seul nom ; plusieurs lignes desservies = plusieurs arrêts de même nom, désignés par des références (`references`, séparées par « ; »). Le relais doit être redéployé une fois (il acceptait seulement `version: 1`).

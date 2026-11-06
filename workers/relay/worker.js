@@ -49,7 +49,7 @@ const isLambertPoint = (p) => Array.isArray(p) && p.length === 2 && inLambert(p[
  * forme « numéro#rang » et toute coordonnée (x, y, a1, a2) est en Lambert 72 belge (mètres).
  */
 export function validateShared(body) {
-  if (!body || typeof body !== 'object' || Array.isArray(body) || body.version !== 1) return 'Format attendu : { "version": 1, ... }';
+  if (!body || typeof body !== 'object' || Array.isArray(body) || !Number.isInteger(body.version) || body.version < 1) return 'Format attendu : { "version": <entier ≥ 1>, ... }';
   if (body.crs !== undefined && body.crs !== 'EPSG:31370') return 'crs : seul « EPSG:31370 » (Lambert 72) est accepté';
   if (body.labels !== undefined) {
     if (!body.labels || typeof body.labels !== 'object' || Array.isArray(body.labels)) return '« labels » doit être un objet';

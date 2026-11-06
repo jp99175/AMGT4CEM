@@ -111,7 +111,7 @@ function monterPlans(conteneur) {
       h('label', { class: 'rgl-row' },
         h('span', { class: 'rgl-row__body' },
           h('span', { class: 'rgl-row__text', text: 'Outil « Dessiner une zone »' }),
-          h('span', { class: 'rgl-row__aide', text: 'Affiche le bouton de création de lieux sur la page Carte (sous le bouton de forage).' })),
+          h('span', { class: 'rgl-row__aide', text: 'Affiche le bouton de dessin de zones sur la page Carte (sous le bouton de forage).' })),
         case_)));
 }
 
@@ -127,11 +127,18 @@ Reglages.register({
       aide: 'Adresses des services externes (UrbIS, orthophotos, géocodeur) et du relais d\'enregistrement.',
       ecran: { id: 'services', titre: 'Services et relais', monter },
     }] : []),
+    // Attributs : droit « attributs » ; grisée sans lui (écran défini dans attributs.js).
+    {
+      texte: 'Attributs',
+      pastille: 'Attributs',
+      aide: 'Tableau des noms, genres et références des stations, tunnels, dépôts, ouvrages et planches.',
+      ...(AMGT4CEM_Auth.aDroit('attributs', s) && window.AMGT4CEM_AttributsEcran ? { ecran: window.AMGT4CEM_AttributsEcran } : { desactive: 'Réservé aux comptes disposant du droit « attributs ».' }),
+    },
     // Adaptations de plans : droit « plans » ; grisée sans lui.
     {
       texte: 'Adaptations de plans',
       pastille: 'Plans',
-      aide: 'Outils d\'adaptation de la carte (constitution de lieux).',
+      aide: 'Outils d\'adaptation de la carte (dessin de zones).',
       ...(AMGT4CEM_Auth.aDroit('plans', s) ? { ecran: { id: 'plans', titre: 'Adaptations de plans', monter: monterPlans } } : { desactive: 'Réservé aux comptes disposant du droit « plans ».' }),
     },
   ],
