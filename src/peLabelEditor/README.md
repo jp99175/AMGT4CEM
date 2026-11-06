@@ -27,7 +27,7 @@ non enregistrées.
 
 Le plugin lui-même vit dans ce dossier. L'affichage des définitions
 enregistrées (ancrage, orientation) est fait par l'application
-(`src/scaledText.js`, `src/peLabelAnchors.js`, `src/metroLayer.js`) : sans le
+(`src/scaledText.js`, `src/peLabelAnchors.js`, `src/ditpDiovLayer.js`) : sans le
 plugin, les visiteurs voient le résultat ; seul l'enregistrement exige le
 plugin et le relais.
 

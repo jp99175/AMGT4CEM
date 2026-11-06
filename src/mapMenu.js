@@ -1,19 +1,19 @@
 /**
  * Menu unique (haut gauche) regroupant le choix du fond de plan, la
- * visibilité des couches Metro/points, et le retour à l'emprise du réseau.
+ * visibilité des couches DITP-DIOV/points, et le retour à l'emprise du réseau.
  *
  * Remplace le contrôle de couches Leaflet par défaut : avec plusieurs
  * dizaines de fonds potentiels (UrbIS, orthophotos, Bruciel...), ce contrôle
  * devenait trop long et se superposait aux autres boutons sur petit écran.
  */
 const AMGT4CEM_MapMenu = {
-  _metroLayers: null,
-  _metroOpacityFactor: 1,
+  _ditpDiovLayers: null,
+  _ditpDiovOpacityFactor: 1,
 
   /**
-   * @param {{ map: L.Map, pointsGroup: L.LayerGroup, getMetroBounds: () => (L.LatLngBounds|null) }} deps
+   * @param {{ map: L.Map, pointsGroup: L.LayerGroup, getDitpDiovBounds: () => (L.LatLngBounds|null) }} deps
    */
-  init({ map, pointsGroup, getMetroBounds }) {
+  init({ map, pointsGroup, getDitpDiovBounds }) {
     const menuBtn = document.getElementById('amgt-menu-btn');
     const panel = document.getElementById('amgt-map-menu');
 
@@ -36,9 +36,9 @@ const AMGT4CEM_MapMenu = {
       AMGT4CEM_UrbisTopoPicker.open();
     });
 
-    document.getElementById('amgt-metro-edit-link').addEventListener('click', (e) => {
+    document.getElementById('amgt-ditp-diov-edit-link').addEventListener('click', (e) => {
       e.preventDefault();
-      AMGT4CEM_MetroPicker.open();
+      AMGT4CEM_DitpDiovPicker.open();
     });
 
     document.getElementById('amgt-patrimoine-edit-link').addEventListener('click', (e) => {
@@ -58,7 +58,7 @@ const AMGT4CEM_MapMenu = {
       document.querySelector('input[name="amgt-basemap"][value="urbis"]').checked = true;
       AMGT4CEM_Basemap.showUrbis();
 
-      const bounds = getMetroBounds();
+      const bounds = getDitpDiovBounds();
       if (bounds && bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
     });
   },
@@ -67,26 +67,26 @@ const AMGT4CEM_MapMenu = {
    * Appelé une fois les données chargées et ses couches Stations/Tunnels construites.
    * @param {{ MS: L.LayerGroup, MT: L.LayerGroup }} layersByType
    */
-  setMetroLayers(layersByType) {
-    this._metroLayers = layersByType;
-    this._applyMetroOpacity(this._metroOpacityFactor);
+  setDitpDiovLayers(layersByType) {
+    this._ditpDiovLayers = layersByType;
+    this._applyDitpDiovOpacity(this._ditpDiovOpacityFactor);
   },
 
   /**
-   * Réglage d'opacité de la couche Métro (icône curseurs) : Stations,
+   * Réglage d'opacité de la couche DITP-DIOV (icône curseurs) : Stations,
    * Tunnels et Planches n'ont pas la même opacité de remplissage d'origine
-   * (AMGT4CEM_METRO_TYPES, voir metroLayer.js) — le facteur s'applique en
+   * (AMGT4CEM_DITP_DIOV_TYPES, voir ditpDiovLayer.js) — le facteur s'applique en
    * multiplicateur sur chacune, jamais en remplacement absolu. Boucle sur
    * tous les types déclarés (pas de liste MS/MT/PE en dur ici) pour qu'un
    * futur type supplémentaire n'ait qu'un seul endroit à mettre à jour.
    */
-  _applyMetroOpacity(factor) {
-    this._metroOpacityFactor = factor;
-    if (!this._metroLayers) return;
+  _applyDitpDiovOpacity(factor) {
+    this._ditpDiovOpacityFactor = factor;
+    if (!this._ditpDiovLayers) return;
 
-    for (const type of Object.keys(AMGT4CEM_METRO_TYPES)) {
-      const group = this._metroLayers[type];
-      const base = AMGT4CEM_METRO_TYPES[type];
+    for (const type of Object.keys(AMGT4CEM_DITP_DIOV_TYPES)) {
+      const group = this._ditpDiovLayers[type];
+      const base = AMGT4CEM_DITP_DIOV_TYPES[type];
       if (!group) continue;
       group.eachLayer((layer) => layer.setStyle({ opacity: factor, fillOpacity: base.fillOpacity * factor }));
     }
@@ -238,13 +238,13 @@ const AMGT4CEM_MapMenu = {
     // masquage est piloté ensemble depuis le sélecteur "Plans patrimoine"
     // (voir plans-patrimoine.js, entrée `external: true`, et
     // patrimoineLayer.js#registerExternalLayer) — seule leur opacité reste
-    // réglée ici (_applyMetroOpacity), avec le reste du réseau. Sans cette
+    // réglée ici (_applyDitpDiovOpacity), avec le reste du réseau. Sans cette
     // exclusion, `group.addTo(map)` ajouterait directement le groupe à la
     // carte, court-circuitant le sélecteur "Plans patrimoine".
-    document.getElementById('amgt-layer-metro').addEventListener('change', (e) => {
+    document.getElementById('amgt-layer-ditp-diov').addEventListener('change', (e) => {
       AMGT4CEM_ScreenshotTool.invalidateBackground();
-      // Stations, tunnels, dépôts et ouvrages atypiques suivent aussi la sélection des genres (src/metroGenres.js).
-      AMGT4CEM_MetroGenres.rafraichir();
+      // Stations, tunnels, dépôts et ouvrages atypiques suivent aussi la sélection des genres (src/ditpDiovGenres.js).
+      AMGT4CEM_DitpDiovGenres.rafraichir();
     });
 
     document.getElementById('amgt-layer-points').addEventListener('change', (e) => {
@@ -280,7 +280,7 @@ const AMGT4CEM_MapMenu = {
 
   /**
    * Icône curseurs (☰ Carte, section Couches) : ouvre/ferme un sous-volet
-   * par couche (Métro, Signalements et demandes, UrbIS Topo, Plans patrimoine)
+   * par couche (DITP-DIOV, Signalements et demandes, UrbIS Topo, Plans patrimoine)
    * regroupant le curseur d'opacité et, pour les deux derniers, le lien
    * "(modifier la sélection)" — comme dans MobiGIS. Réglage d'opacité
    * persistant par appareil (voir layerOpacityStore.js). Un clic en dehors
@@ -289,7 +289,7 @@ const AMGT4CEM_MapMenu = {
    */
   _initOpacityControls() {
     const layers = [
-      { key: 'metro', apply: (factor) => this._applyMetroOpacity(factor) },
+      { key: 'ditp-diov', apply: (factor) => this._applyDitpDiovOpacity(factor) },
       { key: 'points', apply: (factor) => AMGT4CEM_SignalementsLayer.setOpacity(factor) },
       { key: 'urbistopo', apply: (factor) => AMGT4CEM_UrbisTopoLayer.setOpacity(factor) },
       { key: 'patrimoine', apply: (factor) => AMGT4CEM_PatrimoineLayer.setOpacity(factor) },

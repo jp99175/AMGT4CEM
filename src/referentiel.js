@@ -5,7 +5,7 @@
  *    entité ne portant que le champ `id` (identifiant opaque « G » + 6 chiffres, voir README) ;
  *  - data/shapefile/identifiants.json : règle de l'id et compteur `prochain_id` ;
  *  - référentiel réparti par domaine métier, chaque dossier portant celui des géométries qui le
- *    concernent : data/metro/ (stations, tunnels, tronçons) et data/plans-patrimoine/ (planches), avec
+ *    concernent : data/ditp-diov/ (stations, tunnels, tronçons) et data/plans-patrimoine/ (planches), avec
  *    polygones.json (lignes.json pour les tronçons) et vocabulaires.json. Tout ce qui complète une
  *    géométrie y est indexé par `id` (genre, noms, références de planche, identifiants externes...).
  *

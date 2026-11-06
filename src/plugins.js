@@ -20,7 +20,7 @@
  *                     point » (voir src/addPointMenu.js), setHighlight(on) allume le bouton pendant l'outil ;
  *  - captureClicks(handler)  : déclare un outil de placement ; handler.isActive() et
  *                     handler.handleMapClick(e) sont appelés pour les clics que les polygones
- *                     du réseau interceptent (voir metroLayer.js) ;
+ *                     du réseau interceptent (voir ditpDiovLayer.js) ;
  *  - deactivateCoreTools()   : arrête « Ajouter un point » et « Mesurer » ;
  *  - onCoreToolActivated(fn) : prévient le plugin quand un outil du cœur démarre.
  */

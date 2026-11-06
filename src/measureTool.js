@@ -114,7 +114,7 @@ const AMGT4CEM_MeasureTool = {
   init(map) {
     this._map = map;
 
-    // Pane dédiée, au-dessus de tout le reste (Métro, UrbIS Topo, Plans
+    // Pane dédiée, au-dessus de tout le reste (DITP-DIOV, UrbIS Topo, Plans
     // patrimoine...) pour que la mesure soit toujours visible quel que soit
     // l'ordre d'ajout de ces couches. pointer-events:none : elle ne doit
     // jamais intercepter une pression.

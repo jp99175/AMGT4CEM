@@ -128,10 +128,10 @@ const AMGT4CEM_Services = {
     // réglages (couches, attributs, zoom minimal, mentions) dans config/nappe/parametres.json.
     config.nappe = { ...src('nappe'), urls: { 'eaux-souterraines': this._url('eaux-souterraines'), geologie: this._url('geologie') }, snapshotUrl: this._url('nappe-sync') };
 
-    // Couche Métro publique (non connecté) : adresse et couche de la Région lues dans services.json (clé `metro`),
+    // Couche DITP-DIOV publique (non connecté) : adresse et couche de la Région lues dans services.json (clé `metro`),
     // copie de secours et délai fixés dans config.js.
     const m = (this._services && this._services.services && this._services.services.metro) || {};
-    config.metroPublic = { ...config.metroPublic, wfsUrl: m.url || '', couche: m.couche || '' };
+    config.ditpDiovPublic = { ...config.ditpDiovPublic, wfsUrl: m.url || '', couche: m.couche || '' };
 
     config.peLabelAnchorsRelayUrl = (this._services && this._services.relais && this._services.relais.url) || '';
   },

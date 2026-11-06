@@ -47,7 +47,7 @@ const AMGT4CEM_AddPointTool = {
    * `e.latlng`). Appelé aussi bien pour les clics directs sur la carte que
    * pour les clics sur les polygones du référentiel (stations/tunnels), qui
    * intercepteraient sinon le clic pour ouvrir leur propre popup — voir
-   * metroLayer.js — afin qu'un point puisse être posé n'importe où, y
+   * ditpDiovLayer.js — afin qu'un point puisse être posé n'importe où, y
    * compris pile sur le réseau.
    */
   handleMapClick(e) {

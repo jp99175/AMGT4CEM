@@ -41,7 +41,7 @@ serveur) pour l'envoi en cours ; Mes dernières entrées = entrées envoyées. U
 Elle affiche ce que la sélection locale de la carte affiche (lue dans le localStorage du même navigateur) : réseau
 (stations, tunnels, planches, via `src/network.js`), UrbIS Topo et Plans patrimoine avec leurs opacités, numéros
 d'interstation. Pas de points métier. Seuls points affichés : les entrées locales non encore téléversées.
-`src/signal/shims.js` fournit le stub `AMGT4CEM_AddPointTool` attendu par `metroLayer.js`.
+`src/signal/shims.js` fournit le stub `AMGT4CEM_AddPointTool` attendu par `ditpDiovLayer.js`.
 
 ## Photos : commentaire et annotations
 

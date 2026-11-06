@@ -177,7 +177,7 @@
      */
     _waitForApp(cb) {
       const check = () => {
-        const layers = typeof AMGT4CEM_MapMenu !== 'undefined' && AMGT4CEM_MapMenu._metroLayers;
+        const layers = typeof AMGT4CEM_MapMenu !== 'undefined' && AMGT4CEM_MapMenu._ditpDiovLayers;
         if (layers && layers.PE_label && layers.MS && layers.MS._map) cb();
         else setTimeout(check, 300);
       };
@@ -185,7 +185,7 @@
     },
 
     _findMap() {
-      const layers = AMGT4CEM_MapMenu._metroLayers;
+      const layers = AMGT4CEM_MapMenu._ditpDiovLayers;
       return (layers.MS && layers.MS._map) || (layers.MT && layers.MT._map) || null;
     },
 
@@ -201,7 +201,7 @@
      */
     _ensureIndexed() {
       const sources = [];
-      AMGT4CEM_MapMenu._metroLayers.PE_label.eachLayer((marker) => sources.push([marker, 'pe']));
+      AMGT4CEM_MapMenu._ditpDiovLayers.PE_label.eachLayer((marker) => sources.push([marker, 'pe']));
       for (const marker of AMGT4CEM_Interstation.markers()) sources.push([marker, 'ist']);
       let changed = false;
       // Étiquettes supprimées (ou retirées par une annulation) : leur entrée disparaît avec leur marqueur.
@@ -222,7 +222,7 @@
           Object.assign(entry, { marker, span, origColor, origInline }); // marqueur reconstruit : on garde la définition de l'entrée
         } else {
           entry = {
-            key: marker._amgtKey, // « code#rang » (planches, metroLayer.js) ou « numéro#rang » (interstations, interstation.js)
+            key: marker._amgtKey, // « code#rang » (planches, ditpDiovLayer.js) ou « numéro#rang » (interstations, interstation.js)
             kind,
             code: span.textContent.trim(),
             marker,
@@ -769,8 +769,8 @@
      * (AMGT4CEM_Interstation.apply), jamais enregistrée avant « Enregistrer ».
      */
     _startEditIst(entry, opts = {}) {
-      if (!AMGT4CEM_MapMenu._metroLayers.MT || !AMGT4CEM_MapMenu._metroLayers.MT._map) {
-        alert('Le réseau (couche Tunnels) doit être affiché pour choisir un tronçon : cochez « Métro » dans le menu ☰ Carte.');
+      if (!AMGT4CEM_MapMenu._ditpDiovLayers.MT || !AMGT4CEM_MapMenu._ditpDiovLayers.MT._map) {
+        alert('Le réseau (couche Tunnels) doit être affiché pour choisir un tronçon : cochez « DITP-DIOV » dans le menu ☰ Carte.');
         return;
       }
       const backup = clone(entry.def);
@@ -883,7 +883,7 @@
     /** Survol d'un tunnel : son axe s'allume ; clic : il devient le tronçon de l'étiquette. */
     _enableTunnelPick() {
       const ed = this._edit;
-      AMGT4CEM_MapMenu._metroLayers.MT.eachLayer((poly) => {
+      AMGT4CEM_MapMenu._ditpDiovLayers.MT.eachLayer((poly) => {
         if (!poly._amgtTunnelId) return;
         const over = () => this._hoverTunnel(poly);
         const out = () => this._hoverTunnel(null);
@@ -904,7 +904,7 @@
       if (!ed || (poly && (ed.dragging || ed.step !== 1))) return; // l'axe orange ne s'allume qu'à l'étape « tronçon »
       for (const l of ed.hover) this._map.removeLayer(l);
       ed.hover = [];
-      if (ed.hoverPoly) ed.hoverPoly.setStyle({ color: AMGT4CEM_MetroGenres.couleur('tunnel'), weight: AMGT4CEM_METRO_TYPES.MT.weight });
+      if (ed.hoverPoly) ed.hoverPoly.setStyle({ color: AMGT4CEM_DitpDiovGenres.couleur('tunnel'), weight: AMGT4CEM_DITP_DIOV_TYPES.MT.weight });
       ed.hoverPoly = poly;
       if (poly) {
         poly.setStyle({ color: '#ff9800', weight: 3 });
@@ -970,12 +970,12 @@
 
     /** État COURANT de toutes les étiquettes (modifs non enregistrées comprises) : { pe, ist }. */
     _snapshot() {
-      return { pe: AMGT4CEM_MetroLayer.currentPeLabels(), ist: AMGT4CEM_Interstation.currentLabels() };
+      return { pe: AMGT4CEM_DitpDiovLayer.currentPeLabels(), ist: AMGT4CEM_Interstation.currentLabels() };
     },
 
     /** Remet toutes les étiquettes dans l'état d'un instantané : retire, ajoute et met à jour. */
     _restore(snap) {
-      AMGT4CEM_MetroLayer.syncPeLabels(snap.pe);
+      AMGT4CEM_DitpDiovLayer.syncPeLabels(snap.pe);
       AMGT4CEM_Interstation.syncTo(snap.ist);
       this._ensureIndexed(); // entrées des étiquettes retirées / rétablies
       for (const entry of this._entries) {
@@ -989,7 +989,7 @@
     /** Retire une étiquette (carte, état courant et entrée). */
     _removeLabel(entry) {
       if (entry.kind === 'ist') AMGT4CEM_Interstation.removeLabel(entry.marker);
-      else AMGT4CEM_MetroLayer.removePeLabel(entry.marker);
+      else AMGT4CEM_DitpDiovLayer.removePeLabel(entry.marker);
       this._dropEntry(entry);
     },
 
@@ -1080,8 +1080,8 @@
     /** Nouvelle étiquette de TRONÇON : on saisit son numéro, elle apparaît au centre de l'écran (tronçon le plus proche), puis les deux étapes habituelles. */
     async _startAddTroncon() {
       if (this._edit || this._addMode) return;
-      if (!AMGT4CEM_MapMenu._metroLayers.MT || !AMGT4CEM_MapMenu._metroLayers.MT._map) {
-        return alert('Le réseau (couche Tunnels) doit être affiché pour rattacher une étiquette à un tronçon : cochez « Métro » dans le menu ☰ Carte.');
+      if (!AMGT4CEM_MapMenu._ditpDiovLayers.MT || !AMGT4CEM_MapMenu._ditpDiovLayers.MT._map) {
+        return alert('Le réseau (couche Tunnels) doit être affiché pour rattacher une étiquette à un tronçon : cochez « DITP-DIOV » dans le menu ☰ Carte.');
       }
       const numero = await this._askInput('Numéro de la nouvelle étiquette de tronçon (chiffres, lettres, tiret ou point — ex. 243-3) :', {
         placeholder: 'Numéro',
@@ -1108,7 +1108,7 @@
       if (this._edit || this._addMode) return;
       const polys = () => {
         const out = [];
-        AMGT4CEM_MapMenu._metroLayers.PE.eachLayer((poly) => out.push(poly));
+        AMGT4CEM_MapMenu._ditpDiovLayers.PE.eachLayer((poly) => out.push(poly));
         return out;
       };
       const shown = await this._ensureLayer('plans-ensemble-500e', () => polys().some((p) => p._map));
@@ -1154,8 +1154,8 @@
       this._addMode.cleanup();
       this._addMode = null;
       const pre = this._snapshot();
-      const key = AMGT4CEM_MetroLayer.nextPeKey(code);
-      AMGT4CEM_MetroLayer.addPeLabel(AMGT4CEM_MetroLayer.createPeLabel(key, null, poly.getBounds().getCenter()));
+      const key = AMGT4CEM_DitpDiovLayer.nextPeKey(code);
+      AMGT4CEM_DitpDiovLayer.addPeLabel(AMGT4CEM_DitpDiovLayer.createPeLabel(key, null, poly.getBounds().getCenter()));
       this._ensureIndexed();
       const entry = this._byKey[key];
       if (!entry) return this._renderBar();
@@ -1177,7 +1177,7 @@
 
     /** État COURANT d'un type (modifs, créations et suppressions non enregistrées comprises) : { clé: définition }. */
     _currentLabels(kind) {
-      return kind === 'ist' ? AMGT4CEM_Interstation.currentLabels() : AMGT4CEM_MetroLayer.currentPeLabels();
+      return kind === 'ist' ? AMGT4CEM_Interstation.currentLabels() : AMGT4CEM_DitpDiovLayer.currentPeLabels();
     },
 
     /** Clés d'un type dont la définition diffère de ce qui est enregistré. */

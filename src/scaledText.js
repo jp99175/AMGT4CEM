@@ -3,7 +3,7 @@
  * carte, pour simuler une taille RÉELLE constante (en mètres) plutôt
  * qu'une taille d'écran fixe (comportement par défaut de tout texte
  * HTML/CSS, y compris dans un L.divIcon) — c'est le rendu recherché pour
- * les repères PE_info/PE_label (voir metroLayer.js) : sur INFRAVIEW.pdf,
+ * les repères PE_info/PE_label (voir ditpDiovLayer.js) : sur INFRAVIEW.pdf,
  * ce texte grossit/rétrécit avec le zoom exactement comme le reste du
  * dessin technique, pas à taille de police fixe à l'écran.
  *

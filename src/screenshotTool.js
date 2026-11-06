@@ -51,7 +51,7 @@
  * UrbIS Topo, Plans patrimoine) et la mesure elle-même sont toujours capturées.
  *
  * Rendu Canvas (voir app.js, preferCanvas) plutôt que SVG pour les couches
- * (Métro, UrbIS Topo, Plans patrimoine...) : plus fiable pour html2canvas
+ * (DITP-DIOV, UrbIS Topo, Plans patrimoine...) : plus fiable pour html2canvas
  * lors de la capture du fond. Leaflet repeint son canvas de façon
  * asynchrone (au prochain requestAnimationFrame) après une mise à jour —
  * _waitForPaint() (2 requestAnimationFrame d'attente) laisse ce repaint se

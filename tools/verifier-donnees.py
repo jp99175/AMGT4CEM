@@ -8,7 +8,7 @@ Aucune dépendance (bibliothèque standard seule). Code de sortie 0 si tout est 
 
 Organisation vérifiée (voir README, section 4) :
   data/shapefile/     polygones.* et lignes.* (shapefiles Lambert 72, champ `id` seul) + identifiants.json
-  data/metro/         référentiel des stations, tunnels et tronçons : polygones.json, lignes.json, vocabulaires.json
+  data/ditp-diov/         référentiel des stations, tunnels et tronçons : polygones.json, lignes.json, vocabulaires.json
   data/plans-patrimoine/  référentiel des planches : polygones.json, vocabulaires.json ; étiquettes
 
 Vérifie :
@@ -44,7 +44,7 @@ RACINE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)
 GEO = os.path.join(RACINE, "data", "shapefile")
 DATA = os.path.join(RACINE, "data")
 CONFIG = os.path.join(RACINE, "config")  # réglages publics (ex-data/ : fonds de plan, UrbIS Topo, vocabulaires des genres)
-DOMAINES = ["metro", "plans-patrimoine"]  # dossiers portant un référentiel (polygones.json, lignes.json, vocabulaires.json)
+DOMAINES = ["ditp-diov", "plans-patrimoine"]  # dossiers portant un référentiel (polygones.json, lignes.json, vocabulaires.json)
 FORMAT_ID = re.compile(r"^[PLG]\d{6,}$")
 CONTROLE = re.compile("[\x00-\x1f\x7f-\x9f]")
 FOND = os.path.join(RACINE, "data", "plans-patrimoine")

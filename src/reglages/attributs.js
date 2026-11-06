@@ -2,7 +2,7 @@
  * Réglages > Avancé > « Attributs » : tableau filtré des attributs des entités du shapefile (stations, tunnels,
  * dépôts, ouvrages atypiques, planches). Réservé au droit « attributs ».
  *
- * Sources : data/metro/polygones.json et data/plans-patrimoine/polygones.json (référentiels joints au shapefile par
+ * Sources : data/ditp-diov/polygones.json et data/plans-patrimoine/polygones.json (référentiels joints au shapefile par
  * `id`). Les identifiants et les géométries ne se modifient pas ici.
  *
  * Fonctionnement :
@@ -20,10 +20,10 @@
  */
 (function () {
 const SOURCES = [
-  { id: 'metro', url: './data/metro/polygones.json', route: 'shared/metro/polygones' },
+  { id: 'ditp-diov', url: './data/ditp-diov/polygones.json', route: 'shared/ditp-diov/polygones' },
   { id: 'plans', url: './data/plans-patrimoine/polygones.json', route: 'shared/plans-patrimoine/polygones' },
 ];
-const VOCAB_URL = './config/metro/vocabulaires.json';
+const VOCAB_URL = './config/ditp-diov/vocabulaires.json';
 const COLONNES = [
   { cle: 'id', titre: 'Id', lecture: true },
   { cle: 'genre', titre: 'Genre' },

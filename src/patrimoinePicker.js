@@ -151,7 +151,7 @@ const AMGT4CEM_PatrimoinePicker = {
     });
 
     // Couches "external" (ex : planches PE) : pas de pastille de couleur,
-    // leur rendu a sa propre couleur fixe (voir metroLayer.js), pas
+    // leur rendu a sa propre couleur fixe (voir ditpDiovLayer.js), pas
     // sélectionnable ici.
     if (!entry.external) {
       const dot = document.createElement('span');

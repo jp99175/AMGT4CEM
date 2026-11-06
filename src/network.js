@@ -33,7 +33,7 @@ const AMGT4CEM_Network = {
   },
 
   build(map, features) {
-    const { layersByType, bounds, searchIndex } = AMGT4CEM_MetroLayer.build({
+    const { layersByType, bounds, searchIndex } = AMGT4CEM_DitpDiovLayer.build({
       type: 'FeatureCollection',
       features,
     });
@@ -42,29 +42,29 @@ const AMGT4CEM_Network = {
     // sélection « Plans patrimoine » (entrée `external: true`, patrimoineLayer.js#registerExternalLayer),
     // d'où leur fusion dans un groupe commun. Les polygones PE restent ajoutés à ce groupe AVANT MS/MT :
     // ce sont de larges zones qui recouvrent des stations/tunnels, elles ne doivent jamais passer devant
-    // et intercepter leur clic (voir metroLayer.js et patrimoineLayer.js, bringToBack()).
+    // et intercepter leur clic (voir ditpDiovLayer.js et patrimoineLayer.js, bringToBack()).
     const peAndInfoGroup = L.layerGroup();
     layersByType.PE.eachLayer((l) => peAndInfoGroup.addLayer(l));
     layersByType.PE_label.eachLayer((l) => peAndInfoGroup.addLayer(l));
     layersByType.PE_info.eachLayer((l) => peAndInfoGroup.addLayer(l));
     layersByType.PE_info_text.eachLayer((l) => peAndInfoGroup.addLayer(l));
-    AMGT4CEM_MetroLayer.setPeLabelDisplayGroup(peAndInfoGroup); // les références créées à l'exécution s'ajoutent aussi à ce groupe
+    AMGT4CEM_DitpDiovLayer.setPeLabelDisplayGroup(peAndInfoGroup); // les références créées à l'exécution s'ajoutent aussi à ce groupe
     AMGT4CEM_PatrimoineLayer.registerExternalLayer('plans-ensemble-500e', peAndInfoGroup);
-    AMGT4CEM_Interstation.setMetroFeatures(features); // rattache les numéros d'interstation à leur tronçon (genre « tunnel »)
+    AMGT4CEM_Interstation.setDitpDiovFeatures(features); // rattache les numéros d'interstation à leur tronçon (genre « tunnel »)
 
-    AMGT4CEM_MetroGenres.appliquer(map, layersByType); // genres affichés (station, tunnel, dépôt, ouvrage atypique) : src/metroGenres.js
+    AMGT4CEM_DitpDiovGenres.appliquer(map, layersByType); // genres affichés (station, tunnel, dépôt, ouvrage atypique) : src/ditpDiovGenres.js
     return { layersByType, bounds, searchIndex };
   },
 
   /**
-   * Opacité du réseau (réglage « Métro » de la carte, mémorisé par appareil) : multiplicateur sur l'opacité
-   * propre à chaque type (AMGT4CEM_METRO_TYPES), jamais un remplacement absolu.
+   * Opacité du réseau (réglage « DITP-DIOV » de la carte, mémorisé par appareil) : multiplicateur sur l'opacité
+   * propre à chaque type (AMGT4CEM_DITP_DIOV_TYPES), jamais un remplacement absolu.
    */
   setOpacity(layersByType, factor) {
-    for (const type of Object.keys(AMGT4CEM_METRO_TYPES)) {
+    for (const type of Object.keys(AMGT4CEM_DITP_DIOV_TYPES)) {
       const group = layersByType[type];
       if (!group) continue;
-      const base = AMGT4CEM_METRO_TYPES[type];
+      const base = AMGT4CEM_DITP_DIOV_TYPES[type];
       group.eachLayer((layer) => layer.setStyle({ opacity: factor, fillOpacity: base.fillOpacity * factor }));
     }
   },

@@ -4,10 +4,10 @@
  *
  * - Plans d'ensemble au 1/500e : `external: true`. Les planches sont des polygones
  *   (genre « planche ») de data/shapefile/polygones.shp, étiquetés par le `sheet_ref`
- *   du référentiel (data/metro/ et data/plans-patrimoine/ (polygones.json)) ; leur couche Leaflet est construite
- *   par metroLayer.js et enregistrée auprès de patrimoineLayer.js
+ *   du référentiel (data/ditp-diov/ et data/plans-patrimoine/ (polygones.json)) ; leur couche Leaflet est construite
+ *   par ditpDiovLayer.js et enregistrée auprès de patrimoineLayer.js
  *   (registerExternalLayer(), voir app.js) : la case à cocher ne fait qu'afficher/masquer
- *   cette couche. Couleur et opacité restent réglées avec le réseau Métro (curseur « Métro »).
+ *   cette couche. Couleur et opacité restent réglées avec le réseau DITP-DIOV (curseur « DITP-DIOV »).
  *   La même case affiche les repères de tronçon legacy (triangles + codes PE_info,
  *   data/plans-patrimoine/reperes-troncons.legacy.json) et les références de planche
  *   (data/plans-patrimoine/etiquettes-planches.json).

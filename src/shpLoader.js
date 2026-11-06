@@ -5,7 +5,7 @@
  * Les géométries pérennes de l'application sont deux shapefiles Lambert 72
  * (data/shapefile/polygones.* et lignes.*), éditables dans AutoCAD, dont chaque
  * entité ne porte qu'UN champ : `id` (identifiant stable, voir README). Tout le
- * reste (noms, genre, niveau...) vit dans le référentiel JSON (data/metro/, data/plans-patrimoine/),
+ * reste (noms, genre, niveau...) vit dans le référentiel JSON (data/ditp-diov/, data/plans-patrimoine/),
  * rattaché par cet `id` (voir referentiel.js).
  *
  * Types de forme pris en charge, coordonnées 2D (pas de Z/M) :

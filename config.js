@@ -24,26 +24,26 @@ const AMGT4CEM_CONFIG = {
   //  3. données métier (suivi) : hors de ce dépôt (phase B).
   // Lecture côté navigateur (src/shpLoader.js, src/referentiel.js), sans conversion externe.
   // lignes.shp / lignes.json peuvent être absents tant qu'aucun tronçon n'est dessiné.
-  // Chaque dossier métier (data/metro/, data/plans-patrimoine/) porte le référentiel des géométries
+  // Chaque dossier métier (data/ditp-diov/, data/plans-patrimoine/) porte le référentiel des géométries
   // qui le concernent : polygones.json (et lignes.json s'il y a des tronçons) + vocabulaires.json.
   // Le chargeur fusionne ces fichiers et les joint aux deux shapefiles par `id` (src/referentiel.js).
   donnees: {
     polygonesShp: './data/shapefile/polygones',
     lignesShp: './data/shapefile/lignes',
     identifiantsJson: './data/shapefile/identifiants.json',
-    polygonesJson: ['./data/metro/polygones.json', './data/plans-patrimoine/polygones.json'],
-    lignesJson: ['./data/metro/lignes.json'],
-    vocabulairesJson: ['./config/metro/vocabulaires.json', './config/plans-patrimoine/vocabulaires.json'],
+    polygonesJson: ['./data/ditp-diov/polygones.json', './data/plans-patrimoine/polygones.json'],
+    lignesJson: ['./data/ditp-diov/lignes.json'],
+    vocabulairesJson: ['./config/ditp-diov/vocabulaires.json', './config/plans-patrimoine/vocabulaires.json'],
   },
-  // Couche Métro PUBLIQUE (personne non connectée, src/metroPublicLayer.js) : Région d'abord (adresse et couche dans
+  // Couche DITP-DIOV PUBLIQUE (personne non connectée, src/ditpDiovPublicLayer.js) : Région d'abord (adresse et couche dans
   // config/fonds-de-plan/services.json, clé `metro`, renseignées par src/services.js), copie de secours du dépôt
   // ensuite (export d'origine de la même couche) si la Région refuse, ne répond pas ou renvoie un contenu inutilisable.
-  metroPublic: {
+  ditpDiovPublic: {
     secoursUrl: './config/secours/region-metro.json',
     delaiMs: 8000, // attente maximale de chaque lecture avant de passer à la suivante
   },
   // LEGACY : repères de transition entre tronçons (triangles + codes D0, D1, G1a...), sans identifiant ;
-  // à rattacher à lignes.shp quand il existera (voir metroLayer.js et le README).
+  // à rattacher à lignes.shp quand il existera (voir ditpDiovLayer.js et le README).
   reperesTronconsLegacyUrl: './data/plans-patrimoine/reperes-troncons.legacy.json',
 
   // Étiquettes des Plans patrimoine, écrites par l'application (tout ce qui n'est pas une
@@ -99,10 +99,10 @@ const AMGT4CEM_CONFIG = {
     defaultSelectionUrl: './config/urbis-topo/selection-par-defaut.json',
   },
 
-  // --- Genres de la couche Métro (station, tunnel, dépôt, ouvrage atypique) ---
-  metro: {
+  // --- Genres de la couche DITP-DIOV (station, tunnel, dépôt, ouvrage atypique) ---
+  ditpDiov: {
     // Sélection par défaut PARTAGÉE des genres affichés (tous, tant qu'elle n'est pas enregistrée), modifiable par un administrateur.
-    defaultSelectionUrl: './config/metro/selection-par-defaut.json',
+    defaultSelectionUrl: './config/ditp-diov/selection-par-defaut.json',
   },
 
   // --- Plans patrimoine (à la demande) ---
@@ -165,8 +165,8 @@ const AMGT4CEM_CONFIG = {
         './src/scaledText.js',
         './src/peLabelAnchors.js',
         './src/interstation.js',
-        './src/metroLayer.js',
-        './src/metroPublicLayer.js',
+        './src/ditpDiovLayer.js',
+        './src/ditpDiovPublicLayer.js',
         './src/network.js',
         './src/auth/auth.js',
         './src/auth/authUi.js',
@@ -181,10 +181,10 @@ const AMGT4CEM_CONFIG = {
         './src/nappeSelectionStore.js',
         './src/nappeLayer.js',
         './src/patrimoineSelectionStore.js',
-        './src/metroGenres.js',
+        './src/ditpDiovGenres.js',
         './src/patrimoineLayer.js',
         './src/patrimoinePicker.js',
-        './src/metroPicker.js',
+        './src/ditpDiovPicker.js',
         './src/addPointTool.js',
         './src/measureTool.js',
         './src/lieuxTool.js',
@@ -229,14 +229,14 @@ const AMGT4CEM_CONFIG = {
         './src/scaledText.js',
         './src/peLabelAnchors.js',
         './src/interstation.js',
-        './src/metroLayer.js',
+        './src/ditpDiovLayer.js',
         './src/network.js',
         './src/zoomThresholds.js',
         './src/selectionStore.js',
         './src/urbisTopoSelectionStore.js',
         './src/urbisTopoLayer.js',
         './src/patrimoineSelectionStore.js',
-        './src/metroGenres.js',
+        './src/ditpDiovGenres.js',
         './src/patrimoineLayer.js',
         './src/screenshotTool.js', // basemap.js l'appelle (invalidateBackground) ; jamais initialisé ici
         './src/basemap.js',

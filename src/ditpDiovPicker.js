@@ -1,26 +1,26 @@
 /**
- * Sélecteur plein écran des genres de la couche « Métro » (Couches > Métro > « (modifier la sélection) ») :
+ * Sélecteur plein écran des genres de la couche « DITP-DIOV » (Couches > DITP-DIOV > « (modifier la sélection) ») :
  * station, tunnel, dépôt, ouvrage atypique. Chaque genre a sa case et sa couleur.
  *
  *  - La sélection (cases) est celle de l'appareil, avec « ↺ défaut » et « défaut pour tous » comme les autres
- *    sélecteurs (voir src/nav/couches.js, src/metroGenres.js).
- *  - La COULEUR est la même pour tout le monde : elle vient de config/metro/vocabulaires.json. Les comptes qui ont le
+ *    sélecteurs (voir src/nav/couches.js, src/ditpDiovGenres.js).
+ *  - La COULEUR est la même pour tout le monde : elle vient de config/ditp-diov/vocabulaires.json. Les comptes qui ont le
  *    droit « attributs » la modifient ici (palette de couleur) et l'enregistrent pour tous par le relais
- *    (route shared/metro/vocabulaires, code administrateur du relais gardé le temps de l'onglet).
+ *    (route shared/ditp-diov/vocabulaires, code administrateur du relais gardé le temps de l'onglet).
  *    L'essai de couleur est visible tout de suite sur la carte ; fermé sans enregistrer, il est annulé.
  *  - Dépôts et ouvrages atypiques n'existent que dans la couche privée : un visiteur ne voit que stations et tunnels.
  */
-const AMGT4CEM_MetroPicker = {
+const AMGT4CEM_DitpDiovPicker = {
   _overlay: null,
   _content: null,
   _barre: null,
   _essais: {}, // genre -> couleur essayée, pas encore enregistrée
 
   init() {
-    this._overlay = document.getElementById('amgt-metro-picker');
-    this._content = document.getElementById('amgt-metro-picker-content');
-    this._barre = document.getElementById('amgt-metro-picker-couleurs');
-    document.getElementById('amgt-metro-picker-close').addEventListener('click', () => this.close());
+    this._overlay = document.getElementById('amgt-ditp-diov-picker');
+    this._content = document.getElementById('amgt-ditp-diov-picker-content');
+    this._barre = document.getElementById('amgt-ditp-diov-picker-couleurs');
+    document.getElementById('amgt-ditp-diov-picker-close').addEventListener('click', () => this.close());
   },
 
   _peutColorier() {
@@ -30,7 +30,7 @@ const AMGT4CEM_MetroPicker = {
 
   _genres() {
     const connecte = !!AMGT4CEM_Auth.session();
-    return AMGT4CEM_MetroGenres.LISTE.filter((g) => connecte || g.genre === 'station' || g.genre === 'tunnel');
+    return AMGT4CEM_DitpDiovGenres.LISTE.filter((g) => connecte || g.genre === 'station' || g.genre === 'tunnel');
   },
 
   open() {
@@ -46,13 +46,13 @@ const AMGT4CEM_MetroPicker = {
 
   _annulerEssais() {
     this._essais = {};
-    AMGT4CEM_MetroGenres.recolorer();
+    AMGT4CEM_DitpDiovGenres.recolorer();
     this._render();
   },
 
   _render() {
     if (!this._content) return;
-    const store = AMGT4CEM_MetroSelectionStore;
+    const store = AMGT4CEM_DitpDiovSelectionStore;
     const genres = this._genres();
     const ids = genres.map((g) => g.genre);
     this._content.innerHTML = '';
@@ -74,7 +74,7 @@ const AMGT4CEM_MetroPicker = {
     const colorier = this._peutColorier();
     for (const { genre } of genres) {
       const ligne = document.createElement('div');
-      ligne.className = 'amgt-metro-genre-row';
+      ligne.className = 'amgt-ditp-diov-genre-row';
       ligne.style.cssText = 'display:flex;align-items:center;gap:8px';
 
       const label = document.createElement('label');
@@ -84,9 +84,9 @@ const AMGT4CEM_MetroPicker = {
       case_.type = 'checkbox';
       case_.checked = store.isSelected(genre);
       case_.addEventListener('change', () => { store.toggle(genre); this._render(); });
-      label.append(case_, document.createTextNode(' ' + AMGT4CEM_MetroGenres.libelle(genre)));
+      label.append(case_, document.createTextNode(' ' + AMGT4CEM_DitpDiovGenres.libelle(genre)));
 
-      const couleur = this._essais[genre] || AMGT4CEM_MetroGenres.couleur(genre);
+      const couleur = this._essais[genre] || AMGT4CEM_DitpDiovGenres.couleur(genre);
       let pastille;
       if (colorier) {
         pastille = document.createElement('input');
@@ -95,7 +95,7 @@ const AMGT4CEM_MetroPicker = {
         pastille.title = 'Couleur du genre, la même pour tout le monde (droit « attributs »)';
         pastille.addEventListener('input', () => {
           this._essais[genre] = pastille.value;
-          AMGT4CEM_MetroGenres.recolorer({ ...this._essais });
+          AMGT4CEM_DitpDiovGenres.recolorer({ ...this._essais });
           this._barreCouleurs();
         });
       } else {
@@ -111,14 +111,14 @@ const AMGT4CEM_MetroPicker = {
 
   // ---------------------------------------------------------------- couleurs : enregistrement pour tous
   _dire(texte, erreur) {
-    let p = this._barre.querySelector('.amgt-metro-msg');
-    if (!p) { p = document.createElement('p'); p.className = 'amgt-settings-hint amgt-metro-msg'; this._barre.prepend(p); }
+    let p = this._barre.querySelector('.amgt-ditp-diov-msg');
+    if (!p) { p = document.createElement('p'); p.className = 'amgt-settings-hint amgt-ditp-diov-msg'; this._barre.prepend(p); }
     p.textContent = texte || '';
     p.classList.toggle('amgt-default-bar-error', !!erreur);
   },
 
   _barreCouleurs() {
-    const msg = this._barre.querySelector('.amgt-metro-msg');
+    const msg = this._barre.querySelector('.amgt-ditp-diov-msg');
     const texte = msg ? msg.textContent : '';
     this._barre.innerHTML = '';
     if (!this._peutColorier()) return;
@@ -167,19 +167,19 @@ const AMGT4CEM_MetroPicker = {
       await AMGT4CEM_PeLabelAnchors.checkConnection(url, code);
       AMGT4CEM_PeLabelAnchors.setAdminCode(code);
       // Fichier relu à neuf : on ne change que la couleur des genres modifiés.
-      const r = await fetch(`./config/metro/vocabulaires.json?t=${Date.now()}`, { cache: 'no-store' });
-      if (!r.ok) throw new Error(`Vocabulaire du Métro illisible (HTTP ${r.status}).`);
+      const r = await fetch(`./config/ditp-diov/vocabulaires.json?t=${Date.now()}`, { cache: 'no-store' });
+      if (!r.ok) throw new Error(`Vocabulaire DITP-DIOV illisible (HTTP ${r.status}).`);
       const voc = await r.json();
       for (const [genre, c] of Object.entries(this._essais)) {
         if (voc.genres && voc.genres[genre]) voc.genres[genre].couleur = c;
       }
       voc.date = new Date().toISOString().slice(0, 10);
-      await AMGT4CEM_PeLabelAnchors.putToRelay(url, 'shared/metro/vocabulaires', voc, code);
+      await AMGT4CEM_PeLabelAnchors.putToRelay(url, 'shared/ditp-diov/vocabulaires', voc, code);
       // Mémoire de l'appareil à jour tout de suite (les autres appareils l'ont après le redéploiement).
       const genres = (AMGT4CEM_Referentiel.vocabulaires || {}).genres || {};
       for (const [genre, c] of Object.entries(this._essais)) if (genres[genre]) genres[genre].couleur = c;
       this._essais = {};
-      AMGT4CEM_MetroGenres.recolorer();
+      AMGT4CEM_DitpDiovGenres.recolorer();
       this._render();
       this._dire('✓ Couleurs enregistrées pour tous (visibles par les autres après le redéploiement du site, environ 1 minute).');
     } catch (err) {

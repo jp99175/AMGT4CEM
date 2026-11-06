@@ -14,7 +14,7 @@
  *    un seul trait qui part du centre du tronçon, rejoint l'extrémité du bord bas
  *    du texte la plus proche, puis longe ce bord (épaisseur plus fine au dézoom).
  *    Les étiquettes n'ont pas d'infobulle (marqueurs non interactifs) ;
- *  - l'infobulle de l'emprise du tronçon (metroLayer.js) y ajoute son ou ses
+ *  - l'infobulle de l'emprise du tronçon (ditpDiovLayer.js) y ajoute son ou ses
  *    numéros (numbersForTunnel), que la couche soit affichée ou non.
  *
  * RATTACHEMENT. Celui du JSON. Pour une étiquette nouvellement créée (ou dont le tronçon
@@ -76,7 +76,7 @@ const AMGT4CEM_Interstation = {
   },
 
   /** Appelé par app.js avec les entités jointes (seuls les genres « tunnel » et « station » servent). */
-  setMetroFeatures(features) {
+  setDitpDiovFeatures(features) {
     const rings = (genre) =>
       features
         .filter((f) => f.properties && f.properties.genre === genre && f.geometry && f.geometry.type === 'Polygon')

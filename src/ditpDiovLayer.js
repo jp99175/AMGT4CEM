@@ -1,6 +1,6 @@
 /**
  * Construction des couches Leaflet à partir des entités jointes par referentiel.js
- * (data/shapefile/polygones.shp + data/metro/ et data/plans-patrimoine/ (polygones.json), jointure par `id`).
+ * (data/shapefile/polygones.shp + data/ditp-diov/ et data/plans-patrimoine/ (polygones.json), jointure par `id`).
  *
  * Chaque polygone porte son `genre` (issu du référentiel, pas du shapefile) :
  *  - "station" : emprise de station (couche Stations) ;
@@ -29,12 +29,12 @@
  * patrimoineLayer.js#registerExternalLayer, bringToBack()/bringToFront()).
  */
 // Uniquement les types encore rendus en L.polygon (Path : fillOpacity/
-// weight s'appliquent, voir mapMenu.js _applyMetroOpacity qui parcourt
+// weight s'appliquent, voir mapMenu.js _applyDitpDiovOpacity qui parcourt
 // cette table et appelle layer.setStyle(...) sur chaque groupe — une
 // méthode que L.Marker n'a pas). Les textes PE_info/PE_label (L.marker,
 // voir _buildScaledLabel) ont leur propre style, passé directement au
 // constructeur du marqueur, pas via cette table.
-const AMGT4CEM_METRO_TYPES = {
+const AMGT4CEM_DITP_DIOV_TYPES = {
   MS: { label: 'Stations', color: '#c0392b', fillOpacity: 0.55, weight: 1 },
   MT: { label: 'Tunnels', color: '#2c3e50', fillOpacity: 0.35, weight: 1 },
   DP: { label: 'Dépôts', color: '#e67e22', fillOpacity: 0.45, weight: 1 },
@@ -56,9 +56,9 @@ const AMGT4CEM_LABEL_STYLES = {
 };
 
 /** Clé de style / de groupe Leaflet (MS, MT, PE) associée à chaque genre du référentiel ; le genre sert aussi de `kind` à la recherche. */
-const AMGT4CEM_METRO_TYPE_BY_GENRE = { station: 'MS', tunnel: 'MT', depot: 'DP', ouvrage_atypique: 'OA', planche: 'PE' };
+const AMGT4CEM_DITP_DIOV_TYPE_BY_GENRE = { station: 'MS', tunnel: 'MT', depot: 'DP', ouvrage_atypique: 'OA', planche: 'PE' };
 
-const AMGT4CEM_MetroLayer = {
+const AMGT4CEM_DitpDiovLayer = {
   /**
    * @param {object} geojson - FeatureCollection des entités jointes (referentiel.js) + repères legacy (non modifiée)
    * @returns {{ layersByType: Object.<string, L.LayerGroup>, bounds: L.LatLngBounds, searchIndex: object[] }}
@@ -94,8 +94,8 @@ const AMGT4CEM_MetroLayer = {
         continue;
       }
 
-      const type = AMGT4CEM_METRO_TYPE_BY_GENRE[props.genre];
-      const style = AMGT4CEM_METRO_TYPES[type];
+      const type = AMGT4CEM_DITP_DIOV_TYPE_BY_GENRE[props.genre];
+      const style = AMGT4CEM_DITP_DIOV_TYPES[type];
       if (!style || !feature.geometry || feature.geometry.type !== 'Polygon') continue;
       if (type === 'PE') peFeatures.push(feature);
 
@@ -311,7 +311,7 @@ const AMGT4CEM_MetroLayer = {
   _buildInfoShapes(feature, group, bounds) {
     const props = feature.properties || {};
     const shapes = this._groupRingsIntoShapes(feature.geometry.coordinates);
-    const style = AMGT4CEM_METRO_TYPES.PE_info;
+    const style = AMGT4CEM_DITP_DIOV_TYPES.PE_info;
     const popupHtml = this._buildInfoPopupHtml(props);
 
     for (const rings of shapes) {

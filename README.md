@@ -7,7 +7,7 @@ sans backend).
 ## 1. Lancer l'application
 
 L'application est une page statique. Les géométries (shapefiles
-`data/shapefile/`), les référentiels (JSON de `data/metro/` et `data/plans-patrimoine/`) et la
+`data/shapefile/`), les référentiels (JSON de `data/ditp-diov/` et `data/plans-patrimoine/`) et la
 configuration des services (`config/fonds-de-plan/`) sont chargés via
 `fetch()`, ce qui **ne fonctionne pas** si vous ouvrez `home.html` directement
 en double-clic (`file://`) — c'est une restriction des navigateurs, pas un bug.
@@ -51,7 +51,7 @@ bouton de secours : les données ne sont pas chargées).
    parcourir les millésimes de 1935 à 2022 — seules les années dont le
    service répond sont proposées, réglée sur la plus récente accessible par
    défaut ; le bouton **⏭** y ramène directement). **Couches** : cases à
-   cocher pour Métro (Stations et Tunnels), UrbIS Topo (voir section 3bis),
+   cocher pour DITP-DIOV (Stations et Tunnels), UrbIS Topo (voir section 3bis),
    Plans patrimoine (section 3ter) et Nappe phréatique (section 3quater). **Points métier** (ligne « Signalements et demandes ») : case à
    cocher pour les entrées envoyées au serveur de dépôt, visibles par tous les agents connectés (connexion demandée à
    l'activation de la couche ; lecture seule ; clic sur un point : titre, référence, version, rédacteur, contributeurs). L'icône curseurs de la ligne donne l'opacité et « (modifier la sélection) » ouvre la liste des types à afficher (mémorisée sur l'appareil).
@@ -152,7 +152,7 @@ bouton de secours : les données ne sont pas chargées).
     tactile ne déclenche pas). Au doigt, le point réellement positionné est
     décalé de 60 px vers le haut par rapport au point de contact, pour que
     le doigt ne cache pas ce qu'il est en train de placer (pas de décalage
-    à la souris). Toutes les couches vectorielles (Métro, UrbIS Topo,
+    à la souris). Toutes les couches vectorielles (DITP-DIOV, UrbIS Topo,
     Plans patrimoine, mesure...) sont dessinées sur `<canvas>` plutôt qu'en
     SVG (`preferCanvas`, voir `src/app.js`) : la capture d'écran s'est
     montrée peu fiable avec le SVG de Leaflet en usage réel (couches ou
@@ -315,7 +315,7 @@ voir `src/basemap.js`), sous peine de tuiles vides ou d'erreur serveur.
 ### Couches UrbIS Topo à la demande
 
 Dans le menu **☰ Carte**, section "Couches" : la case **UrbIS Topo**,
-au même titre que Métro (Stations + Tunnels, fusionnés en une seule case
+au même titre que DITP-DIOV (Stations + Tunnels, fusionnés en une seule case
 également) et Points métier, affiche ou masque des objets détaillés du
 produit **UrbIS Topo** (CIRB/CIBG - Paradigm) — grilles de ventilation,
 chambres et taques d'égout, avaloirs, mobilier urbain, marquages
@@ -412,7 +412,7 @@ mise à jour mensuelle du produit (section 9).
 ## 3bis. Toutes les sources de données sont-elles externes ? Que faire si l'une change ?
 
 Oui, à quelques exceptions près : les géométries (`data/shapefile/`, export
-AutoCAD) et les référentiels (`data/metro/`, `data/plans-patrimoine/`) — voir
+AutoCAD) et les référentiels (`data/ditp-diov/`, `data/plans-patrimoine/`) — voir
 section 4 — sont fournis par l'utilisateur et servis localement, comme les
 fichiers « Plans patrimoine » (section 3ter) ; les points métier sont envoyés au serveur de dépôt (section 6). Tout le reste — fond
 UrbIS, orthophotos (Bruciel, UrbIS, Flandre), géocodeur d'adresses, UrbIS Topo —
@@ -487,10 +487,10 @@ Familles actuelles :
   tronçon par une ligne de repère (voir plus bas).
 - **Plans d'ensemble (1/500e)** : voir ci-dessous.
 
-**Couche Métro selon la connexion.** Sans connexion, la carte affiche la couche
+**Couche DITP-DIOV selon la connexion.** Sans connexion, la carte affiche la couche
 **publique** de la Région (Bruxelles Mobilité, MobiGIS, WFS `bm_public_transport:Metro`,
 Lambert 72) : stations et tunnels, avec leurs noms FR/NL, sans planches ni
-référentiel (`src/metroPublicLayer.js`). Le navigateur interroge la Région
+référentiel (`src/ditpDiovPublicLayer.js`). Le navigateur interroge la Région
 **d'abord** ; si elle refuse (CORS), ne répond pas en 8 s ou renvoie un contenu
 inutilisable, il lit à la place la **copie de secours** `config/secours/region-metro.json`
 (export d'origine de la même couche : 156 polygones, 69 stations et 87 tunnels). La
@@ -510,18 +510,18 @@ L'adresse et le nom de la couche de la Région sont dans `config/fonds-de-plan/s
 
 La couche **« Noms de station »** importée d'INFRAVIEW (206 textes, sans lien
 fiable avec les emprises) a été **retirée**. Les noms et références de station
-seront saisis dans le **référentiel** (`data/metro/polygones.json`, liste
+seront saisis dans le **référentiel** (`data/ditp-diov/polygones.json`, liste
 `noms` de chaque station : entrées `{fr, nl, reference}`) et affichés dans
 l'infobulle de l'emprise de station (section 4).
 
 Les **plans d'ensemble au 1/500e** (36 planches) sont des polygones de genre
 `planche` de `data/shapefile/polygones.shp` ; leur étiquette est le `sheet_ref`
-du référentiel (géométrie et popups gérés par `src/metroLayer.js`, voir section
+du référentiel (géométrie et popups gérés par `src/ditpDiovLayer.js`, voir section
 4bis). Ils restent une entrée de ce sélecteur (`config/plans-patrimoine/catalogue.js`,
 `external: true`) : la case à cocher affiche/masque la couche déjà construite par
-`metroLayer.js` (voir `src/patrimoineLayer.js#registerExternalLayer`), sans
+`ditpDiovLayer.js` (voir `src/patrimoineLayer.js#registerExternalLayer`), sans
 proposer de couleur (couleur/opacité réglées avec le réseau métro, curseur
-« Métro »). Le clic dans une zone où plusieurs planches se chevauchent (42 paires
+« DITP-DIOV »). Le clic dans une zone où plusieurs planches se chevauchent (42 paires
 dans ce jeu de données) liste toujours **toutes** celles concernées à cet endroit
 précis, pas seulement celle au-dessus visuellement (`_sheetRefsAt`). La même case
 affiche aussi les **repères de tronçon** (triangles et codes D0, D1, G1a... relevés
@@ -637,7 +637,7 @@ dossier) :
 ```
 data/
   shapefile/          géométries pérennes, éditables dans AutoCAD (2 shapefiles) + identifiants.json
-  metro/              référentiel de la couche Métro : stations, tunnels (et tronçons, plus tard)
+  ditp-diov/              référentiel de la couche DITP-DIOV : stations, tunnels (et tronçons, plus tard)
   plans-patrimoine/   référentiel des planches, étiquettes, sélection par défaut, fichiers legacy
   urbis-topo/         réglages du service UrbIS Topo + sélection par défaut partagée
   nappe/              réglages de la couche Nappe phréatique (WFS Bruxelles Environnement)
@@ -657,8 +657,8 @@ data/
    `lignes.*` peut rester absent tant qu'aucun tronçon n'est dessiné (l'application
    le tolère).
 2. **Cadastre / référentiel** — JSON rattaché aux géométries par `id`, **rangé dans le
-   dossier de la couche concernée** : `data/metro/polygones.json` (stations et tunnels),
-   `data/metro/lignes.json` (tronçons : vide pour l'instant),
+   dossier de la couche concernée** : `data/ditp-diov/polygones.json` (stations et tunnels),
+   `data/ditp-diov/lignes.json` (tronçons : vide pour l'instant),
    `data/plans-patrimoine/polygones.json` (planches), chacun avec son
    `vocabulaires.json` (genres : libellé, géométrie, couleur d'affichage). Il porte tout ce
    qui complète une géométrie : genre (`station`, `tunnel`, `planche`), noms FR/NL **sans
@@ -717,12 +717,12 @@ identifiant. Les anciens identifiants (`ogc_fid`, `id_objet` comme
 pour les anomalies et ce qui n'a pas pu être migré (notamment : aucun nom de
 station rattaché, la source ayant été retirée).
 
-**Genres de la couche Métro.** `config/metro/vocabulaires.json` déclare quatre genres de polygones : `station`, `tunnel`,
-`depot` et `ouvrage_atypique`, chacun avec sa **couleur**, la même pour tout le monde. Dans Couches > Métro, le lien
+**Genres de la couche DITP-DIOV.** `config/ditp-diov/vocabulaires.json` déclare quatre genres de polygones : `station`, `tunnel`,
+`depot` et `ouvrage_atypique`, chacun avec sa **couleur**, la même pour tout le monde. Dans Couches > DITP-DIOV, le lien
 « (modifier la sélection) » ouvre la liste des genres (cases et couleurs) : la sélection est propre à l'appareil, avec un
-défaut partagé (`config/metro/selection-par-defaut.json`, droit `utilisateurs`) ; la couleur se change avec le droit
-`attributs` et s'enregistre pour tous par le relais (`shared/metro/vocabulaires`). Voir `src/metroGenres.js` et
-`src/metroPicker.js`. Un dépôt ou un ouvrage atypique n'existe que dans la couche privée (comptes connectés).
+défaut partagé (`config/ditp-diov/selection-par-defaut.json`, droit `utilisateurs`) ; la couleur se change avec le droit
+`attributs` et s'enregistre pour tous par le relais (`shared/ditp-diov/vocabulaires`). Voir `src/ditpDiovGenres.js` et
+`src/ditpDiovPicker.js`. Un dépôt ou un ouvrage atypique n'existe que dans la couche privée (comptes connectés).
 
 **Contrôles.** `python3 tools/verifier-donnees.py` (bibliothèque standard seule,
 code de sortie non nul en cas d'erreur) vérifie : identifiants uniques sur les deux
@@ -761,10 +761,10 @@ Workflow de mise à jour :
    `data/shapefile/identifiants.json`) ;
    copier ou scinder une entité duplique son `id` : à corriger avant d'exporter.
 3. **Compléter le référentiel** : une entrée par `id` (genre, noms...) dans le
-   `polygones.json` (ou `lignes.json`) du dossier de la couche : `data/metro/` pour
+   `polygones.json` (ou `lignes.json`) du dossier de la couche : `data/ditp-diov/` pour
    une station ou un tunnel, `data/plans-patrimoine/` pour une planche.
 4. **Lancer `python3 tools/verifier-donnees.py`** : corriger jusqu'à « OK ».
-5. **Committer** (`data/shapefile/`, `data/metro/`, `data/plans-patrimoine/`). Le suivi (famille 3)
+5. **Committer** (`data/shapefile/`, `data/ditp-diov/`, `data/plans-patrimoine/`). Le suivi (famille 3)
    n'est jamais committé.
 
 Origine historique : les polygones viennent de l'export WFS MobiGIS
@@ -935,7 +935,7 @@ Affichage et z-order : contrairement aux planches PE (larges zones qui
 doivent rester SOUS les stations/tunnels pour ne pas intercepter leur
 clic), les triangles PE_info sont délibérément plaqués SUR un tunnel — ils
 doivent donc rester AU-DESSUS de MS/MT, sinon invisibles au clic. Marqués
-via `polygon._amgtBringToFront` (metroLayer.js), traité par
+via `polygon._amgtBringToFront` (ditpDiovLayer.js), traité par
 `src/patrimoineLayer.js#registerExternalLayer` en deux passes (tous les
 `bringToBack` d'abord, puis tous les `bringToFront`), pour finir au-dessus
 de tout même si la couche est activée après coup. Les textes (L.marker,
@@ -964,23 +964,23 @@ src/pickerDefaultBar.js      barre « sélection par défaut » (administrateur)
 src/settingsPanel.js         fenêtre "⚙ Paramètres" à onglets (Sources / Serveur / Données)
 src/layerOpacityStore.js     opacité individuelle des couches (icône curseurs, persistée)
 src/crs.js                   proj4 EPSG:31370 <-> WGS84 (affichage uniquement)
-src/metroGenres.js           genres du Métro à afficher (sélection, couleurs du vocabulaire) ; src/metroPicker.js : leur sélecteur plein écran
+src/ditpDiovGenres.js           genres du DITP-DIOV à afficher (sélection, couleurs du vocabulaire) ; src/ditpDiovPicker.js : leur sélecteur plein écran
 src/shpLoader.js             lecture Shapefile (polygones type 5, polylignes type 3, champ `id` seul), côté navigateur, sans bibliothèque tierce
 src/referentiel.js           chargement des géométries + référentiel JSON, jointure par `id`, contrôles non bloquants
 src/network.js               construction partagée du réseau (stations/tunnels/planches) pour carto et signal
 src/scaledText.js            texte HTML à taille réelle constante (zoom), pour les codes de tronçon et les références de planche
-src/metroLayer.js            construction des couches Leaflet Stations/Tunnels/Planches (+ repères legacy)
-src/metroPublicLayer.js      couche Métro publique (non connecté) : WFS de la Région, sinon copie de secours config/secours/region-metro.json
+src/ditpDiovLayer.js            construction des couches Leaflet Stations/Tunnels/Planches (+ repères legacy)
+src/ditpDiovPublicLayer.js      couche DITP-DIOV publique (non connecté) : WFS de la Région, sinon copie de secours config/secours/region-metro.json
 config/                      réglages publics (restent dans le dépôt) :
   fonds-de-plan/             services externes : services.json + un fichier par service, menus par défaut
   urbis-topo/                réglages du service UrbIS Topo, catalogue, sélection par défaut partagée
   nappe/                     réglages de la couche Nappe phréatique (parametres.json), sélection par défaut
-  metro/                     vocabulaires.json (genres stations/tunnels/tronçons)
+  ditp-diov/                     vocabulaires.json (genres stations/tunnels/tronçons)
   plans-patrimoine/          catalogue, vocabulaires.json (genres des planches), sélection par défaut
-  secours/                   region-metro.json (copie de secours de la couche Métro publique)
+  secours/                   region-metro.json (copie de secours de la couche DITP-DIOV publique)
 data/                        données destinées à R2 (quittent le dépôt à la bascule) :
   shapefile/                 polygones.* (shapefiles Lambert 72, champ `id` seul) + identifiants.json — voir section 4
-  metro/                     référentiel stations/tunnels/tronçons (polygones.json, lignes.json)
+  ditp-diov/                     référentiel stations/tunnels/tronçons (polygones.json, lignes.json)
   plans-patrimoine/          référentiel des planches, étiquettes (écrites via le relais), fichiers legacy, temp-delta-mod
   nappe/                     intervalles.json (bandes entre isopièzes, précalculées) → R2 public/nappe/
   signalements/              vocabulaire.json : natures, types, domaines techniques → R2 privé
@@ -1022,7 +1022,7 @@ vendor/proj4leaflet,
 vendor/html2canvas, vendor/jspdf  bibliothèques embarquées localement
 ```
 
-Les géométries et les référentiels (`data/shapefile/`, `data/metro/`, `data/plans-patrimoine/`) et les
+Les géométries et les référentiels (`data/shapefile/`, `data/ditp-diov/`, `data/plans-patrimoine/`) et les
 points métier (serveur de dépôt) sont deux sources totalement indépendantes : les premiers ne sont modifiés
 que par un export AutoCAD (jamais par l'application elle-même) ; les seconds sont saisis dans SIG4CEM.
 
@@ -1046,7 +1046,7 @@ piste ci-dessus (petit relais serveur) :
 
 - le fichier `data/plans-patrimoine/etiquettes-planches.json` (dans le dépôt) est lu par
   l'application pour tous les visiteurs (`src/peLabelAnchors.js`, appliqué
-  par `src/metroLayer.js` / `src/scaledText.js`) ; absent ou vide, aucune
+  par `src/ditpDiovLayer.js` / `src/scaledText.js`) ; absent ou vide, aucune
   référence de planche n'est affichée ;
 - le plugin `src/peLabelEditor/` (administrateurs) l'enregistre via le
   relais `workers/relay/` (Cloudflare Worker, à déployer une fois : `workers/relay/README.md`),

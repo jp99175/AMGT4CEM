@@ -252,7 +252,7 @@ const AMGT4CEM_VirtualBoreTool = {
 
   /** Station/tunnel dont l'emprise (rectangle englobant, la plus petite) contient le point. */
   _structureAt(latlng) {
-    const index = (typeof AMGT4CEM_SearchTool !== 'undefined' && AMGT4CEM_SearchTool._metroIndex) || [];
+    const index = (typeof AMGT4CEM_SearchTool !== 'undefined' && AMGT4CEM_SearchTool._ditpDiovIndex) || [];
     let best = null;
     let bestArea = Infinity;
     for (const entry of index) {

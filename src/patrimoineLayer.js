@@ -11,7 +11,7 @@
  * point coloré, pour rester lisible.
  *
  * Les planches (plans d'ensemble au 1/500e) ne passent plus par un fichier propre : ce sont des
- * polygones de genre « planche » de polygones.shp, construits par metroLayer.js (étiquette =
+ * polygones de genre « planche » de polygones.shp, construits par ditpDiovLayer.js (étiquette =
  * `sheet_ref` du référentiel, clic en zone de recouvrement : toutes les planches listées).
  * Leur entrée du catalogue (`external: true`) ne fait qu'afficher/masquer cette couche,
  * voir registerExternalLayer() ci-dessous.
@@ -51,9 +51,9 @@ const AMGT4CEM_PatrimoineLayer = {
 
   /**
    * Enregistre une couche Leaflet déjà construite ailleurs (ex : les
-   * planches "PE" de metroLayer.js, voir app.js) pour un id du catalogue
+   * planches "PE" de ditpDiovLayer.js, voir app.js) pour un id du catalogue
    * marqué `external: true`. Peut être appelé avant ou après que
-   * l'utilisateur ait sélectionné cet id (le chargement du réseau Métro est
+   * l'utilisateur ait sélectionné cet id (le chargement du réseau DITP-DIOV est
    * asynchrone) : si déjà sélectionné, la couche est affichée immédiatement.
    */
   registerExternalLayer(id, layerGroup) {
@@ -77,7 +77,7 @@ const AMGT4CEM_PatrimoineLayer = {
   /**
    * Réglage d'opacité (icône curseurs du menu ☰ Carte), 0 à 1. Les couches
    * externes (ex : planches PE) n'y sont pas soumises : leur opacité reste
-   * gérée par leur propre module (curseur "Métro" pour PE) pour éviter que
+   * gérée par leur propre module (curseur "DITP-DIOV" pour PE) pour éviter que
    * deux curseurs n'agissent sur la même couche.
    */
   setOpacity(factor) {
@@ -126,13 +126,13 @@ const AMGT4CEM_PatrimoineLayer = {
         this._subGroups[id] = layer;
         layer.addTo(this._group);
         // Cette couche externe peut combiner des enfants aux besoins de
-        // z-order opposés (voir metroLayer.js) : les planches PE doivent
+        // z-order opposés (voir ditpDiovLayer.js) : les planches PE doivent
         // rester SOUS les stations/tunnels (pour qu'un clic sur une station
         // ouvre bien sa popup, pas celle de la planche sous-jacente), alors
         // que les repères PE_info doivent au contraire rester AU-DESSUS —
         // ils sont délibérément plaqués SUR un tunnel (MT), un simple
         // bringToBack() les rendrait donc totalement inaccessibles au clic.
-        // Marqués via `_amgtBringToFront` posé par metroLayer.js. Deux
+        // Marqués via `_amgtBringToFront` posé par ditpDiovLayer.js. Deux
         // passes séparées (pas une seule boucle) : bringToFront doit
         // s'appliquer APRÈS tous les bringToBack pour finir au-dessus de
         // tout, y compris MS/MT déjà présents sur la carte. À l'affichage
@@ -309,7 +309,7 @@ const AMGT4CEM_PatrimoineLayer = {
   /**
    * Géométries (Lambert 72) des couches affichées, pour l'outil « Dessiner une zone » : [{ id, nom, polygones: [[ext, trous…]], lignes }].
    * Les lieux constitués (genre « lieu » / « urbis ») en sont exclus (l'outil les lit directement) ; les planches 1/500e,
-   * construites par metroLayer.js, n'y figurent pas.
+   * construites par ditpDiovLayer.js, n'y figurent pas.
    */
   geometriesAffichees() {
     const out = [];

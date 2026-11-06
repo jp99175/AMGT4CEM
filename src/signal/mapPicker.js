@@ -63,7 +63,7 @@ SIG.MapPicker = {
     this._ready = (async () => {
       await AMGT4CEM_Services.load();
       // Sélections par défaut PARTAGÉES : lues avant la création des couches, qui en dépendent pour une première visite.
-      await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared(), AMGT4CEM_MetroSelectionStore.loadShared()]);
+      await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared(), AMGT4CEM_DitpDiovSelectionStore.loadShared()]);
 
       this.map = L.map(this.canvas, {
         attributionControl: false,
@@ -100,8 +100,8 @@ SIG.MapPicker = {
     AMGT4CEM_Network.load(this.map).then(
       ({ layersByType, bounds, searchIndex }) => {
         this.network = layersByType;
-        AMGT4CEM_SearchTool.setMetroIndex(searchIndex);
-        AMGT4CEM_Network.setOpacity(layersByType, AMGT4CEM_LayerOpacityStore.getFactor('metro'));
+        AMGT4CEM_SearchTool.setDitpDiovIndex(searchIndex);
+        AMGT4CEM_Network.setOpacity(layersByType, AMGT4CEM_LayerOpacityStore.getFactor('ditp-diov'));
         // Vue sur le réseau, sauf si un point est déjà posé ou si l'utilisateur a déjà bougé la carte.
         if (bounds.isValid() && !this.marker && !this._moved) this.map.fitBounds(bounds, { padding: [20, 20] });
       },

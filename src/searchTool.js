@@ -6,7 +6,7 @@
  */
 const AMGT4CEM_SearchTool = {
   _map: null,
-  _metroIndex: [],
+  _ditpDiovIndex: [],
 
   init(map) {
     this._map = map;
@@ -100,10 +100,10 @@ const AMGT4CEM_SearchTool = {
 
   /**
    * Appelé une fois le référentiel chargé et ses couches construites.
-   * @param {object[]} searchIndex - voir AMGT4CEM_MetroLayer.build()
+   * @param {object[]} searchIndex - voir AMGT4CEM_DitpDiovLayer.build()
    */
-  setMetroIndex(searchIndex) {
-    this._metroIndex = searchIndex;
+  setDitpDiovIndex(searchIndex) {
+    this._ditpDiovIndex = searchIndex;
   },
 
   _normalize(str) {
@@ -117,7 +117,7 @@ const AMGT4CEM_SearchTool = {
     const needle = this._normalize(query);
     const results = [];
 
-    for (const entry of this._metroIndex) {
+    for (const entry of this._ditpDiovIndex) {
       if (this._normalize(entry.searchText).includes(needle)) {
         results.push({ kind: entry.kind, label: entry.label, bounds: entry.bounds });
         if (results.length >= 8) break;

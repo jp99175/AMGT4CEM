@@ -1,6 +1,6 @@
 /**
  * Point d'entrée de l'application : assemble les modules (fond de plan,
- * couche Metro, signalements et demandes, outils de navigation et de création).
+ * couche DITP-DIOV, signalements et demandes, outils de navigation et de création).
  */
 (async function () {
   // Anciennes saisies d'essai, abandonnées (micro-base « Points métier », ancien outil de signalement) : effacées.
@@ -14,7 +14,7 @@
   await AMGT4CEM_Services.load();
   // Sélections par défaut PARTAGÉES (UrbIS Topo, Plans patrimoine) : lues avant la création des couches, qui
   // en dépendent pour une première visite. Ne rejette jamais (délai borné).
-  await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared(), AMGT4CEM_MetroSelectionStore.loadShared(), AMGT4CEM_OrthoSelectionStore.loadShared(), AMGT4CEM_NappeSelectionStore.loadShared(), AMGT4CEM_MenuPrefs.loadShared()]);
+  await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared(), AMGT4CEM_DitpDiovSelectionStore.loadShared(), AMGT4CEM_OrthoSelectionStore.loadShared(), AMGT4CEM_NappeSelectionStore.loadShared(), AMGT4CEM_MenuPrefs.loadShared()]);
 
   const map = L.map('map', {
     // Pas de contrôle de zoom Leaflet : remplacé par la recherche en haut à
@@ -22,7 +22,7 @@
     // pincement et au double-clic.
     zoomControl: false,
     // Rendu Canvas plutôt que SVG pour toutes les couches vectorielles
-    // (Métro, UrbIS Topo, Plans patrimoine, mesure...) : html2canvas
+    // (DITP-DIOV, UrbIS Topo, Plans patrimoine, mesure...) : html2canvas
     // (screenshotTool.js) s'est montré peu fiable pour capturer du SVG
     // Leaflet en conditions réelles (tuiles de fond chargées, zoom serré,
     // beaucoup d'objets à l'écran) — cercle/segment de mesure ou couches
@@ -70,15 +70,15 @@
   AMGT4CEM_Interstation.init(); // charge les numéros d'interstation (associés aux tunnels dans AMGT4CEM_Network.build)
   AMGT4CEM_PatrimoineLayer.init(map);
   AMGT4CEM_PatrimoinePicker.init();
-  AMGT4CEM_MetroPicker.init();
+  AMGT4CEM_DitpDiovPicker.init();
   AMGT4CEM_OrthoPicker.init(); // les orthophotos configurées sont lues à l'ouverture de l'écran
 
-  let metroBounds = null;
+  let ditpDiovBounds = null;
 
   AMGT4CEM_MapMenu.init({
     map,
     pointsGroup,
-    getMetroBounds: () => metroBounds,
+    getDitpDiovBounds: () => ditpDiovBounds,
   });
   AMGT4CEM_SettingsPanel.init();
 
@@ -109,9 +109,9 @@
     banner.classList.remove('amgt-hidden');
   }
 
-  // Couche Métro selon la connexion :
+  // Couche DITP-DIOV selon la connexion :
   //  - personne n'est connecté : couche PUBLIQUE de la Région (stations et tunnels, copie de secours du dépôt si la
-  //    Région ne répond pas), voir src/metroPublicLayer.js ; ni planches ni référentiel ;
+  //    Région ne répond pas), voir src/ditpDiovPublicLayer.js ; ni planches ni référentiel ;
   //  - un compte est connecté : couche corrigée (shapefile + référentiel) et planches « Plans patrimoine »,
   //    voir src/network.js.
   // Elle est relue sans recharger la page à chaque connexion ou déconnexion (voir plus bas).
@@ -127,7 +127,7 @@
   /** Retire de la carte les couches d'un réseau (Stations, Tunnels, et planches de la source privée). */
   function discardNetwork(mode, layersByType) {
     if (!layersByType) return;
-    AMGT4CEM_MetroGenres.retirer(map, layersByType);
+    AMGT4CEM_DitpDiovGenres.retirer(map, layersByType);
     if (mode === 'prive') AMGT4CEM_PatrimoineLayer.unregisterExternalLayer('plans-ensemble-500e');
   }
 
@@ -135,13 +135,13 @@
   function onNetworkBuilt(mode, { layersByType, bounds, searchIndex }) {
     networkMode = mode;
     networkLayers = layersByType;
-    AMGT4CEM_MapMenu.setMetroLayers(layersByType);
-    AMGT4CEM_SearchTool.setMetroIndex(searchIndex);
+    AMGT4CEM_MapMenu.setDitpDiovLayers(layersByType);
+    AMGT4CEM_SearchTool.setDitpDiovIndex(searchIndex);
 
-    // Case « Métro » décochée ou genre décoché avant le changement de source : les nouvelles couches le restent.
-    AMGT4CEM_MetroGenres.appliquer(map, layersByType);
+    // Case « DITP-DIOV » décochée ou genre décoché avant le changement de source : les nouvelles couches le restent.
+    AMGT4CEM_DitpDiovGenres.appliquer(map, layersByType);
 
-    metroBounds = bounds;
+    ditpDiovBounds = bounds;
     // Recentrage seulement au premier affichage : un changement de source ne déplace pas la carte.
     if (!networkFitted && bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
     networkFitted = true;
@@ -175,7 +175,7 @@
     applyConnectionAccess(mode === 'prive');
     if (mode === networkMode) return;
     const token = ++networkToken;
-    const loading = mode === 'prive' ? AMGT4CEM_Network.load(map) : AMGT4CEM_MetroPublicLayer.load(map);
+    const loading = mode === 'prive' ? AMGT4CEM_Network.load(map) : AMGT4CEM_DitpDiovPublicLayer.load(map);
     loading.then(
       (result) => {
         if (token !== networkToken) { // connexion ou déconnexion pendant la lecture : cette lecture est périmée
