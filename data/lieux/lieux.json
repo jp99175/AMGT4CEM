@@ -231,6 +231,7 @@
     },
     "PASSERELLE-BEEKKANT": {
       "nom": "Passerelle BEEKKANT",
+      "genre": "ouvrage_atypique",
       "tolerance_m": 5,
       "objets": [
         {
