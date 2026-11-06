@@ -123,3 +123,4 @@ html[data-app="reglages"] body {
 .rgl-tableau .rgl-cell:focus { border-color: #1f5f99; background: #fff; }
 .rgl-tableau .rgl-ro { display: inline-block; padding: 6px; color: #52606d; white-space: nowrap; }
 .rgl-tableau tr.rgl-modif { background: #fff8e1; }
+.rgl-tableau .rgl-cell::placeholder { font-style: italic; color: #52606d; opacity: 1; }

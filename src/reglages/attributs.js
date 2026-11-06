@@ -16,7 +16,7 @@
  *
  * Une station n'a qu'UN nom. Plusieurs lignes desservies = plusieurs arrêts de même nom, désignés par des références
  * différentes : `references` est une liste de textes (colonne « Références », séparées par « ; »).
- * Nom NL vide → même nom que le FR (et inversement).
+ * Nom NL vide → le nom FR s'affiche en italique dans le champ vide (et inversement) ; la donnée, elle, reste vide.
  */
 (function () {
 const SOURCES = [
@@ -98,7 +98,7 @@ function reperesEntetes(grille) {
   return map;
 }
 
-/** Complète le nom manquant avec l'autre langue ; vérifie les règles. Renvoie la liste des problèmes. */
+/** Vérifie les règles (un nom au moins, planches uniques). Les noms vides ne sont PAS complétés : l'autre langue ne s'affiche qu'en italique. */
 function normaliserEtVerifier(lignes, genres) {
   const problemes = [];
   const planches = new Map();
@@ -111,8 +111,6 @@ function normaliserEtVerifier(lignes, genres) {
       continue;
     }
     if (!genres.includes(c.genre)) problemes.push(`${l.id} : genre « ${c.genre} » inconnu.`);
-    if (!c.name_fr && c.name_nl) c.name_fr = c.name_nl;
-    if (!c.name_nl && c.name_fr) c.name_nl = c.name_fr;
     if (!c.name_fr && !c.name_nl) problemes.push(`${l.id} : aucun nom.`);
   }
   return problemes;
@@ -193,7 +191,7 @@ async function monter(conteneur) {
   btnRetour.innerHTML = ICONES.retour;
   const btnSauver = h('button', { type: 'button', class: 'rgl-ic', title: 'Enregistrer sur le serveur', 'aria-label': 'Enregistrer sur le serveur' });
   btnSauver.innerHTML = ICONES.disquette;
-  const btnCopier = h('button', { type: 'button', class: 'rgl-btn rgl-btn--petit', text: 'Copier le tableau' });
+  const btnExporter = h('button', { type: 'button', class: 'rgl-btn rgl-btn--petit', text: 'Exporter' });
   const compteur = h('span', { class: 'rgl-compteur' });
   const champRecherche = h('input', { type: 'search', class: 'rgl-input rgl-input--large', placeholder: 'Rechercher (id, nom, référence)…', autocomplete: 'off' });
   const puces = h('div', { class: 'rgl-puces' });
@@ -242,6 +240,8 @@ async function monter(conteneur) {
           else {
             const input = h('input', { type: 'text', class: 'rgl-cell', 'data-id': l.id, 'data-cle': col.cle, autocomplete: 'off', spellcheck: 'false' });
             input.value = valeurAffichee(l.champs, col.cle);
+            const autre = col.cle === 'name_nl' ? l.champs.name_fr : col.cle === 'name_fr' ? l.champs.name_nl : '';
+            if (autre && !input.value) input.placeholder = autre; // texte repris de l'autre langue, en italique (CSS), jamais enregistré
             input.addEventListener('focus', () => { ancrage = { id: l.id, cle: col.cle }; });
             input.addEventListener('change', () => changer(l, col.cle, input.value));
             td.append(input);
@@ -320,11 +320,21 @@ async function monter(conteneur) {
     dire(`${cellules} cellule(s) collée(s)${ignorees ? `, ${ignorees} refusée(s) (cellule non modifiable ou valeur invalide)` : ''}${inconnues ? `, ${inconnues} ligne(s) sans correspondance` : ''}. La flèche retour annule ce collage.`, cellules ? 'ok' : 'erreur');
   });
 
-  btnCopier.addEventListener('click', async () => {
-    const tsv = [COLONNES.map((c) => c.titre).join('\t'),
-      ...visibles().map((l) => COLONNES.map((c) => (c.cle === 'id' ? l.id : valeurAffichee(l.champs, c.cle))).join('\t'))].join('\n');
-    try { await navigator.clipboard.writeText(tsv); dire(`${visibles().length} ligne(s) copiée(s) (collable dans un tableur).`, 'ok'); }
-    catch (err) { dire('Copie refusée par le navigateur.', 'erreur'); }
+  /** Exporte les lignes affichées (texte à tabulations, lisible par un tableur) : l'appareil demande où l'enregistrer. */
+  btnExporter.addEventListener('click', async () => {
+    const tsv = `\ufeff${[COLONNES.map((c) => c.titre).join('\t'),
+      ...visibles().map((l) => COLONNES.map((c) => (c.cle === 'id' ? l.id : valeurAffichee(l.champs, c.cle))).join('\t'))].join('\r\n')}\r\n`;
+    const nom = 'attributs.tsv'; // nom provisoire, à aligner plus tard sur la convention de nommage
+    try {
+      if (window.showSaveFilePicker) {
+        const fh = await window.showSaveFilePicker({ suggestedName: nom, types: [{ description: 'Texte à tabulations', accept: { 'text/tab-separated-values': ['.tsv'] } }] });
+        const w = await fh.createWritable(); await w.write(tsv); await w.close();
+      } else {
+        const a = h('a', { href: URL.createObjectURL(new Blob([tsv], { type: 'text/tab-separated-values;charset=utf-8' })), download: nom });
+        document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      }
+      dire(`${visibles().length} ligne(s) exportée(s).`, 'ok');
+    } catch (err) { if (err.name !== 'AbortError') dire(`Export impossible : ${err.message}`, 'erreur'); }
   });
 
   champRecherche.addEventListener('input', () => { recherche = champRecherche.value; rendre(); });
@@ -373,8 +383,8 @@ async function monter(conteneur) {
   construirePuces();
   rendre();
   conteneur.append(
-    h('p', { class: 'rgl-note', text: 'Attributs des entités du shapefile. Coller depuis un tableur : cliquer dans une cellule puis coller (texte brut). Plusieurs lignes desservies = plusieurs arrêts de même nom : indiquer leurs références séparées par « ; ». Nom NL vide = même nom que le FR.' }),
-    h('div', { class: 'rgl-barre' }, btnRetour, btnSauver, btnCopier, compteur),
+    h('p', { class: 'rgl-note', text: 'Attributs des entités du shapefile. Coller depuis un tableur : cliquer dans une cellule puis coller (texte brut). Plusieurs lignes desservies = plusieurs arrêts de même nom : indiquer leurs références séparées par « ; ». Un nom FR ou NL vide s\'affiche en italique avec le nom de l\'autre langue, sans être enregistré.' }),
+    h('div', { class: 'rgl-barre' }, btnRetour, btnSauver, btnExporter, compteur),
     puces, h('div', { class: 'rgl-recherche' }, champRecherche), statut,
     h('div', { class: 'rgl-tableau-cadre' }, table));
 }
