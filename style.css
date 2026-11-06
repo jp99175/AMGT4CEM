@@ -1250,7 +1250,8 @@ html, body {
 #amgt-menu-prefs-save .amgt-footer-ic { width: 22px; height: 22px; }
 /* Flèche circulaire devant « Réinitialiser la vue » : couleur du lien, non soulignée (seul le texte l'est). */
 #amgt-reset-view-btn { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
-#amgt-reset-view-btn .amgt-footer-ic { width: 16px; height: 16px; stroke-width: 2; }
+/* Icône « emprise de la Région » (23 px de haut, trait de 0,8, bleu #0b5c75) : dessin en masque, comme les autres icônes harmonisées. */
+.amgt-ic-vue { display: block; flex: none; width: 23px; height: 23px; background: #0b5c75; -webkit-mask: url('./src/nav/icone-reinitialiser-vue.svg') center / contain no-repeat; mask: url('./src/nav/icone-reinitialiser-vue.svg') center / contain no-repeat; }
 .amgt-menu-prefs { margin-top: 10px; font-size: 13px; }
 .amgt-menu-prefs p { margin: 4px 0 0; color: #555; }
 .amgt-menu-prefs .amgt-menu-prefs__row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }

@@ -29,7 +29,6 @@ const h = (tag, attrs, ...kids) => {
 const svgIcone = (contenu) => `<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round">${contenu}</svg>`;
 const ICONES = {
   disquette: svgIcone('<path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/>'),
-  horaire: svgIcone('<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/>'), // ↻ réinitialiser la vue
   antihoraire: svgIcone('<g transform="matrix(-1 0 0 1 24 0)"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/></g>'), // ↺ défaut
   fermer: svgIcone('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'),
 };
@@ -197,7 +196,7 @@ const Couches = {
     this._admin = h('div', { class: 'amgt-couches__admin' });
     const reinit = document.getElementById('amgt-reset-view-btn');
     reinit.className = 'amgt-ic-btn';
-    reinit.innerHTML = ICONES.horaire;
+    reinit.innerHTML = '<span class="amgt-ic-vue" aria-hidden="true"></span>'; // emprise de la Région (src/nav/icone-reinitialiser-vue.svg)
     reinit.title = 'Réinitialiser la vue';
     reinit.setAttribute('aria-label', 'Réinitialiser la vue');
     const rangee = h('div', { class: 'amgt-couches-pied' }, h('div', { class: 'amgt-couches-pied__gauche' }, revenir, disquette), reinit);
