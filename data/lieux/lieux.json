@@ -848,6 +848,7 @@
     },
     "COMPLEXE-DELTA": {
       "nom": "Complexe DELTA",
+      "genre": "depot",
       "tolerance_m": 5,
       "objets": [
         {
