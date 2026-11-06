@@ -97,7 +97,8 @@ const AMGT4CEM_Services = {
         format: u.format,
         attribution: u.attribution,
         // Service de tuiles (WMTS) ; absent = WMS seul. L'adresse vient de services.json (clé « urbis-tuiles »), celle de urbis.json ne sert que de secours.
-        tuiles: u.tuiles ? { ...u.tuiles, url: this._url('urbis-tuiles') || u.tuiles.url } : null,
+        // Mode « wms » (Réglages > Services et relais) : on ignore les tuiles, le WMS est affiché seul, sans bascule.
+        tuiles: u.tuiles && u.mode !== 'wms' ? { ...u.tuiles, url: this._url('urbis-tuiles') || u.tuiles.url } : null,
       },
       // Ligne du temps unique : Bruciel historique (1935-1996) puis orthophotos récentes UrbIS (2004-2022).
       bruciel: { entries: [...orthoEntries('bruciel', 'bruciel'), ...orthoEntries('urbis-orthophotos', 'bruxelles')] },
@@ -140,6 +141,7 @@ const AMGT4CEM_Services = {
   current() {
     const tuiles = this._sources.urbis && this._sources.urbis.tuiles;
     return {
+      urbisMode: this._sources.urbis && this._sources.urbis.mode === 'wms' ? 'wms' : 'tuiles',
       urbisTuilesUrl: this._url('urbis-tuiles') || (tuiles && tuiles.url) || '',
       urbisTuilesLayer: (tuiles && tuiles.layer) || '',
       urbisUrl: this._url('urbis'),
@@ -188,19 +190,23 @@ const AMGT4CEM_Services = {
     const tuilesLayer = (values.urbisTuilesLayer || '').trim();
     if (tuilesLayer && !/^[\w:.,-]{1,100}$/.test(tuilesLayer)) throw new Error(`Nom de couche de tuiles invalide : ${tuilesLayer}`);
 
+    const mode = values.urbisMode === 'wms' ? 'wms' : 'tuiles';
+
     const strip = (o) => JSON.stringify({ ...o, date: undefined });
     const today = new Date().toISOString().slice(0, 10);
     if (strip(services) !== strip(this._services || {})) {
       await AMGT4CEM_PeLabelAnchors.putToRelay(relayUrl, 'shared/fonds-de-plan/services', { ...services, version: 1, date: today }, adminCode);
       this._services = { ...services, version: 1, date: today };
     }
-    // urbis.json : couche WMS (repli) et/ou couche de tuiles, réécrit seulement si l'une des deux change.
+    // urbis.json : mode d'affichage, couche WMS (repli) et/ou couche de tuiles, réécrit seulement si l'un des trois change.
     const cur = this._sources.urbis;
     if (cur) {
       const layersChange = layers && layers !== cur.layers;
       const tuilesChange = tuilesLayer && cur.tuiles && tuilesLayer !== cur.tuiles.layer;
-      if (layersChange || tuilesChange) {
+      const modeChange = mode !== (cur.mode === 'wms' ? 'wms' : 'tuiles');
+      if (layersChange || tuilesChange || modeChange) {
         const urbis = { ...cur, date: today };
+        if (modeChange) urbis.mode = mode;
         if (layersChange) urbis.layers = layers;
         if (tuilesChange) urbis.tuiles = { ...cur.tuiles, layer: tuilesLayer };
         await AMGT4CEM_PeLabelAnchors.putToRelay(relayUrl, 'shared/fonds-de-plan/urbis', urbis, adminCode);

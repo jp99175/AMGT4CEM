@@ -46,6 +46,12 @@ async function monter(conteneur) {
     return h('label', { class: 'rgl-champ' }, h('span', { text: c.libelle }), input);
   };
 
+  // Mode d'affichage du fond UrbIS (commun à tous les agents) : tuiles avec WMS en repli, ou WMS seul.
+  const mode = h('select', { class: 'rgl-input rgl-input--large' },
+    h('option', { value: 'tuiles', text: 'Tuiles, avec le WMS en repli' }),
+    h('option', { value: 'wms', text: 'WMS seul (sans les tuiles)' }));
+  mode.value = valeurs.urbisMode === 'wms' ? 'wms' : 'tuiles';
+
   const code = h('input', { type: 'password', class: 'rgl-input rgl-input--large', autocomplete: 'off' });
   const majCode = () => {
     code.value = '';
@@ -69,7 +75,7 @@ async function monter(conteneur) {
 
   const enregistrer = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: 'Enregistrer' });
   enregistrer.addEventListener('click', async () => {
-    const saisie = Object.fromEntries(Object.entries(champs).map(([k, input]) => [k, input.value.trim()]));
+    const saisie = { ...Object.fromEntries(Object.entries(champs).map(([k, input]) => [k, input.value.trim()])), urbisMode: mode.value };
     const c = codeActuel();
     const relais = saisie.relayUrl || AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl;
     if (!relais || !c) { dire('Pour enregistrer sur le serveur : renseigner l\'adresse du relais et le code administrateur.', 'erreur'); return; }
@@ -89,7 +95,7 @@ async function monter(conteneur) {
 
   conteneur.append(
     h('p', { class: 'rgl-note', text: 'Réglages communs à tous les agents, enregistrés sur le serveur. À modifier uniquement si l\'un de ces services externes change d\'adresse.' }),
-    h('section', { class: 'rgl-bloc rgl-bloc--formulaire' }, h('h2', { class: 'rgl-bloc__titre', text: 'Services externes' }), h('p', { class: 'rgl-aide', text: 'Le fond UrbIS s\'affiche par défaut avec les tuiles. Le service WMS n\'est utilisé qu\'en repli, si les tuiles ne répondent pas.' }), ...CHAMPS.slice(0, -1).map(ligne)),
+    h('section', { class: 'rgl-bloc rgl-bloc--formulaire' }, h('h2', { class: 'rgl-bloc__titre', text: 'Services externes' }), h('p', { class: 'rgl-aide', text: 'Par défaut, le fond UrbIS s\'affiche avec les tuiles ; le WMS n\'est utilisé qu\'en repli, si les tuiles ne répondent pas. « WMS seul » affiche toujours le WMS, pour tous les agents.' }), h('label', { class: 'rgl-champ' }, h('span', { text: 'Fond UrbIS — mode d\'affichage' }), mode), ...CHAMPS.slice(0, -1).map(ligne)),
     h('section', { class: 'rgl-bloc rgl-bloc--formulaire' }, h('h2', { class: 'rgl-bloc__titre', text: 'Relais d\'enregistrement' }),
       ligne(CHAMPS[CHAMPS.length - 1]),
       h('label', { class: 'rgl-champ' }, h('span', { text: 'Code administrateur' }), code),
