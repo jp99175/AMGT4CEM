@@ -304,6 +304,7 @@
     },
     "ASCENSEUR-POELAERT": {
       "nom": "Ascenseur POELAERT",
+      "genre": "ouvrage_atypique",
       "tolerance_m": 5,
       "objets": [
         {
@@ -370,7 +371,6 @@
         }
       ],
       "contour_methode": "surfaces",
-      "contour_marge": 0,
       "contour": [
         [
           [
