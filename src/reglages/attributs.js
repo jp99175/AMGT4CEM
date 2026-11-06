@@ -350,9 +350,10 @@ async function monter(conteneur) {
   /* Enregistrer */
   btnSauver.addEventListener('click', async () => {
     const A = AMGT4CEM_PeLabelAnchors;
-    const code = A.getAdminCode();
     const relais = AMGT4CEM_Services.current().relayUrl || AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl;
-    if (!relais || !code) { dire('Pour enregistrer : renseigner l\'adresse du relais et le code administrateur (Réglages > Avancé > Services et relais).', 'erreur'); return; }
+    if (!relais) { dire('Pour enregistrer : renseigner l\'adresse du relais (Réglages > Avancé > Services et relais).', 'erreur'); return; }
+    const code = await A.demanderCode();
+    if (!code) { dire('Enregistrement annulé : code administrateur non saisi.', 'erreur'); return; }
     const problemes = normaliserEtVerifier(lignes, genres);
     if (problemes.length) { rendre(); dire(`Enregistrement impossible :\n${problemes.slice(0, 8).join('\n')}`, 'erreur'); return; }
     const aEnvoyer = nonEnvoyees();

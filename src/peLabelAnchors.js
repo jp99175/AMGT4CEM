@@ -93,6 +93,48 @@ const AMGT4CEM_PeLabelAnchors = {
     }
   },
 
+  /**
+   * Fenêtre de saisie du code administrateur (champ masqué, avec case « Afficher »). Renvoie le code saisi (gardé le
+   * temps de l'onglet) ou '' si l'utilisateur annule. Si un code est déjà gardé, il est renvoyé sans rien demander.
+   */
+  demanderCode(message) {
+    const deja = this.getAdminCode();
+    if (deja) return Promise.resolve(deja);
+    return new Promise((resolve) => {
+      const el = (tag, style, props) => Object.assign(document.createElement(tag), props || {}, { style: style || '' });
+      const fond = el('div', 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;');
+      const boite = el('form', 'background:#fff;color:#1f2933;border-radius:10px;padding:16px;width:100%;max-width:340px;box-sizing:border-box;font:15px system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.3);');
+      boite.setAttribute('role', 'dialog'); boite.setAttribute('aria-modal', 'true'); boite.setAttribute('aria-label', 'Code administrateur');
+      const titre = el('div', 'font-weight:600;margin:0 0 4px;', { textContent: 'Code administrateur' });
+      const aide = el('div', 'font-size:13px;color:#52606d;margin:0 0 10px;', { textContent: message || 'Nécessaire pour enregistrer sur le serveur. Il n\'est gardé que le temps de cet onglet.' });
+      const champ = el('input', 'width:100%;box-sizing:border-box;padding:9px 10px;font-size:16px;border:1px solid #9aa5b1;border-radius:6px;', { type: 'password', autocomplete: 'off' });
+      champ.setAttribute('autocapitalize', 'none'); champ.setAttribute('spellcheck', 'false');
+      const etiquette = el('label', 'display:flex;align-items:center;gap:6px;margin:8px 0 12px;font-size:14px;');
+      const voir = el('input', '', { type: 'checkbox' });
+      voir.addEventListener('change', () => { champ.type = voir.checked ? 'text' : 'password'; });
+      etiquette.append(voir, document.createTextNode('Afficher le code'));
+      const annuler = el('button', 'padding:9px 14px;font-size:15px;border:1px solid #cbd2d9;border-radius:6px;background:#fff;cursor:pointer;', { type: 'button', textContent: 'Annuler' });
+      const valider = el('button', 'padding:9px 14px;font-size:15px;border:1px solid #2c3e50;border-radius:6px;background:#2c3e50;color:#fff;cursor:pointer;', { type: 'submit', textContent: 'Valider' });
+      const actions = el('div', 'display:flex;gap:8px;justify-content:flex-end;');
+      actions.append(annuler, valider);
+      boite.append(titre, aide, champ, etiquette, actions);
+      fond.append(boite);
+      const fin = (code) => { document.removeEventListener('keydown', touche, true); fond.remove(); resolve(code); };
+      const touche = (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); fin(''); } };
+      document.addEventListener('keydown', touche, true);
+      annuler.addEventListener('click', () => fin(''));
+      boite.addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        const code = champ.value.trim();
+        if (!code) { champ.focus(); return; }
+        this.setAdminCode(code);
+        fin(code);
+      });
+      document.body.append(fond);
+      champ.focus();
+    });
+  },
+
   setAdminCode(code) {
     try {
       if (code) sessionStorage.setItem('amgt4cem-admin-code', code);
@@ -140,7 +182,8 @@ const AMGT4CEM_PeLabelAnchors = {
     if (!relayUrl) {
       throw new Error("Enregistrement impossible : adresse du relais non renseignée (Réglages > Avancé > Services et relais, voir workers/relay/README.md).");
     }
-    if (!adminCode) throw new Error('Code administrateur non renseigné (Réglages > Avancé > Services et relais).');
+    if (!adminCode) adminCode = await this.demanderCode();
+    if (!adminCode) throw new Error('Enregistrement annulé : code administrateur non saisi.');
     let response;
     try {
       response = await fetch(`${relayUrl.replace(/\/+$/, '')}/${route}`, {
@@ -161,6 +204,7 @@ const AMGT4CEM_PeLabelAnchors = {
       if (response.status === 404 && /Route inconnue/.test(detail)) {
         throw new Error(`Le relais déployé ne connaît pas la route « ${route} » : il faut redéployer workers/relay/worker.js (voir workers/relay/README.md). ${detail}`);
       }
+      if (response.status === 401) this.setAdminCode(''); // un code refusé ne doit pas rester en mémoire : il sera redemandé
       throw new Error(response.status === 401 ? 'Code administrateur refusé.' : `Enregistrement refusé (HTTP ${response.status}) ${detail}`.trim());
     }
   },

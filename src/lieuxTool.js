@@ -1522,8 +1522,7 @@ const AMGT4CEM_LieuxTool = {
   _slug(nom) { return nom.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, ''); },
 
   async _envoyer(lieux) {
-    const code = (AMGT4CEM_PeLabelAnchors.getAdminCode() || '').trim();
-    if (!code) throw new Error('Code administrateur manquant : le saisir dans Réglages > Services et relais.');
+    const code = (AMGT4CEM_PeLabelAnchors.getAdminCode() || '').trim(); // vide : putToRelay ouvre la fenêtre de saisie
     await AMGT4CEM_PeLabelAnchors.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, this.ROUTE, { version: 1, crs: 'EPSG:31370', lieux }, code);
     this._lieux = lieux;
     try { sessionStorage.setItem(this.CLE_ENVOYE, JSON.stringify({ at: Date.now(), lieux })); } catch (err) { /* stockage indisponible : on se fie au fichier */ }

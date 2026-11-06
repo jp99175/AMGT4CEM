@@ -1206,10 +1206,10 @@
         );
         return false;
       }
-      // Code saisi dans Réglages > Avancé > Services et relais (champ masqué, gardé le temps de l'onglet). Pas de boîte de saisie ici : elle afficherait le code en clair.
-      const code = AMGT4CEM_PeLabelAnchors.getAdminCode();
+      // Code administrateur : fenêtre de saisie (champ masqué) si le code n'est pas déjà gardé pour cet onglet.
+      const code = await AMGT4CEM_PeLabelAnchors.demanderCode();
       if (!code) {
-        report("Code administrateur manquant : le saisir dans Réglages > Avancé > Services et relais, puis réessayer.");
+        report('Enregistrement annulé : code administrateur non saisi.');
         return false;
       }
       const names = { pe: 'planches', ist: 'tronçons' };
