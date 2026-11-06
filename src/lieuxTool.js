@@ -5,7 +5,7 @@
  * choisir ces objets : toucher un objet UrbIS Topo affiché sur la carte l'ajoute au lieu (ou le retire) ;
  * le tracé au viseur (chaîne d'arpenteur) dessine une forme à la main.
  * L'enregistrement écrit data/lieux/lieux.json via le relais (route shared/lieux/lieux, code administrateur) :
- *   { version: 1, crs: 'EPSG:31370', lieux: { SLUG: { nom, tolerance_m, objets: [{ id, couche, code, type, lignes }] } } }
+ *   { version: 1, crs: 'EPSG:31370', lieux: { SLUG: { nom, genre, tolerance_m, objets: [{ id, couche, code, type, lignes }] } } }
  * `lignes` = géométrie en Lambert 72 (mètres, au cm) : le calcul « ce point est-il dans le lieu ? » (zone = objets
  * élargis de `tolerance_m`) se fera sans appeler UrbIS. Les emprises dessinées (dépôt Delta) restent des polygones
  * (data/plans-patrimoine/temp-delta-mod.json), autre type de lieu.
@@ -144,7 +144,7 @@ const AMGT4CEM_LieuxTool = {
         <button type="button" data-a="reduire" title="Réduire à cette ligne / redéployer la fenêtre" aria-label="Réduire">▾</button>
       </div>
       <div class="amgt-lieux-sec amgt-lieux-body">
-        <div class="amgt-lieux-row"><input data-f="nom" placeholder="Nom de la zone (ex. Ascenseur POELAERT)" /></div>
+        <div class="amgt-lieux-row"><input data-f="nom" placeholder="Nom de la zone (ex. Ascenseur POELAERT)" /><select data-f="genre" title="Genre de la zone" aria-label="Genre de la zone"></select></div>
         <div class="amgt-lieux-corps">
           <div class="amgt-lieux-liste" data-f="liste"></div>
           <input class="amgt-lieux-haut" data-f="haut" type="range" min="0" max="100" value="35" orient="vertical" title="Hauteur de la liste" aria-label="Hauteur de la liste" />
@@ -174,6 +174,8 @@ const AMGT4CEM_LieuxTool = {
       </div>`;
     document.body.appendChild(p);
     this._panel = p;
+    this._genresInit(p.querySelector('[data-f="genre"]'));
+    p.querySelector('[data-f="genre"]').addEventListener('change', () => { this._dirty = true; });
     const f = (n) => p.querySelector(`[data-f="${n}"]`);
     const I = this.ICO;
     const mettre = (sel, html, garder, cadre) => { for (const el of p.querySelectorAll(sel)) { const t = garder ? el.textContent.replace(/^\S+\s*/, '') : ''; el.innerHTML = html + (t ? ` <span>${t}</span>` : ''); if (!cadre) el.classList.add('amgt-ic-btn'); } };
@@ -336,12 +338,33 @@ const AMGT4CEM_LieuxTool = {
     this._comboRender();
   },
 
+  /** Genres proposés : ceux du vocabulaire Métro (config/metro/vocabulaires.json) + « autre » (par défaut). */
+  GENRES_DEFAUT: { station: 'Station', tunnel: 'Tunnel (tronçon)', depot: 'Dépôt', ouvrage_atypique: 'Ouvrage atypique' },
+  _genresInit(sel) {
+    const remplir = (genres) => {
+      const garde = sel.value || 'autre';
+      sel.textContent = '';
+      for (const [g, lib] of [...Object.entries(genres), ['autre', 'Autre']]) { const o = document.createElement('option'); o.value = g; o.textContent = lib; sel.append(o); }
+      sel.value = [...sel.options].some((o) => o.value === garde) ? garde : 'autre';
+    };
+    remplir(this.GENRES_DEFAUT);
+    fetch('./config/metro/vocabulaires.json').then((r) => (r.ok ? r.json() : null)).then((v) => {
+      if (v && v.genres) remplir(Object.fromEntries(Object.entries(v.genres).map(([g, d]) => [g, d.libelle || g])));
+    }).catch(() => { /* liste par défaut conservée */ });
+  },
+  /** Genre d'une zone enregistrée ; un genre absent des options (ou une zone ancienne sans genre) = « autre ». */
+  _genreChoisir(g) {
+    const sel = this._f('genre');
+    sel.value = g && [...sel.options].some((o) => o.value === g) ? g : 'autre';
+  },
+
   _nouveauLieu() {
     if (!this._confirmerAbandon()) return;
     this._traceAbandon();
     this._clearCands();
     this._cur = '';
     this._f('nom').value = '';
+    this._f('genre').value = 'autre';
     this._hist = []; this._dirty = false;
     this._comboRender();
     this._renderListe();
@@ -397,9 +420,10 @@ const AMGT4CEM_LieuxTool = {
     this._cur = slug && this._lieux[slug] ? slug : '';
     this._hist = []; this._dirty = false;
     this._comboRender();
-    if (!this._cur) { this._f('nom').value = ''; this._renderListe(); return; }
+    if (!this._cur) { this._f('nom').value = ''; this._f('genre').value = 'autre'; this._renderListe(); return; }
     const l = this._lieux[slug];
     this._f('nom').value = l.nom;
+    this._genreChoisir(l.genre);
     for (const o of l.objets) this._addCand({ id: o.id, couche: o.couche, code: o.code, type: o.type, lignes: o.lignes }, true);
     this._renderListe();
     const pts = l.objets.flatMap((o) => o.lignes.flat()).map((q) => AMGT4CEM_CRS.lambertToLatLng(q));
@@ -1530,7 +1554,7 @@ const AMGT4CEM_LieuxTool = {
     try {
       this._etat('Enregistrement…');
       const contour = this._contour();
-      const lieu = { nom, tolerance_m: tol, objets };
+      const lieu = { nom, genre: this._f('genre').value || 'autre', tolerance_m: tol, objets };
       if (contour.length) Object.assign(lieu, { contour_methode: 'surfaces', contour });
       const suite = { ...this._lieux };
       if (renomme) delete suite[ancien];
