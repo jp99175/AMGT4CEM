@@ -38,7 +38,50 @@ const AMGT4CEM_Services = {
     ]);
     this._services = services;
     keys.forEach((k, i) => (this._sources[k] = sources[i]));
+    this._appliquerEnAttente();
     this._assemble(AMGT4CEM_CONFIG);
+  },
+
+  // Enregistrement fait sur le serveur mais pas encore redéployé sur le site (1 à 3 minutes) : cet appareil garde
+  // pendant 10 minutes les fichiers qu'il vient d'écrire, pour ne pas revoir l'ancienne valeur. Les autres appareils
+  // voient le changement au redéploiement.
+  _CLE_ATTENTE: 'amgt4cem.services.enAttente.v1',
+  _DUREE_ATTENTE_MS: 10 * 60 * 1000,
+
+  _lireAttente() {
+    try {
+      const a = JSON.parse(localStorage.getItem(this._CLE_ATTENTE) || 'null');
+      if (a && a.ts && Date.now() - a.ts < this._DUREE_ATTENTE_MS) return a;
+      if (a) localStorage.removeItem(this._CLE_ATTENTE);
+    } catch (err) { /* stockage indisponible : pas d'enregistrement en attente */ }
+    return null;
+  },
+
+  _noterAttente(fichiers) {
+    const a = this._lireAttente() || { ts: 0, fichiers: {} };
+    a.ts = Date.now();
+    a.fichiers = { ...a.fichiers, ...fichiers };
+    try { localStorage.setItem(this._CLE_ATTENTE, JSON.stringify(a)); } catch (err) { /* sans conséquence */ }
+  },
+
+  /** Vrai si un enregistrement de cet appareil n'est pas encore visible sur le site publié. */
+  enAttente() {
+    return !!this._lireAttente();
+  },
+
+  _appliquerEnAttente() {
+    const a = this._lireAttente();
+    if (!a) return;
+    const strip = (o) => JSON.stringify({ ...o, date: undefined });
+    for (const [nom, contenu] of Object.entries(a.fichiers)) {
+      const publie = nom === 'services' ? this._services : this._sources[nom];
+      if (publie && strip(publie) === strip(contenu)) { delete a.fichiers[nom]; continue; } // déjà redéployé
+      if (nom === 'services') this._services = contenu; else this._sources[nom] = contenu;
+    }
+    try {
+      if (Object.keys(a.fichiers).length) localStorage.setItem(this._CLE_ATTENTE, JSON.stringify(a));
+      else localStorage.removeItem(this._CLE_ATTENTE);
+    } catch (err) { /* sans conséquence */ }
   },
 
   /** JSON d'un fichier de configuration, ou null (avertissement) ; délai borné pour ne jamais bloquer l'application. */
@@ -197,6 +240,7 @@ const AMGT4CEM_Services = {
     if (strip(services) !== strip(this._services || {})) {
       await AMGT4CEM_PeLabelAnchors.putToRelay(relayUrl, 'shared/fonds-de-plan/services', { ...services, version: 1, date: today }, adminCode);
       this._services = { ...services, version: 1, date: today };
+      this._noterAttente({ services: this._services });
     }
     // urbis.json : mode d'affichage, couche WMS (repli) et/ou couche de tuiles, réécrit seulement si l'un des trois change.
     const cur = this._sources.urbis;
@@ -211,6 +255,7 @@ const AMGT4CEM_Services = {
         if (tuilesChange) urbis.tuiles = { ...cur.tuiles, layer: tuilesLayer };
         await AMGT4CEM_PeLabelAnchors.putToRelay(relayUrl, 'shared/fonds-de-plan/urbis', urbis, adminCode);
         this._sources.urbis = urbis;
+        this._noterAttente({ urbis });
       }
     }
     if (relay) AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl = relay; // prise en compte immédiate

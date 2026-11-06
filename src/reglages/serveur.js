@@ -85,7 +85,7 @@ async function monter(conteneur) {
       await AMGT4CEM_Services.save(saisie, relais, c);
       AMGT4CEM_PeLabelAnchors.setAdminCode(c);
       majCode();
-      dire('Enregistré sur le serveur. Appliqué à tous après le redéploiement du site (environ 1 minute) ; rechargez ensuite la page.', 'ok');
+      dire('Enregistré sur le serveur. Appliqué à tous après le redéploiement du site (1 à 3 minutes) ; rechargez ensuite la page. Sur cet appareil, la valeur enregistrée est gardée en attendant.', 'ok');
     } catch (err) {
       AMGT4CEM_PeLabelAnchors.setAdminCode(''); // un code refusé ne doit pas rester en mémoire
       majCode();
@@ -102,6 +102,7 @@ async function monter(conteneur) {
       h('p', { class: 'rgl-aide', text: 'Le code n\'est jamais enregistré : il n\'est gardé que le temps de cet onglet du navigateur.' })),
     statut,
     h('div', { class: 'rgl-actions' }, tester, enregistrer));
+  if (AMGT4CEM_Services.enAttente()) dire('Un enregistrement récent est en cours de déploiement sur le site (1 à 3 minutes) : les valeurs affichées sont celles que vous avez enregistrées.', 'ok');
 }
 
 /** Écran « Adaptations de plans » : outils de la page carte réservés au droit « plans » (paramètres locaux, src/plansPrefs.js). */
