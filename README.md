@@ -1113,6 +1113,8 @@ Ancienne interface, paramètre d'adresse `app` :
 | `home.html?app=admin` | Administration | référentiel des intervenants (matricule, nom, GSM, email, service, droit admin), code de première connexion, email d'accueil (`mailto:`) |
 
 **Nouvelle interface (`home.html?page=`, par défaut).** Les interfaces ci-dessus ne changent pas, en repli (décisions : document de projet `refonte-interface-reglages.md`). Barre de navigation Carte · Saisie ·
+
+**Page jetable `?page=mesure-tuiles`** (hors barre de navigation, agents connectés) : mesure le poids des tuiles UrbIS (WMTS) autour des stations et tunnels, depuis l'appareil de l'agent, pour chiffrer un stockage hors ligne. Marge saisie au zoom 19, doublée à chaque niveau en moins ; 20 tuiles pesées par zoom ; teste d'abord que le service autorise la lecture (CORS). Code : `src/mesureTuiles.js`. À retirer quand le cache hors ligne existera.
 Réglages (`src/nav/`), en bas sur téléphone, en haut sur grand écran ; Saisie et Réglages demandent la connexion.
 
 | Adresse | Contenu |

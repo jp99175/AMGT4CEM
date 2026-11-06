@@ -305,6 +305,14 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       return { ...p, styles: [...p.styles, './src/nav/couches.css', './src/nav/mesure.css'], scripts: [...p.scripts, './src/nav/couches.js', './src/nav/mesureIcones.js', './src/nav/mesure.js'] };
     })(),
     signal: avecNav(apps.signal),
+    // Page jetable (adresse à connaître, absente de la barre de navigation) : poids des tuiles UrbIS, pour chiffrer le hors ligne.
+    'mesure-tuiles': {
+      title: 'AMGT4CEM – Mesure des tuiles',
+      template: 'amgt-tpl-mesure-tuiles',
+      nav: false,
+      styles: ['./src/auth/auth.css', './src/mesureTuiles.css'],
+      scripts: ['./vendor/proj4/proj4.js', './src/buildInfo.js', './src/services.js', './src/auth/auth.js', './src/auth/authUi.js', './src/shpLoader.js', './src/mesureTuiles.js'],
+    },
     reglages: {
       title: 'AMGT4CEM – Réglages',
       template: 'amgt-tpl-reglages',

@@ -1,0 +1,21 @@
+/* Page jetable ?page=mesure-tuiles (src/mesureTuiles.js) : lisible sur téléphone, sans barre de navigation. */
+body { margin: 0; font-family: system-ui, sans-serif; color: #1f2933; background: #fff; }
+#mesure-tuiles-root { max-width: 640px; margin: 0 auto; padding: 16px; box-sizing: border-box; }
+.mt-head h1 { margin: 0 0 4px; font-size: 22px; color: #0b5c75; }
+.mt-head p { margin: 0 0 14px; color: #52606d; font-size: 14px; }
+.mt-bloc { display: flex; flex-direction: column; gap: 12px; padding: 12px; border: 1px solid #d5dbe1; border-radius: 8px; }
+.mt-champ { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.mt-input { padding: 9px 10px; font-size: 16px; border: 1px solid #9aa5b1; border-radius: 6px; box-sizing: border-box; width: 100%; background: #fff; color: inherit; }
+.mt-cases { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.mt-case { display: flex; align-items: center; gap: 6px; font-size: 16px; }
+.mt-case input { width: 20px; height: 20px; }
+.mt-aide { margin: 10px 0; font-size: 13px; color: #52606d; }
+.mt-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 12px; }
+.mt-btn { padding: 11px 16px; font-size: 16px; border: 1px solid #0b5c75; border-radius: 6px; background: #fff; color: #0b5c75; cursor: pointer; }
+.mt-btn--primary { background: #0b5c75; color: #fff; }
+.mt-btn:disabled { opacity: .5; cursor: default; }
+.mt-statut { margin: 0 0 12px; padding: 10px 12px; border-radius: 6px; background: #e4e7eb; font-size: 14px; }
+.mt-statut--erreur, .mt-erreur { background: #fde2e2; color: #9b1c1c; padding: 10px 12px; border-radius: 6px; }
+.mt-sortie h2 { margin: 14px 0 6px; font-size: 18px; }
+.mt-ligne { margin: 0 0 10px; font-size: 15px; line-height: 1.4; }
+.mt-pied { margin-top: 18px; font-size: 13px; color: #52606d; }

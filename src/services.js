@@ -180,6 +180,14 @@ const AMGT4CEM_Services = {
     config.peLabelAnchorsRelayUrl = (this._services && this._services.relais && this._services.relais.url) || '';
   },
 
+  /** Service de tuiles UrbIS { url, layer, tileMatrixSet, format }, que le mode d'affichage soit « tuiles » ou « WMS seul » ; null si absent. */
+  tuilesConfig() {
+    const t = this._sources.urbis && this._sources.urbis.tuiles;
+    if (!t) return null;
+    const url = this._url('urbis-tuiles') || t.url;
+    return url ? { ...t, url } : null;
+  },
+
   /** Valeurs actuellement en vigueur, pour les champs de « ⚙ Paramètres ». */
   current() {
     const tuiles = this._sources.urbis && this._sources.urbis.tuiles;
