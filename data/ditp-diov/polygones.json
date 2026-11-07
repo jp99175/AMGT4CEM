@@ -122,8 +122,8 @@
     },
     "P000014": {
       "genre": "tunnel",
-      "name_fr": "Demey - Hermann-Debroux",
-      "name_nl": "Demey - Hermann-Debroux",
+      "name_fr": "Demey - Herrmann-Debroux",
+      "name_nl": "Demey - Herrmann-Debroux",
       "ids_externes": {
         "ogc_fid": 14,
         "id_objet": "TRO-DEMEY-HERMANN-DEBROUX-01"
@@ -509,8 +509,8 @@
     },
     "P000057": {
       "genre": "tunnel",
-      "name_fr": "Demey - Hermann-Debroux",
-      "name_nl": "Demey - Hermann-Debroux",
+      "name_fr": "Demey - Herrmann-Debroux",
+      "name_nl": "Demey - Herrmann-Debroux",
       "ids_externes": {
         "ogc_fid": 55,
         "id_objet": "TRO-DEMEY-HERMANN-DEBROUX-02"
@@ -626,8 +626,8 @@
     },
     "P000070": {
       "genre": "station",
-      "name_fr": "Hermann-Debroux",
-      "name_nl": "Hermann-Debroux",
+      "name_fr": "Herrmann-Debroux",
+      "name_nl": "Herrmann-Debroux",
       "ids_externes": {
         "ogc_fid": 68,
         "id_objet": "STA-HERMANN-DEBROUX"
@@ -1382,8 +1382,8 @@
     },
     "P000154": {
       "genre": "tunnel",
-      "name_fr": "Hermann-Debroux – Avenue Joseph Chaudron",
-      "name_nl": "Hermann-Debroux – Joseph Chaudronlaan",
+      "name_fr": "Herrmann-Debroux – Avenue Joseph Chaudron",
+      "name_nl": "Herrmann-Debroux – Joseph Chaudronlaan",
       "ids_externes": {
         "ogc_fid": 154,
         "id_objet": "TRO-HERMANN-DEBROUX-AVENUE-JOSEPH-CHAUDRON-01"
