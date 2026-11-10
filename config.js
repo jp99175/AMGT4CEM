@@ -313,6 +313,15 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       styles: ['./src/auth/auth.css', './src/mesureTuiles.css'],
       scripts: ['./vendor/proj4/proj4.js', './src/buildInfo.js', './src/services.js', './src/auth/auth.js', './src/auth/authUi.js', './src/shpLoader.js', './src/mesureTuiles.js'],
     },
+    // Page jetable (adresse à connaître, absente de la barre de navigation) : calage du synoptique du réseau sur le fond de plan
+    // (lignes, arrêts, stations, tunnels). Les liens validés sont téléchargés puis déposés dans config/synoptique/liens.json.
+    'tuning-synoptique': {
+      title: 'AMGT4CEM – Calage du synoptique',
+      template: 'amgt-tpl-tuning-synoptique',
+      nav: false,
+      styles: ['./src/tuningSynoptique.css'],
+      scripts: ['./vendor/leaflet/leaflet.js', './vendor/proj4/proj4.js', './vendor/proj4leaflet/proj4leaflet.js', './src/buildInfo.js', './src/services.js', './src/crs.js', './src/basemap.js', './src/buildInfoControl.js', './src/tuningSynoptique.js'],
+    },
     reglages: {
       title: 'AMGT4CEM – Réglages',
       template: 'amgt-tpl-reglages',
