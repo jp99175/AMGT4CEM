@@ -199,7 +199,7 @@ function PanZoom(zone, svg, complet, surToucher) {
     if (pts.size === 1) {
       depart = { x: e.clientX, y: e.clientY };
       bouge = false;
-      cible = e.target.closest ? e.target.closest('[data-type],[data-bague]') : null;
+      cible = e.target.closest ? e.target.closest('[data-type],[data-bague],[data-etq]') : null;
     } else if (pts.size === 2) {
       bouge = true;
       const [p, q] = [...pts.values()];
@@ -314,7 +314,12 @@ function monterSynoptique(texte, zone) {
 
   for (const el of svg.querySelectorAll('[data-type]')) {
     const type = el.getAttribute('data-type');
-    const ps = (el.getAttribute('data-p') || '').split(/\s+/).filter(Boolean);
+    let ps = (el.getAttribute('data-p') || '').split(/\s+/).filter(Boolean);
+    if (!ps.length && type === 'terminus') {
+      // Un terminus sans data-p hérite du polygone de son étiquette (même nom, même ligne) : ex. Simonis (Leopold II).
+      const etq = svg.querySelector(`#etiquettes-lignes > g[data-ligne="${el.getAttribute('data-ligne')}"][data-nom="${el.getAttribute('data-nom')}"][data-p]`);
+      if (etq) ps = etq.getAttribute('data-p').split(/\s+/).filter(Boolean);
+    }
     let lignes = [];
     if (type === 'station') lignes = (el.getAttribute('data-lignes') || '').split(/\s+/).filter(Boolean);
     else if (type === 'arret') lignes = lignesDeCouleur(el.getAttribute('style'));
@@ -322,6 +327,8 @@ function monterSynoptique(texte, zone) {
     const kind = type === 'troncon' ? 'troncon' : (ps.length ? 'station' : 'arret');
     S.recs.set(el.id, { id: el.id, el, type, kind, nom: el.getAttribute('data-nom') || el.id, lignes, ps });
   }
+
+  svg.querySelectorAll('#etiquettes-lignes > g').forEach((g) => g.setAttribute('data-etq', '1'));
 
   // Noms des stations et arrêts : chacun suit l'objet le plus proche (pour être estompé avec lui).
   const centres = [...S.recs.values()].filter((r) => r.type !== 'troncon').map((r) => { const bx = boite(r.el); return { r, x: bx.x + bx.w / 2, y: bx.y + bx.h / 2 }; });
@@ -358,7 +365,12 @@ function monterSynoptique(texte, zone) {
 
 function surToucherSynoptique(cible) {
   if (!cible) { effacerSelection(); return; }
-  const id = cible.getAttribute('data-bague') || cible.id;
+  let id = cible.getAttribute('data-bague') || cible.id;
+  if (cible.hasAttribute('data-etq')) {
+    // Étiquette de ligne : on retombe sur son terminus, sinon sur la station qu'elle désigne par data-p.
+    const p1 = (cible.getAttribute('data-p') || '').split(/\s+/)[0];
+    id = S.recs.has(`TERM-${id.slice(4)}`) ? `TERM-${id.slice(4)}` : p1;
+  }
   const rec = S.recs.get(id);
   if (!rec) { effacerSelection(); return; }
   if (S.sel && S.sel.id === rec.id) { effacerSelection(); return; }
