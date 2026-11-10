@@ -41,8 +41,8 @@ body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 .tun-select { font-size: 13px; padding: 3px 4px; }
 
 /* Dans le synoptique : tout ce qui n'appartient pas à la ligne choisie est estompé. */
-svg.tun-dim [data-type], svg.tun-dim #lignes > g { opacity: .18; }
-svg.tun-dim .tun-on, svg.tun-dim #lignes > g.tun-on { opacity: 1; }
+svg.tun-dim [data-type], svg.tun-dim #lignes > g, svg.tun-dim text.lbl, svg.tun-dim #etiquettes-lignes > g { opacity: .18; }
+svg.tun-dim .tun-on, svg.tun-dim #lignes > g.tun-on, svg.tun-dim text.lbl.tun-on, svg.tun-dim #etiquettes-lignes > g.tun-on { opacity: 1; }
 svg .tun-sel { filter: drop-shadow(0 0 3px #e11d48) drop-shadow(0 0 3px #e11d48); }
 svg .tun-bague { fill: rgba(255, 255, 255, 0); stroke-width: 3; cursor: pointer; }
 svg .tun-bague--sel { stroke-width: 5; }

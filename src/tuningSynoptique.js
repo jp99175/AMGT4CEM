@@ -323,6 +323,18 @@ function monterSynoptique(texte, zone) {
     S.recs.set(el.id, { id: el.id, el, type, kind, nom: el.getAttribute('data-nom') || el.id, lignes, ps });
   }
 
+  // Noms des stations et arrêts : chacun suit l'objet le plus proche (pour être estompé avec lui).
+  const centres = [...S.recs.values()].filter((r) => r.type !== 'troncon').map((r) => { const bx = boite(r.el); return { r, x: bx.x + bx.w / 2, y: bx.y + bx.h / 2 }; });
+  S.noms = [];
+  for (const t of svg.querySelectorAll('text.lbl')) {
+    const m = /translate\(([-\d.]+)[ ,]+([-\d.]+)\)/.exec(t.getAttribute('transform') || '');
+    if (!m || !centres.length) continue;
+    const x = Number(m[1]); const y = Number(m[2]);
+    let best = null; let d0 = Infinity;
+    for (const c of centres) { const d = Math.hypot(c.x - x, c.y - y); if (d < d0) { d0 = d; best = c.r; } }
+    if (best) S.noms.push({ t, rec: best });
+  }
+
   // Bagues autour des arrêts à relier (état du lien) : zone de toucher agrandie pour le doigt.
   const marques = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   marques.setAttribute('id', 'tun-marques');
@@ -475,6 +487,8 @@ async function selectionnerLigne(n) {
   if (groupe) groupe.classList.add('tun-on');
   const miens = [...S.recs.values()].filter((r) => r.lignes.includes(n) || (r.type === 'troncon' && r.lignes.includes(n)));
   miens.forEach((r) => r.el.classList.add('tun-on'));
+  S.noms.forEach((o) => { if (o.rec.lignes.includes(n)) o.t.classList.add('tun-on'); });
+  S.svg.querySelectorAll(`#etiquettes-lignes > g[data-ligne="${n}"]`).forEach((g) => g.classList.add('tun-on'));
   if (groupe) S.pz.recadrer(boite(groupe), 1.12);
 
   const ps = [...new Set(miens.flatMap((r) => r.ps))];
