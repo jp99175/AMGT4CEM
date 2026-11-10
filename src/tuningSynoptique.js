@@ -415,7 +415,7 @@ function lignesLatLng(geom) {
 }
 function viderCarte() { for (const k of ['trace', 'poly', 'arrets']) S.g[k].clearLayers(); }
 
-function polygonesDe(ps, couleur) {
+function polygonesDe(ps, couleur, fin) {
   const b = L.latLngBounds([]);
   let manque = 0;
   for (const p of ps) {
@@ -423,7 +423,7 @@ function polygonesDe(ps, couleur) {
     const f = info && S.region.get(info.ogc);
     if (!f) { manque += 1; continue; }
     const tunnel = info.genre === 'tunnel';
-    const lay = L.polygon(anneaux(f), { color: couleur, weight: tunnel ? 2 : 3, fillColor: couleur, fillOpacity: tunnel ? 0.35 : 0.55 });
+    const lay = L.polygon(anneaux(f), fin ? { color: couleur, weight: 1, fillColor: couleur, fillOpacity: 0.06 } : { color: couleur, weight: tunnel ? 2 : 3, fillColor: couleur, fillOpacity: tunnel ? 0.35 : 0.55 });
     lay.bindTooltip(`${info.nom} (${p})`, { className: 'tun-tip' });
     lay.addTo(S.g.poly);
     b.extend(lay.getBounds());
@@ -478,7 +478,9 @@ async function selectionnerLigne(n) {
   if (groupe) S.pz.recadrer(boite(groupe), 1.12);
 
   const ps = [...new Set(miens.flatMap((r) => r.ps))];
-  const { b, manque } = polygonesDe(ps, couleur);
+  const { b, manque } = polygonesDe(ps, couleur, true);
+  const arretsB = arretsDeLaLigne(n, couleur);
+  if (arretsB.isValid()) b.extend(arretsB);
   const stats = { valide: 0, auto: 0, ambigu: 0, a_revoir: 0, sans: 0, aucun: 0 };
   miens.filter((r) => r.kind === 'arret').forEach((r) => { stats[etatArret(r).etat] += 1; });
   const nArrets = miens.filter((r) => r.kind === 'arret').length;
@@ -509,7 +511,7 @@ async function selectionnerLigne(n) {
   const bt = L.latLngBounds([]);
   for (const f of mien) {
     for (const ll of lignesLatLng(f.geometry)) {
-      const pl = L.polyline(ll, { color: couleur, weight: 5, opacity: 0.9 });
+      const pl = L.polyline(ll, { color: couleur, weight: 8, opacity: 0.9, lineCap: 'round' });
       pl.addTo(S.g.trace);
       bt.extend(pl.getBounds());
     }
@@ -519,6 +521,22 @@ async function selectionnerLigne(n) {
   if (b.isValid()) tout.extend(b);
   if (bt.isValid()) tout.extend(bt);
   recadrerCarte(tout);
+}
+
+/** Arrêts réels de la ligne : ronds pleins s'ils sont déjà liés à un arrêt du synoptique, creux sinon. */
+function arretsDeLaLigne(n, couleur) {
+  const lies = new Set(Object.values(S.liens.arrets || {}).filter((l) => l.etat === 'valide').flatMap((l) => l.stops || []));
+  const b = L.latLngBounds([]);
+  for (const f of S.arrets) {
+    if (!listeLignes(f.properties.line).includes(n)) continue;
+    const ll = enLatLng(xyArret(f));
+    const plein = lies.has(f.properties.stop_id);
+    const m = L.circleMarker(ll, { radius: 6, color: couleur, weight: 2.5, fillColor: plein ? couleur : '#ffffff', fillOpacity: 1 });
+    m.bindTooltip(f.properties.name_fr || f.properties.name_nl || '', { className: 'tun-tip' });
+    m.addTo(S.g.arrets);
+    b.extend(ll);
+  }
+  return b;
 }
 
 function selectionnerPolygones(rec) {
