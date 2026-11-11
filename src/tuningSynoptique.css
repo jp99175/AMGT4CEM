@@ -58,3 +58,9 @@ svg .tun-hl-st { filter: drop-shadow(0 0 2px #0b5c75) drop-shadow(0 0 2px #0b5c7
 .tun-consigne { font-weight: 600; color: #0b5c75; }
 .tun-avert { color: #9a5b00; font-size: 12px; }
 .tun-petit { font-size: 11px; color: #52606d; }
+
+/* Sélection hors ligne : en attente du second arrêt, ce qui n'est pas sur les lignes présélectionnées est grisé. */
+svg .tun-gris { opacity: .14; }
+.tun-ex .tun-hl-txt { text-decoration: line-through; color: #8a94a0; }
+.tun-hl-det { margin: 4px 0; }
+.tun-hl-det summary { cursor: pointer; font-size: 13px; color: #0b5c75; }
