@@ -1,5 +1,5 @@
 /**
- * Page jetable « ?page=tuning-synoptique » : calage du synoptique du réseau (data/synoptique/synoptique-reseau-v16.svg) sur le
+ * Page jetable « ?page=tuning-synoptique » : calage du synoptique du réseau (data/synoptique/synoptique-reseau-v17.svg) sur le
  * fond de plan. Deux zones zoomables (2 doigts ou molette) : le fond UrbIS grisé en haut, le synoptique en bas.
  *
  * Ce que l'outil fait
@@ -35,7 +35,7 @@ const AMGT4CEM_ScreenshotTool = { invalidateBackground() {} };
 (function () {
 'use strict';
 
-const SVG_URL = './data/synoptique/synoptique-reseau-v16.svg';
+const SVG_URL = './data/synoptique/synoptique-reseau-v17.svg';
 const LIENS_URL = './config/synoptique/liens.json';
 const POLYGONES_URL = './data/ditp-diov/polygones.json';
 const REGION_URL = './config/secours/region-metro.json';
@@ -152,7 +152,7 @@ function telechargerLiens() {
   const sortie = {
     version: 1,
     date: new Date().toISOString().slice(0, 10),
-    synoptique: 'synoptique-reseau-v16.svg',
+    synoptique: 'synoptique-reseau-v17.svg',
     note: 'Liens validés à la main entre le synoptique et les données réelles. Produit par ?page=tuning-synoptique.',
     ...normaliserLiens(S.liens),
   };
