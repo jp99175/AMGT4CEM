@@ -5,6 +5,7 @@
  * Ce que l'outil fait
  *  - Choisir une ligne (puces) : sa trace réelle (couche stib_lines de la Région) apparaît sur la carte dans la couleur du
  *    synoptique, avec les stations et les tunnels liés à cette ligne ; la carte et le synoptique se recadrent sur la sélection.
+ *    Les arrêts réels ne sont plus affichés avec la ligne : un arrêt n'apparaît que lorsqu'on le touche dans le synoptique.
  *    Choisir la même ligne une seconde fois (ou « Tout désélectionner ») efface la trace.
  *  - Toucher une station ou un tronçon du synoptique : les polygones DITP-DIOV déjà liés (attribut data-p, identifiants P…) sont
  *    montrés sur la carte (aucun lien n'est à créer : ils sont déjà dans le dessin).
@@ -12,6 +13,9 @@
  *    coche ceux qui correspondent, puis « Valider ». Un arrêt dont le nom et la ligne ne donnent qu'un seul emplacement est
  *    proposé automatiquement (état « proposé ») ; plusieurs emplacements distants = « à choisir ».
  *  - « Contrôles » : résumé, arrêts à choisir, tunnels de la Région qui n'apparaissent pas dans le synoptique.
+ *  - « Hors ligne » : choix des zones à garder pour le fond de plan hors ligne (lignes entières par leur étiquette ou leur puce,
+ *    portions de ligne par leur station de début et de fin) ; l'outil calcule les tuiles UrbIS couvertes (marge de 100 m au zoom 19,
+ *    doublée à chaque niveau en moins) et leur poids estimé. Rien n'est téléchargé ; la sélection reste sur l'appareil.
  *
  * Données
  *  - Arrêts réels (stib_stops, hors bus) et tracés (stib_lines, hors bus) : Région d'abord (WFS MobiGIS, Lambert 72), puis copie
@@ -38,6 +42,8 @@ const REGION_URL = './config/secours/region-metro.json';
 const ARRETS_SECOURS = './config/secours/stib-arrets-tram-metro.json';
 const LIGNES_SECOURS = './config/secours/stib-lignes-tram-metro.json';
 const CLE_BROUILLON = 'amgt4cem.tuning-synoptique.v1';
+const CLE_HL = 'amgt4cem.tuning-synoptique.horsligne.v1';
+const { tuilesAutour } = AMGT4CEM_TuilesGeom; // calcul des tuiles : src/tuilesGeom.js
 const DISTANCE_MEME_LIEU_M = 150; // deux arrêts plus proches que ça forment un seul emplacement
 const COULEURS_ETAT = { valide: '#2e7d32', auto: '#1565c0', ambigu: '#c62828', a_revoir: '#ef6c00', sans: '#6b7280', aucun: '#6b7280' };
 const LIBELLES_ETAT = { valide: 'validé', auto: 'proposé', ambigu: 'à choisir', a_revoir: 'à revoir', sans: 'sans correspondance', aucun: 'pas d\'arrêt réel' };
@@ -73,6 +79,8 @@ const S = {
   cand: null,
   dom: {},
   g: {},
+  chaines: {}, // ligne -> chaîne ordonnée des tronçons (sélection hors ligne)
+  hl: { actif: false, mode: 'ligne', etape: null, brouillon: null, lignes: [], portions: [], ps: new Set(), recsDirects: new Set(), items: [], resultat: null, calc: 0, carreaux: '19', segsP: new Map(), dom: {} },
 };
 
 // ------------------------------------------------------------------ lecture des données
@@ -364,6 +372,7 @@ function monterSynoptique(texte, zone) {
 }
 
 function surToucherSynoptique(cible) {
+  if (S.hl.actif) { surToucherHL(cible); return; }
   if (!cible) { effacerSelection(); return; }
   let id = cible.getAttribute('data-bague') || cible.id;
   if (cible.hasAttribute('data-etq')) {
@@ -480,6 +489,7 @@ function effacerSelection() {
   S.dom.detail.replaceChildren();
   majPuces();
   majBagues();
+  if (S.hl.actif) rendreHL();
 }
 
 function selectionner(sel) {
@@ -505,8 +515,6 @@ async function selectionnerLigne(n) {
 
   const ps = [...new Set(miens.flatMap((r) => r.ps))];
   const { b, manque } = polygonesDe(ps, couleur, true);
-  const arretsB = arretsDeLaLigne(n, couleur);
-  if (arretsB.isValid()) b.extend(arretsB);
   const stats = { valide: 0, auto: 0, ambigu: 0, a_revoir: 0, sans: 0, aucun: 0 };
   miens.filter((r) => r.kind === 'arret').forEach((r) => { stats[etatArret(r).etat] += 1; });
   const nArrets = miens.filter((r) => r.kind === 'arret').length;
@@ -547,22 +555,6 @@ async function selectionnerLigne(n) {
   if (b.isValid()) tout.extend(b);
   if (bt.isValid()) tout.extend(bt);
   recadrerCarte(tout);
-}
-
-/** Arrêts réels de la ligne : ronds pleins s'ils sont déjà liés à un arrêt du synoptique, creux sinon. */
-function arretsDeLaLigne(n, couleur) {
-  const lies = new Set(Object.values(S.liens.arrets || {}).filter((l) => l.etat === 'valide').flatMap((l) => l.stops || []));
-  const b = L.latLngBounds([]);
-  for (const f of S.arrets) {
-    if (!listeLignes(f.properties.line).includes(n)) continue;
-    const ll = enLatLng(xyArret(f));
-    const plein = lies.has(f.properties.stop_id);
-    const m = L.circleMarker(ll, { radius: 6, color: couleur, weight: 2.5, fillColor: plein ? couleur : '#ffffff', fillOpacity: 1 });
-    m.bindTooltip(f.properties.name_fr || f.properties.name_nl || '', { className: 'tun-tip' });
-    m.addTo(S.g.arrets);
-    b.extend(ll);
-  }
-  return b;
 }
 
 function selectionnerPolygones(rec) {
@@ -656,6 +648,365 @@ function enregistrerArret(etat) {
   majMessage(`${rec.nom} : ${LIBELLES_ETAT[etat]}.`);
 }
 
+// ------------------------------------------------------------------ sélection pour le fond de plan hors ligne
+//
+// Rien n'est téléchargé : l'outil désigne des zones (lignes entières, ou portions de ligne entre deux stations) et calcule les
+// tuiles du fond UrbIS qui les couvrent, avec leur poids estimé. Décisions du 10 et 11/11/2026 : voir
+// claude/specification-cache-hors-ligne.md (projet). Marge de 100 m au zoom 19, doublée à chaque niveau en moins.
+
+const HL_ZOOMS = [19, 18, 17, 16, 15];
+const HL_MARGE_19_M = 100;
+const HL_KO_PAR_TUILE = { 19: 7.9, 18: 11.9, 17: 18.2, 16: 9.7, 15: 14.8 }; // poids moyens mesurés le 06/11/2026 (couche UrbISFrenchLabeledGray)
+const HL_TOLERANCE = 3; // unités du dessin : écart toléré entre le bout d'un tronçon et le contour d'une station
+
+const fmtN = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const fmtMo = (ko) => { const mo = ko / 1000; return `${mo < 10 ? mo.toFixed(1).replace('.', ',') : Math.round(mo)} Mo`; };
+const distBoite = (p, b) => Math.hypot(Math.max(b.x - p.x, 0, p.x - (b.x + b.w)), Math.max(b.y - p.y, 0, p.y - (b.y + b.h)));
+const nomSansParentheses = (t) => norm(String(t).replace(/\(.*?\)/g, ''));
+
+/**
+ * Chaîne ordonnée des tronçons d'une ligne (ordre du dessin). Chaque tronçon va d'une position `pa` à `pa + 1` ; deux tronçons
+ * qui se touchent partagent la même position (une station y est), un trou dans le dessin laisse une position sans tronçon.
+ */
+function chaineDeLigne(n) {
+  if (S.chaines[n]) return S.chaines[n];
+  const troncons = [];
+  const gaps = [];
+  let precedent = null;
+  for (const rec of S.recs.values()) {
+    if (rec.kind !== 'troncon' || !rec.lignes.includes(n)) continue;
+    const a = rec.el.getPointAtLength(0);
+    const b = rec.el.getPointAtLength(rec.el.getTotalLength());
+    let pa = 0;
+    if (precedent) {
+      if (Math.hypot(a.x - precedent.b.x, a.y - precedent.b.y) <= HL_TOLERANCE) pa = precedent.pb;
+      else { pa = precedent.pb + 1; gaps.push({ avant: precedent.rec, apres: rec, pos: precedent.pb }); }
+    }
+    const t = { rec, a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y }, pa, pb: pa + 1 };
+    troncons.push(t);
+    precedent = t;
+  }
+  S.chaines[n] = { troncons, gaps };
+  return S.chaines[n];
+}
+
+const stationsDeLigne = (n) => [...S.recs.values()].filter((r) => r.kind === 'station' && r.lignes.includes(n));
+
+/** Positions de la chaîne de la ligne n où se trouve cette station (vide si elle n'est pas sur le tunnel de la ligne). */
+function positionsSurLigne(rec, n) {
+  if (!rec.lignes.includes(n)) return [];
+  if (!rec.box) rec.box = boite(rec.el);
+  const out = new Set();
+  for (const t of chaineDeLigne(n).troncons) {
+    if (distBoite(t.a, rec.box) <= HL_TOLERANCE) out.add(t.pa);
+    if (distBoite(t.b, rec.box) <= HL_TOLERANCE) out.add(t.pb);
+  }
+  return [...out].sort((x, y) => x - y);
+}
+
+/** Nom d'une station dans la liste : si la ligne y passe à plusieurs emplacements (Simonis), le numéro d'emplacement est ajouté. */
+function libelleArret(rec, n) {
+  if (/\(.*\)/.test(rec.nom)) return rec.nom;
+  const base = nomSansParentheses(rec.nom);
+  const emplacements = [...new Set(stationsDeLigne(n).filter((r) => nomSansParentheses(r.nom) === base).flatMap((r) => positionsSurLigne(r, n)))].sort((a, b) => a - b);
+  if (emplacements.length < 2) return rec.nom;
+  return `${rec.nom} (emplacement ${emplacements.indexOf(positionsSurLigne(rec, n)[0]) + 1}/${emplacements.length})`;
+}
+
+function resoudreLigne(n) {
+  const ch = chaineDeLigne(n);
+  const ps = new Set();
+  const recs = new Set();
+  const avert = [];
+  ch.troncons.forEach((t) => { t.rec.ps.forEach((p) => ps.add(p)); recs.add(t.rec); });
+  stationsDeLigne(n).forEach((r) => r.ps.forEach((p) => ps.add(p)));
+  const nArrets = [...S.recs.values()].filter((r) => r.kind === 'arret' && r.lignes.includes(n)).length;
+  if (!ps.size) avert.push('aucun polygone lié à cette ligne dans le synoptique : rien à garder pour l\'instant');
+  else if (nArrets) avert.push(`seule la partie en tunnel est gardée (${nArrets} arrêts sans polygone, calage non validé)`);
+  ch.gaps.forEach((g) => avert.push(`tunnel absent du synoptique entre « ${g.avant.nom} » et « ${g.apres.nom} »`));
+  return { ps, recs, avert };
+}
+
+function resoudrePortion(p) {
+  const n = p.ligne;
+  const ra = S.recs.get(p.debut);
+  const rb = S.recs.get(p.fin);
+  const pa = ra ? positionsSurLigne(ra, n) : [];
+  const pb = rb ? positionsSurLigne(rb, n) : [];
+  const ps = new Set();
+  const recs = new Set();
+  const avert = [];
+  if (!pa.length || !pb.length) return { ps, recs, avert: [`début ou fin introuvable sur la ligne ${n}`], texte: '?' };
+  const lo = Math.min(pa[0], pb[0]);
+  const hi = Math.max(pa[0], pb[0]);
+  const ch = chaineDeLigne(n);
+  ch.troncons.forEach((t) => { if (t.pa >= lo && t.pb <= hi) { t.rec.ps.forEach((x) => ps.add(x)); recs.add(t.rec); } });
+  stationsDeLigne(n).forEach((r) => { if (positionsSurLigne(r, n).some((x) => x >= lo && x <= hi)) r.ps.forEach((x) => ps.add(x)); });
+  ch.gaps.forEach((g) => { if (g.pos >= lo && g.pos + 1 <= hi) avert.push(`tunnel absent du synoptique entre « ${g.avant.nom} » et « ${g.apres.nom} »`); });
+  return { ps, recs, avert, texte: `${libelleArret(ra, n)} → ${libelleArret(rb, n)}` };
+}
+
+function recalculerSelectionHL() {
+  const H = S.hl;
+  H.ps = new Set();
+  H.recsDirects = new Set();
+  H.items = [];
+  for (const n of H.lignes) {
+    const r = resoudreLigne(n);
+    r.ps.forEach((p) => H.ps.add(p));
+    r.recs.forEach((x) => H.recsDirects.add(x));
+    H.items.push({ genre: 'ligne', ligne: n, texte: 'ligne entière', nb: r.ps.size, avert: r.avert });
+  }
+  H.portions.forEach((p, i) => {
+    const r = resoudrePortion(p);
+    r.ps.forEach((x) => H.ps.add(x));
+    r.recs.forEach((x) => H.recsDirects.add(x));
+    H.items.push({ genre: 'portion', idx: i, ligne: p.ligne, texte: r.texte, nb: r.ps.size, avert: r.avert });
+  });
+  majHLSynop();
+  sauverHL();
+  calculerTuilesHL();
+}
+
+function sauverHL() {
+  try { localStorage.setItem(CLE_HL, JSON.stringify({ lignes: S.hl.lignes, portions: S.hl.portions })); } catch (err) { /* stockage indisponible */ }
+}
+function restaurerHL() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CLE_HL) || 'null');
+    if (!v) return;
+    S.hl.lignes = (v.lignes || []).filter((n) => S.lignes.includes(n));
+    S.hl.portions = (v.portions || []).filter((p) => S.lignes.includes(p.ligne) && S.recs.has(p.debut) && S.recs.has(p.fin));
+  } catch (err) { /* sélection illisible : ignorée */ }
+}
+
+/** Surbrillance de la sélection dans le synoptique : tronçons choisis, tronçons des autres lignes qui partagent le même tunnel, stations. */
+function majHLSynop() {
+  for (const r of S.recs.values()) {
+    if (r.kind === 'troncon') { r.el.classList.remove('tun-hl', 'tun-hl2'); r.el.style.removeProperty('stroke'); } else r.el.classList.remove('tun-hl-st');
+  }
+  if (!S.hl.actif) return;
+  for (const r of S.recs.values()) {
+    if (r.kind === 'troncon') {
+      const direct = S.hl.recsDirects.has(r);
+      if (direct || r.ps.some((p) => S.hl.ps.has(p))) {
+        r.el.classList.add(direct ? 'tun-hl' : 'tun-hl2');
+        r.el.style.stroke = S.couleur[r.lignes[0]] || '#0b5c75';
+      }
+    } else if (r.kind === 'station' && r.ps.some((p) => S.hl.ps.has(p))) r.el.classList.add('tun-hl-st');
+  }
+}
+
+// --- calcul des tuiles
+
+function segmentsDe(p) {
+  if (S.hl.segsP.has(p)) return S.hl.segsP.get(p);
+  const info = S.pol[p];
+  const f = info && S.region.get(info.ogc);
+  const segs = [];
+  if (f) {
+    const rings = f.geometry.type === 'Polygon' ? f.geometry.coordinates : [].concat(...f.geometry.coordinates);
+    for (const ring of rings) {
+      const pts = ring.map((c) => proj4(AMGT4CEM_CONFIG.businessCRS.epsg, 'EPSG:3857', [c[0], c[1]]));
+      for (let i = 0; i < pts.length - 1; i += 1) segs.push([pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]]);
+    }
+  }
+  S.hl.segsP.set(p, segs);
+  return segs;
+}
+
+async function calculerTuilesHL() {
+  const H = S.hl;
+  const id = ++H.calc;
+  const ps = [...H.ps];
+  H.resultat = null;
+  if (!ps.length) { rendreResultatHL(); return; }
+  const segs = ps.flatMap(segmentsDe);
+  const manque = ps.filter((p) => !segmentsDe(p).length).length;
+  const res = [];
+  rendreResultatHL(null, true);
+  for (const z of HL_ZOOMS) {
+    await new Promise((r) => setTimeout(r, 0));
+    if (id !== H.calc) return; // la sélection a changé pendant le calcul
+    res.push({ z, marge: HL_MARGE_19_M * 2 ** (19 - z), liste: tuilesAutour(segs, z, HL_MARGE_19_M * 2 ** (19 - z)) });
+  }
+  H.resultat = { res, manque, nbPoly: ps.length };
+  rendreResultatHL();
+}
+
+function rendreResultatHL(_, enCours) {
+  const H = S.hl;
+  H.dom.res && H.dom.res.replaceChildren();
+  S.g.carreaux.clearLayers();
+  if (!H.dom.res) return;
+  if (!H.ps.size) { H.dom.res.append(h('div', { class: 'tun-d-ligne', text: 'Rien de choisi pour l\'instant.' })); return; }
+  if (enCours || !H.resultat) { H.dom.res.append(h('div', { class: 'tun-d-ligne', text: 'Calcul des tuiles…' })); return; }
+  const r = H.resultat;
+  let total = 0;
+  let ko = 0;
+  for (const e of r.res) {
+    total += e.liste.length;
+    ko += e.liste.length * HL_KO_PAR_TUILE[e.z];
+    H.dom.res.append(h('div', { class: 'tun-d-ligne', text: `Zoom ${e.z} (marge ${fmtN(e.marge)} m) : ${fmtN(e.liste.length)} tuiles, environ ${fmtMo(e.liste.length * HL_KO_PAR_TUILE[e.z])}` }));
+  }
+  H.dom.res.append(h('p', { class: 'tun-d-titre', style: 'margin-top:4px', text: `Total : ${fmtN(total)} tuiles, environ ${fmtMo(ko)} (${r.nbPoly} polygones)` }));
+  if (r.manque) H.dom.res.append(h('div', { class: 'tun-d-ligne', style: 'color:#9b1c1c', text: `${r.manque} polygone(s) absent(s) de la copie de la Région : non comptés.` }));
+  H.dom.res.append(h('div', { class: 'tun-d-ligne tun-petit', text: 'Poids moyens mesurés le 06/11/2026 par zoom. Rien n\'est téléchargé.' }));
+  dessinerCarreauxHL();
+}
+
+function dessinerCarreauxHL() {
+  const H = S.hl;
+  S.g.carreaux.clearLayers();
+  if (!H.resultat || H.carreaux === 'aucun') return;
+  const e = H.resultat.res.find((x) => x.z === Number(H.carreaux));
+  if (!e) return;
+  for (const [x, y] of e.liste) {
+    const b = AMGT4CEM_TuilesGeom.emprise(e.z, x, y);
+    L.rectangle([AMGT4CEM_TuilesGeom.versLatLng(b.x0, b.y0), AMGT4CEM_TuilesGeom.versLatLng(b.x1, b.y1)], { weight: 0.6, color: '#0b5c75', fillColor: '#0b5c75', fillOpacity: 0.07, interactive: false }).addTo(S.g.carreaux);
+  }
+}
+
+// --- gestes et panneau
+
+function marquerDebutHL() {
+  S.svg.querySelectorAll('.tun-hl-marque').forEach((n) => n.classList.remove('tun-hl-marque', 'tun-sel'));
+  const b = S.hl.brouillon;
+  if (b && b.debut) { const r = S.recs.get(b.debut); if (r) r.el.classList.add('tun-hl-marque', 'tun-sel'); }
+}
+
+function clicLigneHL(n) {
+  const H = S.hl;
+  if (H.mode === 'portion') {
+    if (H.etape === 'ligne') { H.brouillon = { ligne: n, debut: null }; H.etape = 'debut'; marquerDebutHL(); rendreHL(); return; }
+    majMessage('Une portion est en cours : touche une station ou un arrêt de la ligne ' + H.brouillon.ligne + ', ou annule la portion.');
+    return;
+  }
+  const i = H.lignes.indexOf(n);
+  if (i >= 0) H.lignes.splice(i, 1); else H.lignes.push(n);
+  H.lignes.sort(tri);
+  recalculerSelectionHL();
+  rendreHL();
+  if (i < 0) recadrerCarte(boundsDe([...H.ps]));
+}
+
+function boundsDe(ps) {
+  const b = L.latLngBounds([]);
+  for (const p of ps) { const info = S.pol[p]; const f = info && S.region.get(info.ogc); if (f) b.extend(L.latLngBounds(anneaux(f).flat())); }
+  return b;
+}
+
+function clicStationHL(rec) {
+  const H = S.hl;
+  if (H.mode !== 'portion') { majMessage('Mode « Ligne entière » : touche l\'étiquette ou la puce d\'une ligne. Pour une portion, choisis d\'abord « Portion ».'); return; }
+  if (H.etape === 'ligne') { majMessage('Choisis d\'abord la ligne de la portion (étiquette ou puce).'); return; }
+  const n = H.brouillon.ligne;
+  if (rec.kind === 'troncon') { majMessage('Touche une station ou un arrêt, pas un tronçon.'); return; }
+  if (rec.kind !== 'station') { majMessage(`« ${rec.nom} » est un arrêt sans polygone (calage non validé) : portion impossible pour l'instant.`, true); return; }
+  if (!rec.lignes.includes(n)) { majMessage(`« ${rec.nom} » n'est pas sur la ligne ${n}.`, true); return; }
+  const pos = positionsSurLigne(rec, n);
+  if (!pos.length) { majMessage(`« ${rec.nom} » n'est pas sur le tunnel de la ligne ${n} dans le synoptique.`, true); return; }
+  if (pos.length > 1) { majMessage(`« ${rec.nom} » apparaît à plusieurs endroits de la ligne ${n} : touche l'emplacement voulu plus précisément.`, true); return; }
+  if (H.etape === 'debut') { H.brouillon.debut = rec.id; H.etape = 'fin'; marquerDebutHL(); majMessage(''); rendreHL(); return; }
+  const deb = S.recs.get(H.brouillon.debut);
+  if (positionsSurLigne(deb, n)[0] === pos[0]) { majMessage('Le début et la fin sont au même endroit : choisis une autre fin.', true); return; }
+  H.portions.push({ ligne: n, debut: H.brouillon.debut, fin: rec.id });
+  H.brouillon = null;
+  H.etape = 'ligne';
+  marquerDebutHL();
+  majMessage('');
+  recalculerSelectionHL();
+  rendreHL();
+  recadrerCarte(boundsDe([...H.ps]));
+}
+
+function surToucherHL(cible) {
+  if (!cible) return;
+  if (cible.hasAttribute('data-etq')) { clicLigneHL(cible.getAttribute('data-ligne')); return; }
+  const rec = S.recs.get(cible.getAttribute('data-bague') || cible.id);
+  if (rec) clicStationHL(rec);
+}
+
+function changerModeHL(mode) {
+  const H = S.hl;
+  H.mode = mode;
+  H.etape = mode === 'portion' ? 'ligne' : null;
+  H.brouillon = null;
+  marquerDebutHL();
+  majMessage('');
+  rendreHL();
+}
+
+function rendreHL() {
+  const H = S.hl;
+  if (!H.actif) return;
+  const d = S.dom.detail;
+  d.replaceChildren();
+  S.g.poly.clearLayers();
+  polygonesDe([...H.ps], '#0b5c75');
+
+  const bLigne = h('button', { class: `tun-btn${H.mode === 'ligne' ? ' tun-btn--on' : ''}`, text: 'Ligne entière' });
+  bLigne.addEventListener('click', () => changerModeHL('ligne'));
+  const bPortion = h('button', { class: `tun-btn${H.mode === 'portion' ? ' tun-btn--on' : ''}`, text: 'Portion' });
+  bPortion.addEventListener('click', () => changerModeHL('portion'));
+  const bTout = h('button', { class: 'tun-btn tun-btn--danger', text: 'Tout effacer' });
+  bTout.addEventListener('click', () => { H.lignes = []; H.portions = []; changerModeHL(H.mode); recalculerSelectionHL(); rendreHL(); });
+  d.append(h('p', { class: 'tun-d-titre', text: 'Fond de plan hors ligne : choix des zones' }), h('div', { class: 'tun-d-actions' }, bLigne, bPortion, bTout));
+
+  let consigne = 'Touche l\'étiquette ou la puce d\'une ligne pour la garder, ou pour la retirer.';
+  if (H.mode === 'portion') {
+    if (H.etape === 'ligne') consigne = 'Portion : choisis d\'abord la ligne (étiquette ou puce).';
+    else if (H.etape === 'debut') consigne = `Ligne ${H.brouillon.ligne} : touche la station de DÉBUT.`;
+    else consigne = `Ligne ${H.brouillon.ligne}, début : ${libelleArret(S.recs.get(H.brouillon.debut), H.brouillon.ligne)}. Touche la station de FIN.`;
+  }
+  d.append(h('div', { class: 'tun-d-ligne tun-consigne', text: consigne }));
+  if (H.mode === 'portion' && H.etape !== 'ligne') {
+    const annuler = h('button', { class: 'tun-btn', text: 'Annuler la portion en cours' });
+    annuler.addEventListener('click', () => changerModeHL('portion'));
+    d.append(h('div', { class: 'tun-d-actions' }, annuler));
+  }
+
+  if (!H.items.length) d.append(h('div', { class: 'tun-d-ligne', text: 'Aucune zone choisie.' }));
+  for (const it of H.items) {
+    const retirer = h('button', { class: 'tun-btn tun-btn--petit', text: 'Retirer' });
+    retirer.addEventListener('click', () => {
+      if (it.genre === 'ligne') H.lignes.splice(H.lignes.indexOf(it.ligne), 1); else H.portions.splice(it.idx, 1);
+      recalculerSelectionHL();
+      rendreHL();
+    });
+    const ligne = h('div', { class: 'tun-liste-item tun-hl-item' }, badges([it.ligne]), h('span', { class: 'tun-hl-txt', text: `${it.texte} · ${it.nb} polygones` }), retirer);
+    d.append(ligne);
+    it.avert.forEach((a) => d.append(h('div', { class: 'tun-d-ligne tun-avert', text: `Ligne ${it.ligne} : ${a}.` })));
+  }
+
+  const choix = h('select', { class: 'tun-select' }, h('option', { value: 'aucun', text: 'aucun' }), ...HL_ZOOMS.map((z) => h('option', { value: String(z), text: `zoom ${z}` })));
+  choix.value = H.carreaux;
+  choix.addEventListener('change', () => { H.carreaux = choix.value; dessinerCarreauxHL(); });
+  d.append(h('div', { class: 'tun-d-ligne', style: 'margin-top:6px' }, 'Carreaux à garder, affichés sur la carte : ', choix));
+  H.dom.res = h('div', { class: 'tun-hl-res' });
+  d.append(H.dom.res);
+  rendreResultatHL(null, !H.resultat && H.ps.size > 0);
+}
+
+function basculerHL() {
+  const H = S.hl;
+  H.actif = !H.actif;
+  S.dom.btnHL.classList.toggle('tun-btn--on', H.actif);
+  if (H.actif) {
+    H.mode = 'ligne'; H.etape = null; H.brouillon = null;
+    recalculerSelectionHL();
+    effacerSelection(); // vide le détail et la carte, puis réaffiche le panneau (mode actif)
+    if (H.ps.size) recadrerCarte(boundsDe([...H.ps]));
+  } else {
+    H.calc += 1;
+    marquerDebutHL();
+    effacerSelection();
+    majHLSynop();
+    S.g.carreaux.clearLayers();
+    majMessage('');
+  }
+}
+
 // ------------------------------------------------------------------ contrôles
 
 function polygonesNonUtilises() {
@@ -664,6 +1015,7 @@ function polygonesNonUtilises() {
 }
 
 function afficherControles() {
+  if (S.hl.actif) basculerHL(); // le mode hors ligne est quitté : le détail est réservé aux contrôles
   effacerSelection();
   const d = S.dom.detail;
   const arrets = [...S.recs.values()].filter((r) => r.kind === 'arret');
@@ -722,14 +1074,16 @@ function construireEntete() {
   btnTout.addEventListener('click', () => { effacerSelection(); S.pz.tout(); });
   const btnTelecharger = h('button', { class: 'tun-btn', text: 'Télécharger' });
   btnTelecharger.addEventListener('click', telechargerLiens);
+  const btnHL = h('button', { class: 'tun-btn', text: 'Hors ligne' });
+  btnHL.addEventListener('click', basculerHL);
   const puces = h('div', { class: 'tun-puces' });
   const msg = h('div', { class: 'tun-msg', text: 'Chargement…' });
   msg.addEventListener('click', () => msg.classList.toggle('tun-msg--ouvert'));
   e.append(
-    h('div', { class: 'tun-ligne1' }, h('span', { class: 'tun-titre', text: 'Calage du synoptique' }), btnControles, btnTout, btnTelecharger),
+    h('div', { class: 'tun-ligne1' }, h('span', { class: 'tun-titre', text: 'Calage du synoptique' }), btnControles, btnTout, btnHL, btnTelecharger),
     puces, msg,
   );
-  S.dom = { ...S.dom, entete: e, puces, msg, btnTelecharger, detail: document.getElementById('tun-detail') };
+  S.dom = { ...S.dom, entete: e, puces, msg, btnTelecharger, btnHL, detail: document.getElementById('tun-detail') };
 }
 
 function construirePuces() {
@@ -737,6 +1091,7 @@ function construirePuces() {
     const c = S.couleur[n];
     const b = h('button', { class: 'tun-puce', 'data-ligne': n, text: n, style: `background:${c};color:${c.toLowerCase() === '#efe047' ? '#1f2933' : '#fff'}` });
     b.addEventListener('click', () => {
+      if (S.hl.actif) { clicLigneHL(n); return; }
       if (S.sel && S.sel.kind === 'ligne' && S.sel.id === n) { effacerSelection(); S.pz.tout(); } else selectionner({ kind: 'ligne', id: n });
     });
     S.dom.puces.append(b);
@@ -750,7 +1105,7 @@ function initCarte() {
   AMGT4CEM_BuildInfoControl.init(map);
   AMGT4CEM_Basemap.init(map);
   AMGT4CEM_Basemap.showUrbis();
-  for (const k of ['poly', 'trace', 'arrets']) S.g[k] = L.layerGroup().addTo(map);
+  for (const k of ['carreaux', 'poly', 'trace', 'arrets']) S.g[k] = L.layerGroup().addTo(map);
   new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById('tun-carte-zone'));
 }
 
@@ -778,6 +1133,7 @@ async function demarrer() {
     } catch (err) { /* brouillon illisible : ignoré */ }
     monterSynoptique(svgTxt, zone);
     construirePuces();
+    restaurerHL();
     majBagues();
     majPuces();
     majMessageBrouillon();

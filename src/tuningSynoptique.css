@@ -47,3 +47,14 @@ svg .tun-sel { filter: drop-shadow(0 0 3px #e11d48) drop-shadow(0 0 3px #e11d48)
 svg .tun-bague { fill: rgba(255, 255, 255, 0); stroke-width: 3; cursor: pointer; }
 svg .tun-bague--sel { stroke-width: 5; }
 .tun-tip { background: #fff; border: 1px solid #0b5c75; border-radius: 4px; padding: 1px 5px; font-size: 12px; color: #1f2933; box-shadow: none; }
+
+/* Sélection hors ligne : tronçons choisis (trait plein), tunnels partagés avec une autre ligne choisie (trait plus léger), stations. */
+svg #troncons path.tun-hl { stroke-opacity: .65; stroke-width: 9; stroke-linecap: round; }
+svg #troncons path.tun-hl2 { stroke-opacity: .3; stroke-width: 9; stroke-linecap: round; }
+svg .tun-hl-st { filter: drop-shadow(0 0 2px #0b5c75) drop-shadow(0 0 2px #0b5c75); }
+.tun-hl-item { display: flex; align-items: center; gap: 6px; cursor: default; }
+.tun-hl-txt { flex: 1; }
+.tun-btn--petit { padding: 3px 7px; font-size: 11px; }
+.tun-consigne { font-weight: 600; color: #0b5c75; }
+.tun-avert { color: #9a5b00; font-size: 12px; }
+.tun-petit { font-size: 11px; color: #52606d; }
