@@ -16,6 +16,8 @@
   // en dépendent pour une première visite. Ne rejette jamais (délai borné).
   await Promise.all([AMGT4CEM_UrbisTopoSelectionStore.loadShared(), AMGT4CEM_PatrimoineSelectionStore.loadShared(), AMGT4CEM_DitpDiovSelectionStore.loadShared(), AMGT4CEM_OrthoSelectionStore.loadShared(), AMGT4CEM_NappeSelectionStore.loadShared(), AMGT4CEM_MenuPrefs.loadShared()]);
 
+  // Module facultatif : s'il manque (ancienne liste de scripts en cache), la carte s'ouvre quand même sur la vue d'ensemble.
+  const vueMemorisee = window.AMGT4CEM_MapView ? AMGT4CEM_MapView.get() : null;
   const map = L.map('map', {
     // Pas de contrôle de zoom Leaflet : remplacé par la recherche en haut à
     // droite (voir searchTool.js). Le zoom reste possible à la molette, au
@@ -44,9 +46,9 @@
     center: [50.85, 4.35],
     zoom: 12,
     // Dernière vue de cet onglet (si elle existe) : prime sur la vue d'ensemble.
-    ...(AMGT4CEM_MapView.get() || {}),
+    ...(vueMemorisee || {}),
   });
-  AMGT4CEM_MapView.suivre(map);
+  if (window.AMGT4CEM_MapView) AMGT4CEM_MapView.suivre(map);
   AMGT4CEM_SearchTool.init(map);
 
   // Retire le lien "Leaflet" du contrôle d'attribution (sans obligation légale :
@@ -121,7 +123,7 @@
   let networkMode = null; // 'prive' | 'public' : source actuellement affichée (null : rien d'affiché)
   let networkLayers = null; // groupes Leaflet du réseau affiché
   let networkToken = 0; // numéro de la dernière lecture demandée : une lecture périmée est jetée
-  let networkFitted = !!AMGT4CEM_MapView.get(); // la vue a déjà été recentrée sur le réseau une première fois (ou reprise de la dernière vue)
+  let networkFitted = !!vueMemorisee; // la vue a déjà été recentrée sur le réseau une première fois (ou reprise de la dernière vue)
 
   function wantedNetworkMode() {
     return AMGT4CEM_Auth.session() ? 'prive' : 'public';
