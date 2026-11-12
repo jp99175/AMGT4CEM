@@ -1,0 +1,14 @@
+/* Liseré de progression du téléchargement des cartes hors ligne, autour du bouton « Couches » (src/horsLigne/indicateur.js).
+   Il part du haut (12 h) et tourne dans le sens des aiguilles d'une montre ; couleur des icônes ; orange quand il est interrompu. */
+.hl-anneau {
+  --hl-p: 0;
+  --hl-c: #0b5c75;
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(var(--hl-c) calc(var(--hl-p) * 1%), color-mix(in srgb, var(--hl-c) 14%, transparent) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4.5px));
+}
+.hl-anneau--interrompu { --hl-c: #d97706; }

@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const VERSION = '20261112-1426'; // @VERSION (écrit par tools/stamp-sw.sh)
+const VERSION = '20261112-1445'; // @VERSION (écrit par tools/stamp-sw.sh)
 const CACHE = 'amgt4cem-app';
 const DELAI_RESEAU_MS = 4000;
 const PARALLELE = 6;
@@ -115,6 +115,8 @@ const FICHIERS = [
   './src/ditpDiovPublicLayer.js',
   './src/horsLigne/ecran.js',
   './src/horsLigne/horsLigne.css',
+  './src/horsLigne/indicateur.css',
+  './src/horsLigne/indicateur.js',
   './src/horsLigne/magasin.js',
   './src/interstation.js',
   './src/layerOpacityStore.js',

@@ -307,7 +307,7 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
     // Carte : menu « Couches » adapté (src/nav/couches.js) et outils de mesure (src/nav/mesure.js), chargés après la barre de navigation.
     carto: (() => {
       const p = avecNav(apps.carto);
-      return { ...p, styles: [...p.styles, './src/nav/couches.css', './src/nav/mesure.css'], scripts: [...p.scripts, './src/nav/couches.js', './src/nav/mesureIcones.js', './src/nav/mesure.js'] };
+      return { ...p, styles: [...p.styles, './src/nav/couches.css', './src/nav/mesure.css', './src/horsLigne/indicateur.css'], scripts: [...p.scripts, './src/nav/couches.js', './src/nav/mesureIcones.js', './src/nav/mesure.js', './src/horsLigne/indicateur.js'] };
     })(),
     signal: avecNav(apps.signal),
     // Page jetable (adresse à connaître, absente de la barre de navigation) : poids des tuiles UrbIS, pour chiffrer le hors ligne.
