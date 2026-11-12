@@ -17,7 +17,8 @@
  *    d'une ligne la prend entière. Pour une portion, on touche l'arrêt de début (les lignes qui y passent sont présélectionnées,
  *    les autres sont grisées dans le synoptique et leurs contours apparaissent en trait léger sur la carte), puis l'arrêt de fin,
  *    qui doit être sur une de ces lignes (la portion est prise sur chaque ligne commune). Le même arrêt touché deux fois donne la
- *    station seule. Les contours choisis sont dessinés sur la carte dans la couleur de la ligne. Une liste permet de retirer
+ *    station seule. Un arrêt sans contour (tram, terminus) peut borner une portion : seule la zone des contours entre les bornes est
+ *    gardée. Les contours de tout le réseau restent visibles en gris sous la sélection ; les contours choisis sont dessinés sur la carte dans la couleur de la ligne. Une liste permet de retirer
  *    des tronçons ou des stations (retraits mémorisés jusqu'à « Tout remettre »). L'outil calcule les tuiles UrbIS couvertes
  *    (marge de 100 m au zoom 19, doublée à chaque niveau en moins) et leur poids estimé. Rien n'est téléchargé ; la sélection
  *    reste sur l'appareil.
@@ -697,15 +698,40 @@ function chaineDeLigne(n) {
 
 const stationsDeLigne = (n) => [...S.recs.values()].filter((r) => r.kind === 'station' && r.lignes.includes(n));
 
+/**
+ * Position d'un arrêt sans contour (tram, terminus) sur la chaîne de la ligne n : l'extrémité de tronçon la plus proche de
+ * l'arrêt dans le dessin. Elle ne sert qu'à ordonner les bornes : la zone gardée reste celle des contours entre les bornes.
+ */
+function positionArret(rec, n) {
+  if (!rec.posArret) rec.posArret = {};
+  if (n in rec.posArret) return rec.posArret[n];
+  let meilleur = null;
+  for (const t of chaineDeLigne(n).troncons) {
+    const L0 = t.rec.el.getTotalLength();
+    const pas = Math.max(2, L0 / 40);
+    for (let l = 0; l <= L0 + 0.01; l += pas) {
+      const q = t.rec.el.getPointAtLength(Math.min(l, L0));
+      const d = Math.hypot(q.x - rec.c.x, q.y - rec.c.y);
+      if (!meilleur || d < meilleur.d) meilleur = { d, pos: Math.min(l, L0) / (L0 || 1) < 0.5 ? t.pa : t.pb };
+    }
+  }
+  rec.posArret[n] = meilleur ? [meilleur.pos] : [];
+  return rec.posArret[n];
+}
+
 /** Positions de la chaîne de la ligne n où se trouve cette station (vide si elle n'est pas sur le tunnel de la ligne). */
 function positionsSurLigne(rec, n) {
   if (!rec.lignes.includes(n)) return [];
   if (!rec.box) rec.box = boite(rec.el);
+  if (!rec.c) rec.c = { x: rec.box.x + rec.box.w / 2, y: rec.box.y + rec.box.h / 2 };
+  if (rec.kind === 'arret') return positionArret(rec, n);
   const out = new Set();
   for (const t of chaineDeLigne(n).troncons) {
     if (distBoite(t.a, rec.box) <= HL_TOLERANCE) out.add(t.pa);
     if (distBoite(t.b, rec.box) <= HL_TOLERANCE) out.add(t.pb);
   }
+  // Station desservie par la ligne mais hors de son tunnel dans le dessin (ex. Heysel pour la ligne 7) : position la plus proche.
+  if (!out.size) return positionArret(rec, n);
   return [...out].sort((x, y) => x - y);
 }
 
@@ -774,6 +800,7 @@ function resoudrePortion(p, sub) {
   if (a === b) {
     const surLigne = S.lignes.filter((n) => positionsSurLigne(a, n).length);
     (surLigne.length ? surLigne : a.lignes.slice(0, 1)).forEach((n) => { ajouterUnite(sub, a, n); lignes.push(n); });
+    if (!sub.size) avert.push('aucun contour à garder pour cet arrêt (hors tunnel ou partie enterrée)');
     return { avert, texte: `${a.nom} (station seule)`, lignes };
   }
   for (const n of S.lignes) {
@@ -791,6 +818,7 @@ function resoudrePortion(p, sub) {
     ch.gaps.forEach((g) => { if (g.pos >= lo && g.pos + 1 <= hi) avert.push(`ligne ${n} : tunnel absent du synoptique entre « ${g.avant.nom} » et « ${g.apres.nom} »`); });
   }
   if (!lignes.length) avert.push('aucune ligne commune entre ces deux arrêts');
+  else if (!sub.size) avert.push('aucun contour à garder entre ces deux arrêts (hors tunnel ou partie enterrée)');
   const l0 = lignes[0] || a.lignes[0];
   return { avert, texte: `${libelleArret(a, l0)} → ${libelleArret(b, l0)}`, lignes };
 }
@@ -1000,7 +1028,6 @@ function lignesDe(rec, parmi) {
 function clicStationHL(rec) {
   const H = S.hl;
   if (rec.kind === 'troncon') { majMessage('Touche un arrêt, pas un tronçon. Pour une ligne entière, touche son étiquette.'); return; }
-  if (rec.kind !== 'station') { majMessage(`« ${rec.nom} » est un arrêt sans polygone (calage non validé) : portion impossible pour l'instant.`, true); return; }
   if (H.etape !== 'fin') {
     const { out, amb } = lignesDe(rec, S.lignes);
     if (!out.length) {
@@ -1033,6 +1060,18 @@ function surToucherHL(cible) {
   if (cible.hasAttribute('data-etq')) { clicLigneHL(cible.getAttribute('data-ligne')); return; }
   const rec = S.recs.get(cible.getAttribute('data-bague') || cible.id);
   if (rec) clicStationHL(rec);
+}
+
+/** Contours de tout le réseau en gris fin sous la sélection (pointillés : contours de la Région absents du synoptique). */
+function dessinerResteCarte() {
+  S.g.reste.clearLayers();
+  if (!S.hl.actif) return;
+  const absents = new Set(polygonesNonUtilises().map((x) => x.p));
+  for (const [p, info] of Object.entries(S.pol)) {
+    const f = S.region.get(info.ogc);
+    if (!f) continue;
+    L.polygon(anneaux(f), { color: '#8a94a0', weight: 1, dashArray: absents.has(p) ? '4 3' : null, fillColor: '#8a94a0', fillOpacity: 0.05, interactive: false }).addTo(S.g.reste);
+  }
 }
 
 /** Contours sur la carte du haut : présélection (trait léger) pendant l'attente, puis la sélection, dans la couleur de la ligne. */
@@ -1122,10 +1161,12 @@ function basculerHL() {
     annulerEnCours();
     recalculerSelectionHL();
     effacerSelection(); // vide le détail et la carte, puis réaffiche le panneau (mode actif)
-    if (H.ps.size) recadrerCarte(boundsDe([...H.ps]));
+    dessinerResteCarte();
+    recadrerCarte(boundsDe(H.ps.size ? [...H.ps] : Object.keys(S.pol)));
   } else {
     H.calc += 1;
     annulerEnCours();
+    S.g.reste.clearLayers();
     effacerSelection();
     majHLSynop();
     S.g.carreaux.clearLayers();
@@ -1231,7 +1272,7 @@ function initCarte() {
   AMGT4CEM_BuildInfoControl.init(map);
   AMGT4CEM_Basemap.init(map);
   AMGT4CEM_Basemap.showUrbis();
-  for (const k of ['carreaux', 'poly', 'trace', 'arrets']) S.g[k] = L.layerGroup().addTo(map);
+  for (const k of ['reste', 'carreaux', 'poly', 'trace', 'arrets']) S.g[k] = L.layerGroup().addTo(map);
   new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById('tun-carte-zone'));
 }
 
