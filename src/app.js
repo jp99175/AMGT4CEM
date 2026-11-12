@@ -43,7 +43,10 @@
     // sur l'emprise réelle du réseau).
     center: [50.85, 4.35],
     zoom: 12,
+    // Dernière vue de cet onglet (si elle existe) : prime sur la vue d'ensemble.
+    ...(AMGT4CEM_MapView.get() || {}),
   });
+  AMGT4CEM_MapView.suivre(map);
   AMGT4CEM_SearchTool.init(map);
 
   // Retire le lien "Leaflet" du contrôle d'attribution (sans obligation légale :
@@ -118,7 +121,7 @@
   let networkMode = null; // 'prive' | 'public' : source actuellement affichée (null : rien d'affiché)
   let networkLayers = null; // groupes Leaflet du réseau affiché
   let networkToken = 0; // numéro de la dernière lecture demandée : une lecture périmée est jetée
-  let networkFitted = false; // la vue a déjà été recentrée sur le réseau une première fois
+  let networkFitted = !!AMGT4CEM_MapView.get(); // la vue a déjà été recentrée sur le réseau une première fois (ou reprise de la dernière vue)
 
   function wantedNetworkMode() {
     return AMGT4CEM_Auth.session() ? 'prive' : 'public';

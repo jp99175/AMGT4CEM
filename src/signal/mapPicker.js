@@ -71,8 +71,11 @@ SIG.MapPicker = {
         maxZoom: AMGT4CEM_CONFIG.maxZoom,
         center: [50.85, 4.37],
         zoom: 13,
+        ...(AMGT4CEM_MapView.get() || {}), // dernière vue de cet onglet (carte AMGT4CEM ou choix précédent)
       });
       const map = this.map;
+      if (AMGT4CEM_MapView.get()) this._moved = true; // pas de recentrage sur le réseau : on reste où on était
+      AMGT4CEM_MapView.suivre(map);
       L.control.attribution({ prefix: false }).addTo(map); // avant les fonds et couches : ils y inscrivent leur crédit
       AMGT4CEM_ScaledText.initMap(map);
       AMGT4CEM_Basemap.init(map);
