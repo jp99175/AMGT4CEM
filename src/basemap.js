@@ -134,6 +134,7 @@ const AMGT4CEM_Basemap = {
     layer.on('tileerror', () => {
       erreurs += 1;
       if (basculé || chargees > 0 || erreurs < 3) return;
+      if (!navigator.onLine) return; // hors ligne : le WMS ne répondrait pas non plus, on garde les tuiles (gardées sur l'appareil ou vides)
       basculé = true;
       console.warn('[AMGT4CEM] Tuiles UrbIS indisponibles, repli sur le WMS.');
       if (this._currentLayer === layer) this._setActiveLayer(this._buildLayer(cfg));

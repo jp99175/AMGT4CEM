@@ -62,7 +62,8 @@ function monter(conteneur) {
   const detailListe = h('div', { class: 'hl-liste' });
   const detail = h('details', { class: 'hl-detail' }, h('summary', { text: 'Détail par tronçon et station' }), detailListe);
   const pied = h('p', { class: 'rgl-note hl-pied' });
-  conteneur.append(intro, zoneSyn, legende, consigne, message, resume, barre, actions, liste, detail, pied);
+  const appHorsLigne = h('p', { class: 'rgl-note hl-pied' });
+  conteneur.append(intro, zoneSyn, legende, consigne, message, resume, barre, actions, liste, detail, appHorsLigne, pied);
 
   const dire = (t, erreur) => {
     message.textContent = t;
@@ -590,7 +591,7 @@ function monter(conteneur) {
     if (E.dl) {
       el.push(h('p', { class: 'rgl-note', text: `Téléchargement : ${fmtN(E.dl.faites)} / ${fmtN(E.dl.total)} tuiles${E.dl.erreurs ? ` (${E.dl.erreurs} en échec)` : ''}` }));
       const stop = h('button', { type: 'button', class: 'rgl-btn', text: 'Arrêter' });
-      stop.addEventListener('click', () => { E.dl.arret = true; });
+      stop.addEventListener('click', () => { if (E.dl.sw) { const c = navigator.serviceWorker.controller; if (c) c.postMessage({ type: 'arret' }); } else E.dl.arret = true; });
       el.push(stop);
     } else if (E.confirmation && T) {
       const c = E.confirmation;
@@ -681,6 +682,11 @@ function monter(conteneur) {
       parts.push('Pour l\'instant, l\'application doit déjà être ouverte pour utiliser ces cartes sans réseau.');
     }
     pied.textContent = parts.join(' ');
+    appHorsLigne.textContent = E.versionSW
+      ? `Application gardée pour l'ouverture sans réseau : version ${E.versionSW}.`
+      : ('serviceWorker' in navigator && navigator.serviceWorker.controller
+        ? 'Application gardée pour l\'ouverture sans réseau.'
+        : 'Application pas encore gardée pour l\'ouverture sans réseau : ouvrez-la une fois en ligne, puis rechargez cette page.');
   }
 
   // ---- mise à jour : effacer ce qui n'est plus choisi, puis télécharger le manquant
@@ -703,6 +709,15 @@ function monter(conteneur) {
     await AMGT4CEM_Services.load();
     const cfg = AMGT4CEM_Services.tuilesConfig();
     if (!cfg) { E.dl = null; dire('Les tuiles de la carte ne sont pas configurées (mode « WMS seul »).', true); dessiner(); return; }
+    const ctl = 'serviceWorker' in navigator ? navigator.serviceWorker.controller : null;
+    if (ctl) {
+      // Le service worker télécharge : on peut quitter l'écran ou la page, il continue et se reprend à la prochaine ouverture.
+      E.dl.sw = true;
+      ctl.postMessage({ type: 'telecharger', cles: tuiles, cfg });
+      try { const reg = await navigator.serviceWorker.ready; if (reg.sync) await reg.sync.register('hl-tuiles'); } catch (err) { /* synchronisation indisponible (iPad, Firefox) */ }
+      dessiner();
+      return;
+    }
     let i = 0; let derniereMaj = 0; let fatal = null;
     const rafraichir = () => { const t = Date.now(); if (t - derniereMaj < 400) return; derniereMaj = t; dessiner(); };
     async function travailleur() {
@@ -733,8 +748,43 @@ function monter(conteneur) {
     dessiner();
   }
 
+  // ---- messages du service worker (téléchargement hors de la page)
+  function bilanSW(m) {
+    if (m.etat === 'fini') {
+      if (m.erreurs) dire(`Terminé avec ${fmtN(m.erreurs)} tuiles en échec. Touchez « Mettre à jour » pour réessayer.`, true);
+      else dire('Mise à jour terminée. Les tronçons choisis sont disponibles hors ligne.');
+    } else if (m.etat === 'arret') dire(`Arrêté. ${fmtN(m.faites)} / ${fmtN(m.total)} tuiles gardées ; reprenez avec « Mettre à jour ».`);
+    else if (m.etat === 'erreur') dire(`${m.message || 'Téléchargement interrompu.'} ${fmtN(m.faites)} / ${fmtN(m.total)} tuiles gardées.`, true);
+  }
+  function surMessageSW(event) {
+    const m = event.data || {};
+    if (m.type === 'etat') {
+      if (m.version) E.versionSW = m.version;
+      const t = m.travail;
+      HL.recharger().then(() => {
+        if (t && t.etat === 'actif') E.dl = { sw: true, arret: false, faites: t.faites, total: t.total, erreurs: t.erreurs };
+        dessiner();
+      });
+      return;
+    }
+    if (m.type !== 'progression') return;
+    for (const [k, o] of (m.ajoutees || [])) HL.index.set(k, { t: Date.now(), o });
+    if (m.etat === 'actif') {
+      E.dl = { sw: true, arret: false, faites: m.faites, total: m.total, erreurs: m.erreurs };
+    } else {
+      E.dl = null;
+      bilanSW(m);
+    }
+    dessiner();
+  }
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', surMessageSW);
+  function demanderEtatSW() {
+    const c = 'serviceWorker' in navigator ? navigator.serviceWorker.controller : null;
+    if (c) c.postMessage({ type: 'etat' });
+  }
+
   // ---- démarrage
-  conteneur.__rafraichir = () => { if (!E.dl && E.svg) dessiner(); };
+  conteneur.__rafraichir = () => { demanderEtatSW(); if (!E.dl && E.svg) dessiner(); };
   (async () => {
     try {
       dire('Chargement…');
@@ -742,6 +792,7 @@ function monter(conteneur) {
       E.durable = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted().catch(() => null) : null;
       restaurerChoix();
       recalculerChoix();
+      demanderEtatSW();
       dire('');
       dessiner();
       await calculer();
