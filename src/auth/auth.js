@@ -88,6 +88,28 @@ const AMGT4CEM_Auth = {
     return this.session();
   },
 
+  /**
+   * Relit la fiche du compte auprès du serveur (GET /auth/moi) et met la session à jour si les droits ou l'identité ont
+   * changé : un droit ajouté ou retiré se voit sans reconnexion. Sans réseau ou en cas d'erreur, la session reste telle
+   * quelle (jamais de déconnexion pour une simple panne). Un jeton refusé (401) déconnecte, comme pour tout appel.
+   * @returns {Promise<boolean>} true si la session a été modifiée
+   */
+  async rafraichirDroits() {
+    const s = this.session();
+    if (!s || !this.configured()) return false;
+    try {
+      const r = await this.call('/auth/moi');
+      if (!r.utilisateur) return false;
+      const apres = this.session();
+      if (!apres || apres.jeton !== s.jeton) return false; // déconnexion ou reconnexion pendant l'appel
+      if (JSON.stringify(apres.utilisateur) === JSON.stringify(r.utilisateur)) return false;
+      this._store({ ...apres, utilisateur: r.utilisateur });
+      return true;
+    } catch (err) {
+      return false;
+    }
+  },
+
   async activer(matricule, code, motdepasse) {
     const r = await this.call('/auth/activer', { method: 'POST', auth: false, body: { matricule, code, motdepasse } });
     this._store({ jeton: r.jeton, expire: r.expire, utilisateur: r.utilisateur });

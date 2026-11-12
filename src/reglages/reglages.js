@@ -329,5 +329,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) rend
 Reglages._demarre = true;
 render();
 if (!AMGT4CEM_Auth.session()) demander();
+// Droits relus auprès du serveur à l'ouverture : la liste s'affiche tout de suite avec les droits de la session, puis se
+// redessine seule (via onChange) si un droit a changé depuis la connexion.
+AMGT4CEM_Auth.rafraichirDroits();
 AMGT4CEM_Auth.surveillerExpiration();
 })();
