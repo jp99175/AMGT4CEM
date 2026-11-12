@@ -383,6 +383,7 @@ async function monter(conteneur) {
 
   construirePuces();
   rendre();
+  ECRAN.modifs = () => nonEnvoyees().length > 0; // lu par le bandeau (reglages.js) avant de quitter l'écran
   conteneur.append(
     h('p', { class: 'rgl-note', text: 'Attributs des entités du shapefile. Coller depuis un tableur : cliquer dans une cellule puis coller (texte brut). Plusieurs lignes desservies = plusieurs arrêts de même nom : indiquer leurs références séparées par « ; ». Un nom FR ou NL vide s\'affiche en italique avec le nom de l\'autre langue, sans être enregistré.' }),
     h('div', { class: 'rgl-barre' }, btnRetour, btnSauver, btnExporter, compteur),
@@ -391,7 +392,8 @@ async function monter(conteneur) {
 }
 
 /** Écran proposé à Réglages > Avancé (ligne déclarée dans serveur.js, droit « attributs »). */
-window.AMGT4CEM_AttributsEcran = { id: 'attributs', titre: 'Attributs', monter };
+const ECRAN = { id: 'attributs', titre: 'Attributs', monter, modifs: () => false };
+window.AMGT4CEM_AttributsEcran = ECRAN;
 
 window.AMGT4CEM_AttributsLogique = { champsDe, signature, appliquerCellule, parserColle, reperesEntetes, normaliserEtVerifier, ecrireChamps, trouverConflits, texteEnRefs };
 })();

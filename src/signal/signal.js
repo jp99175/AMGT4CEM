@@ -25,7 +25,9 @@ function newId() {
   return crypto.randomUUID ? crypto.randomUUID() : `sg-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+let ecranCourant = 'menu';
 function showScreen(name) {
+  ecranCourant = name;
   screens.menu.classList.toggle('sig4cem-hidden', name !== 'menu');
   if (name !== 'map') SIG.MapPicker.close();
   if (name !== 'form') SIG.Form.close();
@@ -110,6 +112,13 @@ function identityLine() {
   });
   return h('p', { class: 'sig4cem-identity' }, s ? `Connecté : ${AMGT4CEM_Auth.label(s)} · ` : 'Non connecté · ', btn);
 }
+
+/** Clic sur l'onglet Saisie du bandeau : retour au menu. Un formulaire (ou le choix de position) peut contenir du travail non enregistré : on demande. */
+window.AMGT4CEM_PageRacine = async () => {
+  if (ecranCourant === 'menu') { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if ((ecranCourant === 'form' || ecranCourant === 'map') && !window.confirm('Quitter ce formulaire ? Ce qui n\'est pas enregistré sera perdu.')) return;
+  await backToMenu();
+};
 
 async function backToMenu() {
   origin = null;

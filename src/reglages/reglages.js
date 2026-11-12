@@ -266,6 +266,13 @@ function fermer() {
   principal.hidden = false;
   window.scrollTo(0, 0);
 }
+/** Clic sur l'onglet Réglages du bandeau : retour à la liste principale (avec confirmation si des modifications ne sont pas enregistrées). */
+window.AMGT4CEM_PageRacine = () => {
+  if (ecranOuvert) {
+    if (typeof ecranOuvert.modifs === 'function' && ecranOuvert.modifs() && !window.confirm('Quitter cet écran ? Les modifications non enregistrées seront perdues.')) return;
+    fermer();
+  } else window.scrollTo({ top: 0, behavior: 'smooth' });
+};
 Reglages.ouvrir = ouvrir;
 Reglages.fermer = fermer;
 

@@ -50,7 +50,12 @@ const AMGT4CEM_Nav = {
   },
 
   async _onTab(e, onglet, href) {
-    if (onglet.id === AMGT4CEM_Router.app) { e.preventDefault(); return; }
+    if (onglet.id === AMGT4CEM_Router.app) {
+      // Onglet de la page où l'on est déjà : retour à la racine de cette page (si elle sait le faire).
+      e.preventDefault();
+      if (typeof window.AMGT4CEM_PageRacine === 'function') window.AMGT4CEM_PageRacine(); // posée par la page (Réglages, Saisie)
+      return;
+    }
     if (!onglet.protege || this._session()) return; // lien ordinaire
     e.preventDefault();
     const s = await AMGT4CEM_Auth.ensure({ message: this.MESSAGES[onglet.id] });
