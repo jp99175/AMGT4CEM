@@ -534,6 +534,8 @@ const Mesure = {
     if (loupe) loupe.innerHTML = iconeOutil('loupe');
     const forage = document.getElementById('amgt-bore-btn');
     if (forage) forage.innerHTML = iconeOutil('sondage');
+    const zone = document.getElementById('amgt-lieux-btn'); // outil « Dessiner une zone » (src/lieuxTool.js)
+    if (zone) zone.innerHTML = iconeOutil('zone');
 
     // --- bloc latte (+ plateau des deux outils) à la place de la règle
     const bloc = h('div', { id: 'mes-bloc', class: 'mes-bloc' });
