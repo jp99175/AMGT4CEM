@@ -1,0 +1,31 @@
+/* Écran « Carte hors ligne » (src/horsLigne/ecran.js). */
+.hl-zooms { display: flex; gap: 8px; margin: 0 0 6px; }
+.hl-syn { height: 52vh; overflow: auto; background: #fff; border: 1px solid #cbd2d9; border-radius: 10px; touch-action: pan-x pan-y; }
+.hl-svg { width: 100%; height: auto; display: block; }
+.hl-legende { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0; padding: 0; font-size: 13px; color: #52606d; }
+.hl-p { display: inline-block; width: 22px; height: 0; border-top: 5px solid #0b5c75; vertical-align: middle; }
+.hl-p--cours { opacity: .55; }
+.hl-p--att { border-top: 3px dashed #0b5c75; opacity: .7; }
+.hl-p--non { border-top-color: #c3c9cf; }
+.hl-resume { margin: 8px 0 6px; font-size: 14px; }
+.hl-resume__ligne { margin: 2px 0; }
+.hl-resume__fort { font-weight: 600; }
+.hl-barre { height: 10px; background: #e4e7eb; border-radius: 5px; overflow: hidden; margin: 6px 0 10px; }
+.hl-barre__plein { height: 100%; width: 0; background: #0b5c75; transition: width .3s; }
+.hl-detail { margin: 10px 0; }
+.hl-detail summary { cursor: pointer; font-size: 14px; color: #0b5c75; }
+.hl-liste { margin-top: 6px; max-height: 40vh; overflow: auto; font-size: 13px; }
+.hl-ligne { display: flex; flex-direction: column; padding: 5px 0; border-bottom: 1px solid #e4e7eb; }
+.hl-ligne__val { color: #52606d; }
+.hl-ligne--ok .hl-ligne__val { color: #1b6e3c; }
+.hl-pied { font-size: 12px; }
+
+/* Synoptique : tout est grisé, les tronçons et stations choisis prennent la couleur de leur ligne selon l'état. */
+.hl-svg #lignes, .hl-svg #etiquettes-lignes, .hl-svg #noms-arrets { opacity: .32; filter: grayscale(1); }
+.hl-svg #stations > [data-type]:not(.hl-ok):not(.hl-cours):not(.hl-att) { opacity: .35; filter: grayscale(1); }
+.hl-svg #troncons path.hl-ok { stroke: var(--hl-c); stroke-opacity: .9; stroke-width: 9; stroke-linecap: round; }
+.hl-svg #troncons path.hl-cours { stroke: var(--hl-c); stroke-opacity: .55; stroke-width: 9; stroke-linecap: round; }
+.hl-svg #troncons path.hl-att { stroke: var(--hl-c); stroke-opacity: .7; stroke-width: 4; stroke-dasharray: 6 5; }
+.hl-svg #stations > .hl-ok { stroke: var(--hl-c) !important; stroke-width: 5; }
+.hl-svg #stations > .hl-cours { stroke: var(--hl-c) !important; stroke-width: 5; stroke-opacity: .55; }
+.hl-svg #stations > .hl-att { stroke: var(--hl-c) !important; stroke-width: 3; stroke-dasharray: 3 2; }

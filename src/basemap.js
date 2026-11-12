@@ -373,6 +373,35 @@ const AMGT4CEM_Basemap = {
    */
   _CorsWmsLayer: L.TileLayer.WMS.extend({
     options: { crossOrigin: 'anonymous' },
+    /**
+     * Lecture locale d'abord : une tuile gardée sur l'appareil (Réglages > Mon appareil > Carte hors ligne) est lue dans le
+     * magasin ; sinon, ou si la lecture échoue, la tuile vient du réseau comme avant.
+     */
+    createTile(coords, done) {
+      const HL = window.AMGT4CEM_HorsLigne;
+      if (!HL || !HL.possede(coords.z, coords.x, coords.y)) return L.TileLayer.prototype.createTile.call(this, coords, done);
+      const tile = document.createElement('img');
+      tile.alt = '';
+      tile.setAttribute('role', 'presentation');
+      let url = null;
+      let reseau = false;
+      const surReseau = () => {
+        if (reseau) return false;
+        reseau = true;
+        if (url) { URL.revokeObjectURL(url); url = null; }
+        tile.setAttribute('crossorigin', 'anonymous');
+        tile.src = this.getTileUrl(coords);
+        return true;
+      };
+      L.DomEvent.on(tile, 'load', () => { if (url) { URL.revokeObjectURL(url); url = null; } this._tileOnLoad(done, tile); });
+      L.DomEvent.on(tile, 'error', (e) => { if (!surReseau()) this._tileOnError(done, tile, e); });
+      HL.lire(coords.z, coords.x, coords.y).then((blob) => {
+        if (!blob) { surReseau(); return; }
+        url = URL.createObjectURL(blob);
+        tile.src = url;
+      });
+      return tile;
+    },
     _tileOnError(done, tile, e) {
       if (tile.getAttribute('crossorigin') !== null && !tile._amgtSansCors) {
         tile._amgtSansCors = true;
@@ -388,6 +417,35 @@ const AMGT4CEM_Basemap = {
   /** Couche de tuiles (WMTS) : même gestion de CORS que _CorsWmsLayer (capture d'écran de la mesure). */
   _CorsTileLayer: L.TileLayer.extend({
     options: { crossOrigin: 'anonymous' },
+    /**
+     * Lecture locale d'abord : une tuile gardée sur l'appareil (Réglages > Mon appareil > Carte hors ligne) est lue dans le
+     * magasin ; sinon, ou si la lecture échoue, la tuile vient du réseau comme avant.
+     */
+    createTile(coords, done) {
+      const HL = window.AMGT4CEM_HorsLigne;
+      if (!HL || !HL.possede(coords.z, coords.x, coords.y)) return L.TileLayer.prototype.createTile.call(this, coords, done);
+      const tile = document.createElement('img');
+      tile.alt = '';
+      tile.setAttribute('role', 'presentation');
+      let url = null;
+      let reseau = false;
+      const surReseau = () => {
+        if (reseau) return false;
+        reseau = true;
+        if (url) { URL.revokeObjectURL(url); url = null; }
+        tile.setAttribute('crossorigin', 'anonymous');
+        tile.src = this.getTileUrl(coords);
+        return true;
+      };
+      L.DomEvent.on(tile, 'load', () => { if (url) { URL.revokeObjectURL(url); url = null; } this._tileOnLoad(done, tile); });
+      L.DomEvent.on(tile, 'error', (e) => { if (!surReseau()) this._tileOnError(done, tile, e); });
+      HL.lire(coords.z, coords.x, coords.y).then((blob) => {
+        if (!blob) { surReseau(); return; }
+        url = URL.createObjectURL(blob);
+        tile.src = url;
+      });
+      return tile;
+    },
     _tileOnError(done, tile, e) {
       if (tile.getAttribute('crossorigin') !== null && !tile._amgtSansCors) {
         tile._amgtSansCors = true;

@@ -194,6 +194,7 @@ const AMGT4CEM_CONFIG = {
         './src/scaleControl.js',
         './src/buildInfoControl.js',
         './src/creditsLayout.js',
+        './src/horsLigne/magasin.js',
         './src/basemap.js',
         './src/orthoPicker.js',
         './src/menuPrefs.js',
@@ -242,6 +243,7 @@ const AMGT4CEM_CONFIG = {
         './src/ditpDiovGenres.js',
         './src/patrimoineLayer.js',
         './src/screenshotTool.js', // basemap.js l'appelle (invalidateBackground) ; jamais initialisé ici
+        './src/horsLigne/magasin.js',
         './src/basemap.js',
         './src/plugins.js', // seulement captureClicks : les polygones du réseau lui renvoient les clics
         './src/searchTool.js',
@@ -323,7 +325,7 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       template: 'amgt-tpl-tuning-synoptique',
       nav: false,
       styles: ['./src/tuningSynoptique.css'],
-      scripts: ['./vendor/leaflet/leaflet.js', './vendor/proj4/proj4.js', './vendor/proj4leaflet/proj4leaflet.js', './src/buildInfo.js', './src/services.js', './src/crs.js', './src/basemap.js', './src/buildInfoControl.js', './src/tuilesGeom.js', './src/tuningSynoptique.js'],
+      scripts: ['./vendor/leaflet/leaflet.js', './vendor/proj4/proj4.js', './vendor/proj4leaflet/proj4leaflet.js', './src/buildInfo.js', './src/services.js', './src/crs.js', './src/horsLigne/magasin.js', './src/basemap.js', './src/buildInfoControl.js', './src/tuilesGeom.js', './src/tuningSynoptique.js'],
     },
     reglages: {
       title: 'AMGT4CEM – Réglages',

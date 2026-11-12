@@ -152,6 +152,23 @@ Reglages.register({
   lignes: (s) => [
     { texte: `Connecté : ${AMGT4CEM_Auth.label(s)}`, aide: 'Pour vous déconnecter, touchez l\'icône du compte en haut à droite.' },
     {
+      texte: 'Carte hors ligne',
+      aide: 'Garder sur cet appareil le fond de plan autour des tunnels et des stations choisis, pour consulter la carte sans réseau.',
+      ecran: {
+        id: 'horsligne',
+        titre: 'Carte hors ligne',
+        persistant: true,
+        async monter(conteneur) {
+          if (conteneur.firstChild) { if (conteneur.__rafraichir) conteneur.__rafraichir(); return; }
+          conteneur.append(h('p', { class: 'rgl-note', text: 'Chargement…' }));
+          await charger('css', './src/horsLigne/horsLigne.css');
+          for (const src of ['./vendor/proj4/proj4.js', './src/shpLoader.js', './src/tuilesGeom.js', './src/horsLigne/magasin.js', './src/horsLigne/ecran.js']) await charger('script', src);
+          conteneur.replaceChildren();
+          AMGT4CEM_EcranHorsLigne.monter(conteneur);
+        },
+      },
+    },
+    {
       texte: 'Durée d\'affichage d\'une mesure',
       aide: 'Le résultat d\'une mesure reste affiché ce nombre de secondes (0 : jusqu\'à ce que vous touchiez « Fermer »). Réglage propre à cet appareil.',
       champ: { unite: 's', min: 0, max: 600, valeur: () => Reglages.delaiMesureMs() / 1000, enregistrer: (n) => Reglages.fixerDelaiMesureMs(n * 1000) },

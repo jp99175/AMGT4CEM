@@ -49,6 +49,7 @@ const ARRETS_SECOURS = './config/secours/stib-arrets-tram-metro.json';
 const LIGNES_SECOURS = './config/secours/stib-lignes-tram-metro.json';
 const CLE_BROUILLON = 'amgt4cem.tuning-synoptique.v1';
 const CLE_HL = 'amgt4cem.tuning-synoptique.horsligne.v1';
+const CLE_SELECTION_PUBLIEE = 'amgt4cem.horsligne.selection.v1'; // lue par l'écran Réglages > Carte hors ligne
 const { tuilesAutour } = AMGT4CEM_TuilesGeom; // calcul des tuiles : src/tuilesGeom.js
 const DISTANCE_MEME_LIEU_M = 150; // deux arrêts plus proches que ça forment un seul emplacement
 const COULEURS_ETAT = { valide: '#2e7d32', auto: '#1565c0', ambigu: '#c62828', a_revoir: '#ef6c00', sans: '#6b7280', aucun: '#6b7280' };
@@ -857,6 +858,11 @@ function recalculerSelectionHL() {
 
 function sauverHL() {
   try { localStorage.setItem(CLE_HL, JSON.stringify({ lignes: S.hl.lignes, portions: S.hl.portions, exclus: [...S.hl.exclus] })); } catch (err) { /* stockage indisponible */ }
+  // Sélection retenue (retraits déduits), lue par Réglages > Mon appareil > Carte hors ligne : clés d'unités (polygones triés, reliés par « + »).
+  try {
+    const cles = (S.hl.unites || []).filter((u) => !u.excl).map((u) => u.key);
+    localStorage.setItem(CLE_SELECTION_PUBLIEE, JSON.stringify({ cles, date: Date.now() }));
+  } catch (err) { /* stockage indisponible */ }
 }
 function restaurerHL() {
   try {
