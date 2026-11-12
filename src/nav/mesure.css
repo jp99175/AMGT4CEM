@@ -77,11 +77,13 @@ html[data-page="carto"] #amgt-screenshot-btn { display: none !important; }
 .mes-curseur { background: none; border: 0; }
 .mes-curseur svg { display: block; }
 
-/* Loupe et sondage virtuel : même taille que la latte (55 px), l'icône remplit le bouton */
+/* Loupe, sondage virtuel et « Dessiner une zone » : même taille que la latte (55 px), l'icône remplit le bouton */
 html[data-page="carto"] #amgt-search-toggle,
-html[data-page="carto"] #amgt-bore-btn { width: 55px; height: 55px; }
+html[data-page="carto"] #amgt-bore-btn,
+html[data-page="carto"] #amgt-lieux-btn { width: 55px; height: 55px; }
 html[data-page="carto"] #amgt-search-toggle svg,
-html[data-page="carto"] #amgt-bore-btn svg { width: 55px; height: 55px; display: block; pointer-events: none; }
+html[data-page="carto"] #amgt-bore-btn svg,
+html[data-page="carto"] #amgt-lieux-btn svg { width: 55px; height: 55px; display: block; pointer-events: none; }
 
 /* Commandes de l'outil actif : en colonne sous le forage virtuel */
 .mes-cmd { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
