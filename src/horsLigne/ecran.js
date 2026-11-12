@@ -42,7 +42,7 @@ function monter(conteneur) {
   const E = {
     svg: null, recs: new Map(), lignes: [], couleur: {}, chaines: {}, noms: [],
     unites: [], parCle: new Map(), // unités du réseau entier
-    hl: { lignes: [], portions: [], etape: null, debut: null, pres: null, items: [], selKeys: new Set() },
+    hl: { lignes: [], portions: [], ligneRet: new Set(), etape: null, debut: null, pres: null, items: [], selKeys: new Set() },
     calcule: false, calcEnCours: false, dl: null, confirmation: null, durable: null,
   };
 
@@ -84,6 +84,8 @@ function monter(conteneur) {
     return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) };
   }
 
+  // Flèche de retour (celle du menu Couches : 23 px, trait de 0,8 px, bleu des icônes).
+  const ICONE_ANNULER = '<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><g transform="matrix(-1 0 0 1 24 0)"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/></g></svg>';
   // Icône « Réinitialiser la vue » (copie de src/nav/icone-reinitialiser-vue.svg, bleu des icônes).
   const ICONE_VUE = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 23 23\" width=\"23\" height=\"23\" fill=\"none\" stroke=\"#0b5c75\" stroke-width=\"0.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5.44 0.4H2.26A1.78 1.78 0 0 0 0.48 2.18V5.17M17.56 0.4H20.74A1.78 1.78 0 0 1 22.52 2.18V5.17M5.44 22.6H2.26A1.78 1.78 0 0 1 0.48 20.82V17.83M17.56 22.6H20.74A1.78 1.78 0 0 0 22.52 20.82V17.83\"/><path d=\"M14.14 2.36 L13.57 2.54 L13.08 2.78 L12.67 3.08 L12.33 3.43 L12.07 3.83 L11.72 4.1 L11.29 4.22 L10.77 4.21 L10.16 4.06 L9.5 4.06 L8.77 4.2 L7.98 4.49 L7.13 4.93 L6.47 5.3 L6.01 5.6 L5.75 5.83 L5.68 6 L5.64 6.17 L5.63 6.34 L5.65 6.51 L5.71 6.69 L5.66 6.92 L5.51 7.22 L5.27 7.57 L4.92 7.99 L4.69 8.37 L4.59 8.73 L4.61 9.07 L4.75 9.38 L4.85 9.7 L4.92 10.02 L4.94 10.35 L4.92 10.68 L4.89 10.96 L4.84 11.18 L4.78 11.35 L4.7 11.46 L4.54 11.57 L4.31 11.68 L4 11.79 L3.61 11.91 L3.25 12.1 L2.91 12.39 L2.61 12.76 L2.33 13.23 L2.13 13.61 L2.02 13.92 L1.99 14.16 L2.05 14.31 L2.17 14.48 L2.35 14.64 L2.59 14.82 L2.89 14.99 L3.17 15.12 L3.43 15.19 L3.66 15.22 L3.88 15.19 L4.09 15.21 L4.29 15.26 L4.49 15.36 L4.68 15.5 L4.92 15.58 L5.23 15.62 L5.58 15.6 L6 15.54 L6.32 15.55 L6.54 15.64 L6.67 15.81 L6.7 16.06 L6.79 16.28 L6.94 16.46 L7.15 16.62 L7.42 16.75 L7.67 16.97 L7.89 17.29 L8.09 17.7 L8.26 18.21 L8.43 18.63 L8.6 18.96 L8.75 19.2 L8.9 19.35 L9.14 19.46 L9.47 19.52 L9.88 19.53 L10.38 19.5 L10.82 19.49 L11.2 19.51 L11.52 19.56 L11.77 19.63 L12 19.76 L12.2 19.96 L12.38 20.21 L12.53 20.53 L12.84 20.68 L13.3 20.65 L13.91 20.45 L14.68 20.08 L15.33 19.79 L15.84 19.58 L16.22 19.47 L16.48 19.44 L16.89 19.27 L17.45 18.98 L18.17 18.56 L19.05 18.02 L19.59 17.53 L19.8 17.11 L19.68 16.75 L19.22 16.46 L18.88 16.2 L18.63 15.97 L18.5 15.78 L18.47 15.62 L18.41 15.48 L18.34 15.36 L18.24 15.26 L18.12 15.18 L18.05 15.07 L18.04 14.93 L18.07 14.75 L18.16 14.55 L18.33 14.36 L18.58 14.19 L18.92 14.04 L19.34 13.92 L19.63 13.73 L19.78 13.5 L19.79 13.2 L19.66 12.85 L19.58 12.52 L19.55 12.2 L19.57 11.9 L19.65 11.61 L19.66 11.32 L19.62 11.03 L19.53 10.74 L19.38 10.45 L19.17 10.21 L18.92 10.02 L18.61 9.89 L18.25 9.81 L17.96 9.71 L17.72 9.59 L17.54 9.46 L17.42 9.31 L17.27 9.2 L17.09 9.13 L16.87 9.09 L16.62 9.1 L16.4 9.07 L16.19 9.01 L15.99 8.9 L15.82 8.76 L15.71 8.58 L15.68 8.37 L15.71 8.12 L15.81 7.85 L15.94 7.61 L16.08 7.42 L16.24 7.27 L16.43 7.17 L16.54 7 L16.57 6.77 L16.53 6.47 L16.42 6.1 L16.37 5.78 L16.37 5.5 L16.43 5.27 L16.55 5.08 L16.59 4.86 L16.54 4.63 L16.41 4.37 L16.2 4.09 L15.99 3.87 L15.81 3.7 L15.63 3.58 L15.48 3.52 L15.37 3.41 L15.31 3.26 L15.3 3.08 L15.34 2.85 L15.34 2.65 L15.31 2.48 L15.24 2.34 L15.14 2.24 L14.92 2.21 L14.59 2.25Z\"/><path d=\"M10.28 8.7 L8.75 10.48 L9.58 12.74 L11.77 11.85 L12.34 10.07Z\"/></svg>";
 
@@ -391,28 +393,32 @@ function monter(conteneur) {
     const H = E.hl;
     H.items = [];
     H.selKeys = new Set();
+    // Une zone « à retirer » reste dans la liste (barrée) mais ne compte plus dans la sélection : rien n'est effacé avant « Mettre à jour ».
     for (const n of H.lignes) {
       const sub = new Map();
       const r = resoudreLigne(n, sub);
-      sub.forEach((u, k) => H.selKeys.add(k));
-      H.items.push({ genre: 'ligne', ligne: n, texte: 'ligne entière', lignes: [n], unites: [...sub.values()], avert: r.avert });
+      const retire = H.ligneRet.has(n);
+      if (!retire) sub.forEach((u, k) => H.selKeys.add(k));
+      H.items.push({ genre: 'ligne', ligne: n, texte: 'ligne entière', lignes: [n], unites: [...sub.values()], avert: r.avert, retire });
     }
     H.portions.forEach((p, i) => {
       const sub = new Map();
       const r = resoudrePortion(p, sub);
-      sub.forEach((u, k) => H.selKeys.add(k));
-      H.items.push({ genre: 'portion', idx: i, texte: r.texte, lignes: r.lignes, unites: [...sub.values()], avert: r.avert });
+      const retire = !!p.retire;
+      if (!retire) sub.forEach((u, k) => H.selKeys.add(k));
+      H.items.push({ genre: 'portion', idx: i, texte: r.texte, lignes: r.lignes, unites: [...sub.values()], avert: r.avert, retire });
     });
   }
 
   function sauverChoix() {
-    try { localStorage.setItem(CLE_CHOIX, JSON.stringify({ lignes: E.hl.lignes, portions: E.hl.portions })); } catch (err) { /* stockage indisponible */ }
+    try { localStorage.setItem(CLE_CHOIX, JSON.stringify({ lignes: E.hl.lignes, portions: E.hl.portions, ligneRet: [...E.hl.ligneRet] })); } catch (err) { /* stockage indisponible */ }
   }
   function restaurerChoix() {
     try {
       const v = JSON.parse(localStorage.getItem(CLE_CHOIX) || 'null');
       if (!v) return;
       E.hl.lignes = (v.lignes || []).filter((n) => E.lignes.includes(n));
+      E.hl.ligneRet = new Set((v.ligneRet || []).filter((n) => E.hl.lignes.includes(n)));
       const vus = new Set();
       E.hl.portions = [];
       for (const p of (v.portions || [])) {
@@ -420,7 +426,7 @@ function monter(conteneur) {
         const k = [p.debut, p.fin].sort().join('|');
         if (vus.has(k)) continue;
         vus.add(k);
-        E.hl.portions.push({ debut: p.debut, fin: p.fin });
+        E.hl.portions.push(p.retire ? { debut: p.debut, fin: p.fin, retire: true } : { debut: p.debut, fin: p.fin });
       }
     } catch (err) { /* choix illisible : ignoré */ }
   }
@@ -472,8 +478,7 @@ function monter(conteneur) {
     const H = E.hl;
     annulerEnCours();
     const i = H.lignes.indexOf(n);
-    if (i >= 0) H.lignes.splice(i, 1); else H.lignes.push(n);
-    H.lignes.sort(tri);
+    if (i < 0) { H.lignes.push(n); H.lignes.sort(tri); } else if (H.ligneRet.has(n)) H.ligneRet.delete(n); else H.ligneRet.add(n); // déjà choisie : « à retirer » (retouchée : annulé)
     modifier();
   }
 
@@ -499,9 +504,11 @@ function monter(conteneur) {
       }
     } else fin = H.debut; // même arrêt deux fois : la station seule
     const debut = H.debut;
-    const deja = H.portions.some((q) => (q.debut === debut && q.fin === fin) || (q.debut === fin && q.fin === debut));
+    const memeQue = (q) => (q.debut === debut && q.fin === fin) || (q.debut === fin && q.fin === debut);
+    const existante = H.portions.find(memeQue);
     annulerEnCours();
-    if (deja) { dire('Cette portion est déjà choisie.'); dessiner(); return; }
+    if (existante && existante.retire) { delete existante.retire; modifier(); return; } // portion « à retirer » rechoisie : annulé
+    if (existante) { dire('Cette portion est déjà choisie.'); dessiner(); return; }
     H.portions.push({ debut, fin });
     modifier();
   }
@@ -639,9 +646,11 @@ function monter(conteneur) {
       const c = E.confirmation;
       const parts = [];
       if (c.manquantes.length) parts.push(`télécharger ${fmtN(c.manquantes.length)} tuiles (environ ${fmtMo(c.koManque)})`);
-      if (c.aEffacer.length) parts.push(`effacer ${fmtN(c.aEffacer.length)} tuiles qui ne sont plus choisies (${fmtMo(c.koEfface)} libérés)`);
-      el.push(h('p', { class: 'rgl-note', text: `Mettre à jour : ${parts.join(' et ')} ? Le wifi est préférable. Ne quittez pas cette page pendant le téléchargement.` }));
-      const oui = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: 'Oui, mettre à jour' });
+      if (c.aEffacer.length) parts.push(`supprimer de cet appareil ${fmtN(c.aEffacer.length)} tuiles qui ne sont plus choisies (${fmtMo(c.koEfface)} libérés${c.aRetirer ? `, ${fmtN(c.aRetirer)} zone${c.aRetirer > 1 ? 's' : ''} retirée${c.aRetirer > 1 ? 's' : ''}` : ''})`);
+      else if (c.aRetirer) parts.push(`retirer ${fmtN(c.aRetirer)} zone${c.aRetirer > 1 ? 's' : ''} de la liste (aucune tuile à supprimer)`);
+      const tele = c.manquantes.length ? ' Le wifi est préférable. Ne quittez pas cette page pendant le téléchargement.' : '';
+      el.push(h('p', { class: 'rgl-note', text: `Mettre à jour : ${parts.join(' et ')} ?${tele}` }));
+      const oui = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: c.aEffacer.length ? 'Oui, supprimer et mettre à jour' : 'Oui, mettre à jour' });
       const non = h('button', { type: 'button', class: 'rgl-btn', text: 'Annuler' });
       oui.addEventListener('click', () => mettreAJour(c));
       non.addEventListener('click', () => { E.confirmation = null; dessiner(); });
@@ -652,17 +661,18 @@ function monter(conteneur) {
         annuler.addEventListener('click', () => { annulerEnCours(); dessiner(); });
         el.push(annuler);
       }
-      const rien = !T || (!T.manquantes.length && !T.aEffacer.length);
+      const aRetirer = H.items.filter((it) => it.retire).length;
+      const rien = !T || (!T.manquantes.length && !T.aEffacer.length && !aRetirer);
       let texte = 'Mettre à jour';
       if (T && !rien) texte += ` (télécharger ${fmtMo(T.koManque)}, libérer ${fmtMo(T.koEfface)})`;
       else if (T) texte = 'À jour : rien à faire';
       const btn = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: texte });
       if (rien || !HL.pret) btn.disabled = true;
-      btn.addEventListener('click', () => { const t = totaux(); E.confirmation = { manquantes: t.manquantes, aEffacer: t.aEffacer, koManque: t.koManque, koEfface: t.koEfface }; dessiner(); });
+      btn.addEventListener('click', () => { const t = totaux(); E.confirmation = { manquantes: t.manquantes, aEffacer: t.aEffacer, koManque: t.koManque, koEfface: t.koEfface, aRetirer }; dessiner(); });
       el.push(btn);
-      if (H.lignes.length || H.portions.length) {
+      if (H.items.some((it) => !it.retire)) {
         const tout = h('button', { type: 'button', class: 'rgl-btn', text: 'Tout désélectionner' });
-        tout.addEventListener('click', () => { annulerEnCours(); H.lignes = []; H.portions = []; modifier(); });
+        tout.addEventListener('click', () => { annulerEnCours(); H.lignes.forEach((n) => H.ligneRet.add(n)); H.portions.forEach((q) => { q.retire = true; }); modifier(); });
         el.push(tout);
       }
       if (HL.pret && HL.index.size) {
@@ -686,17 +696,19 @@ function monter(conteneur) {
     for (const it of H.items) {
       const tuiles = new Set(it.unites.flatMap((u) => u.tuiles || []));
       const st = E.calcule ? statsTuiles(tuiles) : null;
-      const retirer = h('button', { type: 'button', class: 'rgl-btn rgl-btn--petit', text: 'Retirer' });
-      retirer.addEventListener('click', () => {
+      const bouton = h('button', { type: 'button', class: 'hl-ic-btn', title: it.retire ? 'Annuler le retrait' : 'Retirer cette zone', 'aria-label': it.retire ? 'Annuler le retrait' : 'Retirer cette zone' });
+      if (it.retire) bouton.innerHTML = ICONE_ANNULER; else bouton.append(h('span', { class: 'hl-ic-poubelle', 'aria-hidden': 'true' }));
+      bouton.addEventListener('click', () => {
         if (E.dl) return;
-        if (it.genre === 'ligne') H.lignes.splice(H.lignes.indexOf(it.lignes[0]), 1); else H.portions.splice(it.idx, 1);
+        if (it.genre === 'ligne') { if (it.retire) H.ligneRet.delete(it.ligne); else H.ligneRet.add(it.ligne); } else { const q = H.portions[it.idx]; if (it.retire) delete q.retire; else q.retire = true; }
         modifier();
       });
       const txt = h('span', { class: 'hl-item__txt' },
-        h('span', { text: it.texte }),
-        st ? h('span', { class: 'hl-item__val', text: `${fmtN(st.gardees)} / ${fmtN(st.total)} tuiles, ${fmtMo(st.koTotal)}` }) : null,
+        h('span', { class: 'hl-item__nom', text: it.texte }),
+        st ? h('span', { class: 'hl-item__val', text: `${fmtN(st.gardees)} / ${fmtN(st.total)} tuiles` }) : null,
         ...it.avert.map((a) => h('span', { class: 'hl-item__avert', text: `${a}.` })));
-      items.push(h('div', { class: 'hl-item' }, h('span', { class: 'hl-item__badges' }, badges(it.lignes)), txt, retirer));
+      const poids = h('span', { class: 'hl-item__poids', text: st ? fmtMo(st.koTotal) : '' });
+      items.push(h('div', { class: `hl-item${it.retire ? ' hl-item--retire' : ''}` }, h('span', { class: 'hl-item__badges' }, badges(it.lignes)), txt, poids, bouton));
     }
     liste.replaceChildren(...items);
 
@@ -742,6 +754,11 @@ function monter(conteneur) {
   async function mettreAJour(c) {
     E.confirmation = null;
     if (c.aEffacer.length) { await HL.supprimer(c.aEffacer); }
+    // Les zones « à retirer » disparaissent de la liste une fois la mise à jour confirmée.
+    E.hl.lignes = E.hl.lignes.filter((n) => !E.hl.ligneRet.has(n));
+    E.hl.ligneRet = new Set();
+    E.hl.portions = E.hl.portions.filter((q) => !q.retire);
+    recalculerChoix(); sauverChoix();
     // Les tuiles à télécharger sont recalculées : le choix a pu changer entre-temps.
     const T0 = totaux();
     const tuiles = T0.manquantes;
