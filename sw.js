@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const VERSION = '20261112-1445'; // @VERSION (écrit par tools/stamp-sw.sh)
+const VERSION = '20261112-1546'; // @VERSION (écrit par tools/stamp-sw.sh)
 const CACHE = 'amgt4cem-app';
 const DELAI_RESEAU_MS = 4000;
 const PARALLELE = 6;
@@ -293,9 +293,11 @@ async function diffuser(msg) {
 
 /** Avancement d'un travail : { faites, total } d'après ce qui est réellement gardé. */
 function avancement(t) {
-  let faites = 0;
+  // `base` = tuiles de la sélection déjà gardées au lancement : même échelle que la barre de l'écran Carte hors ligne.
+  const base = t.base || 0;
+  let faites = base;
   for (const k of t.cles) if (HL.index.has(k)) faites += 1;
-  return { faites, total: t.cles.length };
+  return { faites, total: base + t.cles.length };
 }
 
 async function lancer() {
@@ -365,7 +367,7 @@ self.addEventListener('message', (event) => {
   if (m.type === 'telecharger') {
     event.waitUntil((async () => {
       await HL.ouvrir();
-      await HL.ecrireTravail({ cles: m.cles, cfg: m.cfg, etat: 'actif', erreurs: 0, debut: Date.now() });
+      await HL.ecrireTravail({ cles: m.cles, cfg: m.cfg, base: m.base || 0, etat: 'actif', erreurs: 0, debut: Date.now() });
       await lancer();
     })());
   } else if (m.type === 'arret') {

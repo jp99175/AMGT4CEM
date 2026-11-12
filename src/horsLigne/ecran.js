@@ -701,9 +701,12 @@ function monter(conteneur) {
     E.confirmation = null;
     if (c.aEffacer.length) { await HL.supprimer(c.aEffacer); }
     // Les tuiles à télécharger sont recalculées : le choix a pu changer entre-temps.
-    const tuiles = totaux().manquantes;
+    const T0 = totaux();
+    const tuiles = T0.manquantes;
+    // Base commune avec la barre « Gardé sur cet appareil » et l'anneau de la carte : toute la sélection, tuiles déjà gardées comprises.
+    const base = Math.max(0, T0.total - tuiles.length);
     if (!tuiles.length) { dire(c.aEffacer.length ? `${fmtMo(c.koEfface)} libérés.` : 'Rien à télécharger.'); dessiner(); return; }
-    E.dl = { arret: false, faites: 0, total: tuiles.length, erreurs: 0, reussies: 0 };
+    E.dl = { arret: false, faites: base, total: base + tuiles.length, erreurs: 0, reussies: 0 };
     dire('');
     E.durable = await HL.demanderDurable();
     await AMGT4CEM_Services.load();
@@ -713,7 +716,7 @@ function monter(conteneur) {
     if (ctl) {
       // Le service worker télécharge : on peut quitter l'écran ou la page, il continue et se reprend à la prochaine ouverture.
       E.dl.sw = true;
-      ctl.postMessage({ type: 'telecharger', cles: tuiles, cfg });
+      ctl.postMessage({ type: 'telecharger', cles: tuiles, cfg, base });
       try { const reg = await navigator.serviceWorker.ready; if (reg.sync) await reg.sync.register('hl-tuiles'); } catch (err) { /* synchronisation indisponible (iPad, Firefox) */ }
       dessiner();
       return;
