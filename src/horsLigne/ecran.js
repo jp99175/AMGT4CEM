@@ -544,13 +544,16 @@ function monter(conteneur) {
     for (const u of E.unites) {
       const ok = E.calcule && uniteTelechargee(u);
       const sel = E.hl.selKeys.has(u.cle);
-      const couleur = couleurLigne([...u.lignes].sort(tri)[0]);
+      const couleurUnite = couleurLigne([...u.lignes].sort(tri)[0]);
       for (const el of u.els) {
         el.classList.remove('hl-ok', 'hl-sel');
         el.style.removeProperty('--hl-c');
         if (!ok && !sel) continue;
         el.classList.add(ok ? 'hl-ok' : 'hl-sel');
-        el.style.setProperty('--hl-c', couleur);
+        // Chaque trait garde la couleur de sa propre ligne (tunnel partagé : une voie par ligne).
+        const rec = E.recs.get(el.id);
+        const propre = rec && rec.lignes && rec.lignes.length ? couleurLigne([...rec.lignes].sort(tri)[0]) : couleurUnite;
+        el.style.setProperty('--hl-c', propre);
       }
     }
   }
