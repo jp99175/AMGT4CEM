@@ -162,7 +162,6 @@ Reglages.register({
       champ: { unite: 'px', min: 0, max: 200, valeur: () => Reglages.decalageMesurePx(), enregistrer: (n) => Reglages.fixerDecalageMesurePx(n) },
     },
     { texte: 'Mot de passe', aide: 'Changer le mot de passe de votre compte.', ecran: { id: 'motdepasse', titre: 'Mot de passe', monter: monterMotDePasse } },
-    { texte: `Version de l'application : ${typeof AMGT4CEM_BUILD_TIMESTAMP !== 'undefined' ? AMGT4CEM_BUILD_TIMESTAMP : 'inconnue'}` },
   ],
 });
 

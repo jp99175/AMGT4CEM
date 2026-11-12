@@ -176,10 +176,25 @@ html.amgt-has-nav .leaflet-container .amgt-sig-popup-wrap a.leaflet-popup-close-
 html.amgt-has-nav .leaflet-container .amgt-sig-popup-wrap a.leaflet-popup-close-button:hover { background: #e8f2f6; border-radius: 6px; }
 
 /* --- Build en bas des pages Saisie et Réglages (src/buildInfoPage.js) --- */
+/* Posé tout en bas du corps de page, juste au-dessus de la barre : en bas de l'écran si la page est courte
+   (le corps fait au moins la hauteur de l'écran), après le contenu si elle est longue (réserve de 22 px). */
+html.amgt-has-nav[data-app="reglages"] body,
+html.amgt-has-nav[data-app="signal"] body {
+  position: relative;
+  padding-bottom: calc(var(--amgt-nav-h) + var(--amgt-nav-safe) + 22px);
+}
 .amgt-build-page {
-  clear: both;
+  position: absolute;
+  right: 0;
+  bottom: calc(var(--amgt-nav-h) + var(--amgt-nav-safe));
   text-align: right;
   font-size: 10px;
+  line-height: 14px;
   color: #c62828;
-  padding: 6px 16px 8px;
+  padding: 0 16px 4px;
+}
+@media (min-width: 900px) {
+  html.amgt-has-nav[data-app="reglages"] body,
+  html.amgt-has-nav[data-app="signal"] body { padding-bottom: 22px; }
+  .amgt-build-page { bottom: 0; }
 }
