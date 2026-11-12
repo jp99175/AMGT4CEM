@@ -174,3 +174,12 @@ html.amgt-has-nav .leaflet-container .amgt-sig-popup-wrap a.leaflet-popup-close-
   mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='0.835' stroke-linecap='round' stroke-linejoin='round'><rect x='4' y='4' width='16' height='16' rx='3'/><path d='M9 9l6 6M15 9l-6 6'/></svg>") center / 100% 100% no-repeat;
 }
 html.amgt-has-nav .leaflet-container .amgt-sig-popup-wrap a.leaflet-popup-close-button:hover { background: #e8f2f6; border-radius: 6px; }
+
+/* --- Build en bas des pages Saisie et Réglages (src/buildInfoPage.js) --- */
+.amgt-build-page {
+  clear: both;
+  text-align: right;
+  font-size: 10px;
+  color: #c62828;
+  padding: 6px 16px 8px;
+}

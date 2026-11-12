@@ -66,7 +66,7 @@ async function renderMenuSansConnexion() {
   screens.menu.append(
     h('header', { class: 'sig4cem-header' }, h('h1', { text: 'SIG4CEM' }), h('p', { text: 'Signalements et demandes' })),
     h('nav', { class: 'sig4cem-menu', 'aria-label': 'Connexion' }, ...parts),
-    h('footer', { class: 'sig4cem-footer' }, identityLine(), h('span', { class: 'sig4cem-build', text: `BUILD ${AMGT4CEM_BUILD_TIMESTAMP}` })));
+    h('footer', { class: 'sig4cem-footer' }, identityLine()));
 }
 
 async function renderMenu() {
@@ -94,7 +94,7 @@ async function renderMenu() {
   screens.menu.append(
     h('header', { class: 'sig4cem-header' }, h('h1', { text: 'SIG4CEM' }), h('p', { text: 'Signalements et demandes' })),
     ...parts,
-    h('footer', { class: 'sig4cem-footer' }, identityLine(), h('span', { class: 'sig4cem-build', text: `BUILD ${AMGT4CEM_BUILD_TIMESTAMP}` })));
+    h('footer', { class: 'sig4cem-footer' }, identityLine()));
 }
 
 /** « Connecté : Prénom Nom (matricule) · Se déconnecter » ou « Non connecté · Se connecter ». */

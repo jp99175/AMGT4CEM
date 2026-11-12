@@ -220,6 +220,7 @@ const AMGT4CEM_CONFIG = {
         './vendor/proj4/proj4.js',
         './vendor/proj4leaflet/proj4leaflet.js',
         './src/buildInfo.js',
+        './src/buildInfoPage.js',
         './config/urbis-topo/catalogue.js',
         './config/plans-patrimoine/catalogue.js',
         './src/services.js',
@@ -329,7 +330,7 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       template: 'amgt-tpl-reglages',
       nav: true,
       styles: ['./src/auth/auth.css', ...NAV_STYLES, './src/reglages/reglages.css'],
-      scripts: ['./src/buildInfo.js', './src/services.js', './src/peLabelAnchors.js', './src/auth/auth.js', './src/auth/authUi.js', './src/plansPrefs.js', ...NAV_SCRIPTS, './src/reglages/reglages.js', './src/reglages/serveur.js', './src/reglages/attributs.js'],
+      scripts: ['./src/buildInfo.js', './src/buildInfoPage.js', './src/services.js', './src/peLabelAnchors.js', './src/auth/auth.js', './src/auth/authUi.js', './src/plansPrefs.js', ...NAV_SCRIPTS, './src/reglages/reglages.js', './src/reglages/serveur.js', './src/reglages/attributs.js'],
     },
   };
 })(AMGT4CEM_CONFIG.apps);
