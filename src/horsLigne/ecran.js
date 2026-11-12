@@ -89,11 +89,40 @@ function monter(conteneur) {
 
   /** Zoom/déplacement du dessin : pincement à 2 doigts, glisser, molette ; un toucher bref sans mouvement = sélection. */
   function PanZoom(zone, svg, complet, surToucher) {
-    let vb = { ...complet };
+    // Limites du dessin : tout ce que le synoptique contient (traits, étiquettes, noms) plus une très petite marge. Le dessin ne sort jamais du cadre.
+    const MARGE = 10;
+    let lim = { ...complet };
+    try {
+      // Union des éléments dessinés, sans le grand rectangle de fond ni les définitions.
+      let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity;
+      for (const c of svg.children) {
+        if (!/^(g|path|circle|ellipse|line|polyline|polygon|text|use|image)$/i.test(c.tagName)) continue;
+        const bb = c.getBBox();
+        if (!(bb.width > 0 || bb.height > 0)) continue;
+        x0 = Math.min(x0, bb.x); y0 = Math.min(y0, bb.y); x1 = Math.max(x1, bb.x + bb.width); y1 = Math.max(y1, bb.y + bb.height);
+      }
+      if (x1 > x0 && y1 > y0) lim = { x: x0 - MARGE, y: y0 - MARGE, w: x1 - x0 + 2 * MARGE, h: y1 - y0 + 2 * MARGE };
+    } catch (err) { /* repli : zone de départ */ }
+    let vb = { ...lim };
     const pts = new Map();
     let depart = null; let bouge = false; let cible = null; let pince = null;
-    const appliquer = () => svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
-    const borne = (w) => Math.max(complet.w / 60, Math.min(complet.w * 1.6, w));
+    const borne = (w) => w;
+    /** Ramène la zone visible à la forme du cadre, interdit de dézoomer plus que « tout le dessin » et de sortir du dessin. */
+    function cadrer() {
+      const W = zone.clientWidth; const H = zone.clientHeight;
+      if (!W || !H) return;
+      const wMax = Math.max(lim.w, (lim.h * W) / H);
+      const w = Math.min(wMax, Math.max(lim.w / 60, vb.w, (vb.h * W) / H));
+      const h = (w * H) / W;
+      let x = vb.x + vb.w / 2 - w / 2;
+      let y = vb.y + vb.h / 2 - h / 2;
+      x = w >= lim.w ? lim.x + lim.w / 2 - w / 2 : Math.max(lim.x, Math.min(lim.x + lim.w - w, x));
+      y = h >= lim.h ? lim.y + lim.h / 2 - h / 2 : Math.max(lim.y, Math.min(lim.y + lim.h - h, y));
+      vb = { x, y, w, h };
+    }
+    const appliquer = () => { cadrer(); svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`); };
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => appliquer()).observe(zone);
+    appliquer();
     zone.addEventListener('pointerdown', (e) => {
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pts.size === 1) {
@@ -155,7 +184,7 @@ function monter(conteneur) {
       vb.y += avant.y - apres.y;
       appliquer();
     }, { passive: false });
-     return { reinit: () => { vb = { ...complet }; appliquer(); } };
+     return { reinit: () => { vb = { ...lim }; appliquer(); } };
   }
 
   // ---- synoptique : éléments, lignes, arrêts
