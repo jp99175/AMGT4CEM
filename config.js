@@ -147,6 +147,7 @@ const AMGT4CEM_CONFIG = {
       template: 'amgt-tpl-carto',
       styles: ['./src/auth/auth.css'],
       scripts: [
+        './src/icones.js',
         './vendor/leaflet/leaflet.js',
         './vendor/proj4/proj4.js',
         './vendor/proj4leaflet/proj4leaflet.js',
@@ -217,6 +218,7 @@ const AMGT4CEM_CONFIG = {
       // sélecteurs. Puis les modules de dépôt repris de src/signalements/ (vocabulaire, photos, archive,
       // envoi) et l'interface de saisie. L'ordre compte : chaque script dépend des précédents.
       scripts: [
+        './src/icones.js',
         './vendor/leaflet/leaflet.js',
         './vendor/proj4/proj4.js',
         './vendor/proj4leaflet/proj4leaflet.js',
@@ -332,7 +334,7 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       template: 'amgt-tpl-reglages',
       nav: true,
       styles: ['./src/auth/auth.css', ...NAV_STYLES, './src/reglages/reglages.css'],
-      scripts: ['./src/buildInfo.js', './src/buildInfoPage.js', './src/services.js', './src/peLabelAnchors.js', './src/auth/auth.js', './src/auth/authUi.js', './src/plansPrefs.js', ...NAV_SCRIPTS, './src/reglages/reglages.js', './src/reglages/attributs.js', './src/reglages/serveur.js'],
+      scripts: ['./src/icones.js', './src/buildInfo.js', './src/buildInfoPage.js', './src/services.js', './src/peLabelAnchors.js', './src/auth/auth.js', './src/auth/authUi.js', './src/plansPrefs.js', ...NAV_SCRIPTS, './src/reglages/reglages.js', './src/reglages/attributs.js', './src/reglages/serveur.js'],
     },
   };
 })(AMGT4CEM_CONFIG.apps);

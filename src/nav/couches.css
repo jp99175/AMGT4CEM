@@ -172,7 +172,6 @@ html[data-page="carto"] #amgt-menu-btn {
   background: #fff;
   color: #0b5c75;
 }
-html[data-page="carto"] #amgt-menu-btn svg { display: none; }
 html[data-page="carto"] #amgt-menu-btn::before {
   content: '';
   display: block;
@@ -199,8 +198,6 @@ html[data-page="carto"] #amgt-menu-btn:hover { background: #e8f2f6; }
 
 /* Curseurs (opacité des couches, réglages des orthophotos) : dessin de 23 px, trait de 0,8 px, points creux, bleu.
    Page Carte seulement ; les anciennes interfaces gardent leur dessin. */
-html[data-page="carto"] .amgt-opacity-toggle-btn svg,
-html[data-page="carto"] #amgt-ortho-settings-btn svg { display: none; }
 html[data-page="carto"] .amgt-opacity-toggle-btn,
 html[data-page="carto"] #amgt-ortho-settings-btn { color: #0b5c75; padding: 4px; }
 html[data-page="carto"] .amgt-opacity-toggle-btn::before,

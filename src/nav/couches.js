@@ -26,12 +26,7 @@ const h = (tag, attrs, ...kids) => {
 };
 
 /** Icônes de 23 px, trait de 0,8 px (0,835 unité sur 24), bleu des boutons (même trait, même taille), sans cadre de bouton : disquette, flèches, croix dans un carré. */
-const svgIcone = (contenu) => `<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round">${contenu}</svg>`;
-const ICONES = {
-  disquette: svgIcone('<path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/>'),
-  antihoraire: svgIcone('<g transform="matrix(-1 0 0 1 24 0)"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/></g>'), // ↺ défaut
-  fermer: svgIcone('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'),
-};
+const ICONES = { disquette: AMGT4CEM_Icones.svg('disquette'), antihoraire: AMGT4CEM_Icones.svg('annuler'), fermer: AMGT4CEM_Icones.svg('fermer') };
 /** Bouton réduit à son icône (sans cadre). */
 const boutonIcone = (icone, titre, classe) => {
   const b = h('button', { type: 'button', class: `amgt-ic-btn ${classe || ''}`.trim(), title: titre, 'aria-label': titre });
@@ -48,7 +43,7 @@ const Couches = {
   init() {
     const bouton = document.getElementById('amgt-menu-btn');
     if (!bouton) return;
-    bouton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"> <path d="M24 6 42 16 24 26 6 16Z"/> <path d="M6 24 24 34 42 24"/> <path d="M6 32 24 42 42 32"/> </svg>';
+    bouton.textContent = ''; // le dessin est le masque couches-bouton.svg (couches.css, ::before)
     bouton.title = 'Couches';
     bouton.setAttribute('aria-label', 'Couches');
     this._bandeau(bouton);

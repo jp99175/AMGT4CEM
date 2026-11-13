@@ -27,22 +27,22 @@ const CLE_DERNIER = 'amgt4cem.mesure.dernier.v1';
 const APPUI_LONG_MS = 500;
 const GLISSE_PX = 63; // largeur d'un bouton (55) + espace (8)
 
-const svgIcone = (contenu) => `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${contenu}</svg>`;
+const I = AMGT4CEM_Icones;
+const GROS = { taille: 24, trait: 1.6 }; // boutons de commande de la latte
 const ICONES = {
-  disquette: svgIcone('<path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/>'),
-  fermer: svgIcone('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'),
-  annuler: svgIcone('<g transform="matrix(-1 0 0 1 24 0)"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/></g>'),
-  terminer: svgIcone('<path d="M4.5 12.5l5 5 10-11"/>'),
+  disquette: I.svg('disquette', GROS),
+  fermer: I.svg('fermer', GROS),
+  annuler: I.svg('annuler', GROS),
+  terminer: I.svg('terminer', GROS),
 };
 
 /** Icônes du lecteur (23 px, trait de 0,8 px), comme celles des menus. */
-const svg23 = (contenu) => `<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round">${contenu}</svg>`;
 const ICONES_LECTEUR = {
-  pause: svg23('<rect x="7" y="5" width="3.6" height="14" rx="1"/><rect x="13.4" y="5" width="3.6" height="14" rx="1"/>'),
-  lecture: svg23('<path d="M8 5.2l11 6.8-11 6.8z"/>'),
-  replier: svg23('<path d="M6 9l6 6 6-6"/>'),
-  disquette: svg23('<path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/>'),
-  fermer: svg23('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'),
+  pause: I.svg('pause'),
+  lecture: I.svg('lecture'),
+  replier: I.svg('replier'),
+  disquette: I.svg('disquette'),
+  fermer: I.svg('fermer'),
 };
 
 /** Roue dentée (8 dents, trait de 0,8 px) posée en bas à droite de la latte dépliée : diamètre de 16 px, comme le globe de

@@ -951,7 +951,7 @@ du réseau.
 ```
 home.html, style.css         page unique : gabarits des deux interfaces (carto, signal) ; index.html : simple renvoi vers home.html
 src/router.js                routeur : lit ?app= (interfaces actuelles, liste `apps`) ou ?page= (nouvelle interface, liste `pages`), copie le gabarit choisi, charge ses scripts dans l'ordre
-src/nav/                     barre de navigation Carte · Saisie · Réglages (nav.js), icône de compte, menu Couches (couches.js), outils de mesure (mesure.js, mesureIcones.js), images d'icônes (*.png) (pages ?page= seulement)
+src/nav/                     barre de navigation Carte · Saisie · Réglages (nav.js), icône de compte, menu Couches (couches.js), outils de mesure (mesure.js, mesureIcones.js), masques d'icônes (*.svg) (pages ?page= seulement)
 src/reglages/                page Réglages (?page=reglages) : blocs déclarés par AMGT4CEM_Reglages.register, affichés selon le droit ; serveur.js : services et relais
 src/signal/                  interface de saisie SIG4CEM (home.html?app=signal), séparée de la carte, avec sa propre carte de choix du point
 src/auth/                    identification commune (session, écran de connexion / première connexion) ; src/admin/ : page ?app=admin
@@ -1140,6 +1140,8 @@ boutons et du texte des onglets), sans cadre autour des icônes seules :
 | Pied du bandeau Couches : disquette, flèches circulaires, fermeture des sélecteurs | 23 px | SVG dans `couches.js` (`svgIcone`) |
 | Fermeture du bandeau, curseurs d'opacité et de réglages, croix de la fenêtre d'un signalement | 23 px | `icone-fermer-bandeau.svg` ; curseurs et croix : masques en SVG dans `couches.css` et `nav.css` |
 | Logo du bandeau | 40 px de haut | SVG dans `couches.js` : cœur plein, pétales à contour et hachures de 0,8 px |
+
+**Registre d'icônes** : `src/icones.js` (`AMGT4CEM_Icones`, chargé en premier par chaque interface dans `config.js`) contient le tracé unique des icônes géométriques en trait (disquette, croix, flèche de retour, œil, pause…) : `AMGT4CEM_Icones.svg('disquette', { taille, trait })`. Ne plus recopier un tracé dans un autre fichier : l'ajouter au registre.
 
 Les images masque sont des `.svg` vectoriels (tracés remplis, dessinés depuis les masques raster d'origine, qui étaient des `.png` ; plus de PNG dans le dépôt, hors logos et Leaflet) : la couleur vient du CSS (`background: currentColor`), ce qui permet
 l'inversion (blanc sur bleu quand l'outil est actif). Les dessins viennent des tracés de Jph, remis à une épaisseur

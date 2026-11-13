@@ -370,20 +370,6 @@ html, body {
   color: #333;
 }
 
-.amgt-opacity-toggle-btn svg,
-#amgt-ortho-settings-btn svg {
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  fill: none;
-}
-
-.amgt-opacity-toggle-btn svg circle,
-#amgt-ortho-settings-btn svg circle {
-  fill: currentColor;
-  stroke: none;
-}
-
 .amgt-opacity-slider-row {
   padding: 2px 0 8px 4px;
 }
@@ -1227,7 +1213,6 @@ html, body {
   color: #0b5c75;
   line-height: 0;
 }
-.amgt-btn--tool .amgt-tool-icon { width: 42px; height: 42px; display: block; }
 .amgt-btn--tool:hover { background: #e8f2f6; }
 /* Actif : négatif (disque plein, tracé blanc). */
 .amgt-btn--tool.amgt-btn--active,
@@ -1245,9 +1230,6 @@ html, body {
 }
 #amgt-menu-prefs-save:hover { background: #f0f0f0; color: #333; }
 
-/* Icônes en trait fin du pied de menu (disquette, flèche circulaire) : même trait que l'icône de connexion. */
-.amgt-footer-ic { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-#amgt-menu-prefs-save .amgt-footer-ic { width: 22px; height: 22px; }
 /* Flèche circulaire devant « Réinitialiser la vue » : couleur du lien, non soulignée (seul le texte l'est). */
 #amgt-reset-view-btn { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 /* Icône « emprise de la Région » (23 px de haut, trait de 0,8, bleu #0b5c75) : dessin en masque, comme les autres icônes harmonisées. */

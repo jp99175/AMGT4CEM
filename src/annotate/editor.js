@@ -20,7 +20,7 @@ const h = A.h;
 const { EPAISSEURS, GOMMES, TYPES, TYPES_FORMES, TERMINAISONS, geom, tourne, contour, nuage, tirets, render } = A.Render;
 const { MEP_VERSION, mepDefaut, mepNormal, normAngle, pivoterMep, cadreInscrit, contenirMep, appliquerMep, tailleVue } = A.Layout;
 const COULEURS = ['#e53935', '#fdd835', '#1e88e5', '#212121'];
-const svgIc = (contenu) => `<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round">${contenu}</svg>`;
+const svgIc = (contenu) => AMGT4CEM_Icones.enveloppe(contenu);
 const FLECHE = '<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/>';
 const maskIc = (n) => `<span class="annotate-ic annotate-ic--${n}" aria-hidden="true"></span>`;
 // Ligne 1 : le pinceau ouvre le mode « édition » (dessin : crayon, trait, ligne brisée, rectangle, ellipse, choisis en ligne 2) ; le texte a le sien.

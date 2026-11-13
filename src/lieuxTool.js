@@ -107,26 +107,26 @@ const AMGT4CEM_LieuxTool = {
   // ---------------------------------------------------------------- icônes harmonisées
   // Mêmes icônes que les autres menus : 23 px, trait de 0,8 px, bleu des boutons, sans cadre. Crayon, poubelle, main et
   // sélecteur viennent de src/annotate/icons (masques colorés par currentColor).
-  _svg(c) { return `<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round">${c}</svg>`; },
+  _svg(c) { return AMGT4CEM_Icones.enveloppe(c); },
   _msk(nom) { return `<span class="amgt-lieux-ic" aria-hidden="true" style="--m:url(src/annotate/icons/icone-${nom}.svg)"></span>`; },
   get ICO() {
     return {
-      disquette: this._svg('<path d="M5 3h11.5L21 7.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3"/><path d="M7 21v-8h10v8"/>'),
-      fermer: this._svg('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>'),
-      annuler: this._svg('<g transform="matrix(-1 0 0 1 24 0)"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/></g>'),
-      replier: this._svg('<path d="M6 9l6 6 6-6"/>'),
-      deplier: this._svg('<path d="M6 15l6-6 6 6"/>'),
-      polygone: this._svg('<path d="M12 3.5l7.5 4.3v8.4L12 20.5l-7.5-4.3V7.8z"/>'),
-      oeil: this._svg('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
-      oeilBarre: this._svg('<path d="M2.5 12S6 5.5 12 5.5c1.6 0 3 .5 4.2 1.2M21.5 12S18 18.5 12 18.5c-1.6 0-3-.5-4.2-1.2"/><path d="M4 4l16 16"/>'),
+      disquette: AMGT4CEM_Icones.svg('disquette'),
+      fermer: AMGT4CEM_Icones.svg('fermer'),
+      annuler: AMGT4CEM_Icones.svg('annuler'),
+      replier: AMGT4CEM_Icones.svg('replier'),
+      deplier: AMGT4CEM_Icones.svg('deplier'),
+      polygone: AMGT4CEM_Icones.svg('polygone'),
+      oeil: AMGT4CEM_Icones.svg('oeil'),
+      oeilBarre: AMGT4CEM_Icones.svg('oeilBarre'),
       crayon: this._msk('crayon'),
       poubelle: this._msk('poubelle'),
       main: this._msk('deplacer'),
       objet: this._msk('selection'),
-      remplir: this._svg('<path d="M5 5h14v14H5z"/><path d="M5 10l5-5M5 15l10-10M5 19l14-14M10 19l9-9M15 19l4-4"/>'),
-      unir: this._svg('<circle cx="9" cy="13" r="5"/><circle cx="15" cy="13" r="5"/><path d="M19 3v5M16.5 5.5h5"/>'),
-      soustraire: this._svg('<circle cx="9" cy="13" r="5"/><circle cx="15" cy="13" r="5" stroke-dasharray="2 2"/><path d="M16.5 5.5h5"/>'),
-      modifier: this._svg('<path d="M4 18l5-8 5 5 6-9"/><circle cx="4" cy="18" r="1.7"/><circle cx="9" cy="10" r="1.7"/><circle cx="14" cy="15" r="1.7"/><circle cx="20" cy="6" r="1.7"/>'),
+      remplir: AMGT4CEM_Icones.svg('remplir'),
+      unir: AMGT4CEM_Icones.svg('unir'),
+      soustraire: AMGT4CEM_Icones.svg('soustraire'),
+      modifier: AMGT4CEM_Icones.svg('modifier'),
     };
   },
 
