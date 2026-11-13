@@ -58,6 +58,8 @@ function monter(conteneur) {
     h('li', {}, h('i', { class: 'hl-p hl-p--sel' }), ' à télécharger : couleur pâle'),
     h('li', {}, h('i', { class: 'hl-p hl-p--sup' }), ' à supprimer : couleur pleine barrée de blanc'),
     h('li', {}, h('i', { class: 'hl-p hl-p--non' }), ' non choisi : gris'));
+  const aideGeste = h('p', { class: 'rgl-note hl-aide-geste', text: 'Un doigt fait défiler la page ; deux doigts déplacent et zooment le plan.', hidden: '' });
+  if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) aideGeste.hidden = false;
   const panneau = h('div', { class: 'hl-panneau', role: 'status' });
   const message = h('p', { class: 'rgl-statut', role: 'status', hidden: '' });
   const titreListe = h('h2', { class: 'hl-titre', text: 'Mes lignes enregistrées' });
@@ -67,7 +69,7 @@ function monter(conteneur) {
   const detailTroncons = h('details', { class: 'hl-detail hl-detail--sous' }, h('summary', { text: 'Détail par tronçon et station' }), detailListe);
   const detailCorps = h('div', { class: 'hl-tech' });
   const detail = h('details', { class: 'hl-detail' }, h('summary', { text: 'Détails techniques' }), detailCorps, detailTroncons);
-  conteneur.append(intro, resume, titrePlan, zoneSyn, panneau, legende, message, titreListe, liste, actions, detail);
+  conteneur.append(intro, resume, titrePlan, zoneSyn, aideGeste, panneau, legende, message, titreListe, liste, actions, detail);
 
   const dire = (t, erreur) => {
     message.textContent = t;
@@ -112,6 +114,29 @@ function monter(conteneur) {
     let vb = { ...lim };
     const pts = new Map();
     let depart = null; let bouge = false; let cible = null; let pince = null;
+    // Tactile : un doigt fait défiler la page (le dessin ne bouge pas) ; deux doigts déplacent et zooment le dessin. Souris : glisser = déplacer.
+    let vitesse = 0; let dernierT = 0; let defile = false; let elan = 0;
+    const defileur = () => {
+      let n = zone.parentElement;
+      while (n && n !== document.body && n !== document.documentElement) {
+        const o = getComputedStyle(n).overflowY;
+        if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight) return n;
+        n = n.parentElement;
+      }
+      return document.scrollingElement || document.documentElement;
+    };
+    const arreterElan = () => { if (elan) { cancelAnimationFrame(elan); elan = 0; } };
+    const lancerElan = (v) => {
+      const sc = defileur();
+      let t0 = performance.now();
+      const pas = (t) => {
+        const dt = Math.min(40, t - t0); t0 = t;
+        sc.scrollTop -= v * dt;
+        v *= Math.pow(0.96, dt / 16);
+        elan = Math.abs(v) > 0.02 ? requestAnimationFrame(pas) : 0;
+      };
+      elan = requestAnimationFrame(pas);
+    };
     const borne = (w) => w;
     /** Ramène la zone visible à la forme du cadre, interdit de dézoomer plus que « tout le dessin » et de sortir du dessin. */
     function cadrer() {
@@ -130,10 +155,11 @@ function monter(conteneur) {
     if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => appliquer()).observe(zone);
     appliquer();
     zone.addEventListener('pointerdown', (e) => {
+      arreterElan();
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pts.size === 1) {
         depart = { x: e.clientX, y: e.clientY };
-        bouge = false;
+        bouge = false; defile = false; vitesse = 0; dernierT = e.timeStamp;
         cible = e.target.closest ? e.target.closest('[data-type],[data-bague],[data-etq]') : null;
       } else if (pts.size === 2) {
         bouge = true;
@@ -148,7 +174,14 @@ function monter(conteneur) {
       if (!avant) return;
       if (pts.size === 1) {
         if (!bouge && Math.hypot(e.clientX - depart.x, e.clientY - depart.y) > 6) bouge = true;
-        if (bouge) {
+        if (bouge && e.pointerType === 'touch') {
+          // Un doigt au tactile : la page défile.
+          const dy = e.clientY - avant.y;
+          defileur().scrollTop -= dy;
+          const dt = Math.max(1, e.timeStamp - dernierT); dernierT = e.timeStamp;
+          vitesse = 0.8 * vitesse + 0.2 * (dy / dt);
+          defile = true;
+        } else if (bouge) {
           const echelle = svg.getScreenCTM().a;
           vb.x -= (e.clientX - avant.x) / echelle;
           vb.y -= (e.clientY - avant.y) / echelle;
@@ -174,6 +207,8 @@ function monter(conteneur) {
       pts.delete(e.pointerId);
       if (pts.size < 2) pince = null;
       if (etaitSeul && !bouge && e.type === 'pointerup') surToucher(cible);
+      if (etaitSeul && defile && e.pointerType === 'touch' && Math.abs(vitesse) > 0.15) lancerElan(vitesse);
+      if (etaitSeul) defile = false;
       if (pts.size === 1) { const [p] = [...pts.values()]; depart = { x: p.x, y: p.y }; bouge = true; }
     };
     zone.addEventListener('pointerup', fin);

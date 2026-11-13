@@ -100,3 +100,4 @@
 .hl-etat--inc { background: #eef1f4; color: #52606d; }
 .hl-totaux { border-top: 1px solid #9aa5b1; margin-top: 4px; padding-top: 6px; font-size: 13px; }
 .hl-totaux__ligne { display: flex; justify-content: space-between; margin: 2px 0; }
+.hl-aide-geste { margin: 4px 2px 0; font-size: 12px; }
