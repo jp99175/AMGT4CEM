@@ -90,7 +90,7 @@
 
 /* Aspects sur le plan : téléchargé (plein), à télécharger (pâle), à supprimer (plein, barré de blanc), non choisi (gris). */
 .hl-svg #troncons path.hl-sup { stroke: var(--hl-c); stroke-opacity: .9; stroke-width: 9; stroke-linecap: round; }
-.hl-svg [data-type]:not([data-type="troncon"]).hl-sup { stroke: var(--hl-c) !important; stroke-width: 5; stroke-dasharray: 4 3; }
+.hl-svg [data-type]:not([data-type="troncon"]).hl-sup { stroke: var(--hl-c) !important; stroke-width: 5; }
 .hl-svg .hl-barre { fill: none; stroke: #fff; stroke-width: 3; stroke-dasharray: 6 6; stroke-linecap: butt; pointer-events: none; }
 .hl-p--sup { border-top: none; height: 5px; background: repeating-linear-gradient(90deg, #0b5c75 0 6px, #fff 6px 9px); }
 .hl-etat { display: inline-block; font-size: 12px; border-radius: 4px; padding: 0 6px; }
