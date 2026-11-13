@@ -628,7 +628,7 @@ function monter(conteneur) {
           // Barré : un trait blanc en pointillés par-dessus le tronçon.
           const b = el.cloneNode(false);
           for (const at of [...b.attributes]) if (at.name !== 'd' && at.name !== 'transform') b.removeAttribute(at.name);
-          b.setAttribute('class', 'hl-barre');
+          b.setAttribute('class', 'hl-trait-sup');
           el.after(b);
           E.barres.push(b);
         }
