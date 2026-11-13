@@ -7,7 +7,9 @@
  *   - deux arrêts = la portion entre eux (le premier présélectionne les lignes qui y passent, le second doit être sur l'une d'elles ;
  *     même arrêt deux fois = la station seule ; n'importe quel arrêt peut borner, même sans contour : rien n'est gardé de plus).
  * Couleurs : plein = fond de plan entièrement gardé sur l'appareil ; 50 % = choisi, pas (entièrement) téléchargé ; gris = ni l'un ni l'autre.
- * Rien n'est téléchargé ni effacé sans « Mettre à jour » puis confirmation.
+ * Deux boutons : « Mettre à jour » télécharge seulement (jamais d'effacement, pas de confirmation, la taille est sur le bouton) ;
+ * « Vider la corbeille » efface, après confirmation, les tuiles qu'aucune zone choisie n'utilise, puis retire les zones désactivées.
+ * Toucher un arrêt ouvre un petit panneau guidé (ligne entière, tronçon, annuler) ; les gestes directs restent des raccourcis.
  * Une « unité » est un tronçon ou une station repérée par ses polygones (clé P…+P…) : un tunnel partagé n'est qu'une unité.
  */
 const AMGT4CEM_EcranHorsLigne = (function () {
@@ -30,7 +32,7 @@ const h = (tag, attrs, ...kids) => {
   return el;
 };
 const fmtN = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-const fmtMo = (ko) => { const mo = ko / 1000; return `${mo < 10 ? mo.toFixed(1).replace('.', ',') : fmtN(mo)} Mo`; };
+const fmtMo = (ko) => { if (!(ko > 0)) return '0 Mo'; const mo = ko / 1000; return `${mo < 10 ? mo.toFixed(1).replace('.', ',') : fmtN(mo)} Mo`; };
 const tri = (a, b) => Number(a) - Number(b) || String(a).localeCompare(String(b));
 const norm = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const nomSansParentheses = (t) => norm(String(t).replace(/\(.*?\)/g, ''));
@@ -42,28 +44,29 @@ function monter(conteneur) {
   const E = {
     svg: null, recs: new Map(), lignes: [], couleur: {}, chaines: {}, noms: [],
     unites: [], parCle: new Map(), // unités du réseau entier
-    hl: { lignes: [], portions: [], ligneRet: new Set(), etape: null, debut: null, pres: null, items: [], selKeys: new Set() },
-    calcule: false, calcEnCours: false, dl: null, confirmation: null, durable: null,
+    hl: { lignes: [], portions: [], ligneRet: new Set(), etape: null, debut: null, pres: null, ligneCh: null, items: [], selKeys: new Set() },
+    calcule: false, calcEnCours: false, dl: null, confirmation: null, durable: null, erreurDl: false, erreursTuiles: 0, vidage: false,
   };
 
   // ---- éléments d'écran
-  const intro = h('p', { class: 'rgl-note', text: 'Touchez l\'étiquette d\'une ligne pour la garder entière, ou deux arrêts pour garder la portion entre eux. Rien n\'est téléchargé avant « Mettre à jour ».' });
+  const intro = h('p', { class: 'rgl-note', text: 'Choisissez les lignes ou les tronçons à conserver sur votre appareil.' });
+  const resume = h('section', { class: 'hl-carte', role: 'status', 'aria-label': 'Disponibles hors ligne' });
+  const titrePlan = h('h2', { class: 'hl-titre', text: 'Choisir sur le plan' });
   const zoneSyn = h('div', { class: 'hl-syn', 'aria-label': 'Synoptique du réseau' });
   const legende = h('ul', { class: 'hl-legende' },
-    h('li', {}, h('i', { class: 'hl-p hl-p--ok' }), ' téléchargé (disponible hors ligne)'),
-    h('li', {}, h('i', { class: 'hl-p hl-p--sel' }), ' choisi, pas encore téléchargé'),
-    h('li', {}, h('i', { class: 'hl-p hl-p--non' }), ' non choisi'));
-  const consigne = h('div', { class: 'hl-consigne', role: 'status' });
+    h('li', {}, h('i', { class: 'hl-p hl-p--ok' }), ' couleur pleine : disponible hors ligne'),
+    h('li', {}, h('i', { class: 'hl-p hl-p--sel' }), ' couleur pâle : choisi, à télécharger'),
+    h('li', {}, h('i', { class: 'hl-p hl-p--non' }), ' grisé : non choisi'));
+  const panneau = h('div', { class: 'hl-panneau', role: 'status' });
   const message = h('p', { class: 'rgl-statut', role: 'status', hidden: '' });
-  const resume = h('div', { class: 'hl-resume', role: 'status' });
-  const barre = h('div', { class: 'hl-barre' }, h('div', { class: 'hl-barre__plein' }));
-  const actions = h('div', { class: 'rgl-actions' });
+  const titreListe = h('h2', { class: 'hl-titre', text: 'Mes lignes enregistrées' });
   const liste = h('div', { class: 'hl-items' });
+  const actions = h('div', { class: 'rgl-actions hl-actions' });
   const detailListe = h('div', { class: 'hl-liste' });
-  const detail = h('details', { class: 'hl-detail' }, h('summary', { text: 'Détail par tronçon et station' }), detailListe);
-  const pied = h('p', { class: 'rgl-note hl-pied' });
-  const appHorsLigne = h('p', { class: 'rgl-note hl-pied' });
-  conteneur.append(intro, zoneSyn, legende, consigne, message, resume, barre, actions, liste, detail, appHorsLigne, pied);
+  const detailTroncons = h('details', { class: 'hl-detail hl-detail--sous' }, h('summary', { text: 'Détail par tronçon et station' }), detailListe);
+  const detailCorps = h('div', { class: 'hl-tech' });
+  const detail = h('details', { class: 'hl-detail' }, h('summary', { text: 'Détails techniques' }), detailCorps, detailTroncons);
+  conteneur.append(intro, resume, titrePlan, zoneSyn, panneau, legende, message, titreListe, liste, actions, detail);
 
   const dire = (t, erreur) => {
     message.textContent = t;
@@ -456,7 +459,7 @@ function monter(conteneur) {
 
   function annulerEnCours() {
     const H = E.hl;
-    H.etape = null; H.debut = null; H.pres = null;
+    H.etape = null; H.debut = null; H.pres = null; H.ligneCh = null;
     marquerDebut(); majPres(); dire('');
   }
 
@@ -474,7 +477,7 @@ function monter(conteneur) {
     return { out, amb };
   }
 
-  function clicLigne(n) {
+  function clicLigne(n) { // raccourci : étiquette de ligne touchée
     const H = E.hl;
     annulerEnCours();
     const i = H.lignes.indexOf(n);
@@ -482,18 +485,31 @@ function monter(conteneur) {
     modifier();
   }
 
+  /** Bouton « Ajouter la ligne entière » du panneau : jamais de doublon, une ligne désactivée est réactivée. */
+  function ajouterLigne(n) {
+    const H = E.hl;
+    annulerEnCours();
+    if (!H.lignes.includes(n)) { H.lignes.push(n); H.lignes.sort(tri); } else if (H.ligneRet.has(n)) H.ligneRet.delete(n);
+    else { dire(`La ligne ${n} est déjà choisie.`); dessiner(); return; }
+    modifier();
+  }
+
   function clicStation(rec) {
     const H = E.hl;
     if (rec.kind === 'troncon') { dire('Touchez un arrêt, pas un tronçon. Pour une ligne entière, touchez son étiquette.'); return; }
-    if (H.etape !== 'fin') {
+    if (H.etape === null) {
       const { out, amb } = lignesDe(rec, E.lignes);
       if (!out.length) {
         dire(amb.length ? `« ${rec.nom} » apparaît à plusieurs endroits d'une même ligne : touchez l'emplacement voulu plus précisément.` : `« ${rec.nom} » n'est sur aucune ligne du synoptique.`, true);
         return;
       }
-      H.debut = rec.id; H.pres = new Set(out); H.etape = 'fin';
+      H.debut = rec.id; H.pres = new Set(out); H.etape = 'panneau'; H.ligneCh = out.length === 1 ? out[0] : null;
       marquerDebut(); majPres(); dire(''); dessiner();
       return;
+    }
+    if (H.etape === 'panneau') { // raccourci : un second arrêt touché pendant que le panneau est ouvert
+      if (H.ligneCh) H.pres = new Set([H.ligneCh]);
+      H.etape = 'fin'; marquerDebut(); majPres();
     }
     let fin = rec.id;
     if (rec.id !== H.debut) {
@@ -613,78 +629,125 @@ function monter(conteneur) {
     return f;
   };
 
+  const ICONE_COCHE = '<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>';
+
+  /** Texte du statut du résumé. */
+  function statut(T) {
+    if (E.dl) return 'Mise à jour en cours';
+    if (E.erreurDl && T && T.manquantes.length) return 'Erreur de téléchargement';
+    if (!T) return 'Calcul en cours…';
+    if (!E.hl.selKeys.size) return 'Aucune zone choisie';
+    return T.manquantes.length ? 'Téléchargement nécessaire' : 'Tout est à jour';
+  }
+
   function dessiner() {
     if (!E.svg) return;
     const H = E.hl;
     colorer();
     const T = E.calcule ? totaux() : null;
+    const aJour = !!T && !E.dl && H.selKeys.size > 0 && !T.manquantes.length;
 
-    consigne.textContent = H.etape === 'fin'
-      ? `Début : ${E.recs.get(H.debut).nom} (ligne${H.pres.size > 1 ? 's' : ''} ${[...H.pres].sort(tri).join(', ')}). Touchez l'arrêt de FIN, sur ${H.pres.size > 1 ? 'ces lignes' : 'cette ligne'}, ou le même arrêt pour la station seule.`
-      : 'Touchez l\'étiquette d\'une ligne pour la garder entière, ou deux arrêts pour garder la portion entre eux.';
+    // Résumé : coche quand tout est disponible, compteurs, état ; barre de progression seulement pendant un téléchargement.
+    const tete = h('div', { class: 'hl-carte__tete' });
+    const coche = h('span', { class: 'hl-coche', 'aria-hidden': 'true' });
+    if (aJour) coche.innerHTML = ICONE_COCHE;
+    tete.append(coche, h('span', { class: 'hl-carte__titre', text: 'Disponibles hors ligne' }));
+    const lignesRes = [tete, h('div', { class: `hl-carte__etat${E.erreurDl && !aJour && !E.dl ? ' hl-carte__etat--erreur' : ''}`, text: statut(T) })];
+    if (T) {
+      const n = H.selKeys.size;
+      lignesRes.push(h('div', { class: 'hl-carte__chiffres' },
+        h('span', { text: `${fmtN(n)} tronçon${n > 1 ? 's' : ''} actif${n > 1 ? 's' : ''}` }),
+        h('span', { text: `${fmtN(T.gardees)} / ${fmtN(T.total)} tuiles` }),
+        h('span', { text: aJour || !T.manquantes.length ? fmtMo(T.ko) : `${fmtMo(T.ko)} / ${fmtMo(T.koT)}` })));
+    }
+    if (E.dl) {
+      const pct = E.dl.total ? Math.min(100, Math.round((100 * E.dl.faites) / E.dl.total)) : 0;
+      lignesRes.push(h('div', { class: 'hl-barre' }, h('div', { class: 'hl-barre__plein', style: `width:${pct}%` })),
+        h('div', { class: 'hl-carte__prog', text: `${pct} % · ${fmtN(E.dl.faites)} / ${fmtN(E.dl.total)} tuiles${T ? ` · ${fmtMo(T.ko)}` : ''}${E.dl.erreurs ? ` · ${E.dl.erreurs} en échec` : ''}` }));
+    }
+    resume.replaceChildren(...lignesRes);
 
-    const l1 = h('div', { class: 'hl-resume__ligne', text: `${fmtN(H.selKeys.size)} tronçons et stations choisis.` });
-    const l2 = T
-      ? h('div', { class: 'hl-resume__ligne hl-resume__fort', text: `Gardé sur cet appareil : ${fmtN(T.gardees)} / ${fmtN(T.total)} tuiles (${fmtMo(T.ko)} / ${fmtMo(T.koT)})` })
-      : h('div', { class: 'hl-resume__ligne', text: 'Calcul en cours…' });
-    resume.replaceChildren(l1, l2);
-    barre.firstChild.style.width = `${T && T.total ? Math.round((100 * T.gardees) / T.total) : 0}%`;
+    dessinerPanneau();
     dessinerActions(T);
     dessinerListes();
-    dessinerPied();
+    dessinerDetails(T);
+  }
+
+  /** Petit panneau sous le plan : station touchée, choix de la ligne, trois actions. */
+  function dessinerPanneau() {
+    const H = E.hl;
+    if (H.etape === null) {
+      panneau.className = 'hl-panneau hl-panneau--repos';
+      panneau.replaceChildren(h('p', { text: 'Touchez une station pour la choisir, ou l\'étiquette d\'une ligne pour la garder entière.' }));
+      return;
+    }
+    const rec = E.recs.get(H.debut);
+    const lignes = [...H.pres].sort(tri);
+    const el = [h('div', { class: 'hl-panneau__nom', text: rec ? rec.nom : '' })];
+    if (H.etape === 'panneau') {
+      const bl = h('div', { class: 'hl-panneau__lignes' });
+      for (const l of lignes) {
+        const c = couleurLigne(l);
+        const b = h('button', { type: 'button', class: `hl-badge hl-badge-btn${H.ligneCh === l ? ' hl-badge-btn--ch' : ''}`, style: `background:${c};color:${c.toLowerCase() === '#efe047' ? '#1f2933' : '#fff'}`, text: l, 'aria-pressed': H.ligneCh === l ? 'true' : 'false', 'aria-label': `Ligne ${l}` });
+        if (lignes.length > 1) b.addEventListener('click', () => { H.ligneCh = H.ligneCh === l ? null : l; dire(''); dessiner(); });
+        else b.disabled = true;
+        bl.append(b);
+      }
+      el.push(bl);
+      if (lignes.length > 1) el.push(h('p', { class: 'hl-panneau__aide', text: H.ligneCh ? `Ligne ${H.ligneCh} choisie.` : 'Plusieurs lignes passent ici : touchez celle voulue.' }));
+      const entiere = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: 'Ajouter la ligne entière' });
+      entiere.addEventListener('click', () => {
+        if (!H.ligneCh) { dire('Choisissez d\'abord la ligne.', true); return; }
+        ajouterLigne(H.ligneCh);
+      });
+      const tronc = h('button', { type: 'button', class: 'rgl-btn', text: 'Délimiter un tronçon' });
+      tronc.addEventListener('click', () => {
+        if (H.ligneCh) H.pres = new Set([H.ligneCh]);
+        H.etape = 'fin'; dire(''); marquerDebut(); majPres(); dessiner();
+      });
+      el.push(entiere, tronc);
+    } else {
+      el.push(h('p', { class: 'hl-panneau__aide', text: `Ligne${lignes.length > 1 ? 's' : ''} ${lignes.join(', ')}. Touchez la station d'arrivée sur le plan (la même station pour elle seule).` }));
+    }
+    const annuler = h('button', { type: 'button', class: 'rgl-btn hl-btn-calme', text: 'Annuler' });
+    annuler.addEventListener('click', () => { annulerEnCours(); dessiner(); });
+    el.push(annuler);
+    const nouveau = panneau.className === 'hl-panneau hl-panneau--repos' || !panneau.firstChild;
+    panneau.className = 'hl-panneau';
+    panneau.replaceChildren(...el);
+    if (nouveau) panneau.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); // à l'ouverture : le panneau reste visible sans défiler
   }
 
   function dessinerActions(T) {
-    const H = E.hl;
     const el = [];
     if (E.dl) {
-      el.push(h('p', { class: 'rgl-note', text: `Téléchargement : ${fmtN(E.dl.faites)} / ${fmtN(E.dl.total)} tuiles${E.dl.erreurs ? ` (${E.dl.erreurs} en échec)` : ''}` }));
       const stop = h('button', { type: 'button', class: 'rgl-btn', text: 'Arrêter' });
       stop.addEventListener('click', () => { if (E.dl.sw) { const c = navigator.serviceWorker.controller; if (c) c.postMessage({ type: 'arret' }); } else E.dl.arret = true; });
       el.push(stop);
-    } else if (E.confirmation && T) {
-      const c = E.confirmation;
-      const parts = [];
-      if (c.manquantes.length) parts.push(`télécharger ${fmtN(c.manquantes.length)} tuiles (environ ${fmtMo(c.koManque)})`);
-      if (c.aEffacer.length) parts.push(`supprimer de cet appareil ${fmtN(c.aEffacer.length)} tuiles qui ne sont plus choisies (${fmtMo(c.koEfface)} libérés${c.aRetirer ? `, ${fmtN(c.aRetirer)} zone${c.aRetirer > 1 ? 's' : ''} retirée${c.aRetirer > 1 ? 's' : ''}` : ''})`);
-      else if (c.aRetirer) parts.push(`retirer ${fmtN(c.aRetirer)} zone${c.aRetirer > 1 ? 's' : ''} de la liste (aucune tuile à supprimer)`);
-      const tele = c.manquantes.length ? ' Le wifi est préférable. Ne quittez pas cette page pendant le téléchargement.' : '';
-      el.push(h('p', { class: 'rgl-note', text: `Mettre à jour : ${parts.join(' et ')} ?${tele}` }));
-      const oui = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: c.aEffacer.length ? 'Oui, supprimer et mettre à jour' : 'Oui, mettre à jour' });
-      const non = h('button', { type: 'button', class: 'rgl-btn', text: 'Annuler' });
-      oui.addEventListener('click', () => mettreAJour(c));
-      non.addEventListener('click', () => { E.confirmation = null; dessiner(); });
-      el.push(oui, non);
+      actions.replaceChildren(...el);
+      return;
+    }
+    // Mettre à jour : télécharge seulement, sans confirmation ; absent quand tout est à jour (le résumé le dit).
+    if (T && T.manquantes.length) {
+      const maj = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: `Mettre à jour · ${fmtMo(T.koManque)}` });
+      if (!HL.pret || E.vidage) maj.disabled = true;
+      maj.addEventListener('click', () => mettreAJour());
+      el.push(maj, h('p', { class: 'rgl-note hl-actions__note', text: 'Le wifi est préférable.' }));
+    }
+    // Vider la corbeille : supprime seulement ce qu'aucune zone choisie n'utilise, après confirmation.
+    const aRetirer = E.hl.items.filter((it) => it.retire).length;
+    const vide = !T || (!T.aEffacer.length && !aRetirer);
+    if (E.confirmation && T && !vide) {
+      el.push(h('div', { class: 'hl-confirm' },
+        h('div', { class: 'hl-confirm__titre', text: 'Vider la corbeille ?' }),
+        h('p', { text: T.aEffacer.length ? `Espace récupérable : ${fmtMo(T.koEfface)}.` : 'Aucune carte à supprimer : elles servent encore à d\'autres zones. Les zones désactivées seront retirées de la liste.' }),
+        (() => { const n = h('button', { type: 'button', class: 'rgl-btn', text: 'Annuler' }); n.addEventListener('click', () => { E.confirmation = null; dessiner(); }); return n; })(),
+        (() => { const o = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: 'Confirmer' }); o.addEventListener('click', () => viderCorbeille()); return o; })()));
     } else {
-      if (H.etape === 'fin') {
-        const annuler = h('button', { type: 'button', class: 'rgl-btn', text: 'Annuler le début' });
-        annuler.addEventListener('click', () => { annulerEnCours(); dessiner(); });
-        el.push(annuler);
-      }
-      const aRetirer = H.items.filter((it) => it.retire).length;
-      const rien = !T || (!T.manquantes.length && !T.aEffacer.length && !aRetirer);
-      let texte = 'Mettre à jour';
-      if (T && !rien) texte += ` (télécharger ${fmtMo(T.koManque)}, libérer ${fmtMo(T.koEfface)})`;
-      else if (T) texte = 'À jour : rien à faire';
-      const btn = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: texte });
-      if (rien || !HL.pret) btn.disabled = true;
-      btn.addEventListener('click', () => { const t = totaux(); E.confirmation = { manquantes: t.manquantes, aEffacer: t.aEffacer, koManque: t.koManque, koEfface: t.koEfface, aRetirer }; dessiner(); });
-      el.push(btn);
-      if (H.items.some((it) => !it.retire)) {
-        const tout = h('button', { type: 'button', class: 'rgl-btn', text: 'Tout désélectionner' });
-        tout.addEventListener('click', () => { annulerEnCours(); H.lignes.forEach((n) => H.ligneRet.add(n)); H.portions.forEach((q) => { q.retire = true; }); modifier(); });
-        el.push(tout);
-      }
-      if (HL.pret && HL.index.size) {
-        const eff = h('button', { type: 'button', class: 'rgl-btn', text: 'Effacer toutes les cartes gardées' });
-        eff.addEventListener('click', async () => {
-          if (!window.confirm('Effacer toutes les cartes gardées sur cet appareil ?')) return;
-          await HL.supprimer();
-          dire('Cartes effacées de cet appareil.');
-          dessiner();
-        });
-        el.push(eff);
-      }
+      const vc = h('button', { type: 'button', class: 'rgl-btn', text: `Vider la corbeille${T && !vide && T.aEffacer.length ? ` · ${fmtMo(T.koEfface)}` : ''}` });
+      if (vide || !HL.pret || E.vidage) vc.disabled = true;
+      vc.addEventListener('click', () => { E.confirmation = true; dessiner(); });
+      el.push(vc);
     }
     actions.replaceChildren(...el);
   }
@@ -724,26 +787,44 @@ function monter(conteneur) {
     detailListe.replaceChildren(...(lignes.length ? lignes : [h('p', { class: 'rgl-note', text: 'Aucun tronçon choisi.' })]));
   }
 
-  function dessinerPied() {
-    const parts = [];
-    if (!HL.pret) parts.push('Le stockage de cet appareil n\'est pas disponible (navigation privée ?) : le téléchargement est impossible.');
-    else {
-      parts.push('Les cartes gardées sont valables 60 jours, puis effacées : à renouveler avant.');
+  function dessinerDetails(T) {
+    const ligne = (k, v) => h('p', { class: 'hl-tech__ligne' }, h('span', { class: 'hl-tech__cle', text: k }), ' ', h('span', { text: v }));
+    const el = [];
+    const affiche = typeof AMGT4CEM_BUILD_TIMESTAMP === 'string' ? AMGT4CEM_BUILD_TIMESTAMP : null;
+    let versionTxt;
+    if (E.versionSW) versionTxt = E.versionSW + (affiche && affiche !== E.versionSW ? ` (la version affichée est ${affiche} : relancez l'application pour l'utiliser)` : '');
+    else versionTxt = 'pas encore gardée pour l\'ouverture sans réseau : ouvrez l\'application une fois en ligne, puis rechargez cette page';
+    el.push(ligne('Version du programme gardée sur l\'appareil :', versionTxt));
+    if (!HL.pret) {
+      el.push(h('p', { class: 'hl-tech__ligne', text: 'Le stockage de cet appareil n\'est pas disponible (navigation privée ?) : le téléchargement est impossible.' }));
+    } else {
+      let koTout = 0; for (const k of HL.index.keys()) koTout += koDeCle(k);
+      if (T) el.push(ligne('Tuiles des zones actives :', `${fmtN(T.gardees)} gardées sur ${fmtN(T.total)} nécessaires, ${fmtN(E.erreursTuiles)} en erreur.`));
+      el.push(ligne('Volume stocké sur l\'appareil :', `${fmtMo(koTout)} (${fmtN(HL.index.size)} tuiles, corbeille comprise).`));
       const t0 = HL.plusAncienne();
-      if (t0) parts.push(`La plus ancienne date du ${new Date(t0).toLocaleDateString('fr-BE')}.`);
-      if (E.durable === true) parts.push('Stockage protégé par le navigateur.');
-      else if (E.durable === false) parts.push('Le navigateur peut effacer ces cartes s\'il manque de place (iPhone : après environ 7 jours sans ouvrir l\'application).');
-      parts.push('Pour l\'instant, l\'application doit déjà être ouverte pour utiliser ces cartes sans réseau.');
+      if (t0) {
+        const d = (t) => new Date(t).toLocaleDateString('fr-BE');
+        el.push(ligne('Carte la plus ancienne :', d(t0)));
+        el.push(ligne('À renouveler avant le :', `${d(t0 + HL.VALIDITE_JOURS * 24 * 3600 * 1000)} (les cartes sont valables ${HL.VALIDITE_JOURS} jours, puis effacées).`));
+      } else el.push(ligne('Validité :', `les cartes gardées sont valables ${HL.VALIDITE_JOURS} jours, puis effacées.`));
+      if (E.durable === true) el.push(ligne('Stockage :', 'protégé par le navigateur.'));
+      else if (E.durable === false) el.push(ligne('Stockage :', 'le navigateur peut effacer ces cartes s\'il manque de place (iPhone : après environ 7 jours sans ouvrir l\'application).'));
     }
-    pied.textContent = parts.join(' ');
-    appHorsLigne.textContent = E.versionSW
-      ? `Application gardée pour l'ouverture sans réseau : version ${E.versionSW}.`
-      : ('serviceWorker' in navigator && navigator.serviceWorker.controller
-        ? 'Application gardée pour l\'ouverture sans réseau.'
-        : 'Application pas encore gardée pour l\'ouverture sans réseau : ouvrez-la une fois en ligne, puis rechargez cette page.');
+    el.push(h('p', { class: 'hl-tech__ligne hl-tech__fort', text: 'Ouvrez l\'application avant d\'entrer dans le tunnel : elle doit déjà être ouverte pour utiliser ces cartes sans réseau.' }));
+    if (HL.pret && HL.index.size) {
+      const eff = h('button', { type: 'button', class: 'rgl-btn', text: 'Effacer toutes les cartes gardées' });
+      eff.addEventListener('click', async () => {
+        if (!window.confirm('Effacer toutes les cartes gardées sur cet appareil ?')) return;
+        await HL.supprimer();
+        dire('Cartes effacées de cet appareil.');
+        dessiner();
+      });
+      el.push(eff);
+    }
+    detailCorps.replaceChildren(...el);
   }
 
-  // ---- mise à jour : effacer ce qui n'est plus choisi, puis télécharger le manquant
+  // ---- mise à jour : télécharge seulement ce qui manque (jamais d'effacement)
   function adresse(cfg, z, x, y) {
     const sep = cfg.url.includes('?') ? '&' : '?';
     return `${cfg.url}${sep}service=WMTS&request=GetTile&version=1.0.0&layer=${encodeURIComponent(cfg.layer)}&style=`
@@ -751,26 +832,44 @@ function monter(conteneur) {
       + `&tilerow=${y}&tilecol=${x}&format=${encodeURIComponent(cfg.format || 'image/png')}`;
   }
 
-  async function mettreAJour(c) {
+  /** Vider la corbeille : supprime les tuiles qu'aucune zone choisie n'utilise (les tuiles partagées restent), puis retire les zones désactivées. */
+  async function viderCorbeille() {
     E.confirmation = null;
-    if (c.aEffacer.length) { await HL.supprimer(c.aEffacer); }
-    // Les zones « à retirer » disparaissent de la liste une fois la mise à jour confirmée.
+    const T = totaux();
+    const cles = T.aEffacer;
+    E.vidage = true; dire(''); dessiner();
+    if (cles.length) await HL.supprimer(cles);
+    const reste = cles.filter((k) => HL.index.has(k));
+    E.vidage = false;
+    if (reste.length) {
+      // Échec partiel : les zones désactivées restent dans la liste, le bouton permet de réessayer.
+      dire(`Nettoyage incomplet : ${fmtN(reste.length)} tuiles n'ont pas pu être supprimées. Touchez « Vider la corbeille » pour réessayer.`, true);
+      dessiner();
+      return;
+    }
     E.hl.lignes = E.hl.lignes.filter((n) => !E.hl.ligneRet.has(n));
     E.hl.ligneRet = new Set();
     E.hl.portions = E.hl.portions.filter((q) => !q.retire);
     recalculerChoix(); sauverChoix();
+    dire(cles.length ? `Corbeille vidée : ${fmtMo(T.koEfface)} libérés.` : 'Corbeille vidée.');
+    dessiner();
+  }
+
+  async function mettreAJour() {
+    E.confirmation = null;
+    E.erreurDl = false; E.erreursTuiles = 0;
     // Les tuiles à télécharger sont recalculées : le choix a pu changer entre-temps.
     const T0 = totaux();
     const tuiles = T0.manquantes;
     // Base commune avec la barre « Gardé sur cet appareil » et l'anneau de la carte : toute la sélection, tuiles déjà gardées comprises.
     const base = Math.max(0, T0.total - tuiles.length);
-    if (!tuiles.length) { dire(c.aEffacer.length ? `${fmtMo(c.koEfface)} libérés.` : 'Rien à télécharger.'); dessiner(); return; }
+    if (!tuiles.length) { dire('Rien à télécharger.'); dessiner(); return; }
     E.dl = { arret: false, faites: base, total: base + tuiles.length, erreurs: 0, reussies: 0 };
     dire('');
     E.durable = await HL.demanderDurable();
     await AMGT4CEM_Services.load();
     const cfg = AMGT4CEM_Services.tuilesConfig();
-    if (!cfg) { E.dl = null; dire('Les tuiles de la carte ne sont pas configurées (mode « WMS seul »).', true); dessiner(); return; }
+    if (!cfg) { E.dl = null; E.erreurDl = true; dire('Les tuiles de la carte ne sont pas configurées (mode « WMS seul »).', true); dessiner(); return; }
     const ctl = 'serviceWorker' in navigator ? navigator.serviceWorker.controller : null;
     if (ctl) {
       // Le service worker télécharge : on peut quitter l'écran ou la page, il continue et se reprend à la prochaine ouverture.
@@ -803,6 +902,7 @@ function monter(conteneur) {
     await Promise.all(Array.from({ length: PARALLELE }, travailleur));
     const bilan = E.dl;
     E.dl = null;
+    E.erreursTuiles = bilan.erreurs; E.erreurDl = !!(fatal || bilan.erreurs);
     if (fatal) dire(`${fatal} ${fmtN(bilan.reussies)} tuiles gardées.`, true);
     else if (bilan.arret) dire(`Arrêté. ${fmtN(bilan.reussies)} tuiles gardées ; reprenez avec « Mettre à jour ».`);
     else if (bilan.erreurs) dire(`Terminé avec ${fmtN(bilan.erreurs)} tuiles en échec. Touchez « Mettre à jour » pour réessayer.`, true);
@@ -812,6 +912,8 @@ function monter(conteneur) {
 
   // ---- messages du service worker (téléchargement hors de la page)
   function bilanSW(m) {
+    E.erreursTuiles = m.erreurs || 0;
+    E.erreurDl = m.etat === 'erreur' || !!m.erreurs;
     if (m.etat === 'fini') {
       if (m.erreurs) dire(`Terminé avec ${fmtN(m.erreurs)} tuiles en échec. Touchez « Mettre à jour » pour réessayer.`, true);
       else dire('Mise à jour terminée. Les tronçons choisis sont disponibles hors ligne.');

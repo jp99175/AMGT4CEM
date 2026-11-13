@@ -52,3 +52,38 @@
 .hl-svg .hl-pres { opacity: 1 !important; filter: none !important; }
 /* Premier arrêt touché : la pastille se remplit de la couleur de la ligne, avec un liseré blanc. */
 .hl-svg .hl-debut { fill: var(--hl-d) !important; stroke: #fff !important; stroke-width: 2.5 !important; opacity: 1 !important; filter: drop-shadow(0 0 1.5px var(--hl-d)) !important; }
+
+/* Refonte : résumé, panneau guidé, boutons, détails techniques. */
+.hl-titre { font-size: 16px; font-weight: 600; margin: 16px 0 6px; color: #1f2933; }
+.hl-carte { background: #fff; border: 1px solid #cbd2d9; border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
+.hl-carte__tete { display: flex; align-items: center; gap: 8px; min-height: 23px; }
+.hl-coche { display: inline-block; width: 23px; height: 23px; color: #1b6e3c; flex: none; }
+.hl-coche svg { display: block; }
+.hl-carte__titre { font-weight: 600; }
+.hl-carte__etat { margin: 2px 0 0 31px; font-size: 14px; color: #52606d; }
+.hl-carte__etat--erreur { color: #b3261e; }
+.hl-carte__chiffres { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 6px; font-size: 13px; color: #323f4b; }
+.hl-carte__prog { font-size: 13px; color: #52606d; }
+.hl-panneau { margin: 8px 0; background: #eef4f7; border: 1px solid #b8d4df; border-radius: 10px; padding: 10px 12px; }
+.hl-panneau--repos { background: none; border: none; padding: 0 2px; font-size: 13px; color: #52606d; }
+.hl-panneau--repos p { margin: 0; }
+.hl-panneau__nom { font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+.hl-panneau__lignes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.hl-panneau__aide { margin: 4px 0 8px; font-size: 13px; color: #52606d; }
+.hl-panneau .rgl-btn { width: 100%; min-height: 46px; margin: 0 0 6px; }
+.hl-btn-calme { background: none; border-color: transparent; color: #52606d; }
+.hl-badge-btn { border: 2px solid transparent; min-width: 40px; min-height: 40px; font-size: 15px; cursor: pointer; margin: 0; }
+.hl-badge-btn--ch { border-color: #1f2933; }
+.hl-badge-btn:disabled { opacity: 1; cursor: default; }
+.hl-actions { display: block; margin-top: 12px; }
+.hl-actions .rgl-btn { width: 100%; min-height: 46px; margin: 0 0 8px; }
+.hl-actions__note { text-align: center; margin: -2px 0 10px; }
+.hl-confirm { border: 1px solid #cbd2d9; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+.hl-confirm__titre { font-weight: 600; }
+.hl-confirm p { margin: 4px 0 8px; }
+.hl-detail--sous { margin: 8px 0 0; }
+.hl-tech__ligne { margin: 6px 0; font-size: 13px; }
+.hl-tech__cle { font-weight: 600; }
+.hl-tech__fort { background: #eef4f7; border-radius: 8px; padding: 8px 10px; }
+.hl-tech .rgl-btn { width: 100%; min-height: 44px; margin-top: 8px; }
+.hl-panneau { scroll-margin-bottom: 90px; }

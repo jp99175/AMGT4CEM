@@ -138,6 +138,7 @@ const HL = {
       for (const c of liste) { tx.objectStore('tuiles').delete(c); tx.objectStore('index').delete(c); }
       tx.oncomplete = () => { liste.forEach((c) => this.index.delete(c)); ok(); };
       tx.onerror = () => ok();
+      tx.onabort = () => ok(); // échec : les tuiles restent dans l'index, l'appelant le vérifie
     });
   },
 

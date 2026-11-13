@@ -152,11 +152,11 @@ Reglages.register({
   lignes: (s) => [
     { texte: `Connecté : ${AMGT4CEM_Auth.label(s)}`, aide: 'Pour vous déconnecter, touchez l\'icône du compte en haut à droite.' },
     {
-      texte: 'Carte hors ligne',
+      texte: 'Cartes hors ligne',
       aide: 'Garder sur cet appareil le fond de plan autour des tunnels et des stations choisis, pour consulter la carte sans réseau.',
       ecran: {
         id: 'horsligne',
-        titre: 'Carte hors ligne',
+        titre: 'Cartes hors ligne',
         persistant: true,
         async monter(conteneur) {
           if (conteneur.firstChild) { if (conteneur.__rafraichir) conteneur.__rafraichir(); return; }
