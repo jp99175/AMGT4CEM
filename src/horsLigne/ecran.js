@@ -607,11 +607,13 @@ function monter(conteneur) {
     for (const b of E.barres) b.remove();
     E.barres = [];
     const eff = T ? new Set(T.aEffacer) : null;
+    // Seules les zones réellement retirées sont « à supprimer » : les tuiles des zooms bas sont partagées sur plusieurs kilomètres, elles ne désignent pas les voisines.
+    const retirees = new Set(E.hl.items.filter((it) => it.retire).flatMap((it) => it.unites.map((u) => u.cle)));
     for (const u of E.unites) {
       const ok = E.calcule && uniteTelechargee(u);
       const sel = E.hl.selKeys.has(u.cle);
       // À supprimer : plus choisi, mais des tuiles stockées ne servent plus à aucune zone choisie (un tunnel partagé encore utilisé reste « téléchargé »).
-      const sup = !!eff && !sel && !!u.tuiles && u.tuiles.some((k) => eff.has(k));
+      const sup = !!eff && !sel && retirees.has(u.cle) && !!u.tuiles && u.tuiles.some((k) => eff.has(k));
       const couleurUnite = couleurLigne([...u.lignes].sort(tri)[0]);
       for (const el of u.els) {
         el.classList.remove('hl-ok', 'hl-sel', 'hl-sup');
