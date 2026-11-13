@@ -45,7 +45,7 @@ function monter(conteneur) {
     svg: null, recs: new Map(), lignes: [], couleur: {}, chaines: {}, noms: [],
     unites: [], parCle: new Map(), // unités du réseau entier
     hl: { lignes: [], portions: [], ligneRet: new Set(), etape: null, debut: null, pres: null, ligneCh: null, items: [], selKeys: new Set() },
-    calcule: false, calcEnCours: false, dl: null, confirmation: null, durable: null, erreurDl: false, erreursTuiles: 0, vidage: false,
+    calcule: false, calcEnCours: false, dl: null, confirmation: null, durable: null, erreurDl: false, erreursTuiles: 0, vidage: false, barres: [],
   };
 
   // ---- éléments d'écran
@@ -54,9 +54,10 @@ function monter(conteneur) {
   const titrePlan = h('h2', { class: 'hl-titre', text: 'Choisir sur le plan' });
   const zoneSyn = h('div', { class: 'hl-syn', 'aria-label': 'Synoptique du réseau' });
   const legende = h('ul', { class: 'hl-legende' },
-    h('li', {}, h('i', { class: 'hl-p hl-p--ok' }), ' couleur pleine : disponible hors ligne'),
-    h('li', {}, h('i', { class: 'hl-p hl-p--sel' }), ' couleur pâle : choisi, à télécharger'),
-    h('li', {}, h('i', { class: 'hl-p hl-p--non' }), ' grisé : non choisi'));
+    h('li', {}, h('i', { class: 'hl-p hl-p--ok' }), ' téléchargé : couleur pleine'),
+    h('li', {}, h('i', { class: 'hl-p hl-p--sel' }), ' à télécharger : couleur pâle'),
+    h('li', {}, h('i', { class: 'hl-p hl-p--sup' }), ' à supprimer : couleur pleine barrée de blanc'),
+    h('li', {}, h('i', { class: 'hl-p hl-p--non' }), ' non choisi : gris'));
   const panneau = h('div', { class: 'hl-panneau', role: 'status' });
   const message = h('p', { class: 'rgl-statut', role: 'status', hidden: '' });
   const titreListe = h('h2', { class: 'hl-titre', text: 'Mes lignes enregistrées' });
@@ -602,20 +603,33 @@ function monter(conteneur) {
   }
 
   // ---- affichage
-  function colorer() {
+  function colorer(T) {
+    for (const b of E.barres) b.remove();
+    E.barres = [];
+    const eff = T ? new Set(T.aEffacer) : null;
     for (const u of E.unites) {
       const ok = E.calcule && uniteTelechargee(u);
       const sel = E.hl.selKeys.has(u.cle);
+      // À supprimer : plus choisi, mais des tuiles stockées ne servent plus à aucune zone choisie (un tunnel partagé encore utilisé reste « téléchargé »).
+      const sup = !!eff && !sel && !!u.tuiles && u.tuiles.some((k) => eff.has(k));
       const couleurUnite = couleurLigne([...u.lignes].sort(tri)[0]);
       for (const el of u.els) {
-        el.classList.remove('hl-ok', 'hl-sel');
+        el.classList.remove('hl-ok', 'hl-sel', 'hl-sup');
         el.style.removeProperty('--hl-c');
-        if (!ok && !sel) continue;
-        el.classList.add(ok ? 'hl-ok' : 'hl-sel');
+        if (!ok && !sel && !sup) continue;
+        el.classList.add(sup ? 'hl-sup' : (ok ? 'hl-ok' : 'hl-sel'));
         // Chaque trait garde la couleur de sa propre ligne (tunnel partagé : une voie par ligne).
         const rec = E.recs.get(el.id);
         const propre = rec && rec.lignes && rec.lignes.length ? couleurLigne([...rec.lignes].sort(tri)[0]) : couleurUnite;
         el.style.setProperty('--hl-c', propre);
+        if (sup && el.tagName.toLowerCase() === 'path') {
+          // Barré : un trait blanc en pointillés par-dessus le tronçon.
+          const b = el.cloneNode(false);
+          for (const at of [...b.attributes]) if (at.name !== 'd' && at.name !== 'transform') b.removeAttribute(at.name);
+          b.setAttribute('class', 'hl-barre');
+          el.after(b);
+          E.barres.push(b);
+        }
       }
     }
   }
@@ -643,8 +657,8 @@ function monter(conteneur) {
   function dessiner() {
     if (!E.svg) return;
     const H = E.hl;
-    colorer();
     const T = E.calcule ? totaux() : null;
+    colorer(T);
     const aJour = !!T && !E.dl && H.selKeys.size > 0 && !T.manquantes.length;
 
     // Résumé : coche quand tout est disponible, compteurs, état ; barre de progression seulement pendant un téléchargement.
@@ -754,11 +768,35 @@ function monter(conteneur) {
 
   function dessinerListes() {
     const H = E.hl;
+    const T = E.calcule ? totaux() : null;
+    const clesDe = (it) => new Set(it.unites.map((u) => u.cle));
+    const tuilesDe = (it) => it.unites.flatMap((u) => u.tuiles || []);
+    const actifs = H.items.filter((it) => !it.retire);
+    // Rangées fusionnées : une zone entièrement incluse dans une autre ne s'affiche pas à part.
+    const ens = new Map(actifs.map((it) => [it, clesDe(it)]));
+    const visibles = actifs.filter((it, i) => {
+      const k = ens.get(it);
+      if (!k.size) return true;
+      return !actifs.some((o, j) => o !== it && ens.get(o).size >= k.size && [...k].every((c) => ens.get(o).has(c)) && (ens.get(o).size > k.size || j < i));
+    });
+    // Chaque rangée ne compte que ce qu'elle apporte seule : les tailles s'additionnent au total.
+    const vus = new Set();
+    const rangees = visibles.map((it) => {
+      const propres = [...new Set(tuilesDe(it))].filter((k) => !vus.has(k));
+      propres.forEach((k) => vus.add(k));
+      return { it, st: E.calcule ? statsTuiles(propres) : null, etat: null };
+    });
+    rangees.forEach((r) => { r.etat = r.st && r.st.total && r.st.gardees === r.st.total ? 'gardée' : (r.st && r.st.total ? 'à télécharger' : 'incluse'); });
+    // Zones retirées : ce qui sera réellement supprimé (les tuiles encore utiles à une zone choisie restent).
+    const dejaEff = new Set();
+    for (const it of H.items.filter((x) => x.retire)) {
+      const propres = [...new Set(tuilesDe(it))].filter((k) => T && gardee(k) && !T.union.has(k) && !dejaEff.has(k));
+      propres.forEach((k) => dejaEff.add(k));
+      rangees.push({ it, st: E.calcule ? { gardees: propres.length, total: propres.length, ko: 0, koTotal: propres.reduce((x, k) => x + koDeCle(k), 0) } : null, etat: propres.length ? 'à effacer' : 'partagée, rien à effacer' });
+    }
     const items = [];
     if (!H.items.length) items.push(h('p', { class: 'rgl-note', text: 'Aucune zone choisie.' }));
-    for (const it of H.items) {
-      const tuiles = new Set(it.unites.flatMap((u) => u.tuiles || []));
-      const st = E.calcule ? statsTuiles(tuiles) : null;
+    for (const { it, st, etat } of rangees) {
       const bouton = h('button', { type: 'button', class: 'hl-ic-btn', title: it.retire ? 'Annuler le retrait' : 'Retirer cette zone', 'aria-label': it.retire ? 'Annuler le retrait' : 'Retirer cette zone' });
       if (it.retire) bouton.innerHTML = ICONE_ANNULER; else bouton.append(h('span', { class: 'hl-ic-poubelle', 'aria-hidden': 'true' }));
       bouton.addEventListener('click', () => {
@@ -766,12 +804,20 @@ function monter(conteneur) {
         if (it.genre === 'ligne') { if (it.retire) H.ligneRet.delete(it.ligne); else H.ligneRet.add(it.ligne); } else { const q = H.portions[it.idx]; if (it.retire) delete q.retire; else q.retire = true; }
         modifier();
       });
+      const classeEtat = etat === 'gardée' ? 'ok' : (etat === 'à télécharger' ? 'tel' : (etat === 'à effacer' ? 'eff' : 'inc'));
       const txt = h('span', { class: 'hl-item__txt' },
         h('span', { class: 'hl-item__nom', text: it.texte }),
-        st ? h('span', { class: 'hl-item__val', text: `${fmtN(st.gardees)} / ${fmtN(st.total)} tuiles` }) : null,
+        h('span', { class: 'hl-item__val' }, h('span', { class: `hl-etat hl-etat--${classeEtat}`, text: etat }), st && st.total && !it.retire ? ` ${fmtN(st.gardees)} / ${fmtN(st.total)} tuiles` : ''),
         ...it.avert.map((a) => h('span', { class: 'hl-item__avert', text: `${a}.` })));
       const poids = h('span', { class: 'hl-item__poids', text: st ? fmtMo(st.koTotal) : '' });
       items.push(h('div', { class: `hl-item${it.retire ? ' hl-item--retire' : ''}` }, h('span', { class: 'hl-item__badges' }, badges(it.lignes)), txt, poids, bouton));
+    }
+    if (T && H.items.length) {
+      const ligneTot = (k, v) => h('div', { class: 'hl-totaux__ligne' }, h('span', { text: k }), h('span', { text: v }));
+      const tot = [ligneTot('Gardé', fmtMo(T.ko))];
+      if (T.manquantes.length) tot.push(ligneTot('À télécharger', fmtMo(T.koManque)));
+      if (T.aEffacer.length) tot.push(ligneTot('Récupérable (corbeille)', fmtMo(T.koEfface)));
+      items.push(h('div', { class: 'hl-totaux' }, ...tot));
     }
     liste.replaceChildren(...items);
 

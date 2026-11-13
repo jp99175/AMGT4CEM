@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const VERSION = '20261113-1017'; // @VERSION (écrit par tools/stamp-sw.sh)
+const VERSION = '20261113-2231'; // @VERSION (écrit par tools/stamp-sw.sh)
 const CACHE = 'amgt4cem-app';
 const DELAI_RESEAU_MS = 4000;
 const PARALLELE = 6;
@@ -118,6 +118,7 @@ const FICHIERS = [
   './src/horsLigne/indicateur.css',
   './src/horsLigne/indicateur.js',
   './src/horsLigne/magasin.js',
+  './src/icones.js',
   './src/interstation.js',
   './src/layerOpacityStore.js',
   './src/lieuxTool.js',

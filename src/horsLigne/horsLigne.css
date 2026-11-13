@@ -43,7 +43,7 @@
 .hl-svg #lignes > g, .hl-svg #etiquettes-lignes > g { opacity: .32; filter: grayscale(1); }
 .hl-svg #etiquettes-lignes > g { opacity: .7; }
 .hl-svg text.lbl { opacity: .45; filter: grayscale(1); }
-.hl-svg [data-type]:not([data-type="troncon"]):not(.hl-ok):not(.hl-sel) { opacity: .35; filter: grayscale(1); }
+.hl-svg [data-type]:not([data-type="troncon"]):not(.hl-ok):not(.hl-sel):not(.hl-sup) { opacity: .35; filter: grayscale(1); }
 .hl-svg #troncons path.hl-ok { stroke: var(--hl-c); stroke-opacity: .9; stroke-width: 9; stroke-linecap: round; }
 .hl-svg #troncons path.hl-sel { stroke: var(--hl-c); stroke-opacity: .5; stroke-width: 9; stroke-linecap: round; }
 .hl-svg [data-type]:not([data-type="troncon"]).hl-ok { stroke: var(--hl-c) !important; stroke-width: 5; }
@@ -87,3 +87,16 @@
 .hl-tech__fort { background: #eef4f7; border-radius: 8px; padding: 8px 10px; }
 .hl-tech .rgl-btn { width: 100%; min-height: 44px; margin-top: 8px; }
 .hl-panneau { scroll-margin-bottom: 90px; }
+
+/* Aspects sur le plan : téléchargé (plein), à télécharger (pâle), à supprimer (plein, barré de blanc), non choisi (gris). */
+.hl-svg #troncons path.hl-sup { stroke: var(--hl-c); stroke-opacity: .9; stroke-width: 9; stroke-linecap: round; }
+.hl-svg [data-type]:not([data-type="troncon"]).hl-sup { stroke: var(--hl-c) !important; stroke-width: 5; stroke-dasharray: 4 3; }
+.hl-svg .hl-barre { fill: none; stroke: #fff; stroke-width: 3; stroke-dasharray: 6 6; stroke-linecap: butt; pointer-events: none; }
+.hl-p--sup { border-top: none; height: 5px; background: repeating-linear-gradient(90deg, #0b5c75 0 6px, #fff 6px 9px); }
+.hl-etat { display: inline-block; font-size: 12px; border-radius: 4px; padding: 0 6px; }
+.hl-etat--ok { background: #e3f4ea; color: #1b6e3c; }
+.hl-etat--tel { background: #fdf0d5; color: #8a5a00; }
+.hl-etat--eff { background: #fde8e6; color: #b3261e; }
+.hl-etat--inc { background: #eef1f4; color: #52606d; }
+.hl-totaux { border-top: 1px solid #9aa5b1; margin-top: 4px; padding-top: 6px; font-size: 13px; }
+.hl-totaux__ligne { display: flex; justify-content: space-between; margin: 2px 0; }
