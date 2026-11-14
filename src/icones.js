@@ -23,8 +23,8 @@ window.AMGT4CEM_Icones = (function () {
     pause: '<rect x="7" y="5" width="3.6" height="14" rx="1"/><rect x="13.4" y="5" width="3.6" height="14" rx="1"/>',
     lecture: '<path d="M8 5.2l11 6.8-11 6.8z"/>',
     polygone: '<path d="M12 3.5l7.5 4.3v8.4L12 20.5l-7.5-4.3V7.8z"/>',
-    oeil: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
-    oeilBarre: '<path d="M2.5 12S6 5.5 12 5.5c1.6 0 3 .5 4.2 1.2M21.5 12S18 18.5 12 18.5c-1.6 0-3-.5-4.2-1.2"/><path d="M4 4l16 16"/>',
+    oeil: '<path d="M2.5 12Q12 1.4 21.5 12Q12 22.6 2.5 12Z"/><ellipse cx="12" cy="12" rx="2.9" ry="3.4"/>', // visible
+    oeilBarre: '<path d="M2.5 8Q12 18.6 21.5 8"/><path d="M5 10.5L3.6 13.3M12 13.3V16M19 10.5L20.4 13.3"/>', // masqué : œil fermé et ses cils
     remplir: '<path d="M5 5h14v14H5z"/><path d="M5 10l5-5M5 15l10-10M5 19l14-14M10 19l9-9M15 19l4-4"/>',
     unir: '<circle cx="9" cy="13" r="5"/><circle cx="15" cy="13" r="5"/><path d="M19 3v5M16.5 5.5h5"/>',
     soustraire: '<circle cx="9" cy="13" r="5"/><circle cx="15" cy="13" r="5" stroke-dasharray="2 2"/><path d="M16.5 5.5h5"/>',
