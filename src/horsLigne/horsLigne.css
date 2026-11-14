@@ -7,7 +7,7 @@
 .hl-svg .hl-bague { fill: rgba(255, 255, 255, 0); stroke: none; cursor: pointer; }
 .hl-legende { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0; padding: 0; font-size: 13px; color: #52606d; }
 .hl-p { display: inline-block; width: 22px; height: 0; border-top: 5px solid #0b5c75; vertical-align: middle; }
-.hl-p--sel { opacity: .5; }
+.hl-p--sel { opacity: .35; }
 .hl-p--non { border-top-color: #c3c9cf; }
 .hl-consigne { margin: 6px 0; font-size: 14px; background: #eef4f7; border-radius: 8px; padding: 8px 10px; }
 .hl-resume { margin: 8px 0 6px; font-size: 14px; }
@@ -45,9 +45,9 @@
 .hl-svg text.lbl { opacity: .45; filter: grayscale(1); }
 .hl-svg [data-type]:not([data-type="troncon"]):not(.hl-ok):not(.hl-sel):not(.hl-sup) { opacity: .35; filter: grayscale(1); }
 .hl-svg #troncons path.hl-ok { stroke: var(--hl-c); stroke-opacity: .9; stroke-width: 9; stroke-linecap: round; }
-.hl-svg #troncons path.hl-sel { stroke: var(--hl-c); stroke-opacity: .5; stroke-width: 9; stroke-linecap: round; }
+.hl-svg #troncons path.hl-sel { stroke: var(--hl-c); stroke-opacity: .35; stroke-width: 9; stroke-linecap: round; }
 .hl-svg [data-type]:not([data-type="troncon"]).hl-ok { stroke: var(--hl-c) !important; stroke-width: 5; }
-.hl-svg [data-type]:not([data-type="troncon"]).hl-sel { stroke: var(--hl-c) !important; stroke-width: 5; opacity: .5; }
+.hl-svg [data-type]:not([data-type="troncon"]).hl-sel { stroke: var(--hl-c) !important; stroke-width: 5; opacity: .35; }
 /* Attente du second arrêt : les lignes présélectionnées reprennent leur couleur. */
 .hl-svg .hl-pres { opacity: 1 !important; filter: none !important; }
 /* Premier arrêt touché : la pastille se remplit de la couleur de la ligne, avec un liseré blanc. */

@@ -6,7 +6,7 @@
  *   - étiquette de ligne = ligne entière ;
  *   - deux arrêts = la portion entre eux (le premier présélectionne les lignes qui y passent, le second doit être sur l'une d'elles ;
  *     même arrêt deux fois = la station seule ; n'importe quel arrêt peut borner, même sans contour : rien n'est gardé de plus).
- * Couleurs : plein = fond de plan entièrement gardé sur l'appareil ; 50 % = choisi, pas (entièrement) téléchargé ; gris = ni l'un ni l'autre.
+ * Couleurs : plein = fond de plan entièrement gardé sur l'appareil ; 35 % = choisi, pas (entièrement) téléchargé ; gris = ni l'un ni l'autre.
  * Deux boutons : « Mettre à jour » télécharge seulement (jamais d'effacement, pas de confirmation, la taille est sur le bouton) ;
  * « Vider la corbeille » efface, après confirmation, les tuiles qu'aucune zone choisie n'utilise, puis retire les zones désactivées.
  * Toucher un arrêt ouvre un petit panneau guidé (ligne entière, tronçon, annuler) ; les gestes directs restent des raccourcis.
