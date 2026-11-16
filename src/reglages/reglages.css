@@ -148,3 +148,17 @@ html[data-app="reglages"] body {
 .rgl-iz__table tr.rgl-iz--ajout { background: #e3f4e1; }
 .rgl-iz__table tr.rgl-iz--retrait { background: #fde8e8; }
 .rgl-iz__table tr.rgl-iz--bloque td { color: #9aa5b1; }
+/* Fenêtre d'attributs */
+.rgl-iz__nom { background: none; border: none; padding: 0; font: inherit; color: #0b5c75; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.rgl-iz__crayon { margin-left: 3px; vertical-align: -2px; }
+.rgl-iz__voile { position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 12px; }
+.rgl-iz__fenetre { background: #fff; border-radius: 12px; width: min(380px, 100%); max-height: 92vh; overflow: auto; padding: 14px; box-sizing: border-box; }
+.rgl-iz__f-tete { display: flex; align-items: center; justify-content: space-between; font-size: 16px; }
+.rgl-iz__f-sous { font-size: 13px; color: #52606d; margin: 2px 0 10px; }
+.rgl-iz__champ-f { display: block; margin: 0 0 8px; }
+.rgl-iz__champ-f span { display: block; font-size: 12px; color: #52606d; margin-bottom: 2px; }
+.rgl-iz__champ-f .rgl-input { width: 100%; box-sizing: border-box; }
+.rgl-iz__champ-f input::placeholder { font-style: italic; color: #52606d; opacity: 1; }
+.rgl-iz__msg { font-size: 13px; min-height: 1em; margin: 4px 0; white-space: pre-line; }
+.rgl-iz__f-pied { display: flex; align-items: center; gap: 8px; border-top: 1px solid #e4e7eb; padding-top: 8px; }
+.rgl-iz__f-aide { flex: 1; font-size: 12px; color: #52606d; text-align: center; }

@@ -1553,7 +1553,11 @@ const AMGT4CEM_LieuxTool = {
     try {
       this._etat('Enregistrement…');
       const contour = this._contour();
-      const lieu = { nom, genre: this._f('genre').value || 'autre', tolerance_m: tol, objets };
+      // Attributs saisis ailleurs (Réglages > Intégration de zones) : conservés tels quels (nom NL, références, identifiant gardé…).
+      const avant = (ancien && this._lieux[ancien]) || {};
+      const garde = {};
+      for (const k of ['name_nl', 'references', 'id_shapefile', 'ids_externes']) if (avant[k] !== undefined) garde[k] = avant[k];
+      const lieu = { ...garde, nom, genre: this._f('genre').value || 'autre', tolerance_m: tol, objets };
       if (contour.length) Object.assign(lieu, { contour_methode: 'surfaces', contour });
       const suite = { ...this._lieux };
       if (renomme) delete suite[ancien];

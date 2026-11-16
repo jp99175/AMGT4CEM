@@ -12,6 +12,9 @@
  *  - une zone dessinée n'a pas d'identifiant ; elle reçoit un P… neuf à l'écriture dans le shapefile ;
  *  - un objet retiré du shapefile GARDE son P… (champ `id_shapefile` de la zone) et le retrouve à son retour.
  *
+ * Fenêtre d'attributs (droit « attributs ») : toucher le nom d'une ligne ; enregistrement direct à la disquette (zone :
+ * data/lieux/lieux.json, `nom` = nom FR, plus `name_nl` et `references` ; objet : data/ditp-diov/polygones.json).
+ *
  * Étape 1 : écran et déplacements en attente seulement. « Appliquer » montre le récapitulatif ; l'écriture réelle
  * (d'abord dans test_shapefile) est la prochaine étape. Rien n'est enregistré.
  */
@@ -171,7 +174,7 @@ async function monter(conteneur, opts = {}) {
         const id = l.id ? h('span', { text: l.id }) : (l.cote === 'bas' ? h('i', { text: 'à l\'écriture' }) : h('span', { class: 'rgl-iz__vide', text: '—' }));
         const genre = l.genre ? h('span', { text: libelle(l.genre) }) : h('i', { text: 'vide' });
         const tr = h('tr', { class: [enAttente(l) ? (l.cote === 'bas' ? 'rgl-iz--ajout' : 'rgl-iz--retrait') : '', l.blocage && l.cote === 'haut' ? 'rgl-iz--bloque' : ''].join(' ').trim() },
-          h('td', null, c), h('td', null, id), h('td', null, genre), h('td', { text: l.nom }), h('td', { text: etat(l) }));
+          h('td', null, c), h('td', null, id), h('td', null, genre), h('td', null, celluleNom(l)), h('td', { text: etat(l) }));
         tbody.append(tr);
       }
       if (!vis.length) tbody.append(h('tr', null, h('td', { colspan: '5', class: 'rgl-iz__vide', text: 'Aucune ligne.' })));
@@ -182,6 +185,114 @@ async function monter(conteneur, opts = {}) {
     };
     return { el: h('div', null, titre, h('div', { class: 'rgl-tableau-cadre rgl-iz__cadre' }, t)), remplir };
   };
+  /* ---- Fenêtre d'attributs (droit « attributs ») : zones dessinées et objets du shapefile ---- */
+  const peutEditer = typeof AMGT4CEM_Auth !== 'undefined' && AMGT4CEM_Auth.aDroit('attributs', AMGT4CEM_Auth.session());
+  const LOG = window.AMGT4CEM_AttributsLogique;
+  const sepRefs = (t) => String(t || '').split(';').map((x) => x.trim()).filter(Boolean);
+  /** Champs actuels d'une ligne, lus dans sa source (zone : `nom` = nom FR). */
+  const champsLigne = (l) => {
+    if (l.cle.startsWith('Z:')) {
+      const z = zones.lieux[l.cle.slice(2)] || {};
+      return { genre: genres.includes(z.genre) ? z.genre : '', name_fr: z.nom || '', name_nl: z.name_nl || '', references: Array.isArray(z.references) ? z.references.map(String) : [] };
+    }
+    const e = shp.entites[l.cle.slice(2)] || {};
+    return { genre: e.genre || '', name_fr: e.name_fr || '', name_nl: e.name_nl || '', references: Array.isArray(e.references) ? e.references.map(String) : [] };
+  };
+  const sig = (c) => JSON.stringify([c.genre, c.name_fr, c.name_nl, c.references]);
+  const sigZone = (z) => JSON.stringify([z.genre || '', z.nom || '', z.name_nl || '', Array.isArray(z.references) ? z.references.map(String) : []]);
+  const sigShp = (e) => JSON.stringify([e.genre || '', e.name_fr || '', e.name_nl || '', Array.isArray(e.references) ? e.references.map(String) : []]);
+
+  function celluleNom(l) {
+    if (!peutEditer) return h('span', { text: l.nom });
+    const b = h('button', { type: 'button', class: 'rgl-iz__nom', title: 'Modifier les attributs' });
+    b.textContent = l.nom || '(sans nom)';
+    b.addEventListener('click', () => ouvrirFenetre(l));
+    return b;
+  }
+
+  function ouvrirFenetre(l) {
+    const estZone = l.cle.startsWith('Z:');
+    const depart = champsLigne(l);
+    const sigServeurDepart = estZone ? sigZone(zones.lieux[l.cle.slice(2)] || {}) : sigShp(shp.entites[l.cle.slice(2)] || {});
+    const ic = (nom, texte) => { const b = h('button', { type: 'button', class: 'rgl-ic rgl-iz__btn', title: texte, 'aria-label': texte }); b.innerHTML = AMGT4CEM_Icones.svg(nom); return b; };
+    const fermer = ic('fermer', 'Fermer');
+    const retourBtn = ic('annuler', 'Revenir aux valeurs d\'origine');
+    const sauver = ic('disquette', 'Enregistrer');
+    const selG = h('select', { class: 'rgl-input' }, h('option', { value: '', text: '— choisir —' }), ...genres.map((g) => h('option', { value: g, text: libelle(g) })));
+    const fr = h('input', { type: 'text', class: 'rgl-input', autocomplete: 'off' });
+    const nl = h('input', { type: 'text', class: 'rgl-input', autocomplete: 'off' });
+    const refs = h('input', { type: 'text', class: 'rgl-input', autocomplete: 'off' });
+    const msg = h('p', { class: 'rgl-iz__msg', role: 'status' });
+    const remplirChamps = (c) => { selG.value = c.genre; fr.value = c.name_fr; nl.value = c.name_nl; refs.value = c.references.join('; '); croise(); };
+    const croise = () => { nl.placeholder = fr.value.trim(); fr.placeholder = estZone ? '' : nl.value.trim(); }; // autre langue en italique, jamais enregistrée
+    fr.addEventListener('input', croise); nl.addEventListener('input', croise);
+    const lus = () => ({ genre: selG.value, name_fr: fr.value.trim(), name_nl: nl.value.trim(), references: sepRefs(refs.value) });
+    const modifie = () => sig(lus()) !== sig(depart);
+    const champ = (titre, el) => h('label', { class: 'rgl-iz__champ-f' }, h('span', { text: titre }), el);
+    const fenetre = h('div', { class: 'rgl-iz__fenetre', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Attributs' },
+      h('div', { class: 'rgl-iz__f-tete' }, h('strong', { text: estZone ? 'Attributs de la zone' : 'Attributs de l\'objet' }), fermer),
+      h('p', { class: 'rgl-iz__f-sous', text: `${l.nom || ''} · Id : ${l.id || (estZone ? '— (attribué à l\'écriture)' : '')}` }),
+      champ('Genre', selG), champ('Nom (FR)', fr), champ('Nom (NL)', nl), champ('Références (séparées par « ; »)', refs),
+      msg,
+      h('div', { class: 'rgl-iz__f-pied' }, retourBtn, h('span', { class: 'rgl-iz__f-aide', text: estZone ? 'Genre et nom FR obligatoires.' : 'Genre et un nom obligatoires.' }), sauver));
+    const voile = h('div', { class: 'rgl-iz__voile' }, fenetre);
+    const quitter = () => { if (modifie() && !window.confirm('Fermer sans enregistrer ?')) return; voile.remove(); };
+    fermer.addEventListener('click', quitter);
+    voile.addEventListener('click', (ev) => { if (ev.target === voile) quitter(); });
+    retourBtn.addEventListener('click', () => { remplirChamps(depart); msg.textContent = ''; });
+    sauver.addEventListener('click', async () => {
+      const c = lus();
+      msg.className = 'rgl-iz__msg rgl-statut--erreur';
+      if (!genres.includes(c.genre)) { msg.textContent = 'Choisir un genre.'; return; }
+      if (estZone ? !c.name_fr : !(c.name_fr || c.name_nl)) { msg.textContent = estZone ? 'Le nom FR est obligatoire.' : 'Indiquer au moins un nom.'; return; }
+      if (!modifie()) { msg.textContent = 'Aucune modification.'; return; }
+      const A = window.AMGT4CEM_PeLabelAnchors;
+      const relais = (window.AMGT4CEM_Services && AMGT4CEM_Services.current().relayUrl) || AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl;
+      if (!A || !relais) { msg.textContent = 'Relais non configuré (Réglages > Avancé > Services et relais).'; return; }
+      sauver.disabled = true; msg.className = 'rgl-iz__msg'; msg.textContent = 'Vérification sur le serveur…';
+      try {
+        const cle = l.cle.slice(2);
+        if (estZone) {
+          const frais = await lireJson(ZONES_URL);
+          const z = frais.lieux && frais.lieux[cle];
+          if (!z) throw new Error('Cette zone n\'existe plus sur le serveur. Rouvrez l\'écran.');
+          if (sigZone(z) !== sigServeurDepart) throw new Error('Cette zone a été modifiée par quelqu\'un d\'autre depuis l\'ouverture. Rien n\'a été enregistré ; rouvrez l\'écran.');
+          z.genre = c.genre; z.nom = c.name_fr;
+          if (c.name_nl) z.name_nl = c.name_nl; else delete z.name_nl;
+          if (c.references.length) z.references = c.references; else delete z.references;
+          msg.textContent = 'Enregistrement…';
+          await A.putToRelay(relais, 'shared/lieux/lieux', frais, (A.getAdminCode && A.getAdminCode()) || '');
+          zones.lieux = frais.lieux;
+        } else {
+          const frais = await lireJson(SHP_URL);
+          const e = frais.entites && frais.entites[cle];
+          if (!e) throw new Error('Cet objet n\'existe plus sur le serveur. Rouvrez l\'écran.');
+          if (sigShp(e) !== sigServeurDepart) throw new Error('Cet objet a été modifié par quelqu\'un d\'autre depuis l\'ouverture. Rien n\'a été enregistré ; rouvrez l\'écran.');
+          if (LOG) LOG.ecrireChamps(e, { ...c, sheet_ref: '' });
+          else { e.genre = c.genre; e.name_fr = c.name_fr; e.name_nl = c.name_nl; if (c.references.length) e.references = c.references; else delete e.references; }
+          msg.textContent = 'Enregistrement…';
+          await A.putToRelay(relais, 'shared/ditp-diov/polygones', frais, (A.getAdminCode && A.getAdminCode()) || '');
+          shp.entites = frais.entites;
+        }
+        // Mise à jour de la ligne (le déplacement en attente éventuel est conservé).
+        l.genre = c.genre; l.nom = estZone ? c.name_fr : (c.name_fr || c.name_nl);
+        if (estZone) {
+          const z = zones.lieux[cle];
+          l.blocage = !aContour(z) ? 'sans contour' : (genres.includes(z.genre) ? '' : 'genre manquant');
+          if (l.blocage && l.cote === 'bas') l.cote = 'haut';
+        }
+        voile.remove();
+        rendre();
+        dire(`Attributs de « ${l.nom} » enregistrés. Visibles par tous après le redéploiement du site (environ 1 minute).`, 'ok');
+      } catch (err) {
+        msg.className = 'rgl-iz__msg rgl-statut--erreur'; msg.textContent = err.message; sauver.disabled = false;
+      }
+    });
+    remplirChamps(depart);
+    document.body.append(voile);
+    selG.focus();
+  }
+
   const haut = table('haut');
   const bas = table('bas');
 
