@@ -112,6 +112,19 @@ function monterPlans(conteneur) {
   const case_ = h('input', { type: 'checkbox', class: 'rgl-check' });
   case_.checked = P.lieuxActif();
   case_.addEventListener('change', () => P.fixerLieuxActif(case_.checked));
+  // Intégration des zones dessinées dans le shapefile (src/reglages/integrationZones.js), affichée dans ce même écran.
+  const integration = h('button', { type: 'button', class: 'rgl-row rgl-row--action' },
+    h('span', { class: 'rgl-row__body' },
+      h('span', { class: 'rgl-row__text', text: 'Intégration de zones' }),
+      h('span', { class: 'rgl-row__aide', text: 'Ajouter au shapefile les zones dessinées, ou en retirer des objets.' })),
+    h('span', { class: 'rgl-row__chevron', 'aria-hidden': 'true', text: '›' }));
+  integration.addEventListener('click', async () => {
+    if (!window.AMGT4CEM_IntegrationZones) return;
+    window.scrollTo(0, 0);
+    const e = await AMGT4CEM_IntegrationZones.monter(conteneur, { retour: () => { ECRAN_PLANS.modifs = () => false; monterPlans(conteneur); } });
+    ECRAN_PLANS.modifs = () => e.modifs();
+  });
+  ECRAN_PLANS.modifs = () => false;
   conteneur.append(
     h('p', { class: 'rgl-note', text: 'Outils d\'adaptation de la carte, réservés au droit « plans ». Ces réglages sont propres à cet appareil et à votre compte : ils ne changent rien pour les autres agents.' }),
     h('section', { class: 'rgl-bloc rgl-bloc--formulaire' },
@@ -119,8 +132,11 @@ function monterPlans(conteneur) {
         h('span', { class: 'rgl-row__body' },
           h('span', { class: 'rgl-row__text', text: 'Outil « Dessiner une zone »' }),
           h('span', { class: 'rgl-row__aide', text: 'Affiche le bouton de dessin de zones sur la page Carte (sous le bouton de forage).' })),
-        case_)));
+        case_)),
+    h('section', { class: 'rgl-bloc' }, integration));
 }
+
+const ECRAN_PLANS = { id: 'plans', titre: 'Adaptations de plans', monter: monterPlans, modifs: () => false };
 
 Reglages.register({
   id: 'services',
@@ -146,7 +162,7 @@ Reglages.register({
       texte: 'Adaptations de plans',
       pastille: 'Plans',
       aide: 'Outils d\'adaptation de la carte (dessin de zones).',
-      ...(AMGT4CEM_Auth.aDroit('plans', s) ? { ecran: { id: 'plans', titre: 'Adaptations de plans', monter: monterPlans } } : { desactive: 'Réservé aux comptes disposant du droit « plans ».' }),
+      ...(AMGT4CEM_Auth.aDroit('plans', s) ? { ecran: ECRAN_PLANS } : { desactive: 'Réservé aux comptes disposant du droit « plans ».' }),
     },
   ],
 });

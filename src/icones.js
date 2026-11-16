@@ -18,6 +18,8 @@ window.AMGT4CEM_Icones = (function () {
     annuler: '<g transform="matrix(-1 0 0 1 24 0)"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5v4.5h-4.5"/></g>', // ↺
     replier: '<path d="M6 9l6 6 6-6"/>',
     deplier: '<path d="M6 15l6-6 6 6"/>',
+    flecheBas: '<path d="M12 4v16M6 14l6 6 6-6"/>',
+    flecheHaut: '<path d="M12 20V4M6 10l6-6 6 6"/>',
     terminer: '<path d="M4.5 12.5l5 5 10-11"/>',
     coche: '<circle cx="12" cy="12" r="9.5"/><path d="M7.5 12.5l3 3 6-6.5"/>',
     pause: '<rect x="7" y="5" width="3.6" height="14" rx="1"/><rect x="13.4" y="5" width="3.6" height="14" rx="1"/>',

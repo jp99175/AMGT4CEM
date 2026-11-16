@@ -124,3 +124,27 @@ html[data-app="reglages"] body {
 .rgl-tableau .rgl-ro { display: inline-block; padding: 6px; color: #52606d; white-space: nowrap; }
 .rgl-tableau tr.rgl-modif { background: #fff8e1; }
 .rgl-tableau .rgl-cell::placeholder { font-style: italic; color: #52606d; opacity: 1; }
+
+/* Écran « Intégration de zones » (Adaptations de plans) : deux tables aux mêmes colonnes */
+#reglages-root:has(.rgl-iz__table) { max-width: 1100px; }
+.rgl-iz__titre { font-size: 18px; margin: 6px 0 8px; }
+.rgl-iz__filtre { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+.rgl-iz__champ { flex: 1 1 10em; min-width: 0; }
+.rgl-iz__sel { flex: 0 1 auto; }
+.rgl-iz__legende { font-size: 13px; color: #52606d; margin: 6px 0 4px; }
+.rgl-iz__cadre { max-height: 40vh; }
+.rgl-iz__table { table-layout: fixed; font-size: 13px; }
+.rgl-iz__table td { padding: 6px 4px; overflow-wrap: anywhere; }
+.rgl-iz__table th { padding: 6px 4px; }
+.rgl-iz__c-case { width: 30px; }
+.rgl-iz__c-id { width: 76px; }
+.rgl-iz__c-genre { width: 22%; }
+.rgl-iz__c-etat { width: 24%; }
+.rgl-iz__case { width: 18px; height: 18px; margin: 0; }
+.rgl-iz__vide { color: #9aa5b1; }
+.rgl-iz__sep { display: flex; align-items: center; gap: 6px; margin: 12px 0; padding: 6px 0; border-top: 1px solid #9aa5b1; border-bottom: 1px solid #9aa5b1; }
+.rgl-iz__sep .rgl-compteur { flex: 1; text-align: center; }
+.rgl-iz__btn { color: #0b5c75; }
+.rgl-iz__table tr.rgl-iz--ajout { background: #e3f4e1; }
+.rgl-iz__table tr.rgl-iz--retrait { background: #fde8e8; }
+.rgl-iz__table tr.rgl-iz--bloque td { color: #9aa5b1; }
