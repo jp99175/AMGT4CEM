@@ -115,7 +115,7 @@ function monterPlans(conteneur) {
   // Intégration des zones dessinées dans le shapefile (src/reglages/integrationZones.js), affichée dans ce même écran.
   const integration = h('button', { type: 'button', class: 'rgl-row rgl-row--action' },
     h('span', { class: 'rgl-row__body' },
-      h('span', { class: 'rgl-row__text', text: 'Intégration de zones' }),
+      h('span', { class: 'rgl-row__text', text: 'Intégrer au shapefile' }),
       h('span', { class: 'rgl-row__aide', text: 'Ajouter au shapefile les zones dessinées, ou en retirer des objets.' })),
     h('span', { class: 'rgl-row__chevron', 'aria-hidden': 'true', text: '›' }));
   integration.addEventListener('click', async () => {
@@ -125,15 +125,17 @@ function monterPlans(conteneur) {
     ECRAN_PLANS.modifs = () => e.modifs();
   });
   ECRAN_PLANS.modifs = () => false;
+  // Un seul cadre « Outils de zone » : l'affichage du bouton (réglage de l'appareil) puis l'intégration au shapefile (données de tous).
   conteneur.append(
-    h('p', { class: 'rgl-note', text: 'Outils d\'adaptation de la carte, réservés au droit « plans ». Ces réglages sont propres à cet appareil et à votre compte : ils ne changent rien pour les autres agents.' }),
-    h('section', { class: 'rgl-bloc rgl-bloc--formulaire' },
+    h('p', { class: 'rgl-note', text: 'Outils d\'adaptation de la carte, réservés au droit « plans ».' }),
+    h('section', { class: 'rgl-bloc' },
+      h('h2', { class: 'rgl-bloc__titre', text: 'Outils de zone' }),
       h('label', { class: 'rgl-row' },
         h('span', { class: 'rgl-row__body' },
-          h('span', { class: 'rgl-row__text', text: 'Outil « Dessiner une zone »' }),
-          h('span', { class: 'rgl-row__aide', text: 'Affiche le bouton de dessin de zones sur la page Carte (sous le bouton de forage).' })),
-        case_)),
-    h('section', { class: 'rgl-bloc' }, integration));
+          h('span', { class: 'rgl-row__text', text: 'Dessiner / modifier une zone' }),
+          h('span', { class: 'rgl-row__aide', text: 'Affiche le bouton sur la page Carte (sous le bouton de forage). Réglage propre à cet appareil et à votre compte.' })),
+        case_),
+      integration));
 }
 
 const ECRAN_PLANS = { id: 'plans', titre: 'Adaptations de plans', monter: monterPlans, modifs: () => false };

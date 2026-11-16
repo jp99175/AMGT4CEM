@@ -1,5 +1,5 @@
 /**
- * Réglages > Avancé > Adaptations de plans > « Intégration de zones » (droit « plans »).
+ * Réglages > Avancé > Adaptations de plans > « Intégrer au shapefile » (droit « plans »).
  *
  * Deux tables aux mêmes colonnes (case, Id, Genre, Nom, État), un filtre commun au-dessus :
  *  - en haut : les zones dessinées avec l'outil « Dessiner une zone » (data/lieux/lieux.json) ;
@@ -111,7 +111,7 @@ async function monter(conteneur, opts = {}) {
     if (etatEcran.modifs() && !window.confirm('Quitter cet écran ? Les déplacements non appliqués seront perdus.')) return;
     if (opts.retour) opts.retour();
   });
-  conteneur.append(retour, h('h2', { class: 'rgl-ecran__titre rgl-iz__titre', text: 'Intégration de zones' }), h('p', { class: 'rgl-note', text: 'Chargement…' }));
+  conteneur.append(retour, h('h2', { class: 'rgl-ecran__titre rgl-iz__titre', text: 'Intégrer au shapefile' }), h('p', { class: 'rgl-note', text: 'Chargement…' }));
 
   let zones, shp, vocab;
   try {
