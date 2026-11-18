@@ -362,7 +362,8 @@ export function creerRoutesGeometries(ctx) {
     // Le fichier reçu est relu pour vérification avant que quoi que ce soit devienne visible.
     try { const relu = await lireJeuR2(env, couche, version); if (relu.objets.length !== ids.length || relu.objets.some((o, i) => o.id !== ids[i])) throw new Error('relecture différente'); } catch (err) { await supprimerVersion(env, couche, version); throw new HttpError(500, 'La relecture de vérification a échoué : rien n\'a été enregistré.'); }
     if (d.zip) await env.DEPOTS.put(cleZip(couche, version), deBase64(d.zip, 'zip'), { httpMetadata: { contentType: 'application/zip' } });
-    if (nouveaux.length) await ajouterEntrees(env, 'ditp-diov', nouveaux, u.matricule);
+    // Les attributs sont ceux du vrai réseau : la couche d'essai (T…) n'y écrit rien (correction du 18/11/2026).
+    if (nouveaux.length && prefixe === 'P') await ajouterEntrees(env, 'ditp-diov', nouveaux, u.matricule);
     const pointeur = { version, origine: (cur && cur.pointeur.origine) || version, fichiers: EXTENSIONS, objets: ids.length, date: new Date().toISOString(), par: u.matricule, deposePar, source: 'depot', prochainT: prefixe === 'T' ? prochainT + nouveaux.length : prochainT };
     const journal = { version, date: pointeur.date, par: u.matricule, deposePar, source: 'depot', nomZip: typeof d.nomZip === 'string' ? d.nomZip.slice(0, 200) : null, versionBase, versionPrecedente: cur ? cur.pointeur.version : null, objets: ids.length, attribues: nouveaux, doublons: resume.doublons, disparus: analyse.disparus, modifies: analyse.modifies.length, inchanges: analyse.inchanges, valeursCoupees: coupes };
     if (!(await basculer(env, couche, cur, pointeur, journal))) {

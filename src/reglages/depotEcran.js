@@ -132,7 +132,7 @@ function cadre() {
         const out = await Auth.call(`/geometries/shapefile/${couche.value}/deposer`, { method: 'POST', body: { fichiers: courant.fichiers, zip: courant.zip, nomZip: courant.nomZip, versionBase: courant.versionBase, deposePar: par.value.trim(), confirmations: conf } });
         zone.replaceChildren();
         courant = null;
-        dire(`Version du ${dateVersion(out.version)} enregistrée : ${out.objets} objets${out.attribues.length ? `, identifiants attribués : ${out.attribues.join(', ')}` : ''}. ${out.attribues.length ? 'Les nouveaux objets sont à compléter dans Attributs (genre, noms). ' : ''}Téléchargez la version à jour avant de la renvoyer au dessinateur.`, 'ok');
+        dire(`Version du ${dateVersion(out.version)} enregistrée : ${out.objets} objets${out.attribues.length ? `, identifiants attribués : ${out.attribues.join(', ')}` : ''}. ${out.attribues.some((i) => i[0] === 'P') ? 'Les nouveaux objets sont à compléter dans Attributs (genre, noms). ' : ''}Téléchargez la version à jour avant de la renvoyer au dessinateur.`, 'ok');
         await montrerHistorique();
       } catch (err) { liberer(); dire(err.message + (err.data && err.data.manque ? ' (confirmation manquante)' : ''), 'erreur'); }
     });
