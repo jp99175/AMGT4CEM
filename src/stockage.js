@@ -112,6 +112,16 @@ const AMGT4CEM_Stockage = {
       throw err;
     }
   },
+
+  /** Supprime des entrées d'attributs sans contour dans le vrai shapefile (R2 seulement ; le serveur refuse si un contour existe encore). */
+  async supprimerAttributs(nom, ids) {
+    try {
+      return await AMGT4CEM_Auth.call(`/attributs/${nom}/supprimer`, { method: 'POST', body: { ids } });
+    } catch (err) {
+      if (err.status === 409 && err.data && Array.isArray(err.data.conflits)) err.message = `${err.message}\n${err.data.conflits.slice(0, 8).map((c) => `${c.id} : ${c.motif}.`).join('\n')}`;
+      throw err;
+    }
+  },
 };
 window.AMGT4CEM_Stockage = AMGT4CEM_Stockage;
 

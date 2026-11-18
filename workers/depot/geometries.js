@@ -21,6 +21,7 @@
  *   GET  /attributs/<nom>                              JSON (ETag, 304)
  *   POST /geometries/charger           (plans)         chargement initial (refusé si R2 contient déjà la couche)
  *   POST /attributs/<nom>/modifier     (attributs)     lot B : lignes modifiées { changements: [{ id, avant, apres }] }
+ *   POST /attributs/<nom>/supprimer    (attributs)     lot C : supprime des entrées sans contour dans le vrai shapefile { ids: [...] }
  *
  * Lot B (écriture des attributs) : le client n'envoie que les lignes modifiées, chacune avec ses anciennes valeurs (`avant`)
  * et les nouvelles (`apres`, `null` = champ retiré). Le serveur relit le fichier, refuse tout si une ligne n'est plus dans l'état
@@ -38,7 +39,7 @@
  * Ordre d'écriture : fichiers de la version, attributs des nouveaux objets, puis pointeur en dernier (If-Match). Voir shapefile.js.
  */
 
-import { analyserDepot, composerDbf, composerShpShx, controlerContour, lireJeu } from './shapefile.js';
+import { analyserDepot, composerDbf, composerShpShx, controlerContour, lireIdsDbf, lireJeu } from './shapefile.js';
 
 const COUCHES = ['polygones', 'essai'];
 const EXTENSIONS = ['shp', 'shx', 'dbf', 'prj', 'cpg'];
@@ -464,6 +465,46 @@ export function creerRoutesGeometries(ctx) {
       if (!COUCHES.includes(couche)) throw new HttpError(404, 'Couche inconnue.');
       const d = await lireJson(request);
       return action === 'deposer' ? deposer(env, u, couche, d) : restaurer(env, u, couche, d);
+    }
+
+
+    // ---- lot C : suppression d'entrées sans contour (droit « attributs »). Refusée pour tout identifiant encore présent dans le vrai shapefile.
+    const mSup = /^\/attributs\/([a-z0-9-]+)\/supprimer$/.exec(p);
+    if (request.method === 'POST' && mSup) {
+      const u = await exigerDroit(request, env, 'attributs');
+      const nom = mSup[1];
+      if (!ATTRIBUTS.includes(nom)) throw new HttpError(404, 'Attributs inconnus.');
+      const { ids } = await lireJson(request);
+      if (!Array.isArray(ids) || !ids.length || ids.length > MAX_CHANGEMENTS || ids.some((x) => typeof x !== 'string')) throw new HttpError(400, `Entre 1 et ${MAX_CHANGEMENTS} identifiants attendus.`);
+      const voulus = [...new Set(ids)];
+      const cur = await lirePointeur(env, 'polygones');
+      if (!cur) throw new HttpError(409, 'Le vrai shapefile n\'est pas dans R2 : impossible de savoir quelles entrées n\'ont plus de contour.');
+      const dbf = await env.DEPOTS.get(cleFichier('polygones', cur.pointeur.version, 'dbf'));
+      if (!dbf) throw new HttpError(500, 'Le .dbf du vrai shapefile est introuvable dans R2.');
+      const presents = new Set(lireIdsDbf(new Uint8Array(await dbf.arrayBuffer())));
+      const encore = voulus.filter((x) => presents.has(x));
+      if (encore.length) return { status: 409, body: { erreur: 'Refusé : ces objets ont encore un contour dans le shapefile. Rien n\'a été supprimé.', conflits: encore.map((id) => ({ id, motif: 'a un contour dans le shapefile' })) } };
+      for (let tentative = 0; tentative < 4; tentative++) {
+        const o = await env.DEPOTS.get(cleAttributs(nom));
+        if (!o) throw new HttpError(404, 'Ces attributs ne sont pas encore dans R2.');
+        const brut = await o.text();
+        let data;
+        try { data = JSON.parse(brut); } catch (err) { throw new HttpError(500, 'Attributs illisibles dans R2.'); }
+        const absents = voulus.filter((x) => !(data.entites || {})[x]);
+        if (absents.length) return { status: 409, body: { erreur: 'Ces entrées n\'existent plus (déjà supprimées ?). Rien n\'a été supprimé.', conflits: absents.map((id) => ({ id, motif: 'n\'existe plus' })) } };
+        for (const x of voulus) delete data.entites[x];
+        data.date = new Date().toISOString();
+        data.modifiePar = u.matricule;
+        let version = nomVersion();
+        for (let n = 2; await env.DEPOTS.head(`${prefixeArchives(nom)}${version}.json`); n++) version = `${nomVersion()}_${n}`;
+        const cleArchive = `${prefixeArchives(nom)}${version}.json`;
+        await env.DEPOTS.put(cleArchive, brut, { httpMetadata: { contentType: 'application/json' } });
+        const ecrit = await env.DEPOTS.put(cleAttributs(nom), JSON.stringify(data), { httpMetadata: { contentType: 'application/json' }, onlyIf: { etagMatches: o.etag } });
+        if (!ecrit) { await env.DEPOTS.delete(cleArchive); continue; }
+        await purgerArchives(env, nom);
+        return { status: 200, body: { supprimees: voulus.length, archive: version } };
+      }
+      throw new HttpError(409, 'Le fichier est modifié en continu par d\'autres écritures ; réessayez dans un instant.');
     }
 
     // ---- lot B : modification de lignes d'attributs (droit « attributs »)

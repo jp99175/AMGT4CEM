@@ -37,7 +37,7 @@ const h = (tag, attrs, ...kids) => {
 const aContour = (z) => Array.isArray(z.contour) && z.contour.some((anneau) => Array.isArray(anneau) && anneau.length >= 4);
 
 /** Lignes des deux tables. `cote` : 'haut' (zones) ou 'bas' (shapefile) ; `origine` : côté de départ. */
-function construireLignes(zones, shp, genres) {
+function construireLignes(zones, shp, genres, idsShapefile) {
   const lignes = [];
   for (const [code, z] of Object.entries(zones || {})) {
     let blocage = '';
@@ -47,7 +47,9 @@ function construireLignes(zones, shp, genres) {
   }
   for (const [id, e] of Object.entries(shp || {})) {
     if (e.genre === 'planche') continue;
-    lignes.push({ cle: `S:${id}`, origine: 'bas', cote: 'bas', id, genre: e.genre || '', nom: e.name_fr || e.name_nl || '', blocage: '' });
+    // Entrée d'attributs sans contour dans le vrai shapefile (idsShapefile = identifiants du .dbf ; null si illisible) : ligne grisée.
+    const orphelin = !!idsShapefile && !idsShapefile.has(id);
+    lignes.push({ cle: `S:${id}`, origine: 'bas', cote: 'bas', id, genre: e.genre || '', nom: e.name_fr || e.name_nl || '', blocage: orphelin ? 'sans contour' : '', orphelin });
   }
   return lignes;
 }
@@ -55,6 +57,7 @@ function construireLignes(zones, shp, genres) {
 /** État affiché d'une ligne. */
 function etat(l) {
   if (l.cote === 'haut') return l.origine === 'bas' ? 'retrait en attente' : (l.blocage || 'à intégrer');
+  if (l.orphelin) return 'sans contour';
   return l.origine === 'haut' ? 'ajout en attente' : 'au shapefile';
 }
 const enAttente = (l) => l.cote !== l.origine;
@@ -64,7 +67,7 @@ function deplacer(lignes, cles, vers) {
   const groupe = [];
   for (const l of lignes) {
     if (!cles.has(l.cle) || l.cote === vers) continue;
-    if (vers === 'bas' && l.blocage) continue; // zone incomplète : ne peut pas entrer dans le shapefile
+    if (l.blocage) continue; // zone incomplète (ne peut pas entrer) ou entrée sans contour (ne peut pas sortir)
     l.cote = vers;
     groupe.push(l.cle);
   }
@@ -84,6 +87,28 @@ function recap(lignes) {
 }
 
 /* ---------- Écran ---------- */
+
+/** Identifiants (champ « id ») du .dbf du vrai shapefile, lu avec la source en cours ; null si illisible. */
+async function lireIdsShapefile() {
+  try {
+    const url = './data/shapefile/polygones.dbf';
+    const r = window.AMGT4CEM_Stockage ? await AMGT4CEM_Stockage.fetch(`${url}?t=${Date.now()}`, { cache: 'no-store' }) : await fetch(`${url}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) return null;
+    const d = new Uint8Array(await r.arrayBuffer());
+    const v = new DataView(d.buffer);
+    const n = v.getUint32(4, true); const lenEntete = v.getUint16(8, true); const lenEnreg = v.getUint16(10, true);
+    let debut = 1; let longueur = 0;
+    for (let i = 32; i < lenEntete - 1 && d[i] !== 0x0d; i += 32) {
+      const nom = new TextDecoder().decode(d.subarray(i, i + 11)).replace(/\0.*$/, '').toLowerCase();
+      if (nom === 'id') { longueur = d[i + 16]; break; }
+      debut += d[i + 16];
+    }
+    if (!longueur) return null;
+    const ids = new Set();
+    for (let k = 0; k < n; k++) ids.add(new TextDecoder().decode(d.subarray(lenEntete + k * lenEnreg + debut, lenEntete + k * lenEnreg + debut + longueur)).replace(/\0/g, '').trim());
+    return ids;
+  } catch (err) { return null; }
+}
 
 async function lireJson(url) {
   // Source des données (dépôt ou R2) : src/stockage.js. Sans ce module : le dépôt, comme avant.
@@ -115,15 +140,17 @@ async function monter(conteneur, opts = {}) {
   });
   conteneur.append(retour, h('h2', { class: 'rgl-ecran__titre rgl-iz__titre', text: 'Intégrer au shapefile' }), h('p', { class: 'rgl-note', text: 'Chargement…' }));
 
-  let zones, shp, vocab;
+  let zones, shp, vocab, idsShp;
   try {
-    [zones, shp, vocab] = await Promise.all([lireJson(ZONES_URL), lireJson(SHP_URL), lireJson(VOCAB_URL)]);
+    [zones, shp, vocab, idsShp] = await Promise.all([lireJson(ZONES_URL), lireJson(SHP_URL), lireJson(VOCAB_URL), lireIdsShapefile()]);
   } catch (err) { conteneur.lastChild.remove(); conteneur.append(h('p', { class: 'rgl-statut rgl-statut--erreur', text: err.message })); return etatEcran; }
   conteneur.lastChild.remove();
 
   const genres = Object.keys(vocab.genres || {});
   const libelle = (g) => (vocab.genres[g] && vocab.genres[g].libelle) || g;
-  const lignes = construireLignes(zones.lieux, shp.entites, genres);
+  const lignes = construireLignes(zones.lieux, shp.entites, genres, idsShp);
+  // Identifiants gardés par les zones (objets retirés par ↑) : jamais proposés au nettoyage.
+  const idsZones = new Set(Object.values(zones.lieux || {}).map((z) => z.id_shapefile).filter(Boolean));
   const historique = [];
   const coches = new Set();
   let recherche = ''; let filtreGenre = ''; let filtreEtat = '';
@@ -142,15 +169,15 @@ async function monter(conteneur, opts = {}) {
   const passe = (l) => {
     if (filtreGenre && l.genre !== filtreGenre) return false;
     if (filtreEtat === 'integrer' && !(l.cote === 'haut' && l.origine === 'haut' && !l.blocage)) return false;
-    if (filtreEtat === 'bloque' && !(l.cote === 'haut' && l.blocage)) return false;
+    if (filtreEtat === 'bloque' && !l.blocage) return false;
     if (filtreEtat === 'attente' && !enAttente(l)) return false;
-    if (filtreEtat === 'shapefile' && !(l.cote === 'bas' && l.origine === 'bas')) return false;
+    if (filtreEtat === 'shapefile' && !(l.cote === 'bas' && l.origine === 'bas' && !l.orphelin)) return false;
     const q = recherche.trim().toLowerCase();
     return !q || `${l.id} ${l.nom} ${libelle(l.genre)}`.toLowerCase().includes(q);
   };
   const tri = (a, b) => (enAttente(b) - enAttente(a)) || a.nom.localeCompare(b.nom, 'fr') || a.id.localeCompare(b.id);
   const visibles = (cote) => lignes.filter((l) => l.cote === cote && passe(l)).sort(tri);
-  const cochable = (l) => !(l.cote === 'haut' && l.blocage);
+  const cochable = (l) => !l.blocage;
 
   /* Tables */
   const table = (cote) => {
@@ -171,11 +198,11 @@ async function monter(conteneur, opts = {}) {
       for (const l of vis) {
         const c = h('input', { type: 'checkbox', class: 'rgl-iz__case', 'aria-label': `Cocher ${l.nom}` });
         c.checked = coches.has(l.cle);
-        if (!cochable(l)) { c.disabled = true; c.title = `Zone incomplète (${l.blocage}) : à compléter avec l'outil « Dessiner une zone ».`; }
+        if (!cochable(l)) { c.disabled = true; c.title = l.orphelin ? 'Entrée sans contour dans le shapefile : à supprimer avec « Nettoyer les entrées sans contour ».' : `Zone incomplète (${l.blocage}) : à compléter avec l'outil « Dessiner une zone ».`; }
         c.addEventListener('change', () => { if (c.checked) coches.add(l.cle); else coches.delete(l.cle); majBoutons(); });
         const id = l.id ? h('span', { text: l.id }) : (l.cote === 'bas' ? h('i', { text: 'à l\'écriture' }) : h('span', { class: 'rgl-iz__vide', text: '—' }));
         const genre = l.genre ? h('span', { text: libelle(l.genre) }) : h('i', { text: 'vide' });
-        const tr = h('tr', { class: [enAttente(l) ? (l.cote === 'bas' ? 'rgl-iz--ajout' : 'rgl-iz--retrait') : '', l.blocage && l.cote === 'haut' ? 'rgl-iz--bloque' : ''].join(' ').trim() },
+        const tr = h('tr', { class: [enAttente(l) ? (l.cote === 'bas' ? 'rgl-iz--ajout' : 'rgl-iz--retrait') : '', l.blocage ? 'rgl-iz--bloque' : ''].join(' ').trim() },
           h('td', null, c), h('td', null, id), h('td', null, genre), h('td', null, celluleNom(l)), h('td', { text: etat(l) }));
         tbody.append(tr);
       }
@@ -351,6 +378,53 @@ async function monter(conteneur, opts = {}) {
     dire(`${texte}\n\nL'écriture dans le shapefile n'est pas encore en place (prochaine étape, d'abord dans test_shapefile) : rien n'a été enregistré.`, 'erreur');
   });
 
+  /* ---- Nettoyage des entrées sans contour (source R2, droit « attributs ») ---- */
+  const zoneNettoyage = h('div', {});
+  const orphelinsNettoyables = () => lignes.filter((l) => l.orphelin && !idsZones.has(l.id));
+  function majNettoyage() {
+    zoneNettoyage.textContent = '';
+    const n = orphelinsNettoyables().length;
+    if (!n) return;
+    const r2 = !!window.AMGT4CEM_Stockage && AMGT4CEM_Stockage.source() === 'r2';
+    if (!(peutEditer && r2)) {
+      zoneNettoyage.append(h('p', { class: 'rgl-note', text: `${n} entrée(s) d'attributs sans contour dans le shapefile. Le nettoyage demande le droit « attributs » et la source R2.` }));
+      return;
+    }
+    const b = h('button', { type: 'button', class: 'rgl-btn', text: `Nettoyer les entrées sans contour (${n})` });
+    b.addEventListener('click', ouvrirNettoyage);
+    zoneNettoyage.append(h('div', { class: 'rgl-actions' }, b));
+  }
+  function ouvrirNettoyage() {
+    zoneNettoyage.textContent = '';
+    const cases = orphelinsNettoyables().sort((a, b) => a.id.localeCompare(b.id)).map((l) => {
+      const c = h('input', { type: 'checkbox' }); c.checked = true;
+      const resume = [l.genre ? libelle(l.genre) : 'genre vide', l.nom || 'sans nom'].join(', ');
+      return { l, c, el: h('label', { style: 'display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-top:1px solid #e4e7eb;' }, c, h('span', null, h('span', { text: l.id }), h('br'), h('span', { class: 'rgl-row__aide', text: resume }))) };
+    });
+    const sup = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: '' });
+    const annulerB = h('button', { type: 'button', class: 'rgl-btn', text: 'Annuler' });
+    const maj = () => { const k = cases.filter((x) => x.c.checked).length; sup.textContent = `Supprimer ${k} entrée${k > 1 ? 's' : ''}`; };
+    cases.forEach((x) => x.c.addEventListener('change', maj)); maj();
+    annulerB.addEventListener('click', majNettoyage);
+    sup.addEventListener('click', async () => {
+      const ids = cases.filter((x) => x.c.checked).map((x) => x.l.id);
+      if (!ids.length) { dire('Cochez au moins une entrée.', 'erreur'); return; }
+      if (sup.disabled) return;
+      const avant = sup.textContent; sup.disabled = true; sup.textContent = 'Suppression…'; sup.style.opacity = '0.6';
+      try {
+        const out = await AMGT4CEM_Stockage.supprimerAttributs('ditp-diov', ids);
+        for (const id of ids) { delete shp.entites[id]; const i = lignes.findIndex((l) => l.cle === `S:${id}`); if (i >= 0) lignes.splice(i, 1); coches.delete(`S:${id}`); }
+        dire(`${out.supprimees} entrée(s) supprimée(s). L'ancien fichier est archivé ; les identifiants restent réservés.`, 'ok');
+        majNettoyage(); rendre();
+      } catch (err) { sup.disabled = false; sup.textContent = avant; sup.style.opacity = ''; dire(err.message, 'erreur'); }
+    });
+    zoneNettoyage.append(
+      h('p', { class: 'rgl-iz__legende', text: 'Entrées sans contour' }),
+      h('p', { class: 'rgl-note', text: 'Ces entrées n\'ont plus de contour dans le shapefile ni dans les zones. Leur identifiant reste réservé ; l\'ancien fichier d\'attributs est archivé et récupérable.' }),
+      ...cases.map((x) => x.el),
+      h('div', { class: 'rgl-actions' }, annulerB, sup));
+  }
+
   etatEcran.modifs = () => recap(lignes).ajouts.length + recap(lignes).retraits.length > 0;
 
   conteneur.append(
@@ -359,7 +433,9 @@ async function monter(conteneur, opts = {}) {
     haut.el,
     h('div', { class: 'rgl-iz__sep' }, bAnnuler, bBas, bHaut, resume, bAppliquer),
     bas.el,
+    zoneNettoyage,
     statut);
+  majNettoyage();
   rendre();
   return etatEcran;
 }
