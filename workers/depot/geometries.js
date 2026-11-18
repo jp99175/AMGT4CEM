@@ -29,8 +29,16 @@
  * Seuls genre, name_fr, name_nl, references et sheet_ref d'une ligne existante sont modifiables ; ajouter ou retirer une ligne
  * est réservé au lot C.
  *
- * Écriture du shapefile (lot C) : à ajouter ici, avec `If-Match` et la conservation des versions.
+ * Lot C (écriture du shapefile, 18/11/2026) :
+ *   POST /geometries/shapefile/<couche>/deposer   (plans)  dépôt d'un jeu de fichiers modifié : contrôles, P… attribués, nouvelle version
+ *   POST /geometries/shapefile/<couche>/restaurer (plans)  recopie une ancienne version comme nouvelle version courante
+ *   GET  /geometries/depots/<couche>                       historique des versions écrites (journal de chaque écriture)
+ *   GET  /geometries/depots/<couche>/<version>/zip         ZIP tel que déposé
+ * Les contours ne sont jamais ré-encodés (octets copiés). Le .dbf est reconstruit : id + GENRE, NOM_FR, NOM_NL en majuscules sans accents.
+ * Ordre d'écriture : fichiers de la version, attributs des nouveaux objets, puis pointeur en dernier (If-Match). Voir shapefile.js.
  */
+
+import { analyserDepot, composerDbf, composerShpShx, controlerContour, lireJeu } from './shapefile.js';
 
 const COUCHES = ['polygones', 'essai'];
 const EXTENSIONS = ['shp', 'shx', 'dbf', 'prj', 'cpg'];
@@ -43,10 +51,17 @@ const cleCourant = (couche) => `prive/geometries/shapefile/${couche}/courant.jso
 const cleFichier = (couche, version, ext) => `prive/geometries/shapefile/${couche}/versions/${version}/${couche}.${ext}`;
 const cleAttributs = (nom) => `prive/attributs/${nom}.json`;
 const prefixeArchives = (nom) => `prive/attributs/archive/${nom}/`;
+const prefixeVersions = (couche) => `prive/geometries/shapefile/${couche}/versions/`;
+const cleJournal = (couche, version) => `prive/geometries/depots/${couche}/${version}.json`;
+const cleZip = (couche, version) => `prive/geometries/depots/${couche}/${version}.zip`;
+const prefixeDepots = (couche) => `prive/geometries/depots/${couche}/`;
+const REGLES_ID = { polygones: /^P\d{6,}$/, essai: /^[PT]\d{6,}$/ };
+const nombreId = (id) => Number(id.slice(1));
+const idDe = (prefixe, n) => `${prefixe}${String(n).padStart(6, '0')}`;
 
 // Conservation des versions (décidée le 18/11/2026) : les N dernières + la dernière de chaque mois + la plus ancienne (origine).
 // Valeurs fixées dans le code : les changer demande un redéploiement du Worker.
-export const CONSERVATION = { shapefile: 10, attributs: 20 };
+export const CONSERVATION = { shapefile: 10, attributs: 20, depots: 30 };
 const CHAMPS_MODIFIABLES = ['genre', 'name_fr', 'name_nl', 'references', 'sheet_ref'];
 const MAX_CHANGEMENTS = 500;
 
@@ -147,6 +162,31 @@ async function purgerArchives(env, nom) {
   } catch (err) { console.error('purge des archives', err); }
 }
 
+/** Supprime les versions de shapefile hors règle (10 dernières, une par mois, 30 derniers dépôts, origine, version courante) ; sans échec bloquant. */
+async function purgerVersions(env, couche, pointeur) {
+  try {
+    const lister = async (prefix) => {
+      const cles = []; let curseur;
+      do { const page = await env.DEPOTS.list({ prefix, cursor: curseur }); for (const o of page.objects) cles.push(o.key); curseur = page.truncated ? page.cursor : undefined; } while (curseur);
+      return cles;
+    };
+    const cles = await lister(prefixeVersions(couche));
+    const nomsVersions = [...new Set(cles.map((k) => k.slice(prefixeVersions(couche).length).split('/')[0]))];
+    const journaux = (await lister(prefixeDepots(couche))).filter((k) => k.endsWith('.json')).map((k) => k.slice(prefixeDepots(couche).length).replace(/\.json$/, ''));
+    const garder = archivesAGarder(nomsVersions, CONSERVATION.shapefile);
+    const depotsGardes = archivesAGarder(journaux, CONSERVATION.depots);
+    for (const v of depotsGardes) garder.add(v);
+    garder.add(pointeur.version);
+    if (pointeur.origine) garder.add(pointeur.origine);
+    const aSupprimer = cles.filter((k) => !garder.has(k.slice(prefixeVersions(couche).length).split('/')[0]));
+    for (let i = 0; i < aSupprimer.length; i += 100) await env.DEPOTS.delete(aSupprimer.slice(i, i + 100));
+    // ZIP déposés : mêmes règles que les dépôts ; les journaux (quelques centaines d'octets) restent tous.
+    const zips = (await lister(prefixeDepots(couche))).filter((k) => k.endsWith('.zip'));
+    const zipsASupprimer = zips.filter((k) => !depotsGardes.has(k.slice(prefixeDepots(couche).length).replace(/\.zip$/, '')));
+    if (zipsASupprimer.length) await env.DEPOTS.delete(zipsASupprimer);
+  } catch (err) { console.error('purge des versions', err); }
+}
+
 /**
  * @param {object} ctx  outils de worker.js : HttpError, intervenantCourant, exigerDroit, aDroit, compteur, lireJson
  * @returns {(request, env, url) => Promise<null | {status, body} | {status, raw, type, headers}>}
@@ -163,7 +203,7 @@ export function creerRoutesGeometries(ctx) {
   async function lirePointeur(env, couche) {
     const o = await env.DEPOTS.get(cleCourant(couche));
     if (!o) return null;
-    try { return { pointeur: await o.json(), etag: o.httpEtag }; } catch (err) { throw new HttpError(500, `Pointeur illisible (${couche}).`); }
+    try { return { pointeur: await o.json(), etag: o.httpEtag, etagBrut: o.etag }; } catch (err) { throw new HttpError(500, `Pointeur illisible (${couche}).`); }
   }
 
   /** Lecture d'un objet R2 avec ETag et 304 (If-None-Match). */
@@ -192,6 +232,182 @@ export function creerRoutesGeometries(ctx) {
     let prochainP = null;
     try { prochainP = (await compteur(env, { action: 'etat' })).etat.identifiants.P; } catch (err) { console.error('compteur P', err); }
     return { ...(await lireSource(env)), couches, attributs, prochainP };
+  }
+
+
+  async function lireJeuR2(env, couche, version) {
+    const f = {};
+    for (const ext of ['shp', 'shx', 'dbf']) {
+      const o = await env.DEPOTS.get(cleFichier(couche, version, ext));
+      if (!o) throw new HttpError(500, `Le fichier .${ext} de la version ${version} est introuvable dans R2.`);
+      f[ext] = new Uint8Array(await o.arrayBuffer());
+    }
+    return lireJeu(f);
+  }
+
+  async function nomVersionLibre(env, couche) {
+    let version = nomVersion();
+    for (let n = 2; await env.DEPOTS.head(cleFichier(couche, version, 'shp')); n++) version = `${nomVersion()}_${n}`;
+    return version;
+  }
+
+  /** Ajoute des entrées vides pour de nouveaux identifiants dans un fichier d'attributs (archive + écriture conditionnelle). */
+  async function ajouterEntrees(env, nom, ids, matricule) {
+    for (let tentative = 0; tentative < 4; tentative++) {
+      const o = await env.DEPOTS.get(cleAttributs(nom));
+      if (!o) throw new HttpError(409, `Les attributs ${nom} ne sont pas dans R2.`);
+      const brut = await o.text();
+      const data = JSON.parse(brut);
+      data.entites = data.entites || {};
+      let ajoutees = 0;
+      for (const id of ids) if (!data.entites[id]) { data.entites[id] = {}; ajoutees++; }
+      if (!ajoutees) return;
+      data.date = new Date().toISOString(); data.modifiePar = matricule;
+      let version = nomVersion();
+      for (let n = 2; await env.DEPOTS.head(`${prefixeArchives(nom)}${version}.json`); n++) version = `${nomVersion()}_${n}`;
+      const cleArchive = `${prefixeArchives(nom)}${version}.json`;
+      await env.DEPOTS.put(cleArchive, brut, { httpMetadata: { contentType: 'application/json' } });
+      const ecrit = await env.DEPOTS.put(cleAttributs(nom), JSON.stringify(data), { httpMetadata: { contentType: 'application/json' }, onlyIf: { etagMatches: o.etag } });
+      if (!ecrit) { await env.DEPOTS.delete(cleArchive); continue; }
+      await purgerArchives(env, nom);
+      return;
+    }
+    throw new HttpError(409, 'Les attributs sont modifiés en continu par d\'autres écritures ; réessayez dans un instant.');
+  }
+
+  async function lireAttributsR2(env) {
+    const att = {};
+    for (const nom of ATTRIBUTS) {
+      const o = await env.DEPOTS.get(cleAttributs(nom));
+      if (!o) throw new HttpError(409, `Les attributs ${nom} ne sont pas dans R2 : chargez d'abord les données initiales.`);
+      att[nom] = await o.json();
+    }
+    return att;
+  }
+
+  /** Bascule du pointeur (If-Match) puis journal et purge. Renvoie false si quelqu'un a écrit entre-temps. */
+  async function basculer(env, couche, cur, pointeur, journal) {
+    const ok = await env.DEPOTS.put(cleCourant(couche), JSON.stringify(pointeur), { httpMetadata: { contentType: 'application/json' }, onlyIf: cur ? { etagMatches: cur.etagBrut } : { etagDoesNotMatch: '*' } });
+    if (!ok) return false;
+    await env.DEPOTS.put(cleJournal(couche, pointeur.version), JSON.stringify(journal), { httpMetadata: { contentType: 'application/json' } });
+    await purgerVersions(env, couche, pointeur);
+    return true;
+  }
+
+  async function supprimerVersion(env, couche, version) {
+    try { await env.DEPOTS.delete(EXTENSIONS.map((e) => cleFichier(couche, version, e))); } catch (err) { console.error('nettoyage', err); }
+  }
+
+  async function deposer(env, u, couche, d) {
+    const f = {};
+    for (const ext of EXTENSIONS) {
+      if (d.fichiers && d.fichiers[ext] !== undefined) f[ext] = deBase64(d.fichiers[ext], ext);
+      else if (OBLIGATOIRES.includes(ext)) throw new HttpError(400, `Fichier .${ext} manquant.`);
+    }
+    const deposePar = String(d.deposePar || '').trim();
+    if (!deposePar) throw new HttpError(400, 'Indiquez qui a déposé le fichier (« Déposé par »).');
+    if (deposePar.length > 100) throw new HttpError(400, '« Déposé par » : 100 caractères au plus.');
+    const refus = (erreurs, resume) => ({ status: 400, body: { erreur: 'Le fichier est refusé : rien n\'a été enregistré.', erreurs, resume } });
+    if (!/31370|lambert[_ ]?72|belge[_ ]lambert|lambert[_ ]belge|belgian lambert/i.test(new TextDecoder().decode(f.prj))) return refus(['Le fichier .prj n\'indique pas le Lambert 72 (EPSG:31370).']);
+    let depose;
+    try { depose = lireJeu(f); } catch (err) { return refus([err.message]); }
+    if (!depose.objets.length) return refus(['Le fichier ne contient aucun objet.']);
+    const erreurs = [];
+    depose.objets.forEach((o, i) => { try { controlerContour(o.contenu); } catch (err) { erreurs.push(`Objet n° ${i + 1}${o.id ? ` (${o.id})` : ''} : ${err.message}.`); } });
+
+    const cur = await lirePointeur(env, couche);
+    if (!cur && couche === 'polygones') throw new HttpError(409, 'Le vrai shapefile n\'est pas encore dans R2 : chargez d\'abord les données initiales.');
+    const courant = cur ? await lireJeuR2(env, couche, cur.pointeur.version) : { objets: [] };
+    const att = await lireAttributsR2(env);
+    const prochainP = (await compteur(env, { action: 'etat' })).etat.identifiants.P;
+    const prochainT = (cur && cur.pointeur.prochainT) || 1;
+    const regle = { motif: REGLES_ID[couche], connu: (id) => (id[0] === 'P' ? nombreId(id) < prochainP : nombreId(id) < prochainT) };
+    const analyse = analyserDepot(courant, depose, regle);
+    erreurs.push(...analyse.erreurs);
+
+    const prefixe = couche === 'polygones' ? 'P' : 'T';
+    const premier = prefixe === 'P' ? prochainP : prochainT;
+    const versionBase = typeof d.versionBase === 'string' && d.versionBase ? d.versionBase : null;
+    const ancienne = !!cur && versionBase !== cur.pointeur.version;
+    const resume = {
+      objetsDeposes: depose.objets.length, versionCourante: cur ? cur.pointeur.version : null, versionBase, versionAncienne: ancienne,
+      sansId: analyse.sansId.length, premierId: analyse.sansId.length ? idDe(prefixe, premier) : null, dernierId: analyse.sansId.length ? idDe(prefixe, premier + analyse.sansId.length - 1) : null,
+      doublons: analyse.doublons.map((x) => ({ id: x.id, copies: x.attribues.length })), disparus: analyse.disparus, modifies: analyse.modifies.length, inchanges: analyse.inchanges,
+    };
+    if (erreurs.length) return refus(erreurs, resume);
+    if (d.apercu) return { status: 200, body: { apercu: true, resume } };
+    const manque = [];
+    if (analyse.disparus.length && !(d.confirmations && d.confirmations.retraits)) manque.push('retraits');
+    if (ancienne && !(d.confirmations && d.confirmations.versionAncienne)) manque.push('versionAncienne');
+    if (manque.length) return { status: 409, body: { erreur: 'Confirmation manquante : rien n\'a été enregistré.', manque, resume } };
+
+    // ---- écriture : identifiants, fichiers de la version, attributs des nouveaux objets, pointeur en dernier
+    const ids = depose.objets.map((o) => o.id);
+    let nouveaux = [];
+    if (analyse.sansId.length) {
+      nouveaux = prefixe === 'P'
+        ? (await compteur(env, { action: 'reserver', prefixe: 'P', n: analyse.sansId.length })).ids
+        : analyse.sansId.map((_, i) => idDe('T', prochainT + i));
+      analyse.sansId.forEach((pos, i) => { ids[pos] = nouveaux[i]; });
+    }
+    const lignes = ids.map((id) => {
+      const e = att['ditp-diov'].entites[id] || att['plans-patrimoine'].entites[id] || {};
+      return { id, genre: e.genre, nom_fr: e.name_fr, nom_nl: e.name_nl };
+    });
+    const { shp, shx } = composerShpShx(depose.objets.map((o) => o.contenu));
+    const { dbf, coupes } = composerDbf(lignes);
+    const version = await nomVersionLibre(env, couche);
+    const contenu = { shp, shx, dbf, prj: f.prj, cpg: new TextEncoder().encode('1252') };
+    for (const ext of EXTENSIONS) await env.DEPOTS.put(cleFichier(couche, version, ext), contenu[ext], { httpMetadata: { contentType: TYPES[ext] } });
+    // Le fichier reçu est relu pour vérification avant que quoi que ce soit devienne visible.
+    try { const relu = await lireJeuR2(env, couche, version); if (relu.objets.length !== ids.length || relu.objets.some((o, i) => o.id !== ids[i])) throw new Error('relecture différente'); } catch (err) { await supprimerVersion(env, couche, version); throw new HttpError(500, 'La relecture de vérification a échoué : rien n\'a été enregistré.'); }
+    if (d.zip) await env.DEPOTS.put(cleZip(couche, version), deBase64(d.zip, 'zip'), { httpMetadata: { contentType: 'application/zip' } });
+    if (nouveaux.length) await ajouterEntrees(env, 'ditp-diov', nouveaux, u.matricule);
+    const pointeur = { version, origine: (cur && cur.pointeur.origine) || version, fichiers: EXTENSIONS, objets: ids.length, date: new Date().toISOString(), par: u.matricule, deposePar, source: 'depot', prochainT: prefixe === 'T' ? prochainT + nouveaux.length : prochainT };
+    const journal = { version, date: pointeur.date, par: u.matricule, deposePar, source: 'depot', nomZip: typeof d.nomZip === 'string' ? d.nomZip.slice(0, 200) : null, versionBase, versionPrecedente: cur ? cur.pointeur.version : null, objets: ids.length, attribues: nouveaux, doublons: resume.doublons, disparus: analyse.disparus, modifies: analyse.modifies.length, inchanges: analyse.inchanges, valeursCoupees: coupes };
+    if (!(await basculer(env, couche, cur, pointeur, journal))) {
+      await supprimerVersion(env, couche, version);
+      throw new HttpError(409, 'Un autre enregistrement a eu lieu en même temps : rien n\'a été remplacé. Rouvrez l\'écran et recommencez.');
+    }
+    return { status: 200, body: { version, objets: ids.length, attribues: nouveaux, disparus: analyse.disparus.length, modifies: analyse.modifies.length, inchanges: analyse.inchanges, valeursCoupees: coupes, etat: await etat(env) } };
+  }
+
+  async function restaurer(env, u, couche, d) {
+    const version = String(d.version || '');
+    if (!/^v\d{8}_\d{6}(_\d+)?$/.test(version)) throw new HttpError(400, 'Version invalide.');
+    const cur = await lirePointeur(env, couche);
+    if (!cur) throw new HttpError(404, 'Cette couche n\'est pas encore dans R2.');
+    if (version === cur.pointeur.version) throw new HttpError(400, 'Cette version est déjà la version courante.');
+    const exts = [];
+    for (const ext of EXTENSIONS) if (await env.DEPOTS.head(cleFichier(couche, version, ext))) exts.push(ext);
+    if (!OBLIGATOIRES.every((e) => exts.includes(e))) throw new HttpError(404, 'Cette version n\'existe plus (supprimée par la règle de conservation).');
+    const jeu = await lireJeuR2(env, couche, version);
+    const neuve = await nomVersionLibre(env, couche);
+    for (const ext of exts) {
+      const o = await env.DEPOTS.get(cleFichier(couche, version, ext));
+      await env.DEPOTS.put(cleFichier(couche, neuve, ext), await o.arrayBuffer(), { httpMetadata: { contentType: TYPES[ext] } });
+    }
+    const pointeur = { ...cur.pointeur, version: neuve, fichiers: exts, objets: jeu.objets.length, date: new Date().toISOString(), par: u.matricule, deposePar: null, source: 'restauration', restaureDepuis: version };
+    const journal = { version: neuve, date: pointeur.date, par: u.matricule, deposePar: null, source: 'restauration', restaureDepuis: version, versionPrecedente: cur.pointeur.version, objets: jeu.objets.length };
+    if (!(await basculer(env, couche, cur, pointeur, journal))) { await supprimerVersion(env, couche, neuve); throw new HttpError(409, 'Un autre enregistrement a eu lieu en même temps : rien n\'a été remplacé.'); }
+    return { status: 200, body: { version: neuve, restaureDepuis: version, objets: jeu.objets.length, etat: await etat(env) } };
+  }
+
+  async function historique(env, couche) {
+    const cles = []; let curseur;
+    do { const page = await env.DEPOTS.list({ prefix: prefixeDepots(couche), cursor: curseur }); for (const o of page.objects) if (o.key.endsWith('.json')) cles.push(o.key); curseur = page.truncated ? page.cursor : undefined; } while (curseur);
+    const recents = cles.sort().slice(-50).reverse();
+    const out = [];
+    for (const k of recents) {
+      const o = await env.DEPOTS.get(k);
+      if (!o) continue;
+      let j; try { j = await o.json(); } catch (err) { continue; }
+      const v = j.version;
+      j.disponible = !!(await env.DEPOTS.head(cleFichier(couche, v, 'shp')));
+      j.zipDisponible = !!(await env.DEPOTS.head(cleZip(couche, v)));
+      out.push(j);
+    }
+    return out;
   }
 
   return async function routeGeometries(request, env, url) {
@@ -226,7 +442,27 @@ export function creerRoutesGeometries(ctx) {
         if (!c || !c.pointeur.fichiers.includes(ext)) throw new HttpError(404, 'Fichier absent de la version courante.');
         return servir(request, env, cleFichier(couche, c.pointeur.version, ext), TYPES[ext]);
       }
+      m = /^\/geometries\/depots\/([a-z]+)$/.exec(p);
+      if (m) {
+        if (!COUCHES.includes(m[1])) throw new HttpError(404, 'Couche inconnue.');
+        return { status: 200, body: { versions: await historique(env, m[1]) } };
+      }
+      m = /^\/geometries\/depots\/([a-z]+)\/(v\d{8}_\d{6}(?:_\d+)?)\/zip$/.exec(p);
+      if (m) {
+        if (!COUCHES.includes(m[1])) throw new HttpError(404, 'Couche inconnue.');
+        return servir(request, env, cleZip(m[1], m[2]), 'application/zip');
+      }
       return null;
+    }
+
+    // ---- lot C : dépôt d'un shapefile modifié, restauration d'une ancienne version (droit « plans »)
+    const mDep = /^\/geometries\/shapefile\/([a-z]+)\/(deposer|restaurer)$/.exec(p);
+    if (request.method === 'POST' && mDep) {
+      const u = await exigerDroit(request, env, 'plans');
+      const [, couche, action] = mDep;
+      if (!COUCHES.includes(couche)) throw new HttpError(404, 'Couche inconnue.');
+      const d = await lireJson(request);
+      return action === 'deposer' ? deposer(env, u, couche, d) : restaurer(env, u, couche, d);
     }
 
     // ---- lot B : modification de lignes d'attributs (droit « attributs »)

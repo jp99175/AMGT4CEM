@@ -137,7 +137,8 @@ function monterPlans(conteneur) {
         case_),
       integration),
     // Stockage des données : source de lecture (dépôt ou R2), état de R2, chargement initial (src/reglages/stockageEcran.js).
-    ...(window.AMGT4CEM_StockageEcran ? [AMGT4CEM_StockageEcran.cadre()] : []));
+    ...(window.AMGT4CEM_StockageEcran ? [AMGT4CEM_StockageEcran.cadre()] : []),
+    ...(window.AMGT4CEM_DepotEcran ? [AMGT4CEM_DepotEcran.cadre()] : []));
 }
 
 const ECRAN_PLANS = { id: 'plans', titre: 'Adaptations de plans', monter: monterPlans, modifs: () => false };
