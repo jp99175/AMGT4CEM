@@ -22,6 +22,13 @@ const h = (tag, attrs, ...kids) => {
 
 const EXTENSIONS = ['shp', 'shx', 'dbf', 'prj', 'cpg'];
 
+/** Bouton « occupé » : grisé, libellé d'attente, plus cliquable. Renvoie la fonction qui le remet en état. */
+function occuper(bouton, libelleAttente) {
+  const avant = bouton.textContent;
+  bouton.disabled = true; bouton.textContent = libelleAttente; bouton.style.opacity = '0.6';
+  return () => { bouton.disabled = false; bouton.textContent = avant; bouton.style.opacity = ''; };
+}
+
 function enBase64(octets) {
   let s = '';
   for (let i = 0; i < octets.length; i += 0x8000) s += String.fromCharCode.apply(null, octets.subarray(i, i + 0x8000));
@@ -119,7 +126,7 @@ function cadre() {
       if (ecrire.disabled) return; // un seul envoi : un second appui ne doit pas écrire une deuxième version
       for (const [c, cle] of cases) conf[cle] = c.checked;
       if (cases.some(([c]) => !c.checked)) { dire('Cochez les confirmations demandées avant d\'enregistrer.', 'erreur'); return; }
-      ecrire.disabled = true;
+      const liberer = occuper(ecrire, 'Enregistrement…');
       try {
         dire('Enregistrement…');
         const out = await Auth.call(`/geometries/shapefile/${couche.value}/deposer`, { method: 'POST', body: { fichiers: courant.fichiers, zip: courant.zip, nomZip: courant.nomZip, versionBase: courant.versionBase, deposePar: par.value.trim(), confirmations: conf } });
@@ -127,12 +134,14 @@ function cadre() {
         courant = null;
         dire(`Version du ${dateVersion(out.version)} enregistrée : ${out.objets} objets${out.attribues.length ? `, identifiants attribués : ${out.attribues.join(', ')}` : ''}. ${out.attribues.length ? 'Les nouveaux objets sont à compléter dans Attributs (genre, noms). ' : ''}Téléchargez la version à jour avant de la renvoyer au dessinateur.`, 'ok');
         await montrerHistorique();
-      } catch (err) { ecrire.disabled = false; dire(err.message + (err.data && err.data.manque ? ' (confirmation manquante)' : ''), 'erreur'); }
+      } catch (err) { liberer(); dire(err.message + (err.data && err.data.manque ? ' (confirmation manquante)' : ''), 'erreur'); }
     });
     zone.append(h('div', { class: 'rgl-actions' }, ecrire));
   }
 
   controler.addEventListener('click', async () => {
+    if (controler.disabled) return;
+    const liberer = occuper(controler, 'Contrôle en cours…');
     try {
       dire('Contrôle en cours…');
       zone.replaceChildren();
@@ -146,7 +155,7 @@ function cadre() {
       }
       montrerResume(out.resume);
       dire('Contrôles passés. Vérifiez le résumé, puis enregistrez.', 'ok');
-    } catch (err) { dire(err.message, 'erreur'); }
+    } catch (err) { dire(err.message, 'erreur'); } finally { liberer(); }
   });
 
   async function montrerHistorique() {
@@ -173,12 +182,14 @@ function cadre() {
         if (v.disponible) {
           const r = h('button', { type: 'button', class: 'rgl-btn', text: 'Restaurer' });
           r.addEventListener('click', async () => {
+            if (r.disabled) return;
             if (!confirm(`Remettre la version du ${dateVersion(v.version)} comme version courante ?\n\nC'est une nouvelle version : l'historique reste intact.`)) return;
+            const liberer = occuper(r, 'Restauration…');
             try {
               const out = await Auth.call(`/geometries/shapefile/${couche.value}/restaurer`, { method: 'POST', body: { version: v.version } });
               dire(`Version du ${dateVersion(v.version)} restaurée (nouvelle version du ${dateVersion(out.version)}).`, 'ok');
               await montrerHistorique();
-            } catch (err) { dire(err.message, 'erreur'); }
+            } catch (err) { liberer(); dire(err.message, 'erreur'); }
           });
           boutons.append(r);
         }
