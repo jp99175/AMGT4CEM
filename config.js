@@ -171,6 +171,7 @@ const AMGT4CEM_CONFIG = {
         './src/mapView.js',
         './src/network.js',
         './src/auth/auth.js',
+        './src/stockage.js',
         './src/auth/authUi.js',
         './src/signalementsLayer.js',
         './src/zoomThresholds.js',
@@ -254,6 +255,7 @@ const AMGT4CEM_CONFIG = {
         './src/signalements/zip-writer.js',
         './src/signalements/depot.js',
         './src/auth/auth.js',
+        './src/stockage.js',
         './src/auth/authUi.js',
         './src/signalements/envoi.js',
         './vendor/jspdf/jspdf.umd.min.js',
@@ -318,7 +320,7 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       template: 'amgt-tpl-mesure-tuiles',
       nav: false,
       styles: ['./src/auth/auth.css', './src/mesureTuiles.css'],
-      scripts: ['./vendor/proj4/proj4.js', './src/buildInfo.js', './src/services.js', './src/auth/auth.js', './src/auth/authUi.js', './src/shpLoader.js', './src/tuilesGeom.js', './src/mesureTuiles.js'],
+      scripts: ['./vendor/proj4/proj4.js', './src/buildInfo.js', './src/services.js', './src/auth/auth.js', './src/stockage.js', './src/auth/authUi.js', './src/shpLoader.js', './src/tuilesGeom.js', './src/mesureTuiles.js'],
     },
     // Page jetable (adresse à connaître, absente de la barre de navigation) : calage du synoptique du réseau sur le fond de plan
     // (lignes, arrêts, stations, tunnels). Les liens validés sont téléchargés puis déposés dans config/synoptique/liens.json.
@@ -334,7 +336,7 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       template: 'amgt-tpl-reglages',
       nav: true,
       styles: ['./src/auth/auth.css', ...NAV_STYLES, './src/reglages/reglages.css'],
-      scripts: ['./src/icones.js', './src/buildInfo.js', './src/buildInfoPage.js', './src/services.js', './src/peLabelAnchors.js', './src/auth/auth.js', './src/auth/authUi.js', './src/plansPrefs.js', ...NAV_SCRIPTS, './src/reglages/reglages.js', './src/reglages/attributs.js', './src/reglages/integrationZones.js', './src/reglages/serveur.js'],
+      scripts: ['./src/icones.js', './src/buildInfo.js', './src/buildInfoPage.js', './src/services.js', './src/peLabelAnchors.js', './src/auth/auth.js', './src/stockage.js', './src/auth/authUi.js', './src/plansPrefs.js', './src/signalements/zip-writer.js', ...NAV_SCRIPTS, './src/reglages/reglages.js', './src/reglages/attributs.js', './src/reglages/integrationZones.js', './src/reglages/stockageEcran.js', './src/reglages/serveur.js'],
     },
   };
 })(AMGT4CEM_CONFIG.apps);

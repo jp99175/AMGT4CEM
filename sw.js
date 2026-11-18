@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const VERSION = '20261116-1811'; // @VERSION (écrit par tools/stamp-sw.sh)
+const VERSION = '20261118-1727'; // @VERSION (écrit par tools/stamp-sw.sh)
 const CACHE = 'amgt4cem-app';
 const DELAI_RESEAU_MS = 4000;
 const PARALLELE = 6;
@@ -162,6 +162,7 @@ const FICHIERS = [
   './src/reglages/reglages.css',
   './src/reglages/reglages.js',
   './src/reglages/serveur.js',
+  './src/reglages/stockageEcran.js',
   './src/router.js',
   './src/scaleControl.js',
   './src/scaledText.js',
@@ -191,6 +192,7 @@ const FICHIERS = [
   './src/signalements/zip-reader.js',
   './src/signalements/zip-writer.js',
   './src/signalementsLayer.js',
+  './src/stockage.js',
   './src/swRegister.js',
   './src/tuilesGeom.js',
   './src/tuningSynoptique.css',

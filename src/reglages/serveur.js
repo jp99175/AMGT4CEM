@@ -135,7 +135,9 @@ function monterPlans(conteneur) {
           h('span', { class: 'rgl-row__text', text: 'Dessiner / modifier une zone' }),
           h('span', { class: 'rgl-row__aide', text: 'Affiche le bouton sur la page Carte (sous le bouton de forage). Réglage propre à cet appareil et à votre compte.' })),
         case_),
-      integration));
+      integration),
+    // Stockage des données : source de lecture (dépôt ou R2), état de R2, chargement initial (src/reglages/stockageEcran.js).
+    ...(window.AMGT4CEM_StockageEcran ? [AMGT4CEM_StockageEcran.cadre()] : []));
 }
 
 const ECRAN_PLANS = { id: 'plans', titre: 'Adaptations de plans', monter: monterPlans, modifs: () => false };

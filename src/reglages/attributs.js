@@ -142,6 +142,8 @@ function trouverConflits(lignesModifiees, fichier, origine, envoye) {
 /* ---------- Écran ---------- */
 
 async function lireJson(url) {
+  // Source des données (dépôt ou R2) : src/stockage.js. Sans ce module : le dépôt, comme avant.
+  if (window.AMGT4CEM_Stockage) return AMGT4CEM_Stockage.lireJson(url);
   const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`, { cache: 'no-store' });
   if (!r.ok) throw new Error(`Lecture impossible (${url}, HTTP ${r.status}).`);
   return r.json();
@@ -353,6 +355,8 @@ async function monter(conteneur) {
     const problemes = normaliserEtVerifier(lignes, genres);
     if (problemes.length) { rendre(); dire(`Enregistrement impossible :\n${problemes.slice(0, 8).join('\n')}`, 'erreur'); return; }
     const aEnvoyer = nonEnvoyees();
+    const bloque = window.AMGT4CEM_Stockage ? AMGT4CEM_Stockage.ecritureBloquee() : '';
+    if (bloque) { dire(bloque, 'erreur'); return; }
     dire('Vérification sur le serveur…');
     btnSauver.disabled = true;
     try {

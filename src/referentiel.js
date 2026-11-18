@@ -117,7 +117,8 @@ const AMGT4CEM_Referentiel = {
   /** JSON du référentiel ; absent (404) ou illisible = null (avertissement), sauf `required`, qui rejette. */
   async _fetchJson(url, required) {
     try {
-      const response = await fetch(url, { cache: 'no-cache' });
+      const lire = window.AMGT4CEM_Stockage ? (u, o) => AMGT4CEM_Stockage.fetch(u, o) : fetch; // source des données : src/stockage.js
+      const response = await lire(url, { cache: 'no-cache' });
       if (response.ok) return await response.json();
       if (required || response.status !== 404) throw new Error(`HTTP ${response.status} (${url})`);
     } catch (err) {

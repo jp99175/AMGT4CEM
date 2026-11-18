@@ -1,0 +1,112 @@
+/**
+ * Source des données du réseau : le dépôt (fichiers publiés avec le site) ou R2 (serveur de dépôt, workers/depot/geometries.js).
+ *
+ * Lot A de l'écriture du shapefile (18/11/2026). Un interrupteur commun à tous (droit « plans », Réglages > Plans >
+ * « Stockage des données ») décide de la source. Par défaut, et pour toute personne non connectée : le dépôt, comme avant.
+ * Avec la source R2, ce module lit R2 pour les fichiers qu'il connaît (shapefile des polygones, attributs, compteur P) et,
+ * si R2 ne répond pas ou refuse, retombe sur le dépôt sans rien casser.
+ *
+ *   AMGT4CEM_Stockage.fetch(url, init)   comme fetch(), source-aware
+ *   AMGT4CEM_Stockage.lireJson(url)      lecture JSON sans cache, source-aware
+ *   AMGT4CEM_Stockage.source()           'depot' | 'r2' (dernière valeur connue du serveur, gardée sur l'appareil)
+ *   AMGT4CEM_Stockage.ecritureBloquee()  message si les écritures vers le dépôt ne sont pas permises (source R2), sinon ''
+ *   AMGT4CEM_Stockage.actualiser()       relit l'état du serveur (source, versions) ; renvoie l'état ou null
+ *
+ * Tant que les lots B et C ne sont pas faits (écriture des attributs et du shapefile dans R2), la source R2 est réservée
+ * à la lecture : les écrans qui écrivent dans le dépôt refusent d'écrire quand la source est R2, pour qu'aucune
+ * modification ne se perde (ecritureBloquee).
+ */
+const AMGT4CEM_Stockage = {
+  CLE: 'amgt4cem.stockage.source.v1',
+  // Fichiers du dépôt connus de R2 : adresse relative -> route du serveur de dépôt.
+  CARTE: [
+    { motif: /^\.\/data\/shapefile\/polygones\.(shp|shx|dbf|prj|cpg)$/, route: (m) => `/geometries/shapefile/polygones/${m[1]}` },
+    { motif: /^\.\/data\/ditp-diov\/polygones\.json$/, route: () => '/attributs/ditp-diov' },
+    { motif: /^\.\/data\/plans-patrimoine\/polygones\.json$/, route: () => '/attributs/plans-patrimoine' },
+    { motif: /^\.\/data\/shapefile\/identifiants\.json$/, route: () => '/geometries/identifiants' },
+  ],
+  _etat: null,
+
+  _serveur() {
+    return (typeof AMGT4CEM_Auth !== 'undefined' && AMGT4CEM_Auth.configured && AMGT4CEM_Auth.configured()) ? AMGT4CEM_Auth.serverUrl : '';
+  },
+
+  _session() {
+    return (typeof AMGT4CEM_Auth !== 'undefined' && AMGT4CEM_Auth.session) ? AMGT4CEM_Auth.session() : null;
+  },
+
+  /** Dernière source connue ; 'depot' sans session (visiteur) ou si rien n'est connu. */
+  source() {
+    if (!this._session() || !this._serveur()) return 'depot';
+    try { return localStorage.getItem(this.CLE) === 'r2' ? 'r2' : 'depot'; } catch (err) { return 'depot'; }
+  },
+
+  _noter(source) {
+    try { localStorage.setItem(this.CLE, source === 'r2' ? 'r2' : 'depot'); } catch (err) { /* sans mémoire locale : le dépôt reste la source */ }
+  },
+
+  /** État du serveur : source, version courante du shapefile, nombre d'objets et d'entrées, compteur P. null si injoignable. */
+  async actualiser() {
+    if (!this._session() || !this._serveur()) return null;
+    try {
+      const e = await AMGT4CEM_Auth.call('/geometries/stockage');
+      this._etat = e;
+      this._noter(e.source);
+      return e;
+    } catch (err) {
+      console.warn('[AMGT4CEM] État du stockage illisible :', err.message);
+      return null;
+    }
+  },
+
+  /** Interrupteur de source (droit « plans »). */
+  async changerSource(source) {
+    const e = await AMGT4CEM_Auth.call('/geometries/source', { method: 'POST', body: { source } });
+    this._etat = e;
+    this._noter(e.source);
+    return e;
+  },
+
+  _route(url) {
+    for (const c of this.CARTE) {
+      const m = c.motif.exec(url);
+      if (m) return c.route(m);
+    }
+    return null;
+  },
+
+  /** Comme fetch(url, init), en lisant R2 quand la source est R2 et que le fichier y est ; repli sur le dépôt sinon. */
+  async fetch(url, init) {
+    const route = this.source() === 'r2' ? this._route(String(url).split('?')[0]) : null;
+    if (route) {
+      try {
+        const s = this._session();
+        const r = await fetch(this._serveur() + route, { cache: 'no-cache', headers: { Authorization: `Bearer ${s.jeton}` } });
+        if (r.ok) return r;
+        console.warn(`[AMGT4CEM] R2 a refusé ${route} (HTTP ${r.status}) : lecture du dépôt à la place.`);
+      } catch (err) {
+        console.warn(`[AMGT4CEM] R2 injoignable pour ${route} : lecture du dépôt à la place.`);
+      }
+    }
+    return fetch(url, init);
+  },
+
+  /** Lecture JSON sans cache (comme les écrans Attributs et Intégrer au shapefile), source-aware. */
+  async lireJson(url) {
+    const r = await this.fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`Lecture impossible (${url}, HTTP ${r.status}).`);
+    return r.json();
+  },
+
+  /** Message de refus si l'écriture vers le dépôt ferait diverger les données (source R2 avant les lots B et C), sinon ''. */
+  ecritureBloquee() {
+    return this.source() === 'r2'
+      ? 'Les données sont lues dans R2 : l\'enregistrement vers R2 n\'est pas encore disponible. Repassez la source sur « dépôt » (Réglages > Plans > Stockage des données) pour modifier.'
+      : '';
+  },
+};
+window.AMGT4CEM_Stockage = AMGT4CEM_Stockage;
+
+// Au chargement, puis à chaque connexion ou déconnexion : on relit la source pour la prochaine lecture.
+if (typeof AMGT4CEM_Auth !== 'undefined' && AMGT4CEM_Auth.onChange) AMGT4CEM_Auth.onChange(() => { AMGT4CEM_Stockage.actualiser(); });
+setTimeout(() => { AMGT4CEM_Stockage.actualiser(); }, 0);

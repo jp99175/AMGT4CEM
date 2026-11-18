@@ -56,6 +56,8 @@
  * X-Depot-Code) reste accepté pour /depot et /sante. Dès le premier compte activé, il ne sert plus.
  */
 
+import { creerRoutesGeometries } from './geometries.js';
+
 const MAX_BYTES = 30 * 1024 * 1024;
 const REF_KEY = 'referentiel/intervenants.json';
 const TOKEN_TTL_S = 30 * 24 * 3600;
@@ -142,8 +144,9 @@ function corsHeaders(request, env) {
   const allowed = (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
   const origin = request.headers.get('Origin');
   const headers = {
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization, X-Depot-Code, X-Signalement-Id, X-Flux, X-Fichier, Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+    'Access-Control-Allow-Headers': 'Authorization, X-Depot-Code, X-Signalement-Id, X-Flux, X-Fichier, Content-Type, If-Match, If-None-Match',
+    'Access-Control-Expose-Headers': 'ETag',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
   };
@@ -494,6 +497,9 @@ async function connexionsInterrompues(env) {
 async function lireJson(request) {
   try { return await request.json(); } catch (err) { throw new HttpError(400, 'Corps JSON invalide.'); }
 }
+
+// Géométries et attributs dans R2 (workers/depot/geometries.js) : mêmes outils d'authentification que le reste du serveur.
+const routeGeometries = creerRoutesGeometries({ HttpError, intervenantCourant, exigerDroit, compteur, lireJson });
 
 async function routeAuth(request, env, url) {
   const p = url.pathname;
@@ -958,9 +964,10 @@ export default {
     try {
       const out = (url.pathname.startsWith('/auth/') && (await routeAuth(request, env, url)))
         || (url.pathname.startsWith('/admin/') && (await routeAdmin(request, env, url)))
+        || (await routeGeometries(request, env, url))
         || (await routeDepot(request, env, url));
       if (!out) return reply(request, env, 404, { erreur: 'Route inconnue.' });
-      if (out.raw) return new Response(out.raw, { status: out.status, headers: { 'Content-Type': out.type, 'Cache-Control': 'no-store', ...corsHeaders(request, env) } });
+      if (out.raw !== undefined) return new Response(out.raw, { status: out.status, headers: { 'Content-Type': out.type, 'Cache-Control': 'no-store', ...(out.headers || {}), ...corsHeaders(request, env) } });
       return reply(request, env, out.status, out.body);
     } catch (err) {
       if (err instanceof HttpError) return reply(request, env, err.status, { erreur: err.message });

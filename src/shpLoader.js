@@ -53,7 +53,9 @@ const AMGT4CEM_ShpLoader = {
   async _fetchArrayBuffer(url) {
     // no-cache : revalide auprès du serveur (GitHub Pages met les fichiers en cache ~10 min), comme le
     // référentiel JSON — sinon, juste après un export, géométries et référentiel pourraient ne pas correspondre.
-    const response = await fetch(url, { cache: 'no-cache' });
+    // Source des données (dépôt ou R2, src/stockage.js) : sans ce module, ou pour un visiteur, c'est le dépôt.
+    const lire = window.AMGT4CEM_Stockage ? (u, o) => AMGT4CEM_Stockage.fetch(u, o) : fetch;
+    const response = await lire(url, { cache: 'no-cache' });
     if (!response.ok) {
       const err = new Error(`HTTP ${response.status} (${url})`);
       err.status = response.status;

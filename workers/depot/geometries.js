@@ -1,0 +1,233 @@
+/**
+ * Géométries et attributs du réseau dans R2 (lot A de l'écriture du shapefile, 18/11/2026).
+ *
+ * Module du Worker de dépôt : worker.js l'appelle pour les routes /geometries/… et /attributs/…
+ * Les routes des signalements, des comptes et de l'administration ne sont pas concernées.
+ *
+ * Rangement R2 (jamais modifié en place : une version écrite reste telle quelle) :
+ *   prive/geometries/shapefile/<couche>/courant.json                 pointeur { version, origine, fichiers, objets, ... }
+ *   prive/geometries/shapefile/<couche>/versions/<version>/<couche>.<ext>   jeu complet (shp, shx, dbf, prj, cpg)
+ *   prive/attributs/<nom>.json                                       attributs joints par `id`
+ *   prive/referentiels/source-donnees.json                           interrupteur : { source: 'depot' | 'r2' }
+ * `<couche>` : polygones (le vrai shapefile) ou essai (fichier d'essai, lot C). `<version>` : vAAAAMMJJ_HHMMSS (Bruxelles).
+ * Un lecteur lit le pointeur puis les fichiers de cette version : il ne voit jamais un jeu à moitié écrit.
+ *
+ * Routes (jeton exigé ; droit entre parenthèses) :
+ *   GET  /geometries/stockage                          état : source, versions, nombre d'objets, compteur P
+ *   POST /geometries/source            (plans)         { source: 'depot' | 'r2' }
+ *   GET  /geometries/shapefile/<couche>                pointeur courant
+ *   GET  /geometries/shapefile/<couche>/<ext>          fichier de la version courante (ETag, 304)
+ *   GET  /geometries/identifiants                      { prochain_id } (copie du compteur P)
+ *   GET  /attributs/<nom>                              JSON (ETag, 304)
+ *   POST /geometries/charger           (plans)         chargement initial (refusé si R2 contient déjà la couche)
+ *
+ * Écritures ultérieures (lots B et C) : à ajouter ici, avec `If-Match` et la conservation des versions décidée le 18/11/2026.
+ */
+
+const COUCHES = ['polygones', 'essai'];
+const EXTENSIONS = ['shp', 'shx', 'dbf', 'prj', 'cpg'];
+const OBLIGATOIRES = ['shp', 'shx', 'dbf', 'prj'];
+const ATTRIBUTS = ['ditp-diov', 'plans-patrimoine'];
+const SOURCE_KEY = 'prive/referentiels/source-donnees.json';
+const TYPES = { shp: 'application/octet-stream', shx: 'application/octet-stream', dbf: 'application/octet-stream', prj: 'text/plain; charset=utf-8', cpg: 'text/plain; charset=utf-8' };
+
+const cleCourant = (couche) => `prive/geometries/shapefile/${couche}/courant.json`;
+const cleFichier = (couche, version, ext) => `prive/geometries/shapefile/${couche}/versions/${version}/${couche}.${ext}`;
+const cleAttributs = (nom) => `prive/attributs/${nom}.json`;
+
+/** Horodatage de version à l'heure de Bruxelles : vAAAAMMJJ_HHMMSS. */
+export function nomVersion(date = new Date()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Brussels', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(date).map((x) => [x.type, x.value]));
+  return `v${p.year}${p.month}${p.day}_${p.hour}${p.minute}${p.second}`;
+}
+
+function deBase64(texte, nom) {
+  try {
+    const bin = atob(String(texte || ''));
+    return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  } catch (err) { throw new Error(`Fichier .${nom} illisible (base 64 invalide).`); }
+}
+
+/**
+ * Contrôle d'un jeu de fichiers shapefile (polygones, type 5). Renvoie { objets, ids } ou lève une Error au message lisible.
+ * Contrôles : code et longueur de l'en-tête .shp, type de forme, nombre d'enregistrements identique dans .shp, .shx et .dbf,
+ * champ `id` présent, identifiants non vides et uniques.
+ */
+export function verifierShapefile(f) {
+  const shp = f.shp; const shx = f.shx; const dbf = f.dbf;
+  if (shp.length < 100) throw new Error('Le fichier .shp est trop court.');
+  const vs = new DataView(shp.buffer, shp.byteOffset, shp.byteLength);
+  if (vs.getInt32(0, false) !== 9994) throw new Error("Le fichier .shp n'a pas le bon code d'en-tête (9994).");
+  if (vs.getInt32(24, false) * 2 !== shp.length) throw new Error("La longueur annoncée par le .shp ne correspond pas à sa taille.");
+  if (vs.getInt32(32, true) !== 5) throw new Error('Le .shp ne contient pas des polygones (type 5 attendu).');
+  // Nombre d'enregistrements du .shp : on parcourt les enregistrements.
+  let objets = 0; let pos = 100;
+  while (pos + 8 <= shp.length) { pos += 8 + vs.getInt32(pos + 4, false) * 2; objets++; }
+  if (pos !== shp.length) throw new Error('Le .shp se termine au milieu d\'un enregistrement.');
+  // .shx : 100 octets d'en-tête + 8 octets par enregistrement.
+  if (shx.length !== 100 + 8 * objets) throw new Error(`Le .shx annonce ${(shx.length - 100) / 8} objets, le .shp en contient ${objets}.`);
+  // .dbf : en-tête (nombre d'enregistrements, longueurs) puis descripteurs de champs.
+  if (dbf.length < 33) throw new Error('Le fichier .dbf est trop court.');
+  const vd = new DataView(dbf.buffer, dbf.byteOffset, dbf.byteLength);
+  const nDbf = vd.getUint32(4, true); const lenEntete = vd.getUint16(8, true); const lenEnreg = vd.getUint16(10, true);
+  if (nDbf !== objets) throw new Error(`Le .dbf contient ${nDbf} enregistrements, le .shp ${objets} objets.`);
+  if (dbf.length < lenEntete + lenEnreg * nDbf) throw new Error('Le .dbf est tronqué.');
+  let debut = 1; let trouve = false; let longueur = 0;
+  for (let i = 32; i < lenEntete - 1 && dbf[i] !== 0x0d; i += 32) {
+    const nom = new TextDecoder().decode(dbf.subarray(i, i + 11)).replace(/\0.*$/, '').toLowerCase();
+    const len = dbf[i + 16];
+    if (nom === 'id') { trouve = true; longueur = len; break; }
+    debut += len;
+  }
+  if (!trouve) throw new Error('Le .dbf n\'a pas de champ « id ».');
+  const ids = [];
+  const vus = new Set();
+  for (let n = 0; n < nDbf; n++) {
+    const base = lenEntete + n * lenEnreg + debut;
+    const id = new TextDecoder().decode(dbf.subarray(base, base + longueur)).trim();
+    if (!id) throw new Error(`L'objet n° ${n + 1} n'a pas d'identifiant.`);
+    if (vus.has(id)) throw new Error(`Identifiant en double : ${id}.`);
+    vus.add(id); ids.push(id);
+  }
+  return { objets, ids };
+}
+
+/**
+ * @param {object} ctx  outils de worker.js : HttpError, intervenantCourant, exigerDroit, aDroit, compteur, lireJson
+ * @returns {(request, env, url) => Promise<null | {status, body} | {status, raw, type, headers}>}
+ */
+export function creerRoutesGeometries(ctx) {
+  const { HttpError, intervenantCourant, exigerDroit, compteur, lireJson } = ctx;
+
+  async function lireSource(env) {
+    const o = await env.DEPOTS.get(SOURCE_KEY);
+    if (!o) return { source: 'depot' };
+    try { const s = await o.json(); return { source: s.source === 'r2' ? 'r2' : 'depot', date: s.date, par: s.par }; } catch (err) { return { source: 'depot' }; }
+  }
+
+  async function lirePointeur(env, couche) {
+    const o = await env.DEPOTS.get(cleCourant(couche));
+    if (!o) return null;
+    try { return { pointeur: await o.json(), etag: o.httpEtag }; } catch (err) { throw new HttpError(500, `Pointeur illisible (${couche}).`); }
+  }
+
+  /** Lecture d'un objet R2 avec ETag et 304 (If-None-Match). */
+  async function servir(request, env, cle, type) {
+    const o = await env.DEPOTS.get(cle, { onlyIf: request.headers });
+    if (!o) throw new HttpError(404, 'Introuvable dans R2.');
+    const entetes = { ETag: o.httpEtag, 'Cache-Control': 'private, no-cache' };
+    if (!('body' in o) || o.body === undefined) return { status: 304, raw: null, type, headers: entetes }; // précondition vérifiée : inchangé
+    return { status: 200, raw: o.body, type, headers: entetes };
+  }
+
+  async function nombreAttributs(env, nom) {
+    const o = await env.DEPOTS.get(cleAttributs(nom));
+    if (!o) return null;
+    try { const j = await o.json(); return { entrees: Object.keys(j.entites || {}).length, etag: o.httpEtag }; } catch (err) { return { entrees: null, etag: o.httpEtag }; }
+  }
+
+  async function etat(env) {
+    const couches = {};
+    for (const c of COUCHES) {
+      const p = await lirePointeur(env, c);
+      couches[c] = p ? { version: p.pointeur.version, origine: p.pointeur.origine || null, objets: p.pointeur.objets, chargeLe: p.pointeur.date || null, par: p.pointeur.par || null } : null;
+    }
+    const attributs = {};
+    for (const n of ATTRIBUTS) attributs[n] = await nombreAttributs(env, n);
+    let prochainP = null;
+    try { prochainP = (await compteur(env, { action: 'etat' })).etat.identifiants.P; } catch (err) { console.error('compteur P', err); }
+    return { ...(await lireSource(env)), couches, attributs, prochainP };
+  }
+
+  return async function routeGeometries(request, env, url) {
+    const p = url.pathname;
+    if (!p.startsWith('/geometries/') && !p.startsWith('/attributs/')) return null;
+
+    // ---- lecture : tout compte connecté
+    if (request.method === 'GET') {
+      await intervenantCourant(request, env);
+      if (p === '/geometries/stockage') return { status: 200, body: await etat(env) };
+      if (p === '/geometries/identifiants') {
+        const e = (await compteur(env, { action: 'etat' })).etat;
+        return { status: 200, body: { version: 3, prochain_id: e.identifiants.P, note: 'Copie du compteur P du serveur de dépôt.' } };
+      }
+      let m = /^\/attributs\/([a-z0-9-]+)$/.exec(p);
+      if (m) {
+        if (!ATTRIBUTS.includes(m[1])) throw new HttpError(404, 'Attributs inconnus.');
+        return servir(request, env, cleAttributs(m[1]), 'application/json; charset=utf-8');
+      }
+      m = /^\/geometries\/shapefile\/([a-z]+)$/.exec(p);
+      if (m) {
+        if (!COUCHES.includes(m[1])) throw new HttpError(404, 'Couche inconnue.');
+        const c = await lirePointeur(env, m[1]);
+        if (!c) throw new HttpError(404, 'Cette couche n\'est pas encore dans R2.');
+        return { status: 200, body: c.pointeur };
+      }
+      m = /^\/geometries\/shapefile\/([a-z]+)\/([a-z]{3})$/.exec(p);
+      if (m) {
+        const [, couche, ext] = m;
+        if (!COUCHES.includes(couche) || !EXTENSIONS.includes(ext)) throw new HttpError(404, 'Fichier inconnu.');
+        const c = await lirePointeur(env, couche);
+        if (!c || !c.pointeur.fichiers.includes(ext)) throw new HttpError(404, 'Fichier absent de la version courante.');
+        return servir(request, env, cleFichier(couche, c.pointeur.version, ext), TYPES[ext]);
+      }
+      return null;
+    }
+
+    // ---- interrupteur de source : droit « plans »
+    if (request.method === 'POST' && p === '/geometries/source') {
+      const u = await exigerDroit(request, env, 'plans');
+      const { source } = await lireJson(request);
+      if (source !== 'depot' && source !== 'r2') throw new HttpError(400, 'Source attendue : « depot » ou « r2 ».');
+      if (source === 'r2') {
+        const manque = [];
+        if (!(await lirePointeur(env, 'polygones'))) manque.push('le shapefile');
+        for (const n of ATTRIBUTS) if (!(await nombreAttributs(env, n))) manque.push(`les attributs ${n}`);
+        if (manque.length) throw new HttpError(409, `R2 ne peut pas être la source : il manque ${manque.join(', ')}. Chargez d'abord les données initiales.`);
+      }
+      await env.DEPOTS.put(SOURCE_KEY, JSON.stringify({ source, date: new Date().toISOString(), par: u.matricule }), { httpMetadata: { contentType: 'application/json' } });
+      return { status: 200, body: await etat(env) };
+    }
+
+    // ---- chargement initial : droit « plans », refusé si la couche existe déjà
+    if (request.method === 'POST' && p === '/geometries/charger') {
+      const u = await exigerDroit(request, env, 'plans');
+      const d = await lireJson(request);
+      const couche = d.couche;
+      if (!COUCHES.includes(couche)) throw new HttpError(400, 'Couche inconnue.');
+      if (await lirePointeur(env, couche)) throw new HttpError(409, `La couche « ${couche} » est déjà dans R2 : le chargement initial n'écrase rien.`);
+      const f = {};
+      for (const ext of EXTENSIONS) {
+        if (d.fichiers && d.fichiers[ext] !== undefined) f[ext] = deBase64(d.fichiers[ext], ext);
+        else if (OBLIGATOIRES.includes(ext)) throw new HttpError(400, `Fichier .${ext} manquant.`);
+      }
+      let verif;
+      try { verif = verifierShapefile(f); } catch (err) { throw new HttpError(400, err.message); }
+      // Attributs facultatifs ; chacun doit avoir la forme { version, entites }. Refus si R2 en contient déjà.
+      const attributs = {};
+      for (const [nom, contenu] of Object.entries(d.attributs || {})) {
+        if (!ATTRIBUTS.includes(nom)) throw new HttpError(400, `Attributs inconnus : ${nom}.`);
+        if (!contenu || typeof contenu !== 'object' || typeof contenu.entites !== 'object') throw new HttpError(400, `Attributs ${nom} : format attendu { version, entites }.`);
+        if (await nombreAttributs(env, nom)) throw new HttpError(409, `Les attributs ${nom} sont déjà dans R2 : le chargement initial n'écrase rien.`);
+        attributs[nom] = contenu;
+      }
+      // Le compteur P du serveur ne doit pas être en retard sur celui du dépôt (sinon un P… déjà utilisé pourrait être réattribué).
+      if (d.prochainId !== undefined && couche === 'polygones') {
+        const serveur = (await compteur(env, { action: 'etat' })).etat.identifiants.P;
+        if (!Number.isInteger(d.prochainId)) throw new HttpError(400, 'prochainId invalide.');
+        if (serveur < d.prochainId) throw new HttpError(409, `Le compteur P du serveur (${serveur}) est en retard sur celui du dépôt (${d.prochainId}). Rien n'a été chargé.`);
+      }
+      const version = nomVersion();
+      // 1) fichiers de la version, 2) attributs, 3) pointeur en dernier : sans pointeur, rien n'est visible.
+      for (const ext of Object.keys(f)) await env.DEPOTS.put(cleFichier(couche, version, ext), f[ext], { httpMetadata: { contentType: TYPES[ext] } });
+      for (const [nom, contenu] of Object.entries(attributs)) {
+        await env.DEPOTS.put(cleAttributs(nom), JSON.stringify(contenu), { httpMetadata: { contentType: 'application/json' }, onlyIf: { etagDoesNotMatch: '*' } });
+      }
+      const pointeur = { version, origine: version, fichiers: Object.keys(f), objets: verif.objets, date: new Date().toISOString(), par: u.matricule };
+      const ok = await env.DEPOTS.put(cleCourant(couche), JSON.stringify(pointeur), { httpMetadata: { contentType: 'application/json' }, onlyIf: { etagDoesNotMatch: '*' } });
+      if (!ok) throw new HttpError(409, 'Un autre chargement a eu lieu en même temps. Rien n\'a été écrasé ; rouvrez l\'écran.');
+      return { status: 200, body: await etat(env) };
+    }
+    return null;
+  };
+}

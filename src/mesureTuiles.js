@@ -43,7 +43,7 @@ async function chargerSegments() {
   proj4.defs(AMGT4CEM_CONFIG.businessCRS.epsg, AMGT4CEM_CONFIG.businessCRS.proj4def);
   const [fc, ref] = await Promise.all([
     AMGT4CEM_ShpLoader.load('./data/shapefile/polygones'),
-    fetch('./data/ditp-diov/polygones.json', { cache: 'no-cache' }).then((r) => r.json()),
+    (window.AMGT4CEM_Stockage ? AMGT4CEM_Stockage.fetch('./data/ditp-diov/polygones.json', { cache: 'no-cache' }) : fetch('./data/ditp-diov/polygones.json', { cache: 'no-cache' })).then((r) => r.json()),
   ]);
   const ents = ref.entites || {};
   const segs = [];

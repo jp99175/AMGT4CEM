@@ -86,6 +86,8 @@ function recap(lignes) {
 /* ---------- Écran ---------- */
 
 async function lireJson(url) {
+  // Source des données (dépôt ou R2) : src/stockage.js. Sans ce module : le dépôt, comme avant.
+  if (window.AMGT4CEM_Stockage) return AMGT4CEM_Stockage.lireJson(url);
   const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`, { cache: 'no-store' });
   if (!r.ok) throw new Error(`Lecture impossible (${url}, HTTP ${r.status}).`);
   return r.json();
@@ -264,6 +266,8 @@ async function monter(conteneur, opts = {}) {
           await A.putToRelay(relais, 'shared/lieux/lieux', frais, (A.getAdminCode && A.getAdminCode()) || '');
           zones.lieux = frais.lieux;
         } else {
+          const bloque = window.AMGT4CEM_Stockage ? AMGT4CEM_Stockage.ecritureBloquee() : '';
+          if (bloque) throw new Error(bloque);
           const frais = await lireJson(SHP_URL);
           const e = frais.entites && frais.entites[cle];
           if (!e) throw new Error('Cet objet n\'existe plus sur le serveur. Rouvrez l\'écran.');
