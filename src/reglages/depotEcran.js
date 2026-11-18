@@ -83,7 +83,7 @@ function cadre() {
   }
 
   const ligne = (libelle, valeur, rouge) => h('div', { class: 'rgl-row' }, h('span', { class: 'rgl-row__body' },
-    h('span', { class: 'rgl-row__text', text: libelle }), h('span', { class: 'rgl-row__aide', text: valeur }), rouge ? null : null));
+    h('span', { class: 'rgl-row__text', text: libelle }), h('span', { class: 'rgl-row__aide', text: valeur, ...(rouge ? { style: 'color: #9b1c1c; font-weight: 500;' } : {}) })));
 
   function montrerResume(resume, erreurs) {
     zone.replaceChildren();
@@ -98,7 +98,7 @@ function cadre() {
       ligne(`Version courante : ${dateVersion(resume.versionCourante)}`, resume.versionCourante ? `Objets dans le fichier déposé : ${resume.objetsDeposes}` : `Première écriture de cette couche. Objets dans le fichier : ${resume.objetsDeposes}`),
       ligne('Objets sans identifiant (Pn)', `${resume.sansId}${resume.sansId ? ` — Les références ${resume.premierId} à ${resume.dernierId} seront appliquées à l'import.` : ''}`),
       ligne('Contours modifiés', String(resume.modifies)),
-      ligne('Objets disparus du fichier', String(resume.disparus.length)),
+      ligne('Objets disparus du fichier', String(resume.disparus.length), resume.disparus.length > 0),
       ligne('Inchangés', String(resume.inchanges)),
     ];
     if (resume.doublons.length) lignes.push(ligne('Identifiants en double', `${resume.doublons.map((d) => `${d.id} (${d.copies} copie${d.copies > 1 ? 's' : ''})`).join(', ')} : les copies recevront un nouvel identifiant.`));
@@ -116,16 +116,18 @@ function cadre() {
     for (const [c, , texte] of cases) zone.append(h('label', { class: 'rgl-row__aide', style: 'display:flex;gap:8px;align-items:flex-start;margin:8px 0;' }, c, h('span', { text: texte })));
     const ecrire = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: couche.value === 'essai' ? 'Enregistrer sur l\'essai' : 'Enregistrer dans le vrai shapefile' });
     ecrire.addEventListener('click', async () => {
+      if (ecrire.disabled) return; // un seul envoi : un second appui ne doit pas écrire une deuxième version
       for (const [c, cle] of cases) conf[cle] = c.checked;
       if (cases.some(([c]) => !c.checked)) { dire('Cochez les confirmations demandées avant d\'enregistrer.', 'erreur'); return; }
+      ecrire.disabled = true;
       try {
         dire('Enregistrement…');
         const out = await Auth.call(`/geometries/shapefile/${couche.value}/deposer`, { method: 'POST', body: { fichiers: courant.fichiers, zip: courant.zip, nomZip: courant.nomZip, versionBase: courant.versionBase, deposePar: par.value.trim(), confirmations: conf } });
         zone.replaceChildren();
         courant = null;
-        dire(`Version du ${dateVersion(out.version)} enregistrée : ${out.objets} objets${out.attribues.length ? `, identifiants attribués : ${out.attribues.join(', ')}` : ''}. Les nouveaux objets sont à compléter dans Attributs (genre, noms). Téléchargez la version à jour avant de la renvoyer au dessinateur.`, 'ok');
+        dire(`Version du ${dateVersion(out.version)} enregistrée : ${out.objets} objets${out.attribues.length ? `, identifiants attribués : ${out.attribues.join(', ')}` : ''}. ${out.attribues.length ? 'Les nouveaux objets sont à compléter dans Attributs (genre, noms). ' : ''}Téléchargez la version à jour avant de la renvoyer au dessinateur.`, 'ok');
         await montrerHistorique();
-      } catch (err) { dire(err.message + (err.data && err.data.manque ? ' (confirmation manquante)' : ''), 'erreur'); }
+      } catch (err) { ecrire.disabled = false; dire(err.message + (err.data && err.data.manque ? ' (confirmation manquante)' : ''), 'erreur'); }
     });
     zone.append(h('div', { class: 'rgl-actions' }, ecrire));
   }
