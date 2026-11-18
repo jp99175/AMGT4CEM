@@ -250,7 +250,9 @@ async function monter(conteneur, opts = {}) {
       if (!modifie()) { msg.textContent = 'Aucune modification.'; return; }
       const A = window.AMGT4CEM_PeLabelAnchors;
       const relais = (window.AMGT4CEM_Services && AMGT4CEM_Services.current().relayUrl) || AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl;
-      if (!A || !relais) { msg.textContent = 'Relais non configuré (Réglages > Avancé > Services et relais).'; return; }
+      // Objet du shapefile avec la source R2 (lot B) : enregistrement par le serveur de dépôt, sans relais. Une zone dessinée passe encore par le relais.
+      const r2 = !estZone && !!window.AMGT4CEM_Stockage && AMGT4CEM_Stockage.source() === 'r2';
+      if (!r2 && (!A || !relais)) { msg.textContent = 'Relais non configuré (Réglages > Avancé > Services et relais).'; return; }
       sauver.disabled = true; msg.className = 'rgl-iz__msg'; msg.textContent = 'Vérification sur le serveur…';
       try {
         const cle = l.cle.slice(2);
@@ -266,16 +268,18 @@ async function monter(conteneur, opts = {}) {
           await A.putToRelay(relais, 'shared/lieux/lieux', frais, (A.getAdminCode && A.getAdminCode()) || '');
           zones.lieux = frais.lieux;
         } else {
-          const bloque = window.AMGT4CEM_Stockage ? AMGT4CEM_Stockage.ecritureBloquee() : '';
-          if (bloque) throw new Error(bloque);
           const frais = await lireJson(SHP_URL);
           const e = frais.entites && frais.entites[cle];
           if (!e) throw new Error('Cet objet n\'existe plus sur le serveur. Rouvrez l\'écran.');
           if (sigShp(e) !== sigServeurDepart) throw new Error('Cet objet a été modifié par quelqu\'un d\'autre depuis l\'ouverture. Rien n\'a été enregistré ; rouvrez l\'écran.');
+          // Source R2 (lot B) : `avant` est pris avant d'écrire les nouvelles valeurs dans la copie lue.
+          const chg = r2 && LOG ? LOG.changement(cle, e, { ...c, sheet_ref: '' }) : null;
+          if (r2 && !chg) throw new Error('Enregistrement vers R2 impossible : module des attributs absent.');
           if (LOG) LOG.ecrireChamps(e, { ...c, sheet_ref: '' });
           else { e.genre = c.genre; e.name_fr = c.name_fr; e.name_nl = c.name_nl; if (c.references.length) e.references = c.references; else delete e.references; }
           msg.textContent = 'Enregistrement…';
-          await A.putToRelay(relais, 'shared/ditp-diov/polygones', frais, (A.getAdminCode && A.getAdminCode()) || '');
+          if (r2) await AMGT4CEM_Stockage.ecrireAttributs('ditp-diov', [chg]);
+          else await A.putToRelay(relais, 'shared/ditp-diov/polygones', frais, (A.getAdminCode && A.getAdminCode()) || '');
           shp.entites = frais.entites;
         }
         // Mise à jour de la ligne (le déplacement en attente éventuel est conservé).
@@ -287,7 +291,9 @@ async function monter(conteneur, opts = {}) {
         }
         voile.remove();
         rendre();
-        dire(`Attributs de « ${l.nom} » enregistrés. Visibles par tous après le redéploiement du site (environ 1 minute).`, 'ok');
+        dire(r2
+          ? `Attributs de « ${l.nom} » enregistrés dans R2 : visibles tout de suite ; les autres agents les verront en rechargeant la page.`
+          : `Attributs de « ${l.nom} » enregistrés. Visibles par tous après le redéploiement du site (environ 1 minute).`, 'ok');
       } catch (err) {
         msg.className = 'rgl-iz__msg rgl-statut--erreur'; msg.textContent = err.message; sauver.disabled = false;
       }

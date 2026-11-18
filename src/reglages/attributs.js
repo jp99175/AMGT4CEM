@@ -20,8 +20,8 @@
  */
 (function () {
 const SOURCES = [
-  { id: 'ditp-diov', url: './data/ditp-diov/polygones.json', route: 'shared/ditp-diov/polygones' },
-  { id: 'plans', url: './data/plans-patrimoine/polygones.json', route: 'shared/plans-patrimoine/polygones' },
+  { id: 'ditp-diov', url: './data/ditp-diov/polygones.json', route: 'shared/ditp-diov/polygones', nomR2: 'ditp-diov' },
+  { id: 'plans', url: './data/plans-patrimoine/polygones.json', route: 'shared/plans-patrimoine/polygones', nomR2: 'plans-patrimoine' },
 ];
 const VOCAB_URL = './config/ditp-diov/vocabulaires.json';
 const COLONNES = [
@@ -110,6 +110,20 @@ function normaliserEtVerifier(lignes, genres) {
     if (!c.name_fr && !c.name_nl) problemes.push(`${l.id} : aucun nom.`);
   }
   return problemes;
+}
+
+/**
+ * Lot B : une ligne modifiée telle que le serveur de dépôt l'attend. `entiteFraiche` : la ligne telle qu'elle vient d'être lue
+ * (ses valeurs deviennent `avant`, contrôlées par le serveur au moment d'écrire) ; `c` : les champs voulus (mêmes règles que ecrireChamps).
+ * `null` = champ retiré.
+ */
+function changement(id, entiteFraiche, c) {
+  const apres = { genre: c.genre };
+  if (c.genre === 'planche') apres.sheet_ref = c.sheet_ref;
+  else { apres.name_fr = c.name_fr; apres.name_nl = c.name_nl; apres.references = c.references.length ? c.references.slice() : null; }
+  const avant = {};
+  for (const k of Object.keys(apres)) avant[k] = entiteFraiche[k] === undefined ? null : entiteFraiche[k];
+  return { id, avant, apres };
 }
 
 /** Reporte les champs modifiables sur une entité du fichier (les autres champs, ex. ids_externes, sont conservés). */
@@ -348,15 +362,18 @@ async function monter(conteneur) {
   /* Enregistrer */
   btnSauver.addEventListener('click', async () => {
     const A = AMGT4CEM_PeLabelAnchors;
-    const relais = AMGT4CEM_Services.current().relayUrl || AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl;
-    if (!relais) { dire('Pour enregistrer : renseigner l\'adresse du relais (Réglages > Avancé > Services et relais).', 'erreur'); return; }
-    const code = await A.demanderCode();
-    if (!code) { dire('Enregistrement annulé : code administrateur non saisi.', 'erreur'); return; }
+    // Source R2 (lot B) : enregistrement par le serveur de dépôt avec le compte connecté ; sinon, relais et code administrateur comme avant.
+    const r2 = !!window.AMGT4CEM_Stockage && AMGT4CEM_Stockage.source() === 'r2';
+    let relais = ''; let code = '';
+    if (!r2) {
+      relais = AMGT4CEM_Services.current().relayUrl || AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl;
+      if (!relais) { dire('Pour enregistrer : renseigner l\'adresse du relais (Réglages > Avancé > Services et relais).', 'erreur'); return; }
+      code = await A.demanderCode();
+      if (!code) { dire('Enregistrement annulé : code administrateur non saisi.', 'erreur'); return; }
+    }
     const problemes = normaliserEtVerifier(lignes, genres);
     if (problemes.length) { rendre(); dire(`Enregistrement impossible :\n${problemes.slice(0, 8).join('\n')}`, 'erreur'); return; }
     const aEnvoyer = nonEnvoyees();
-    const bloque = window.AMGT4CEM_Stockage ? AMGT4CEM_Stockage.ecritureBloquee() : '';
-    if (bloque) { dire(bloque, 'erreur'); return; }
     dire('Vérification sur le serveur…');
     btnSauver.disabled = true;
     try {
@@ -367,17 +384,22 @@ async function monter(conteneur) {
         const frais = await lireJson(s.url);
         const conflits = trouverConflits(mes, frais, origine, envoye);
         if (conflits.length) throw new Error(`Conflit, rien n'a été enregistré pour ce fichier :\n${conflits.slice(0, 8).join('\n')}\nRouvrez l'écran pour voir les valeurs actuelles.`);
+        // `avant` est pris AVANT d'écrire les nouvelles valeurs dans la copie lue.
+        const changements = r2 ? mes.map((l) => changement(l.id, frais.entites[l.id], l.champs)) : null;
         for (const l of mes) ecrireChamps(frais.entites[l.id], l.champs);
-        plan.push({ s, frais, mes });
+        plan.push({ s, frais, mes, changements });
       }
-      for (const { s, frais, mes } of plan) {
+      for (const { s, frais, mes, changements } of plan) {
         dire('Enregistrement sur le serveur…');
-        await A.putToRelay(relais, s.route, frais, code);
+        if (r2) await AMGT4CEM_Stockage.ecrireAttributs(s.nomR2, changements);
+        else await A.putToRelay(relais, s.route, frais, code);
         for (const l of mes) envoye.set(l.id, signature(l.champs));
       }
       historique.length = 0;
       rendre();
-      dire(`${aEnvoyer.length} ligne(s) enregistrée(s). Appliqué à tous après le redéploiement du site (environ 1 minute).`, 'ok');
+      dire(r2
+        ? `${aEnvoyer.length} ligne(s) enregistrée(s) dans R2 : visibles tout de suite ; les autres agents les verront en rechargeant la page.`
+        : `${aEnvoyer.length} ligne(s) enregistrée(s). Appliqué à tous après le redéploiement du site (environ 1 minute).`, 'ok');
     } catch (err) { dire(err.message, 'erreur'); } finally { majEtat(); }
   });
 
@@ -395,5 +417,5 @@ async function monter(conteneur) {
 const ECRAN = { id: 'attributs', titre: 'Attributs', monter, modifs: () => false };
 window.AMGT4CEM_AttributsEcran = ECRAN;
 
-window.AMGT4CEM_AttributsLogique = { champsDe, signature, appliquerCellule, parserColle, reperesEntetes, normaliserEtVerifier, ecrireChamps, trouverConflits, texteEnRefs };
+window.AMGT4CEM_AttributsLogique = { changement, champsDe, signature, appliquerCellule, parserColle, reperesEntetes, normaliserEtVerifier, ecrireChamps, trouverConflits, texteEnRefs };
 })();

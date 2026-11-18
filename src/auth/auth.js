@@ -77,6 +77,7 @@ const AMGT4CEM_Auth = {
     if (!response.ok) {
       const e = new Error(data.erreur || `Erreur du serveur (HTTP ${response.status}).`);
       e.status = response.status;
+      e.data = data; // corps de l'erreur (ex. liste des conflits d'une écriture d'attributs)
       throw e;
     }
     return data;

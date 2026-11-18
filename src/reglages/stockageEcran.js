@@ -120,7 +120,7 @@ function cadre() {
     const appliquer = h('button', { type: 'button', class: 'rgl-btn', text: 'Appliquer la source' });
     appliquer.addEventListener('click', async () => {
       if (choix.value === etat.source) { dire('La source est déjà celle-ci.'); return; }
-      if (choix.value === 'r2' && !confirm('Passer la lecture sur R2 pour tous les agents connectés ?\n\nTant que l\'enregistrement vers R2 n\'est pas disponible (lots B et C), les modifications d\'attributs seront refusées. Vous pouvez revenir au dépôt à tout moment.')) return;
+      if (choix.value === 'r2' && !confirm('Passer la lecture sur R2 pour tous les agents connectés ?\n\nLes modifications d\'attributs seront alors enregistrées dans R2 (et plus sur le dépôt). Vous pouvez revenir au dépôt à tout moment.')) return;
       try {
         await S().changerSource(choix.value);
         await monter();

@@ -20,8 +20,16 @@
  *   GET  /geometries/identifiants                      { prochain_id } (copie du compteur P)
  *   GET  /attributs/<nom>                              JSON (ETag, 304)
  *   POST /geometries/charger           (plans)         chargement initial (refusé si R2 contient déjà la couche)
+ *   POST /attributs/<nom>/modifier     (attributs)     lot B : lignes modifiées { changements: [{ id, avant, apres }] }
  *
- * Écritures ultérieures (lots B et C) : à ajouter ici, avec `If-Match` et la conservation des versions décidée le 18/11/2026.
+ * Lot B (écriture des attributs) : le client n'envoie que les lignes modifiées, chacune avec ses anciennes valeurs (`avant`)
+ * et les nouvelles (`apres`, `null` = champ retiré). Le serveur relit le fichier, refuse tout si une ligne n'est plus dans l'état
+ * `avant` (conflit par ligne), applique, copie l'ancienne version dans prive/attributs/archive/<nom>/, écrit avec If-Match
+ * (nouvel essai si quelqu'un a écrit entre-temps) puis ne garde que les archives prévues (CONSERVATION).
+ * Seuls genre, name_fr, name_nl, references et sheet_ref d'une ligne existante sont modifiables ; ajouter ou retirer une ligne
+ * est réservé au lot C.
+ *
+ * Écriture du shapefile (lot C) : à ajouter ici, avec `If-Match` et la conservation des versions.
  */
 
 const COUCHES = ['polygones', 'essai'];
@@ -34,6 +42,13 @@ const TYPES = { shp: 'application/octet-stream', shx: 'application/octet-stream'
 const cleCourant = (couche) => `prive/geometries/shapefile/${couche}/courant.json`;
 const cleFichier = (couche, version, ext) => `prive/geometries/shapefile/${couche}/versions/${version}/${couche}.${ext}`;
 const cleAttributs = (nom) => `prive/attributs/${nom}.json`;
+const prefixeArchives = (nom) => `prive/attributs/archive/${nom}/`;
+
+// Conservation des versions (décidée le 18/11/2026) : les N dernières + la dernière de chaque mois + la plus ancienne (origine).
+// Valeurs fixées dans le code : les changer demande un redéploiement du Worker.
+export const CONSERVATION = { shapefile: 10, attributs: 20 };
+const CHAMPS_MODIFIABLES = ['genre', 'name_fr', 'name_nl', 'references', 'sheet_ref'];
+const MAX_CHANGEMENTS = 500;
 
 /** Horodatage de version à l'heure de Bruxelles : vAAAAMMJJ_HHMMSS. */
 export function nomVersion(date = new Date()) {
@@ -90,6 +105,46 @@ export function verifierShapefile(f) {
     vus.add(id); ids.push(id);
   }
   return { objets, ids };
+}
+
+/** Valide et normalise la valeur d'un champ modifiable ; null = champ retiré. Lève une Error lisible. */
+function champValide(cle, v) {
+  if (v === null || v === undefined) return null;
+  if (cle === 'references') {
+    if (!Array.isArray(v) || v.length > 50 || v.some((x) => typeof x !== 'string' || x.length > 60)) throw new Error('references : liste de textes (50 au plus, 60 caractères chacun).');
+    return v;
+  }
+  if (typeof v !== 'string') throw new Error(`${cle} : texte attendu.`);
+  if (v.length > (cle === 'genre' || cle === 'sheet_ref' ? 40 : 200)) throw new Error(`${cle} : texte trop long.`);
+  return v;
+}
+
+/** Noms des archives à garder : les `n` plus récentes, la plus récente de chaque mois, la plus ancienne. `noms` = noms de version triables. */
+export function archivesAGarder(noms, n) {
+  const tries = [...noms].sort();
+  const garder = new Set(tries.slice(-n));
+  const parMois = new Map();
+  for (const x of tries) parMois.set(x.slice(1, 7), x); // vAAAAMM… : le dernier écrase les précédents du même mois
+  for (const x of parMois.values()) garder.add(x);
+  if (tries.length) garder.add(tries[0]);
+  return garder;
+}
+
+/** Supprime les archives hors règle ; ne doit jamais faire échouer une écriture. */
+async function purgerArchives(env, nom) {
+  try {
+    const cles = [];
+    let curseur;
+    do {
+      const page = await env.DEPOTS.list({ prefix: prefixeArchives(nom), cursor: curseur });
+      for (const o of page.objects) cles.push(o.key);
+      curseur = page.truncated ? page.cursor : undefined;
+    } while (curseur);
+    const versions = cles.map((k) => k.slice(prefixeArchives(nom).length).replace(/\.json$/, ''));
+    const garder = archivesAGarder(versions, CONSERVATION.attributs);
+    const aSupprimer = cles.filter((k, i) => !garder.has(versions[i]));
+    if (aSupprimer.length) await env.DEPOTS.delete(aSupprimer);
+  } catch (err) { console.error('purge des archives', err); }
 }
 
 /**
@@ -172,6 +227,62 @@ export function creerRoutesGeometries(ctx) {
         return servir(request, env, cleFichier(couche, c.pointeur.version, ext), TYPES[ext]);
       }
       return null;
+    }
+
+    // ---- lot B : modification de lignes d'attributs (droit « attributs »)
+    const mMod = /^\/attributs\/([a-z0-9-]+)\/modifier$/.exec(p);
+    if (request.method === 'POST' && mMod) {
+      const u = await exigerDroit(request, env, 'attributs');
+      const nom = mMod[1];
+      if (!ATTRIBUTS.includes(nom)) throw new HttpError(404, 'Attributs inconnus.');
+      const { changements } = await lireJson(request);
+      if (!Array.isArray(changements) || !changements.length || changements.length > MAX_CHANGEMENTS) throw new HttpError(400, `Entre 1 et ${MAX_CHANGEMENTS} lignes attendues.`);
+      const demandes = [];
+      const vus = new Set();
+      for (const ch of changements) {
+        if (!ch || typeof ch.id !== 'string' || !ch.avant || !ch.apres || typeof ch.avant !== 'object' || typeof ch.apres !== 'object') throw new HttpError(400, 'Chaque ligne demande { id, avant, apres }.');
+        if (vus.has(ch.id)) throw new HttpError(400, `Ligne en double : ${ch.id}.`);
+        vus.add(ch.id);
+        const avant = {}; const apres = {};
+        try {
+          for (const [k, v] of Object.entries(ch.apres)) { if (!CHAMPS_MODIFIABLES.includes(k)) throw new Error(`Champ non modifiable : ${k}.`); apres[k] = champValide(k, v); }
+          for (const [k, v] of Object.entries(ch.avant)) { if (!CHAMPS_MODIFIABLES.includes(k)) throw new Error(`Champ non modifiable : ${k}.`); avant[k] = v === undefined ? null : v; }
+        } catch (err) { throw new HttpError(400, `${ch.id} : ${err.message}`); }
+        demandes.push({ id: ch.id, avant, apres });
+      }
+      for (let tentative = 0; tentative < 4; tentative++) {
+        const o = await env.DEPOTS.get(cleAttributs(nom));
+        if (!o) throw new HttpError(404, 'Ces attributs ne sont pas encore dans R2.');
+        const brut = await o.text();
+        let data;
+        try { data = JSON.parse(brut); } catch (err) { throw new HttpError(500, 'Attributs illisibles dans R2.'); }
+        const conflits = [];
+        for (const d of demandes) {
+          const e = (data.entites || {})[d.id];
+          if (!e) { conflits.push({ id: d.id, motif: 'n\'existe plus' }); continue; }
+          for (const [k, v] of Object.entries(d.avant)) {
+            if (JSON.stringify(e[k] === undefined ? null : e[k]) !== JSON.stringify(v)) { conflits.push({ id: d.id, motif: 'modifiée par quelqu\'un d\'autre' }); break; }
+          }
+        }
+        if (conflits.length) return { status: 409, body: { erreur: 'Conflit : rien n\'a été enregistré. Rouvrez l\'écran pour voir les valeurs actuelles.', conflits } };
+        for (const d of demandes) {
+          const e = data.entites[d.id];
+          for (const [k, v] of Object.entries(d.apres)) { if (v === null) delete e[k]; else e[k] = v; }
+          delete e.noms; // ancien modèle (plusieurs noms), abandonné
+        }
+        data.date = new Date().toISOString();
+        data.modifiePar = u.matricule;
+        // Copie de l'ancienne version (nom unique même pour deux écritures dans la même seconde), puis écriture conditionnelle.
+        let version = nomVersion();
+        for (let n = 2; await env.DEPOTS.head(`${prefixeArchives(nom)}${version}.json`); n++) version = `${nomVersion()}_${n}`;
+        const cleArchive = `${prefixeArchives(nom)}${version}.json`;
+        await env.DEPOTS.put(cleArchive, brut, { httpMetadata: { contentType: 'application/json' } });
+        const ecrit = await env.DEPOTS.put(cleAttributs(nom), JSON.stringify(data), { httpMetadata: { contentType: 'application/json' }, onlyIf: { etagMatches: o.etag } });
+        if (!ecrit) { await env.DEPOTS.delete(cleArchive); continue; } // quelqu'un a écrit entre-temps : on relit et on recommence
+        await purgerArchives(env, nom);
+        return { status: 200, body: { modifiees: demandes.length, archive: version, etag: ecrit.httpEtag } };
+      }
+      throw new HttpError(409, 'Le fichier est modifié en continu par d\'autres écritures ; réessayez dans un instant.');
     }
 
     // ---- interrupteur de source : droit « plans »

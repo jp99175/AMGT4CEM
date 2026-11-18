@@ -9,12 +9,11 @@
  *   AMGT4CEM_Stockage.fetch(url, init)   comme fetch(), source-aware
  *   AMGT4CEM_Stockage.lireJson(url)      lecture JSON sans cache, source-aware
  *   AMGT4CEM_Stockage.source()           'depot' | 'r2' (dernière valeur connue du serveur, gardée sur l'appareil)
- *   AMGT4CEM_Stockage.ecritureBloquee()  message si les écritures vers le dépôt ne sont pas permises (source R2), sinon ''
+ *   AMGT4CEM_Stockage.ecrireAttributs(nom, changements)   lot B : écrit des lignes d'attributs dans R2 (droit « attributs »)
  *   AMGT4CEM_Stockage.actualiser()       relit l'état du serveur (source, versions) ; renvoie l'état ou null
  *
- * Tant que les lots B et C ne sont pas faits (écriture des attributs et du shapefile dans R2), la source R2 est réservée
- * à la lecture : les écrans qui écrivent dans le dépôt refusent d'écrire quand la source est R2, pour qu'aucune
- * modification ne se perde (ecritureBloquee).
+ * Lot B : avec la source R2, les écrans d'attributs écrivent dans R2 (ecrireAttributs) et non plus dans le dépôt par le relais.
+ * L'écriture du shapefile dans R2 viendra avec le lot C.
  */
 const AMGT4CEM_Stockage = {
   CLE: 'amgt4cem.stockage.source.v1',
@@ -98,11 +97,20 @@ const AMGT4CEM_Stockage = {
     return r.json();
   },
 
-  /** Message de refus si l'écriture vers le dépôt ferait diverger les données (source R2 avant les lots B et C), sinon ''. */
-  ecritureBloquee() {
-    return this.source() === 'r2'
-      ? 'Les données sont lues dans R2 : l\'enregistrement vers R2 n\'est pas encore disponible. Repassez la source sur « dépôt » (Réglages > Plans > Stockage des données) pour modifier.'
-      : '';
+  /**
+   * Lot B : écrit des lignes d'attributs dans R2. `nom` : 'ditp-diov' ou 'plans-patrimoine' ; `changements` : [{ id, avant, apres }]
+   * (voir AMGT4CEM_AttributsLogique.changement). Refus du serveur en cas de conflit : l'erreur porte la liste des lignes en cause.
+   */
+  async ecrireAttributs(nom, changements) {
+    try {
+      return await AMGT4CEM_Auth.call(`/attributs/${nom}/modifier`, { method: 'POST', body: { changements } });
+    } catch (err) {
+      if (err.status === 409 && err.data && Array.isArray(err.data.conflits)) {
+        const liste = err.data.conflits.slice(0, 8).map((c) => `${c.id} : ${c.motif}.`).join('\n');
+        err.message = `${err.message}\n${liste}`;
+      }
+      throw err;
+    }
   },
 };
 window.AMGT4CEM_Stockage = AMGT4CEM_Stockage;
