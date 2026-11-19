@@ -428,7 +428,8 @@ export function creerRoutesGeometries(ctx) {
     for (let tentative = 0; tentative < 4; tentative++) {
       const o = await env.DEPOTS.get(CLE_LIEUX);
       if (!o) throw new HttpError(409, 'Les zones ne sont pas encore dans R2 : chargez-les d\'abord (Réglages > Stockage des données).');
-      if (etagBase && o.httpEtag !== etagBase) throw new HttpError(409, 'Les zones ont été modifiées par quelqu\'un d\'autre depuis votre lecture : rien n\'a été enregistré. Rouvrez l\'outil.');
+      // Cloudflare rend faible (préfixe W/) l'ETag d'une réponse compressée : on compare sans ce préfixe.
+      if (etagBase && o.httpEtag.replace(/^W\//, '') !== String(etagBase).replace(/^W\//, '')) throw new HttpError(409, 'Les zones ont été modifiées par quelqu\'un d\'autre depuis votre lecture : rien n\'a été enregistré. Rouvrez l\'outil.');
       const brut = await o.text();
       let data; try { data = JSON.parse(brut); } catch (err) { throw new HttpError(500, 'Zones illisibles dans R2.'); }
       const nouveau = fn(data);
