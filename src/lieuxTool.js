@@ -36,6 +36,7 @@ const AMGT4CEM_LieuxTool = {
     if (!AMGT4CEM_PlansPrefs.outilLieuxDisponible()) return; // droit « plans » + case cochée dans les Réglages
     this._active = true;
     this._btn.classList.add('amgt-btn--active');
+    this._map.getPane('amgtLieuxPane').style.pointerEvents = ''; // l'outil reçoit les clics de son calque (voir close)
     this._group.addTo(this._map);
     await this._readLieux();
     this._clickH = (e) => this._surClic(e);
@@ -74,6 +75,9 @@ const AMGT4CEM_LieuxTool = {
     if (this._docClic) { document.removeEventListener('click', this._docClic); this._docClic = null; }
     this._cur = ''; this._dirty = false; this._hist = [];
     this._map.removeLayer(this._group);
+    // Le calque de l'outil est un canvas Leaflet qui reste en place, vide, au-dessus de la carte : sans ceci il capte les clics et les
+    // infobulles des zones (couche « Plans patrimoine ») ne s'ouvrent plus jusqu'au rechargement de la page.
+    this._map.getPane('amgtLieuxPane').style.pointerEvents = 'none';
     if (this._panel) this._panel.remove();
     this._panel = null;
   },
