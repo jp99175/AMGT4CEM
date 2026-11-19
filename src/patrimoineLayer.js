@@ -178,6 +178,10 @@ const AMGT4CEM_PatrimoineLayer = {
       const fc = await AMGT4CEM_ShpLoader.load(entry.shapefile, entry.essaiR2 ? { noms: true, optional: true } : {});
       if (entry.essaiR2) {
         if (!fc.features.length) this._bandeau('Essai R2 : disponible seulement avec la source R2 et un fichier d\'essai déposé.');
+        // Les planches (limites des plans patrimoine) ont leur propre couche : on ne les dessine pas ici, elles masquent les contours à comparer.
+        let planches = {};
+        try { const r = await AMGT4CEM_Stockage.fetch(`./data/plans-patrimoine/polygones.json?t=${Date.now()}`, { cache: 'no-store' }); if (r.ok) planches = (await r.json()).entites || {}; } catch (err) { /* sans cette liste : toutes les planches restent affichées */ }
+        fc.features = fc.features.filter((f) => !planches[f.properties.id]);
         this._cache[entry.id] = fc.features.map((f) => ({ ...f, properties: { genre: 'shapefile', contourSeul: true, nouveau: f.properties.id[0] === 'T', name_fr: `${f.properties.nom || f.properties.id} (${f.properties.id})` } }));
         return this._cache[entry.id];
       }
