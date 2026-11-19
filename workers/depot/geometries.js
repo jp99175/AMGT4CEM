@@ -22,6 +22,10 @@
  *   POST /geometries/charger           (plans)         chargement initial (refusé si R2 contient déjà la couche)
  *   POST /attributs/<nom>/modifier     (attributs)     lot B : lignes modifiées { changements: [{ id, avant, apres }] }
  *   POST /attributs/<nom>/supprimer    (attributs)     lot C : supprime des entrées sans contour dans le vrai shapefile { ids: [...] }
+ *   GET  /geometries/lieux                             zones dessinées (outil « Dessiner une zone »), ETag, 304
+ *   POST /geometries/lieux/charger     (plans)         chargement initial des zones { lieux } (refusé si R2 les contient déjà)
+ *   POST /geometries/lieux             (plans)         écrit toutes les zones { lieux, etagBase } (refusé si le fichier a changé depuis la lecture)
+ *   POST /geometries/shapefile/<couche>/appliquer (plans)  lot C partie 2 : zones vers le shapefile (↓) et objets retirés vers les zones (↑)
  *
  * Lot B (écriture des attributs) : le client n'envoie que les lignes modifiées, chacune avec ses anciennes valeurs (`avant`)
  * et les nouvelles (`apres`, `null` = champ retiré). Le serveur relit le fichier, refuse tout si une ligne n'est plus dans l'état
@@ -39,7 +43,7 @@
  * Ordre d'écriture : fichiers de la version, attributs des nouveaux objets, puis pointeur en dernier (If-Match). Voir shapefile.js.
  */
 
-import { analyserDepot, composerDbf, composerShpShx, controlerContour, lireIdsDbf, lireJeu } from './shapefile.js';
+import { analyserDepot, composerDbf, composerShpShx, controlerContour, decoderContour, encoderContour, lireIdsDbf, lireJeu } from './shapefile.js';
 
 const COUCHES = ['polygones', 'essai'];
 const EXTENSIONS = ['shp', 'shx', 'dbf', 'prj', 'cpg'];
@@ -51,7 +55,8 @@ const TYPES = { shp: 'application/octet-stream', shx: 'application/octet-stream'
 const cleCourant = (couche) => `prive/geometries/shapefile/${couche}/courant.json`;
 const cleFichier = (couche, version, ext) => `prive/geometries/shapefile/${couche}/versions/${version}/${couche}.${ext}`;
 const cleAttributs = (nom) => `prive/attributs/${nom}.json`;
-const prefixeArchives = (nom) => `prive/attributs/archive/${nom}/`;
+const prefixeArchives = (nom) => (nom === 'lieux' ? 'prive/geometries/json/archive/lieux/' : `prive/attributs/archive/${nom}/`);
+const CLE_LIEUX = 'prive/geometries/json/lieux.json';
 const prefixeVersions = (couche) => `prive/geometries/shapefile/${couche}/versions/`;
 const cleJournal = (couche, version) => `prive/geometries/depots/${couche}/${version}.json`;
 const cleZip = (couche, version) => `prive/geometries/depots/${couche}/${version}.zip`;
@@ -232,7 +237,9 @@ export function creerRoutesGeometries(ctx) {
     for (const n of ATTRIBUTS) attributs[n] = await nombreAttributs(env, n);
     let prochainP = null;
     try { prochainP = (await compteur(env, { action: 'etat' })).etat.identifiants.P; } catch (err) { console.error('compteur P', err); }
-    return { ...(await lireSource(env)), couches, attributs, prochainP };
+    let lieux = null;
+    try { const o = await env.DEPOTS.get(CLE_LIEUX); if (o) { const j = await o.json(); lieux = { entrees: Object.keys(j.lieux || {}).length, etag: o.httpEtag }; } } catch (err) { lieux = { entrees: null }; }
+    return { ...(await lireSource(env)), couches, attributs, lieux, prochainP };
   }
 
 
@@ -253,7 +260,7 @@ export function creerRoutesGeometries(ctx) {
   }
 
   /** Ajoute des entrées vides pour de nouveaux identifiants dans un fichier d'attributs (archive + écriture conditionnelle). */
-  async function ajouterEntrees(env, nom, ids, matricule) {
+  async function ajouterEntrees(env, nom, ids, matricule, valeurs = {}) {
     for (let tentative = 0; tentative < 4; tentative++) {
       const o = await env.DEPOTS.get(cleAttributs(nom));
       if (!o) throw new HttpError(409, `Les attributs ${nom} ne sont pas dans R2.`);
@@ -261,7 +268,11 @@ export function creerRoutesGeometries(ctx) {
       const data = JSON.parse(brut);
       data.entites = data.entites || {};
       let ajoutees = 0;
-      for (const id of ids) if (!data.entites[id]) { data.entites[id] = {}; ajoutees++; }
+      for (const id of ids) {
+        if (!data.entites[id]) { data.entites[id] = {}; ajoutees++; }
+        const v = valeurs[id];
+        if (v) for (const [k, x] of Object.entries(v)) if (x !== undefined && JSON.stringify(data.entites[id][k]) !== JSON.stringify(x)) { data.entites[id][k] = x; ajoutees++; }
+      }
       if (!ajoutees) return;
       data.date = new Date().toISOString(); data.modifiePar = matricule;
       let version = nomVersion();
@@ -412,6 +423,167 @@ export function creerRoutesGeometries(ctx) {
     return out;
   }
 
+  /** Zones dessinées : lecture-modification-écriture conditionnelle (archive de l'ancien fichier, purge). `fn(data)` renvoie le nouveau contenu ou null (rien à changer). */
+  async function modifierLieux(env, matricule, fn, { etagBase } = {}) {
+    for (let tentative = 0; tentative < 4; tentative++) {
+      const o = await env.DEPOTS.get(CLE_LIEUX);
+      if (!o) throw new HttpError(409, 'Les zones ne sont pas encore dans R2 : chargez-les d\'abord (Réglages > Stockage des données).');
+      if (etagBase && o.httpEtag !== etagBase) throw new HttpError(409, 'Les zones ont été modifiées par quelqu\'un d\'autre depuis votre lecture : rien n\'a été enregistré. Rouvrez l\'outil.');
+      const brut = await o.text();
+      let data; try { data = JSON.parse(brut); } catch (err) { throw new HttpError(500, 'Zones illisibles dans R2.'); }
+      const nouveau = fn(data);
+      if (!nouveau) return false;
+      nouveau.date = new Date().toISOString(); nouveau.modifiePar = matricule;
+      let version = nomVersion();
+      for (let n = 2; await env.DEPOTS.head(`${prefixeArchives('lieux')}${version}.json`); n++) version = `${nomVersion()}_${n}`;
+      const cleArchive = `${prefixeArchives('lieux')}${version}.json`;
+      await env.DEPOTS.put(cleArchive, brut, { httpMetadata: { contentType: 'application/json' } });
+      const ecrit = await env.DEPOTS.put(CLE_LIEUX, JSON.stringify(nouveau), { httpMetadata: { contentType: 'application/json' }, onlyIf: { etagMatches: o.etag } });
+      if (!ecrit) { await env.DEPOTS.delete(cleArchive); if (etagBase) throw new HttpError(409, 'Les zones ont changé pendant l\'écriture : rien n\'a été enregistré. Rouvrez l\'outil.'); continue; }
+      await purgerArchives(env, 'lieux');
+      return true;
+    }
+    throw new HttpError(409, 'Les zones sont modifiées en continu par d\'autres écritures ; réessayez dans un instant.');
+  }
+
+  /** Contrôle de forme d'un fichier de zones { lieux: { SLUG: { nom, ... } } } ; renvoie la liste des problèmes. */
+  function controlerLieux(lieux) {
+    if (!lieux || typeof lieux !== 'object' || Array.isArray(lieux)) return ['Les zones doivent former un objet { identifiant: zone }.'];
+    const cles = Object.keys(lieux);
+    if (cles.length > 1000) return ['Trop de zones (1000 au plus).'];
+    const pb = [];
+    for (const c of cles) {
+      const z = lieux[c];
+      if (!/^[A-Z0-9][A-Z0-9-]{0,79}$/.test(c)) pb.push(`Identifiant de zone invalide : ${c.slice(0, 40)}.`);
+      else if (!z || typeof z !== 'object' || typeof z.nom !== 'string' || !z.nom.trim() || !Array.isArray(z.objets)) pb.push(`Zone ${c} : nom ou objets manquants.`);
+      if (pb.length >= 5) break;
+    }
+    return pb;
+  }
+
+  const slugDe = (nom) => String(nom).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 70) || 'ZONE';
+
+  /**
+   * Lot C, partie 2 : applique des déplacements préparés dans l'écran « Intégrer au shapefile ».
+   *  - ajouts : identifiants (SLUG) de zones dessinées, encodées en Lambert 72 et ajoutées au shapefile ;
+   *  - retraits : identifiants d'objets du shapefile, retirés du fichier.
+   * Couche « polygones » (le vrai réseau) : les zones intégrées quittent les zones, les objets retirés y reviennent (avec leur P…) et les
+   * attributs sont écrits dans ditp-diov (les entrées des objets retirés y restent).
+   * Couche « essai » : ni les zones ni les attributs ne sont touchés (un essai ne consomme rien du réel).
+   * Ordre : fichiers de la version, relecture, attributs, pointeur (If-Match), puis zones. Si l'écriture des zones échoue après la
+   * bascule, la version reste valable et la réponse l'indique (zone « déjà au shapefile », jamais perdue).
+   */
+  async function appliquer(env, u, couche, d) {
+    const cur = await lirePointeur(env, couche);
+    if (!cur) throw new HttpError(409, 'Cette couche n\'est pas encore dans R2.');
+    const ajouts = Array.isArray(d.ajouts) ? d.ajouts.map(String) : [];
+    const retraits = Array.isArray(d.retraits) ? d.retraits.map(String) : [];
+    if (!ajouts.length && !retraits.length) throw new HttpError(400, 'Rien à appliquer.');
+    if (ajouts.length + retraits.length > 300) throw new HttpError(400, 'Trop de déplacements d\'un coup (300 au plus).');
+    if (new Set(ajouts).size !== ajouts.length || new Set(retraits).size !== retraits.length) throw new HttpError(400, 'Déplacement en double.');
+    const lo = await env.DEPOTS.get(CLE_LIEUX);
+    if (!lo) throw new HttpError(409, 'Les zones ne sont pas encore dans R2 : chargez-les d\'abord (Réglages > Stockage des données).');
+    const donneesLieux = JSON.parse(await lo.text());
+    const zones = donneesLieux.lieux || {};
+    const reel = couche === 'polygones';
+    const prefixe = reel ? 'P' : 'T';
+    const courant = await lireJeuR2(env, couche, cur.pointeur.version);
+    const att = await lireAttributsR2(env);
+    const prochainP = (await compteur(env, { action: 'etat' })).etat.identifiants.P;
+    const prochainT = cur.pointeur.prochainT || 1;
+    const present = new Set(courant.objets.map((o) => o.id));
+    const erreurs = [];
+    for (const id of retraits) if (!present.has(id)) erreurs.push(`${id} : n'est plus dans le fichier (il a changé depuis l'ouverture de l'écran).`);
+    const prets = [];
+    for (const cle of ajouts) {
+      const z = zones[cle];
+      if (!z) { erreurs.push(`Zone ${cle} : introuvable (modifiée ou supprimée depuis l'ouverture de l'écran).`); continue; }
+      if (typeof z.genre !== 'string' || !z.genre) { erreurs.push(`Zone « ${z.nom} » : genre manquant.`); continue; }
+      let contenu;
+      try { contenu = encoderContour(z.contour); } catch (err) { erreurs.push(`Zone « ${z.nom} » : contour inutilisable (${err.message}).`); continue; }
+      const idGarde = typeof z.id_shapefile === 'string' && z.id_shapefile ? z.id_shapefile : null;
+      if (idGarde) {
+        if (!REGLES_ID[couche].test(idGarde) || nombreId(idGarde) >= (idGarde[0] === 'P' ? prochainP : prochainT)) { erreurs.push(`Zone « ${z.nom} » : l'identifiant ${idGarde} n'a jamais été attribué.`); continue; }
+        if (present.has(idGarde) && !retraits.includes(idGarde)) { erreurs.push(`Zone « ${z.nom} » : l'identifiant ${idGarde} est déjà dans le fichier.`); continue; }
+      }
+      prets.push({ cle, z, contenu, id: idGarde });
+    }
+    const neufs = prets.filter((x) => !x.id);
+    const resume = {
+      ajouts: prets.map((x) => ({ cle: x.cle, nom: x.z.nom, id: x.id })), retraits, versionCourante: cur.pointeur.version,
+      nouveaux: neufs.length, premierId: neufs.length ? idDe(prefixe, reel ? prochainP : prochainT) : null, dernierId: neufs.length ? idDe(prefixe, (reel ? prochainP : prochainT) + neufs.length - 1) : null,
+      objetsApres: courant.objets.length - retraits.length + prets.length, touche: reel ? 'zones et attributs' : 'rien d\'autre que cette couche',
+    };
+    if (erreurs.length) return { status: 400, body: { erreur: 'Rien n\'a été enregistré.', erreurs, resume } };
+    if (d.apercu) return { status: 200, body: { apercu: true, resume } };
+    if (resume.objetsApres < 1) throw new HttpError(400, 'Le fichier ne peut pas devenir vide.');
+
+    // ---- écriture
+    let attribues = [];
+    if (neufs.length) {
+      attribues = reel ? (await compteur(env, { action: 'reserver', prefixe: 'P', n: neufs.length })).ids : neufs.map((_, i) => idDe('T', prochainT + i));
+      neufs.forEach((x, i) => { x.id = attribues[i]; });
+    }
+    const retire = new Set(retraits);
+    const gardes = courant.objets.filter((o) => !retire.has(o.id));
+    const objets = [...gardes.map((o) => ({ id: o.id, contenu: o.contenu })), ...prets.map((x) => ({ id: x.id, contenu: x.contenu }))];
+    const valeursZone = new Map(prets.map((x) => [x.id, { genre: x.z.genre, name_fr: x.z.nom, name_nl: x.z.name_nl, references: x.z.references, ids_externes: x.z.ids_externes }]));
+    const lignes = objets.map((o) => {
+      if (valeursZone.has(o.id)) { const v = valeursZone.get(o.id); return { id: o.id, genre: v.genre, nom_fr: v.name_fr, nom_nl: v.name_nl }; }
+      const e = att['ditp-diov'].entites[o.id] || att['plans-patrimoine'].entites[o.id] || {};
+      return { id: o.id, genre: e.genre, nom_fr: e.name_fr, nom_nl: e.name_nl };
+    });
+    const { shp, shx } = composerShpShx(objets.map((o) => o.contenu));
+    const { dbf, coupes } = composerDbf(lignes);
+    const version = await nomVersionLibre(env, couche);
+    const anciens = new Map();
+    for (const ext of ['prj', 'cpg']) {
+      const o = await env.DEPOTS.get(cleFichier(couche, cur.pointeur.version, ext));
+      anciens.set(ext, o ? new Uint8Array(await o.arrayBuffer()) : null);
+    }
+    if (!anciens.get('prj')) throw new HttpError(500, 'Le fichier .prj de la version courante est introuvable.');
+    const contenu = { shp, shx, dbf, prj: anciens.get('prj'), cpg: new TextEncoder().encode('1252') };
+    for (const ext of EXTENSIONS) await env.DEPOTS.put(cleFichier(couche, version, ext), contenu[ext], { httpMetadata: { contentType: TYPES[ext] } });
+    try { const relu = await lireJeuR2(env, couche, version); if (relu.objets.length !== objets.length || relu.objets.some((o, i) => o.id !== objets[i].id)) throw new Error('relecture différente'); } catch (err) { await supprimerVersion(env, couche, version); throw new HttpError(500, 'La relecture de vérification a échoué : rien n\'a été enregistré.'); }
+    if (reel && prets.length) {
+      const valeurs = {};
+      for (const [id, v] of valeursZone) { const o = {}; for (const [k, x] of Object.entries(v)) if (x !== undefined) o[k] = x; valeurs[id] = o; }
+      await ajouterEntrees(env, 'ditp-diov', prets.map((x) => x.id), u.matricule, valeurs);
+    }
+    const pointeur = { version, origine: cur.pointeur.origine || version, fichiers: EXTENSIONS, objets: objets.length, date: new Date().toISOString(), par: u.matricule, deposePar: null, source: 'application', prochainT: prefixe === 'T' ? prochainT + attribues.length : prochainT };
+    const journal = { version, date: pointeur.date, par: u.matricule, deposePar: null, source: 'application', versionPrecedente: cur.pointeur.version, objets: objets.length, attribues, ajoutes: prets.map((x) => ({ cle: x.cle, nom: x.z.nom, id: x.id })), retires: retraits, valeursCoupees: coupes, zonesTouchees: reel };
+    if (!(await basculer(env, couche, cur, pointeur, journal))) {
+      await supprimerVersion(env, couche, version);
+      throw new HttpError(409, 'Un autre enregistrement a eu lieu en même temps : rien n\'a été remplacé. Rouvrez l\'écran et recommencez.');
+    }
+    // ---- zones (vrai réseau seulement) : les zones intégrées partent, les objets retirés reviennent avec leur identifiant
+    let zonesAJour = true; let avertissement = null;
+    if (reel) {
+      try {
+        const rings = new Map(retraits.map((id) => [id, decoderContour(courant.objets.find((o) => o.id === id).contenu)]));
+        await modifierLieux(env, u.matricule, (data) => {
+          const lieux = { ...(data.lieux || {}) };
+          for (const x of prets) delete lieux[x.cle];
+          for (const id of retraits) {
+            if (Object.values(lieux).some((z) => z.id_shapefile === id)) continue;
+            const e = att['ditp-diov'].entites[id] || {};
+            const nom = e.name_fr || e.name_nl || id;
+            let slug = slugDe(nom); if (lieux[slug]) slug = `${slug}-${id}`.slice(0, 80);
+            const lignesZone = rings.get(id);
+            const z = { nom, name_nl: e.name_nl, references: e.references, genre: e.genre || 'autre', tolerance_m: 5, id_shapefile: id, ids_externes: e.ids_externes, objets: [{ id, couche: 'Shapefile', code: 'SHAPEFILE', type: 'Surface', lignes: lignesZone }], contour_methode: 'surfaces', contour: lignesZone };
+            for (const k of Object.keys(z)) if (z[k] === undefined) delete z[k];
+            lieux[slug] = z;
+          }
+          return { ...data, lieux };
+        });
+      } catch (err) {
+        zonesAJour = false; avertissement = `La version du shapefile est enregistrée, mais les zones n'ont pas pu être mises à jour (${err.message}). Les zones intégrées restent visibles ; ne les intégrez pas une seconde fois.`;
+        console.error('zones après application', err);
+      }
+    }
+    return { status: 200, body: { version, objets: objets.length, attribues, ajoutes: prets.length, retires: retraits.length, valeursCoupees: coupes, zonesAJour, avertissement, etat: await etat(env) } };
+  }
+
   return async function routeGeometries(request, env, url) {
     const p = url.pathname;
     if (!p.startsWith('/geometries/') && !p.startsWith('/attributs/')) return null;
@@ -424,6 +596,7 @@ export function creerRoutesGeometries(ctx) {
         const e = (await compteur(env, { action: 'etat' })).etat;
         return { status: 200, body: { version: 3, prochain_id: e.identifiants.P, note: 'Copie du compteur P du serveur de dépôt.' } };
       }
+      if (p === '/geometries/lieux') return servir(request, env, CLE_LIEUX, 'application/json; charset=utf-8');
       let m = /^\/attributs\/([a-z0-9-]+)$/.exec(p);
       if (m) {
         if (!ATTRIBUTS.includes(m[1])) throw new HttpError(404, 'Attributs inconnus.');
@@ -457,13 +630,31 @@ export function creerRoutesGeometries(ctx) {
       return null;
     }
 
+    // ---- zones dessinées (droit « plans »)
+    if (request.method === 'POST' && (p === '/geometries/lieux/charger' || p === '/geometries/lieux')) {
+      const u = await exigerDroit(request, env, 'plans');
+      const d = await lireJson(request);
+      const pb = controlerLieux(d.lieux);
+      if (pb.length) throw new HttpError(400, pb.join(' '));
+      if (p === '/geometries/lieux/charger') {
+        if (await env.DEPOTS.head(CLE_LIEUX)) throw new HttpError(409, 'Les zones sont déjà dans R2 : le chargement initial n\'écrase rien.');
+        const ok = await env.DEPOTS.put(CLE_LIEUX, JSON.stringify({ version: 1, crs: 'EPSG:31370', lieux: d.lieux, date: new Date().toISOString(), modifiePar: u.matricule }), { httpMetadata: { contentType: 'application/json' }, onlyIf: { etagDoesNotMatch: '*' } });
+        if (!ok) throw new HttpError(409, 'Un autre chargement a eu lieu en même temps. Rien n\'a été écrasé.');
+        return { status: 200, body: await etat(env) };
+      }
+      if (typeof d.etagBase !== 'string' || !d.etagBase) throw new HttpError(400, 'Version de départ des zones manquante.');
+      await modifierLieux(env, u.matricule, (data) => ({ ...data, version: 1, crs: 'EPSG:31370', lieux: d.lieux }), { etagBase: d.etagBase });
+      return { status: 200, body: await etat(env) };
+    }
+
     // ---- lot C : dépôt d'un shapefile modifié, restauration d'une ancienne version (droit « plans »)
-    const mDep = /^\/geometries\/shapefile\/([a-z]+)\/(deposer|restaurer)$/.exec(p);
+    const mDep = /^\/geometries\/shapefile\/([a-z]+)\/(deposer|restaurer|appliquer)$/.exec(p);
     if (request.method === 'POST' && mDep) {
       const u = await exigerDroit(request, env, 'plans');
       const [, couche, action] = mDep;
       if (!COUCHES.includes(couche)) throw new HttpError(404, 'Couche inconnue.');
       const d = await lireJson(request);
+      if (action === 'appliquer') return appliquer(env, u, couche, d);
       return action === 'deposer' ? deposer(env, u, couche, d) : restaurer(env, u, couche, d);
     }
 

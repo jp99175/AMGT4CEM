@@ -81,8 +81,14 @@ const AMGT4CEM_LieuxTool = {
   async _readLieux() {
     let lus = {};
     try {
-      const r = await fetch(`${this.FILE}?t=${Date.now()}`);
-      lus = r.ok ? ((await r.json()).lieux || {}) : {};
+      this._etagR2 = null;
+      if (window.AMGT4CEM_Stockage) {
+        const z = await AMGT4CEM_Stockage.lireLieux(); // source R2 : zones lues dans R2 avec leur version de départ
+        lus = z.data.lieux || {}; this._etagR2 = z.etag;
+      } else {
+        const r = await fetch(`${this.FILE}?t=${Date.now()}`);
+        lus = r.ok ? ((await r.json()).lieux || {}) : {};
+      }
     } catch (err) {
       lus = {};
     }
@@ -96,6 +102,7 @@ const AMGT4CEM_LieuxTool = {
   CLE_ENVOYE: 'amgt4cem.lieux.envoye',
   COMBLEMENT_M: 1.5, // Remplir : une ouverture plus étroite (m) entre deux lignes est comblée par un segment droit
   _recents(lus) {
+    if (this._etagR2) return lus; // zones lues dans R2 : toujours à jour, pas besoin de l'état gardé par l'onglet
     try {
       const e = JSON.parse(sessionStorage.getItem(this.CLE_ENVOYE) || 'null');
       if (!e || Date.now() - e.at > 10 * 60 * 1000) return lus;
@@ -1521,11 +1528,21 @@ const AMGT4CEM_LieuxTool = {
   // ----------------------------------------------------------- enregistrement
   _slug(nom) { return nom.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, ''); },
 
+  _suiteEnreg() { return this._dansR2 ? 'La carte le lira au prochain chargement de la page.' : 'La carte le lira après le déploiement (environ une minute).'; },
+
   async _envoyer(lieux) {
-    const code = (AMGT4CEM_PeLabelAnchors.getAdminCode() || '').trim(); // vide : putToRelay ouvre la fenêtre de saisie
-    await AMGT4CEM_PeLabelAnchors.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, this.ROUTE, { version: 1, crs: 'EPSG:31370', lieux }, code);
+    if (window.AMGT4CEM_Stockage && AMGT4CEM_Stockage.lieuxDansR2()) {
+      // Source R2 et zones chargées dans R2 : écriture par le serveur de dépôt (droit « plans »), refusée si quelqu'un a écrit depuis notre lecture.
+      if (!this._etagR2) throw new Error('Les zones n\'ont pas pu être lues dans R2 : fermez puis rouvrez l\'outil avant d\'enregistrer.');
+      this._etagR2 = await AMGT4CEM_Stockage.ecrireLieux(lieux, this._etagR2);
+      this._dansR2 = true;
+    } else {
+      this._dansR2 = false;
+      const code = (AMGT4CEM_PeLabelAnchors.getAdminCode() || '').trim(); // vide : putToRelay ouvre la fenêtre de saisie
+      await AMGT4CEM_PeLabelAnchors.putToRelay(AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl, this.ROUTE, { version: 1, crs: 'EPSG:31370', lieux }, code);
+      try { sessionStorage.setItem(this.CLE_ENVOYE, JSON.stringify({ at: Date.now(), lieux })); } catch (err) { /* stockage indisponible : on se fie au fichier */ }
+    }
     this._lieux = lieux;
-    try { sessionStorage.setItem(this.CLE_ENVOYE, JSON.stringify({ at: Date.now(), lieux })); } catch (err) { /* stockage indisponible : on se fie au fichier */ }
     // La couche « Plans patrimoine » garde les lieux en mémoire : sans cela, un lieu supprimé ou renommé y resterait jusqu'au rechargement.
     if (typeof AMGT4CEM_PatrimoineLayer !== 'undefined') AMGT4CEM_PatrimoineLayer.reloadLieux();
   },
@@ -1567,8 +1584,8 @@ const AMGT4CEM_LieuxTool = {
       this._dirty = false;
       this._majListe(slug);
       this._etat(renomme
-        ? `Zone « ${ancienNom} » renommée en « ${nom} » et enregistrée (${objets.length} objets). La carte le lira après le déploiement (environ une minute).`
-        : `Zone « ${nom} » enregistrée (${objets.length} objets). La carte le lira après le déploiement (environ une minute).`);
+        ? `Zone « ${ancienNom} » renommée en « ${nom} » et enregistrée (${objets.length} objets). ${this._suiteEnreg()}`
+        : `Zone « ${nom} » enregistrée (${objets.length} objets). ${this._suiteEnreg()}`);
     } catch (err) {
       this._etat(err.message, true);
     }

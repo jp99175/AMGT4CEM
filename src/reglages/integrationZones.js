@@ -279,12 +279,15 @@ async function monter(conteneur, opts = {}) {
       const relais = (window.AMGT4CEM_Services && AMGT4CEM_Services.current().relayUrl) || AMGT4CEM_CONFIG.peLabelAnchorsRelayUrl;
       // Objet du shapefile avec la source R2 (lot B) : enregistrement par le serveur de dépôt, sans relais. Une zone dessinée passe encore par le relais.
       const r2 = !estZone && !!window.AMGT4CEM_Stockage && AMGT4CEM_Stockage.source() === 'r2';
-      if (!r2 && (!A || !relais)) { msg.textContent = 'Relais non configuré (Réglages > Avancé > Services et relais).'; return; }
+      // Zone dessinée avec la source R2 et les zones chargées dans R2 : enregistrement par le serveur de dépôt (droit « plans »), sans relais.
+      const zr2 = estZone && !!window.AMGT4CEM_Stockage && AMGT4CEM_Stockage.lieuxDansR2();
+      if (!r2 && !zr2 && (!A || !relais)) { msg.textContent = 'Relais non configuré (Réglages > Avancé > Services et relais).'; return; }
       sauver.disabled = true; msg.className = 'rgl-iz__msg'; msg.textContent = 'Vérification sur le serveur…';
       try {
         const cle = l.cle.slice(2);
         if (estZone) {
-          const frais = await lireJson(ZONES_URL);
+          let etagZones = null; let frais;
+          if (zr2) { const lu = await AMGT4CEM_Stockage.lireLieux(); frais = lu.data; etagZones = lu.etag; if (!etagZones) throw new Error('Les zones n\'ont pas pu être lues dans R2 : rouvrez l\'écran.'); } else frais = await lireJson(ZONES_URL);
           const z = frais.lieux && frais.lieux[cle];
           if (!z) throw new Error('Cette zone n\'existe plus sur le serveur. Rouvrez l\'écran.');
           if (sigZone(z) !== sigServeurDepart) throw new Error('Cette zone a été modifiée par quelqu\'un d\'autre depuis l\'ouverture. Rien n\'a été enregistré ; rouvrez l\'écran.');
@@ -292,7 +295,8 @@ async function monter(conteneur, opts = {}) {
           if (c.name_nl) z.name_nl = c.name_nl; else delete z.name_nl;
           if (c.references.length) z.references = c.references; else delete z.references;
           msg.textContent = 'Enregistrement…';
-          await A.putToRelay(relais, 'shared/lieux/lieux', frais, (A.getAdminCode && A.getAdminCode()) || '');
+          if (zr2) await AMGT4CEM_Stockage.ecrireLieux(frais.lieux, etagZones);
+          else await A.putToRelay(relais, 'shared/lieux/lieux', frais, (A.getAdminCode && A.getAdminCode()) || '');
           zones.lieux = frais.lieux;
         } else {
           const frais = await lireJson(SHP_URL);
@@ -318,7 +322,7 @@ async function monter(conteneur, opts = {}) {
         }
         voile.remove();
         rendre();
-        dire(r2
+        dire((r2 || zr2)
           ? `Attributs de « ${l.nom} » enregistrés dans R2 : visibles tout de suite ; les autres agents les verront en rechargeant la page.`
           : `Attributs de « ${l.nom} » enregistrés. Visibles par tous après le redéploiement du site (environ 1 minute).`, 'ok');
       } catch (err) {
@@ -329,6 +333,9 @@ async function monter(conteneur, opts = {}) {
     document.body.append(voile);
     selG.focus();
   }
+
+  // Bouton d'icône occupé : grisé et inactif le temps du contrôle (le libellé est une icône : on n'y touche pas).
+  function occupe(b) { b.disabled = true; b.style.opacity = '0.6'; return () => { b.style.opacity = ''; majBoutons(); }; }
 
   const haut = table('haut');
   const bas = table('bas');
@@ -368,14 +375,48 @@ async function monter(conteneur, opts = {}) {
     dire(`Annulé (${g.length} ligne(s)).`);
     rendre();
   });
-  bAppliquer.addEventListener('click', () => {
+  /* ---- Appliquer : contrôle sur le serveur, confirmation, écriture (lot C, partie 2) ----
+   * Cible : la couche d'essai. Le vrai shapefile (« polygones ») ne sera offert qu'après le feu vert explicite de Jph ; le serveur
+   * l'accepte déjà (zones et attributs mis à jour), l'écran n'y mène pas encore. Sur l'essai, ni les zones ni les attributs ne bougent. */
+  const COUCHE_CIBLE = 'essai';
+  const LIBELLE_CIBLE = { essai: 'Essai (fichier de test)', polygones: 'Shapefile réel' };
+  const zoneAppliquer = h('div', {});
+  const dateVersion = (v) => { const m = /^v(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})/.exec(v || ''); return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : (v || ''); };
+  const plage = (a, b) => (a ? (a === b ? a : `${a} à ${b}`) : 'aucun');
+  bAppliquer.addEventListener('click', async () => {
     const r = recap(lignes);
-    const nom = (l) => `${l.id ? `${l.id} ` : ''}${l.nom}`;
-    const texte = [
-      r.ajouts.length ? `Ajouts au shapefile (${r.ajouts.length}) :\n${r.ajouts.map((l) => `• ${nom(l)}${l.id ? ' (identifiant conservé)' : ' (nouvel identifiant)'}`).join('\n')}` : '',
-      r.retraits.length ? `Retraits du shapefile (${r.retraits.length}) :\n${r.retraits.map((l) => `• ${nom(l)} (identifiant gardé par la zone)`).join('\n')}` : '',
-    ].filter(Boolean).join('\n\n');
-    dire(`${texte}\n\nL'écriture dans le shapefile n'est pas encore en place (prochaine étape, d'abord dans test_shapefile) : rien n'a été enregistré.`, 'erreur');
+    zoneAppliquer.textContent = '';
+    const pret = !!window.AMGT4CEM_Stockage && AMGT4CEM_Stockage.source() === 'r2' && typeof AMGT4CEM_Auth !== 'undefined' && AMGT4CEM_Auth.aDroit('plans', AMGT4CEM_Auth.session());
+    if (!pret) { dire('« Appliquer » demande la source R2 (Réglages > Stockage des données), le chargement des zones dans R2 et le droit « plans ».', 'erreur'); return; }
+    const corps = { ajouts: r.ajouts.map((l) => l.cle.slice(2)), retraits: r.retraits.map((l) => l.id) };
+    const lance = occupe(bAppliquer);
+    let ap;
+    try { dire('Contrôle sur le serveur…'); ap = (await AMGT4CEM_Stockage.appliquer(COUCHE_CIBLE, { ...corps, apercu: true })).resume; dire(''); } catch (err) { dire(err.message, 'erreur'); lance(); return; }
+    lance();
+    const info = (texte) => h('p', { class: 'rgl-note', text: texte });
+    const annulerB = h('button', { type: 'button', class: 'rgl-btn', text: 'Annuler' });
+    const ecrireB = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: `Enregistrer sur ${COUCHE_CIBLE === 'essai' ? 'l\'essai' : 'le shapefile'}` });
+    annulerB.addEventListener('click', () => { zoneAppliquer.textContent = ''; });
+    ecrireB.addEventListener('click', async () => {
+      if (ecrireB.disabled) return;
+      const avant = ecrireB.textContent; ecrireB.disabled = true; annulerB.disabled = true; ecrireB.textContent = 'Enregistrement…'; ecrireB.style.opacity = '0.6';
+      try {
+        const out = await AMGT4CEM_Stockage.appliquer(COUCHE_CIBLE, corps);
+        zoneAppliquer.textContent = '';
+        const num = out.attribues.length ? ` Numéros attribués : ${plage(out.attribues[0], out.attribues[out.attribues.length - 1])}.` : '';
+        const suite = COUCHE_CIBLE === 'essai' ? ' Les zones et les attributs réels n\'ont pas été modifiés : vos déplacements restent en attente à l\'écran.' : ' Les zones et les attributs sont à jour : l\'écran se recharge.';
+        dire(`Version du ${dateVersion(out.version)} enregistrée sur ${LIBELLE_CIBLE[COUCHE_CIBLE]} : ${out.objets} objets.${num}${out.avertissement ? ` ${out.avertissement}` : ''}${suite}`, out.avertissement ? 'erreur' : 'ok');
+        if (COUCHE_CIBLE !== 'essai' && opts.recharger) opts.recharger();
+      } catch (err) { ecrireB.disabled = false; annulerB.disabled = false; ecrireB.textContent = avant; ecrireB.style.opacity = ''; dire(err.message, 'erreur'); }
+    });
+    zoneAppliquer.append(
+      h('p', { class: 'rgl-iz__legende', text: `Appliquer sur : ${LIBELLE_CIBLE[COUCHE_CIBLE]}` }),
+      info(`Zones ajoutées : ${ap.ajouts.length}${ap.ajouts.length ? ` (${ap.ajouts.map((x) => x.nom).join(', ')})` : ''}`),
+      info(`Objets retirés : ${ap.retraits.length}${ap.retraits.length ? ` (${ap.retraits.join(', ')})` : ''}`),
+      info(`Numéros attribués : ${plage(ap.premierId, ap.dernierId)}${ap.ajouts.some((x) => x.id) ? ' (les zones qui gardent un identifiant le conservent)' : ''}`),
+      info(`Objets dans le fichier après : ${ap.objetsApres}`),
+      info(COUCHE_CIBLE === 'essai' ? 'Sur l\'essai, les vraies zones et les vrais attributs ne sont pas modifiés.' : 'Les zones intégrées quittent les zones ; les objets retirés y reviennent avec leur identifiant ; les attributs sont écrits.'),
+      h('div', { class: 'rgl-actions' }, annulerB, ecrireB));
   });
 
   /* ---- Nettoyage des entrées sans contour (source R2, droit « attributs ») ---- */
@@ -434,6 +475,7 @@ async function monter(conteneur, opts = {}) {
     h('div', { class: 'rgl-iz__sep' }, bAnnuler, bBas, bHaut, resume, bAppliquer),
     bas.el,
     zoneNettoyage,
+    zoneAppliquer,
     statut);
   majNettoyage();
   rendre();

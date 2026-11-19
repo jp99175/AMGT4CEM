@@ -291,8 +291,9 @@ const AMGT4CEM_PatrimoineLayer = {
 
   async _loadLieux(file) {
     try {
-      const r = await fetch(`${file}?t=${Date.now()}`); // jamais depuis le cache du navigateur
-      const lieux = this._lieuxRecents(r.ok ? ((await r.json()).lieux || {}) : {});
+      // Source R2 (src/stockage.js) : zones lues dans R2, toujours à jour ; sinon le fichier du site (jamais depuis le cache du navigateur).
+      const r = window.AMGT4CEM_Stockage ? await AMGT4CEM_Stockage.fetch(`${file}?t=${Date.now()}`, { cache: 'no-store' }) : await fetch(`${file}?t=${Date.now()}`);
+      const lieux = r.depuisR2 ? ((await r.json()).lieux || {}) : this._lieuxRecents(r.ok ? ((await r.json()).lieux || {}) : {});
       return Object.entries(lieux).flatMap(([slug, l]) => (l.contour && l.contour.length
         // Contour enregistré (surfaces moins vides) : un seul polygone dont les anneaux sont remplis en pair-impair (les trous restent vides).
         ? [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: l.contour }, properties: { genre: 'lieu', name_fr: l.nom, slug } }]

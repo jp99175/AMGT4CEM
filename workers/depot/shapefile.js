@@ -76,6 +76,69 @@ export function controlerContour(c) {
   return { bbox: [xmin, ymin, xmax, ymax], nAnneaux: nParts };
 }
 
+/** Anneaux (listes de [x, y]) d'un enregistrement polygone, tels que dans le fichier ; lève une Error si l'enregistrement est invalide. */
+export function decoderContour(c) {
+  controlerContour(c);
+  const v = new DataView(c.buffer, c.byteOffset, c.byteLength);
+  const nParts = v.getInt32(36, true); const nPts = v.getInt32(40, true);
+  const base = 44 + 4 * nParts;
+  const parts = []; for (let i = 0; i < nParts; i++) parts.push(v.getInt32(44 + 4 * i, true));
+  const anneaux = [];
+  for (let i = 0; i < nParts; i++) {
+    const a = parts[i]; const b = i + 1 < nParts ? parts[i + 1] : nPts;
+    const r = []; for (let k = a; k < b; k++) r.push([v.getFloat64(base + 16 * k, true), v.getFloat64(base + 16 * k + 8, true)]);
+    anneaux.push(r);
+  }
+  return anneaux;
+}
+
+const aire2 = (r) => { let s = 0; for (let i = 0; i + 1 < r.length; i++) s += r[i][0] * r[i + 1][1] - r[i + 1][0] * r[i][1]; return s; };
+function dansAnneau(pt, r) {
+  let dedans = false;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const [xi, yi] = r[i]; const [xj, yj] = r[j];
+    if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) dedans = !dedans;
+  }
+  return dedans;
+}
+
+/**
+ * Encode des anneaux (zone dessinée : remplissage « pair-impair », sans sens ni rôle) en enregistrement polygone du shapefile.
+ * Un anneau contenu dans un nombre impair d'autres anneaux est un trou. Les contours extérieurs sont écrits dans le sens des aiguilles
+ * d'une montre, les trous en sens inverse (convention du format). Anneaux fermés au besoin. Lève une Error si le résultat est invalide.
+ */
+export function encoderContour(anneaux) {
+  if (!Array.isArray(anneaux)) throw new Error('contour absent');
+  const bons = anneaux.filter((r) => Array.isArray(r) && r.length >= 3).map((r) => {
+    const pts = r.map((q) => [Number(q[0]), Number(q[1])]);
+    const a = pts[0]; const z = pts[pts.length - 1];
+    if (a[0] !== z[0] || a[1] !== z[1]) pts.push([a[0], a[1]]);
+    return pts;
+  });
+  if (!bons.length) throw new Error('contour sans surface');
+  const fin = bons.map((r, i) => {
+    const profondeur = bons.reduce((n, autre, j) => n + (j !== i && dansAnneau(r[0], autre) ? 1 : 0), 0);
+    const trou = profondeur % 2 === 1;
+    const horaire = aire2(r) < 0; // aire signée négative = sens horaire
+    return (trou === horaire) ? [...r].reverse() : r;
+  });
+  const nPts = fin.reduce((n, r) => n + r.length, 0);
+  const out = new Uint8Array(44 + 4 * fin.length + 16 * nPts);
+  const v = new DataView(out.buffer);
+  v.setInt32(0, 5, true);
+  let xmin = Infinity; let ymin = Infinity; let xmax = -Infinity; let ymax = -Infinity;
+  for (const r of fin) for (const [x, y] of r) { if (x < xmin) xmin = x; if (x > xmax) xmax = x; if (y < ymin) ymin = y; if (y > ymax) ymax = y; }
+  v.setFloat64(4, xmin, true); v.setFloat64(12, ymin, true); v.setFloat64(20, xmax, true); v.setFloat64(28, ymax, true);
+  v.setInt32(36, fin.length, true); v.setInt32(40, nPts, true);
+  let k = 0;
+  fin.forEach((r, i) => {
+    v.setInt32(44 + 4 * i, k, true);
+    for (const [x, y] of r) { v.setFloat64(44 + 4 * fin.length + 16 * k, x, true); v.setFloat64(44 + 4 * fin.length + 16 * k + 8, y, true); k++; }
+  });
+  controlerContour(out);
+  return out;
+}
+
 /** Champs d'un .dbf : { champs: [{nom, debut, longueur}], n, lenEntete, lenEnreg }. */
 function enteteDbf(dbf) {
   if (dbf.length < 33) throw new Error('Le fichier .dbf est trop court.');

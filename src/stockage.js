@@ -23,6 +23,7 @@ const AMGT4CEM_Stockage = {
     { motif: /^\.\/data\/ditp-diov\/polygones\.json$/, route: () => '/attributs/ditp-diov' },
     { motif: /^\.\/data\/plans-patrimoine\/polygones\.json$/, route: () => '/attributs/plans-patrimoine' },
     { motif: /^\.\/data\/shapefile\/identifiants\.json$/, route: () => '/geometries/identifiants' },
+    { motif: /^\.\/data\/lieux\/lieux\.json$/, route: () => '/geometries/lieux' },
   ],
   _etat: null,
 
@@ -81,13 +82,43 @@ const AMGT4CEM_Stockage = {
       try {
         const s = this._session();
         const r = await fetch(this._serveur() + route, { cache: 'no-cache', headers: { Authorization: `Bearer ${s.jeton}` } });
-        if (r.ok) return r;
+        if (r.ok) { r.depuisR2 = true; return r; }
         console.warn(`[AMGT4CEM] R2 a refusé ${route} (HTTP ${r.status}) : lecture du dépôt à la place.`);
       } catch (err) {
         console.warn(`[AMGT4CEM] R2 injoignable pour ${route} : lecture du dépôt à la place.`);
       }
     }
     return fetch(url, init);
+  },
+
+  /** Vrai si la source est R2 ET que les zones dessinées y ont été chargées (sinon elles restent lues et écrites dans le dépôt, par le relais). */
+  lieuxDansR2() {
+    return this.source() === 'r2' && !!(this._etat && this._etat.lieux);
+  },
+
+  /** Zones dessinées : { data, etag, r2 }. `etag` (version de départ pour ecrireLieux) n'existe que si la lecture vient de R2. */
+  async lireLieux() {
+    if (this.source() === 'r2' && !this._etat) await this.actualiser();
+    const r = await this.fetch(`./data/lieux/lieux.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`Lecture des zones impossible (HTTP ${r.status}).`);
+    return { data: await r.json(), etag: r.depuisR2 ? r.headers.get('ETag') : null, r2: !!r.depuisR2 };
+  },
+
+  /** Écrit toutes les zones dans R2 (droit « plans ») ; `etagBase` = version lue. Refus 409 si quelqu'un a écrit entre-temps. Renvoie la nouvelle version (etag). */
+  async ecrireLieux(lieux, etagBase) {
+    const e = await AMGT4CEM_Auth.call('/geometries/lieux', { method: 'POST', body: { lieux, etagBase } });
+    this._etat = e;
+    return e.lieux && e.lieux.etag;
+  },
+
+  /** Lot C : applique des déplacements (zones vers shapefile, objets retirés vers les zones). `apercu: true` : contrôle seulement. */
+  async appliquer(couche, corps) {
+    try {
+      return await AMGT4CEM_Auth.call(`/geometries/shapefile/${couche}/appliquer`, { method: 'POST', body: corps });
+    } catch (err) {
+      if (err.data && Array.isArray(err.data.erreurs)) err.message = `${err.message}\n${err.data.erreurs.slice(0, 8).join('\n')}`;
+      throw err;
+    }
   },
 
   /** Lecture JSON sans cache (comme les écrans Attributs et Intégrer au shapefile), source-aware. */

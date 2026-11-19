@@ -70,6 +70,18 @@ function cadre() {
     } catch (err) { dire(err.message, 'erreur'); }
   }
 
+  async function chargerZones() {
+    if (!confirm('Charger dans R2 les zones dessinées actuelles du dépôt ?\n\nC\'est une copie : le dépôt n\'est pas modifié, et le serveur refuse si R2 contient déjà les zones. Ensuite, avec la source R2, l\'outil « Dessiner une zone » et « Intégrer au shapefile » lisent et écrivent les zones dans R2.')) return;
+    try {
+      dire('Lecture du dépôt…');
+      const zones = await lireDepot('./data/lieux/lieux.json');
+      dire('Envoi vers R2…');
+      await AMGT4CEM_Auth.call('/geometries/lieux/charger', { method: 'POST', body: { lieux: zones.lieux || {} } });
+      await monter();
+      dire('Zones chargées dans R2.', 'ok');
+    } catch (err) { dire(err.message, 'erreur'); }
+  }
+
   async function telecharger(etat) {
     try {
       dire('Téléchargement depuis R2…');
@@ -98,11 +110,17 @@ function cadre() {
       ligne('Shapefile dans R2', p ? `Version du ${dateVersion(p.version)} · ${p.objets} objets` : 'Pas encore chargé.'),
       ligne('Attributs (stations, tunnels, dépôts, ouvrages)', etat.attributs['ditp-diov'] ? `${etat.attributs['ditp-diov'].entrees} entrées` : 'Pas encore chargés.'),
       ligne('Attributs (planches)', etat.attributs['plans-patrimoine'] ? `${etat.attributs['plans-patrimoine'].entrees} entrées` : 'Pas encore chargés.'),
+      ligne('Zones dessinées (outil « Dessiner une zone »)', etat.lieux ? `${etat.lieux.entrees} zones` : 'Pas encore chargées.'),
       ligne('Prochain identifiant P…', etat.prochainP ? String(etat.prochainP) : '—'));
     const boutons = h('div', { class: 'rgl-actions' });
     if (!p || !etat.attributs['ditp-diov'] || !etat.attributs['plans-patrimoine']) {
       const b = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: 'Charger les données initiales dans R2' });
       b.addEventListener('click', charger);
+      boutons.append(b);
+    }
+    if (p && !etat.lieux) {
+      const b = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: 'Charger les zones dans R2' });
+      b.addEventListener('click', chargerZones);
       boutons.append(b);
     }
     if (p) {
