@@ -20,6 +20,7 @@ const AMGT4CEM_Stockage = {
   // Fichiers du dépôt connus de R2 : adresse relative -> route du serveur de dépôt.
   CARTE: [
     { motif: /^\.\/data\/shapefile\/polygones\.(shp|shx|dbf|prj|cpg)$/, route: (m) => `/geometries/shapefile/polygones/${m[1]}` },
+    { motif: /^\.\/data\/shapefile-essai\/essai\.(shp|shx|dbf|prj|cpg)$/, route: (m) => `/geometries/shapefile/essai/${m[1]}` }, // couche d'essai (R2 seulement : rien dans le dépôt)
     { motif: /^\.\/data\/ditp-diov\/polygones\.json$/, route: () => '/attributs/ditp-diov' },
     { motif: /^\.\/data\/plans-patrimoine\/polygones\.json$/, route: () => '/attributs/plans-patrimoine' },
     { motif: /^\.\/data\/shapefile\/identifiants\.json$/, route: () => '/geometries/identifiants' },

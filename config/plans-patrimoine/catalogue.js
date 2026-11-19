@@ -57,6 +57,15 @@ const AMGT4CEM_PATRIMOINE_CATALOG = [
     ],
   },
   {
+    // Couche d'essai de R2 (lot C) : dernière version du fichier d'essai (« Déposer un shapefile », « Intégrer au shapefile »), lecture seule,
+    // contours seuls, pour comparer à l'œil un objet ajouté par « Appliquer » avec sa zone. Source R2 uniquement ; rien dans le dépôt.
+    id: 'essai_r2',
+    label: 'Essai R2 (shapefile d\'essai)',
+    theme: 'Autres',
+    shapefile: './data/shapefile-essai/essai',
+    essaiR2: true,
+  },
+  {
     id: 'plans-ensemble-500e',
     label: "Plans d'ensemble (1/500e)",
     theme: 'INFRAVIEW',

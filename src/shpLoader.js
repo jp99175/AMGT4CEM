@@ -41,12 +41,13 @@ const AMGT4CEM_ShpLoader = {
     }
     const geometries = this._parseShp(shpBuf);
     const ids = this._parseDbfIds(dbfBuf);
+    const noms = options.noms ? this._parseDbfChamp(dbfBuf, 'nom_fr') : null; // copie de lecture écrite par l'application (majuscules, sans accents)
     if (geometries.length !== ids.length) {
       throw new Error(`Nombre d'entités incohérent entre .shp (${geometries.length}) et .dbf (${ids.length}) : ${baseUrl}`);
     }
     return {
       type: 'FeatureCollection',
-      features: geometries.map((geometry, i) => ({ type: 'Feature', geometry, properties: { id: ids[i] } })),
+      features: geometries.map((geometry, i) => ({ type: 'Feature', geometry, properties: noms ? { id: ids[i], nom: noms[i] } : { id: ids[i] } })),
     };
   },
 
@@ -109,6 +110,26 @@ const AMGT4CEM_ShpLoader = {
       offset = recordStart + contentLengthWords * 2;
     }
     return geometries;
+  },
+
+  /** Valeurs (texte, sans espaces de fin) d'un champ d'un .dbf, dans l'ordre du fichier ; liste de chaînes vides si le champ n'existe pas. */
+  _parseDbfChamp(buffer, nomChamp) {
+    const view = new DataView(buffer);
+    const numRecords = view.getUint32(4, true);
+    const headerLength = view.getUint16(8, true);
+    const recordLength = view.getUint16(10, true);
+    let off = -1; let len = 0; let fieldOffset = 1; let p = 32;
+    while (view.getUint8(p) !== 0x0d) {
+      let name = '';
+      for (let i = 0; i < 11 && view.getUint8(p + i) !== 0; i++) name += String.fromCharCode(view.getUint8(p + i));
+      const length = view.getUint8(p + 16);
+      if (name.toLowerCase() === nomChamp) { off = fieldOffset; len = length; }
+      fieldOffset += length; p += 32;
+    }
+    const decoder = new TextDecoder('iso-8859-1');
+    const out = [];
+    for (let r = 0; r < numRecords; r++) out.push(off < 0 ? '' : decoder.decode(new Uint8Array(buffer, headerLength + r * recordLength + off, len)).trim());
+    return out;
   },
 
   /** Lit le champ `id` de tous les enregistrements d'un .dbf, dans l'ordre du fichier (même ordre que le .shp). */

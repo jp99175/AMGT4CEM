@@ -172,10 +172,15 @@ const AMGT4CEM_PatrimoineLayer = {
   },
 
   async _loadFeatures(entry) {
-    if (this._cache[entry.id]) return this._cache[entry.id];
+    if (this._cache[entry.id] && !entry.essaiR2) return this._cache[entry.id]; // la couche d'essai est relue à chaque ouverture
     if (entry.shapefile) {
       // Couche lue dans un shapefile (champ `id` seul) + petit référentiel JSON (nom) : voir src/shpLoader.js.
-      const fc = await AMGT4CEM_ShpLoader.load(entry.shapefile);
+      const fc = await AMGT4CEM_ShpLoader.load(entry.shapefile, entry.essaiR2 ? { noms: true, optional: true } : {});
+      if (entry.essaiR2) {
+        if (!fc.features.length) this._bandeau('Essai R2 : disponible seulement avec la source R2 et un fichier d\'essai déposé.');
+        this._cache[entry.id] = fc.features.map((f) => ({ ...f, properties: { genre: 'shapefile', contourSeul: true, nouveau: f.properties.id[0] === 'T', name_fr: `${f.properties.nom || f.properties.id} (${f.properties.id})` } }));
+        return this._cache[entry.id];
+      }
       let entites = {};
       if (entry.referentiel) {
         try { entites = (await (await fetch(`${entry.referentiel}?t=${Date.now()}`)).json()).entites || {}; } catch (err) { /* sans nom : l'id sert d'étiquette */ }
@@ -382,12 +387,14 @@ const AMGT4CEM_PatrimoineLayer = {
   _buildPolygonLayer(feature, color) {
     const props = feature.properties || {};
     const rings = feature.geometry.coordinates.map((ring) => ring.map((pt) => AMGT4CEM_CRS.lambertToLatLng(pt)));
+    // Couche d'essai : contour seul (les zones restent visibles dessous) ; trait plus épais pour les objets nouveaux (T…).
+    const seul = !!props.contourSeul;
     const layer = L.polygon(rings, {
       color,
-      weight: 2,
+      weight: seul ? (props.nouveau ? 3 : 1) : 2,
       opacity: this._opacityFactor,
       fillColor: color,
-      fillOpacity: 0.25,
+      fillOpacity: seul ? 0 : 0.25,
     });
     const text = props.name_fr || props.genre || 'Polygone';
     layer.bindPopup(this._buildLabelPopup(text + (props.copie_de ? ` (copie de ${props.copie_de})` : ''), this._lambertCenter(feature)));
