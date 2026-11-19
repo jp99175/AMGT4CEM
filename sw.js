@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const VERSION = '20261119-0630'; // @VERSION (écrit par tools/stamp-sw.sh)
+const VERSION = '20261119-0705'; // @VERSION (écrit par tools/stamp-sw.sh)
 const CACHE = 'amgt4cem-app';
 const DELAI_RESEAU_MS = 4000;
 const PARALLELE = 6;
@@ -50,12 +50,6 @@ const FICHIERS = [
   './data/plans-patrimoine/polygones.json',
   './data/plans-patrimoine/reperes-troncons.legacy.json',
   './data/plans-patrimoine/temp-delta-mod.json',
-  './data/shapefile-test/test_shapefile.cpg',
-  './data/shapefile-test/test_shapefile.dbf',
-  './data/shapefile-test/test_shapefile.json',
-  './data/shapefile-test/test_shapefile.prj',
-  './data/shapefile-test/test_shapefile.shp',
-  './data/shapefile-test/test_shapefile.shx',
   './data/shapefile/identifiants.json',
   './data/shapefile/polygones.cpg',
   './data/shapefile/polygones.dbf',

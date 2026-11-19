@@ -16,7 +16,7 @@
  * data/lieux/lieux.json, `nom` = nom FR, plus `name_nl` et `references` ; objet : data/ditp-diov/polygones.json).
  *
  * Étape 1 : écran et déplacements en attente seulement. « Appliquer » montre le récapitulatif ; l'écriture réelle
- * (d'abord dans test_shapefile) est la prochaine étape. Rien n'est enregistré.
+ * (d'abord sur la couche d'essai de R2) est la prochaine étape. Rien n'est enregistré.
  */
 (function () {
 const ZONES_URL = './data/lieux/lieux.json';

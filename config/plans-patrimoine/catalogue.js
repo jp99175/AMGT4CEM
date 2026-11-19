@@ -57,15 +57,6 @@ const AMGT4CEM_PATRIMOINE_CATALOG = [
     ],
   },
   {
-    // ESSAI (05/11/2026) : shapefile provisoire généré depuis les zones ci-dessus (data/shapefile-test/), pour
-    // éprouver la lecture d'un shapefile et, plus tard, l'écriture. N'entre ni dans polygones.shp ni dans le référentiel.
-    id: 'test_shapefile',
-    label: 'test_shapefile (essai : zones à intégrer en shapefile)',
-    theme: 'Autres',
-    shapefile: './data/shapefile-test/test_shapefile',
-    referentiel: './data/shapefile-test/test_shapefile.json',
-  },
-  {
     id: 'plans-ensemble-500e',
     label: "Plans d'ensemble (1/500e)",
     theme: 'INFRAVIEW',
