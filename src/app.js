@@ -228,6 +228,10 @@
   // Session proche de son expiration (7 derniers jours) : le mot de passe est redemandé, une fois par 24 h.
   AMGT4CEM_Auth.surveillerExpiration();
 
+  // Adresse ?page=carto&zone=SLUG (lien « Modifier le contour dans l'outil de zone ») : l'outil s'ouvre sur cette zone (droit « plans »).
+  const zoneDemandee = AMGT4CEM_Router && AMGT4CEM_Router.params ? AMGT4CEM_Router.params.get('zone') : null;
+  if (zoneDemandee) AMGT4CEM_LieuxTool.ouvrirSurZone(zoneDemandee).catch((err) => console.warn('Ouverture de la zone impossible :', err));
+
   document.getElementById('amgt-measure-btn').addEventListener('click', () => {
     AMGT4CEM_AddPointTool.deactivate();
     AMGT4CEM_VirtualBoreTool.deactivate();

@@ -243,6 +243,8 @@ async function monter(conteneur, opts = {}) {
     return h('div', null, nom, h('p', { class: 'rgl-iz__refus', text: `Refusée : ${l.refus}` }));
   }
 
+  const enAttente_ = () => (lignes.some(enAttente) ? 'les déplacements non appliqués' : '');
+
   function ouvrirFenetre(l) {
     const estZone = l.cle.startsWith('Z:');
     const depart = champsLigne(l);
@@ -268,6 +270,17 @@ async function monter(conteneur, opts = {}) {
       champ('Genre', selG), champ('Nom (FR)', fr), champ('Nom (NL)', nl), champ('Références (séparées par « ; »)', refs),
       msg,
       h('div', { class: 'rgl-iz__f-pied' }, retourBtn, h('span', { class: 'rgl-iz__f-aide', text: estZone ? 'Genre et nom FR obligatoires.' : 'Genre et un nom obligatoires.' }), sauver));
+    // Zone dessinée, droit « plans » : lien vers l'outil de zone (carte), zone déjà choisie. Quitte cet écran : confirmation comme à la sortie.
+    if (estZone && typeof AMGT4CEM_PlansPrefs !== 'undefined' && AMGT4CEM_PlansPrefs.aDroit()) {
+      const versOutil = h('button', { type: 'button', class: 'rgl-btn rgl-iz__lien-outil', text: 'Modifier le contour dans l\'outil de zone' });
+      versOutil.addEventListener('click', () => {
+        const perte = [enAttente_(), modifie() ? 'les attributs non enregistrés' : ''].filter(Boolean).join(' et ');
+        if (!window.confirm(`Quitter cet écran pour ouvrir l'outil de zone sur la carte ?${perte ? ` Seront perdus : ${perte}.` : ''}`)) return;
+        const slug = l.cle.slice(2);
+        location.href = window.AMGT4CEM_Router ? AMGT4CEM_Router.url('carto', { zone: slug }) : `home.html?page=carto&zone=${encodeURIComponent(slug)}`;
+      });
+      fenetre.append(versOutil);
+    }
     const voile = h('div', { class: 'rgl-iz__voile' }, fenetre);
     const quitter = () => { if (modifie() && !window.confirm('Fermer sans enregistrer ?')) return; voile.remove(); };
     fermer.addEventListener('click', quitter);

@@ -33,7 +33,7 @@ const AMGT4CEM_LieuxTool = {
 
   async toggle() {
     if (this._active) return this._demanderFermeture();
-    if (!AMGT4CEM_PlansPrefs.outilLieuxDisponible()) return; // droit « plans » + case cochée dans les Réglages
+    if (!AMGT4CEM_PlansPrefs.aDroit()) return; // droit « plans » seul : la case des Réglages ne commande que l'affichage du bouton de la carte
     this._active = true;
     this._btn.classList.add('amgt-btn--active');
     this._map.getPane('amgtLieuxPane').style.pointerEvents = ''; // l'outil reçoit les clics de son calque (voir close)
@@ -380,6 +380,20 @@ const AMGT4CEM_LieuxTool = {
     this._comboRender();
     this._renderListe();
     this._etat('Nouvelle zone : nommer la zone puis toucher des objets, ou tracer une chaîne.');
+  },
+
+  /**
+   * Ouverture depuis un lien (adresse ?page=carto&zone=SLUG, depuis la fenêtre d'attributs de « Intégrer au shapefile ») : l'outil se lance
+   * et la zone est chargée comme si elle avait été choisie dans la liste. Droit « plans » seul (la case des Réglages n'intervient pas).
+   * Renvoie true si la zone est ouverte.
+   */
+  async ouvrirSurZone(slug) {
+    if (!AMGT4CEM_PlansPrefs.aDroit()) return false;
+    if (!this._active) await this.toggle();
+    if (!this._active) return false;
+    if (!this._lieux[slug]) { this._etat(`Zone « ${slug} » introuvable : elle a peut-être été supprimée.`, true); return false; }
+    this._chargerLieu(slug);
+    return true;
   },
 
   _editerLieu(slug) {

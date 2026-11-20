@@ -58,7 +58,8 @@ const AMGT4CEM_AccountButton = {
     // « Dessiner une zone » : droit « plans » et case cochée dans Réglages > Avancé > Adaptations de plans (src/plansPrefs.js).
     const lieux = AMGT4CEM_PlansPrefs.outilLieuxDisponible();
     show('amgt-lieux-btn', lieux);
-    if (!lieux && typeof AMGT4CEM_LieuxTool !== 'undefined' && AMGT4CEM_LieuxTool._active) AMGT4CEM_LieuxTool.close();
+    // L'outil ne se ferme que si le droit « plans » disparaît : décocher la case ne fait que masquer le bouton (l'outil peut être ouvert par un lien).
+    if (!AMGT4CEM_PlansPrefs.aDroit() && typeof AMGT4CEM_LieuxTool !== 'undefined' && AMGT4CEM_LieuxTool._active) AMGT4CEM_LieuxTool.close();
 
     if (!s) {
       // Plus de compte : on arrête ce qui lui était réservé.
