@@ -112,6 +112,12 @@ const AMGT4CEM_Stockage = {
     return e.lieux && e.lieux.etag;
   },
 
+  /** Contrôle zone par zone avant le passage ↓ (rien n'est écrit). Renvoie [{ cle, nom, ok, raison? }] dans l'ordre demandé. */
+  async controler(couche, corps) {
+    const r = await AMGT4CEM_Auth.call(`/geometries/shapefile/${couche}/controler`, { method: 'POST', body: corps });
+    return r.resultats;
+  },
+
   /** Lot C : applique des déplacements (zones vers shapefile, objets retirés vers les zones). `apercu: true` : contrôle seulement. */
   async appliquer(couche, corps) {
     try {

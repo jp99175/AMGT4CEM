@@ -25,6 +25,7 @@
  *   GET  /geometries/lieux                             zones dessinées (outil « Dessiner une zone »), ETag, 304
  *   POST /geometries/lieux/charger     (plans)         chargement initial des zones { lieux } (refusé si R2 les contient déjà)
  *   POST /geometries/lieux             (plans)         écrit toutes les zones { lieux, etagBase } (refusé si le fichier a changé depuis la lecture)
+ *   POST /geometries/shapefile/<couche>/controler (plans)  contrôle zone par zone (contour, recoupement, genre, nom, doublon), sans écriture
  *   POST /geometries/shapefile/<couche>/appliquer (plans)  lot C partie 2 : zones vers le shapefile (↓) et objets retirés vers les zones (↑)
  *
  * Lot B (écriture des attributs) : le client n'envoie que les lignes modifiées, chacune avec ses anciennes valeurs (`avant`)
@@ -43,7 +44,7 @@
  * Ordre d'écriture : fichiers de la version, attributs des nouveaux objets, puis pointeur en dernier (If-Match). Voir shapefile.js.
  */
 
-import { analyserDepot, composerDbf, composerShpShx, controlerContour, decoderContour, encoderContour, lireIdsDbf, lireJeu } from './shapefile.js';
+import { analyserDepot, composerDbf, composerShpShx, controlerContour, decoderContour, encoderContour, lireIdsDbf, lireJeu, memesOctets, trouverRecoupement } from './shapefile.js';
 
 const COUCHES = ['polygones', 'essai'];
 const EXTENSIONS = ['shp', 'shx', 'dbf', 'prj', 'cpg'];
@@ -474,6 +475,54 @@ export function creerRoutesGeometries(ctx) {
    * Ordre : fichiers de la version, relecture, attributs, pointeur (If-Match), puis zones. Si l'écriture des zones échoue après la
    * bascule, la version reste valable et la réponse l'indique (zone « déjà au shapefile », jamais perdue).
    */
+  /** Contrôle d'une zone avant son passage dans le shapefile. Renvoie { raison } (texte court, sans point final) ou { contenu, idGarde }. */
+  function verifierZone(z, ctx) {
+    if (typeof z.nom !== 'string' || !z.nom.trim()) return { raison: 'nom manquant' };
+    if (typeof z.genre !== 'string' || !z.genre) return { raison: 'genre manquant' };
+    const rec = Array.isArray(z.contour) ? trouverRecoupement(z.contour) : null;
+    if (rec && rec.trop) return { raison: 'contour trop détaillé pour être contrôlé' };
+    if (rec) return { raison: `le contour se recoupe lui-même, près du point ${rec.point}${z.contour.length > 1 ? ` de l'anneau ${rec.anneau}` : ''}` };
+    let contenu;
+    try { contenu = encoderContour(z.contour); } catch (err) { return { raison: `contour inutilisable (${err.message})` }; }
+    const idGarde = typeof z.id_shapefile === 'string' && z.id_shapefile ? z.id_shapefile : null;
+    if (idGarde) {
+      if (!REGLES_ID[ctx.couche].test(idGarde) || nombreId(idGarde) >= (idGarde[0] === 'P' ? ctx.prochainP : ctx.prochainT)) return { raison: `l'identifiant ${idGarde} n'a jamais été attribué` };
+      if (ctx.present.has(idGarde) && !ctx.retraits.includes(idGarde)) return { raison: `l'identifiant ${idGarde} est déjà dans le fichier` };
+    }
+    const jumeau = ctx.courant.objets.find((o) => !ctx.retraits.includes(o.id) && memesOctets(o.contenu, contenu));
+    if (jumeau) return { raison: `même contour que ${jumeau.id}, déjà dans le fichier` };
+    return { contenu, idGarde };
+  }
+
+  /** Contrôle zone par zone, sans rien écrire (↓ de l'écran « Intégrer au shapefile »). Corps : { ajouts: [slug], retraits: [id] }. */
+  async function controlerZones(env, couche, d) {
+    const cur = await lirePointeur(env, couche);
+    if (!cur) throw new HttpError(409, 'Cette couche n\'est pas encore dans R2.');
+    const ajouts = Array.isArray(d.ajouts) ? d.ajouts.map(String) : [];
+    const retraits = Array.isArray(d.retraits) ? d.retraits.map(String) : [];
+    if (!ajouts.length) throw new HttpError(400, 'Aucune zone à contrôler.');
+    if (ajouts.length > 300 || retraits.length > 300) throw new HttpError(400, 'Trop de zones d\'un coup (300 au plus).');
+    const lo = await env.DEPOTS.get(CLE_LIEUX);
+    if (!lo) throw new HttpError(409, 'Les zones ne sont pas encore dans R2 : chargez-les d\'abord (Réglages > Stockage des données).');
+    const zones = JSON.parse(await lo.text()).lieux || {};
+    const courant = await lireJeuR2(env, couche, cur.pointeur.version);
+    const present = new Set(courant.objets.map((o) => o.id));
+    const prochainP = (await compteur(env, { action: 'etat' })).etat.identifiants.P;
+    const prochainT = cur.pointeur.prochainT || 1;
+    const vus = [];
+    const resultats = ajouts.map((cle) => {
+      const z = zones[cle];
+      if (!z) return { cle, ok: false, raison: 'introuvable (modifiée ou supprimée depuis l\'ouverture de l\'écran)' };
+      const v = verifierZone(z, { couche, courant, present, retraits, prochainP, prochainT });
+      if (v.raison) return { cle, nom: z.nom, ok: false, raison: v.raison };
+      const jumeau = vus.find((x) => memesOctets(x.contenu, v.contenu));
+      if (jumeau) return { cle, nom: z.nom, ok: false, raison: `même contour que la zone « ${jumeau.nom} » cochée en même temps` };
+      vus.push({ nom: z.nom, contenu: v.contenu });
+      return { cle, nom: z.nom, ok: true };
+    });
+    return { status: 200, body: { resultats, versionCourante: cur.pointeur.version } };
+  }
+
   async function appliquer(env, u, couche, d) {
     const cur = await lirePointeur(env, couche);
     if (!cur) throw new HttpError(409, 'Cette couche n\'est pas encore dans R2.');
@@ -499,14 +548,11 @@ export function creerRoutesGeometries(ctx) {
     for (const cle of ajouts) {
       const z = zones[cle];
       if (!z) { erreurs.push(`Zone ${cle} : introuvable (modifiée ou supprimée depuis l'ouverture de l'écran).`); continue; }
-      if (typeof z.genre !== 'string' || !z.genre) { erreurs.push(`Zone « ${z.nom} » : genre manquant.`); continue; }
-      let contenu;
-      try { contenu = encoderContour(z.contour); } catch (err) { erreurs.push(`Zone « ${z.nom} » : contour inutilisable (${err.message}).`); continue; }
-      const idGarde = typeof z.id_shapefile === 'string' && z.id_shapefile ? z.id_shapefile : null;
-      if (idGarde) {
-        if (!REGLES_ID[couche].test(idGarde) || nombreId(idGarde) >= (idGarde[0] === 'P' ? prochainP : prochainT)) { erreurs.push(`Zone « ${z.nom} » : l'identifiant ${idGarde} n'a jamais été attribué.`); continue; }
-        if (present.has(idGarde) && !retraits.includes(idGarde)) { erreurs.push(`Zone « ${z.nom} » : l'identifiant ${idGarde} est déjà dans le fichier.`); continue; }
-      }
+      const v = verifierZone(z, { couche, courant, present, retraits, prochainP, prochainT });
+      if (v.raison) { erreurs.push(`Zone « ${z.nom} » : ${v.raison}.`); continue; }
+      const contenu = v.contenu; const idGarde = v.idGarde;
+      const jumeau = prets.find((x) => memesOctets(x.contenu, contenu));
+      if (jumeau) { erreurs.push(`Zone « ${z.nom} » : même contour que la zone « ${jumeau.z.nom} » appliquée en même temps.`); continue; }
       prets.push({ cle, z, contenu, id: idGarde });
     }
     const neufs = prets.filter((x) => !x.id);
@@ -649,13 +695,14 @@ export function creerRoutesGeometries(ctx) {
     }
 
     // ---- lot C : dépôt d'un shapefile modifié, restauration d'une ancienne version (droit « plans »)
-    const mDep = /^\/geometries\/shapefile\/([a-z]+)\/(deposer|restaurer|appliquer)$/.exec(p);
+    const mDep = /^\/geometries\/shapefile\/([a-z]+)\/(deposer|restaurer|appliquer|controler)$/.exec(p);
     if (request.method === 'POST' && mDep) {
       const u = await exigerDroit(request, env, 'plans');
       const [, couche, action] = mDep;
       if (!COUCHES.includes(couche)) throw new HttpError(404, 'Couche inconnue.');
       const d = await lireJson(request);
       if (action === 'appliquer') return appliquer(env, u, couche, d);
+      if (action === 'controler') return controlerZones(env, couche, d);
       return action === 'deposer' ? deposer(env, u, couche, d) : restaurer(env, u, couche, d);
     }
 

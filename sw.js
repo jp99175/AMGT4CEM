@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const VERSION = '20261119-2158'; // @VERSION (écrit par tools/stamp-sw.sh)
+const VERSION = '20261120-0814'; // @VERSION (écrit par tools/stamp-sw.sh)
 const CACHE = 'amgt4cem-app';
 const DELAI_RESEAU_MS = 4000;
 const PARALLELE = 6;

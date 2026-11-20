@@ -148,6 +148,7 @@ html[data-app="reglages"] body {
 .rgl-iz__table tr.rgl-iz--ajout { background: #e3f4e1; }
 .rgl-iz__table tr.rgl-iz--retrait { background: #fde8e8; }
 .rgl-iz__table tr.rgl-iz--bloque td { color: #9aa5b1; }
+.rgl-iz__refus { margin: 2px 0 0; color: #b42318; font-size: 0.85em; }
 /* Fenêtre d'attributs */
 .rgl-iz__nom { background: none; border: none; padding: 0; font: inherit; color: #0b5c75; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .rgl-iz__crayon { margin-left: 3px; vertical-align: -2px; }

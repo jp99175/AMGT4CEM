@@ -56,9 +56,9 @@ function construireLignes(zones, shp, genres, idsShapefile) {
 
 /** État affiché d'une ligne. */
 function etat(l) {
-  if (l.cote === 'haut') return l.origine === 'bas' ? 'retrait en attente' : (l.blocage || 'à intégrer');
+  if (l.cote === 'haut') return l.origine === 'bas' ? 'retrait en attente' : (l.blocage || (l.refus ? 'refusé' : 'à intégrer'));
   if (l.orphelin) return 'sans contour';
-  return l.origine === 'haut' ? 'ajout en attente' : 'au shapefile';
+  return l.origine === 'haut' ? 'à intégrer' : 'au shapefile';
 }
 const enAttente = (l) => l.cote !== l.origine;
 
@@ -169,7 +169,7 @@ async function monter(conteneur, opts = {}) {
   const passe = (l) => {
     if (filtreGenre && l.genre !== filtreGenre) return false;
     if (filtreEtat === 'integrer' && !(l.cote === 'haut' && l.origine === 'haut' && !l.blocage)) return false;
-    if (filtreEtat === 'bloque' && !l.blocage) return false;
+    if (filtreEtat === 'bloque' && !l.blocage && !l.refus) return false;
     if (filtreEtat === 'attente' && !enAttente(l)) return false;
     if (filtreEtat === 'shapefile' && !(l.cote === 'bas' && l.origine === 'bas' && !l.orphelin)) return false;
     const q = recherche.trim().toLowerCase();
@@ -232,11 +232,15 @@ async function monter(conteneur, opts = {}) {
   const sigShp = (e) => JSON.stringify([e.genre || '', e.name_fr || '', e.name_nl || '', Array.isArray(e.references) ? e.references.map(String) : []]);
 
   function celluleNom(l) {
-    if (!peutEditer) return h('span', { text: l.nom });
-    const b = h('button', { type: 'button', class: 'rgl-iz__nom', title: 'Modifier les attributs' });
-    b.textContent = l.nom || '(sans nom)';
-    b.addEventListener('click', () => ouvrirFenetre(l));
-    return b;
+    let nom;
+    if (!peutEditer) nom = h('span', { text: l.nom });
+    else {
+      nom = h('button', { type: 'button', class: 'rgl-iz__nom', title: 'Modifier les attributs' });
+      nom.textContent = l.nom || '(sans nom)';
+      nom.addEventListener('click', () => ouvrirFenetre(l));
+    }
+    if (!l.refus || l.cote !== 'haut') return nom;
+    return h('div', null, nom, h('p', { class: 'rgl-iz__refus', text: `Refusée : ${l.refus}` }));
   }
 
   function ouvrirFenetre(l) {
@@ -315,6 +319,7 @@ async function monter(conteneur, opts = {}) {
         }
         // Mise à jour de la ligne (le déplacement en attente éventuel est conservé).
         l.genre = c.genre; l.nom = estZone ? c.name_fr : (c.name_fr || c.name_nl);
+        l.refus = '';
         if (estZone) {
           const z = zones.lieux[cle];
           l.blocage = !aContour(z) ? 'sans contour' : (genres.includes(z.genre) ? '' : 'genre manquant');
@@ -355,12 +360,37 @@ async function monter(conteneur, opts = {}) {
     bHaut.disabled = !cochees('bas').length;
     const r = recap(lignes);
     bAppliquer.disabled = !(r.ajouts.length + r.retraits.length);
-    resume.textContent = `${r.ajouts.length} ajout(s), ${r.retraits.length} retrait(s) en attente`;
+    const refusees = lignes.filter((l) => l.cote === 'haut' && l.refus).length;
+    resume.textContent = `${r.ajouts.length} ajout(s), ${r.retraits.length} retrait(s) en attente${refusees ? `, ${refusees} refusée(s)` : ''}`;
   }
   function rendre() { haut.remplir(); bas.remplir(); majBoutons(); }
 
-  const bouger = (de, vers) => {
-    const cles = new Set(cochees(de).map((l) => l.cle));
+  /** ↓ : si la source R2 est active, chaque zone cochée est d'abord contrôlée par le serveur (rien n'est écrit) ; les refusées restent en haut avec leur raison. */
+  const controleDispo = () => !!window.AMGT4CEM_Stockage && AMGT4CEM_Stockage.source() === 'r2' && typeof AMGT4CEM_Auth !== 'undefined' && AMGT4CEM_Auth.aDroit('plans', AMGT4CEM_Auth.session());
+  const bouger = async (de, vers) => {
+    let cles = new Set(cochees(de).map((l) => l.cle));
+    if (de === 'haut' && controleDispo()) {
+      const aControler = lignes.filter((l) => cles.has(l.cle) && !l.blocage);
+      if (!aControler.length) return;
+      const fin = occupe(bBas);
+      dire('Contrôle sur le serveur…');
+      let res;
+      try { res = await AMGT4CEM_Stockage.controler(COUCHE_CIBLE, { ajouts: aControler.map((l) => l.cle.slice(2)), retraits: recap(lignes).retraits.map((l) => l.id) }); } catch (err) { dire(err.message, 'erreur'); fin(); return; }
+      fin();
+      const par = new Map(res.map((x) => [`Z:${x.cle}`, x]));
+      cles = new Set();
+      for (const l of aControler) {
+        const x = par.get(l.cle);
+        if (x && x.ok) { l.refus = ''; cles.add(l.cle); } else { l.refus = (x && x.raison) || 'contrôle impossible'; coches.delete(l.cle); }
+      }
+      const nbRefus = aControler.length - cles.size;
+      const groupe = deplacer(lignes, cles, vers);
+      for (const c of cles) coches.delete(c);
+      if (groupe.length) historique.push(groupe);
+      dire(nbRefus ? `${nbRefus} zone(s) refusée(s) sur ${aControler.length}. Les raisons sont écrites en rouge.${groupe.length ? ` ${groupe.length} zone(s) en attente d'écriture.` : ''}` : '', nbRefus ? 'erreur' : '');
+      rendre();
+      return;
+    }
     const groupe = deplacer(lignes, cles, vers);
     for (const c of cles) coches.delete(c);
     if (groupe.length) { historique.push(groupe); dire(''); }

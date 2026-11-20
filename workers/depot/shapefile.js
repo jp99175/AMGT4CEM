@@ -139,6 +139,42 @@ export function encoderContour(anneaux) {
   return out;
 }
 
+/** Nombre de points au-delà duquel le contrôle de recoupement est refusé (coût en n²). */
+export const POINTS_MAX_RECOUPEMENT = 6000;
+
+/**
+ * Cherche un recoupement dans des anneaux (listes de [x, y]) : deux côtés qui se traversent, dans un même anneau ou entre anneaux.
+ * Les contacts en un point (sommet commun, côtés consécutifs, bout qui touche un côté) ne comptent pas. Renvoie null si tout est correct,
+ * sinon { anneau, point } (numéros à partir de 1, repère approximatif : début du premier côté concerné).
+ */
+export function trouverRecoupement(anneaux) {
+  const rs = anneaux.filter((r) => Array.isArray(r) && r.length >= 3).map((r) => {
+    const pts = r.map((q) => [Number(q[0]), Number(q[1])]);
+    const a = pts[0]; const z = pts[pts.length - 1];
+    if (a[0] !== z[0] || a[1] !== z[1]) pts.push([a[0], a[1]]);
+    return pts;
+  });
+  if (rs.reduce((n, r) => n + r.length, 0) > POINTS_MAX_RECOUPEMENT) return { trop: true };
+  const orient = (a, b, c) => { const v = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]); return v > 0 ? 1 : v < 0 ? -1 : 0; };
+  const croise = (a, b, c, d) => orient(a, b, c) * orient(a, b, d) < 0 && orient(c, d, a) * orient(c, d, b) < 0;
+  for (let i = 0; i < rs.length; i++) {
+    for (let j = i; j < rs.length; j++) {
+      const A = rs[i]; const B = rs[j];
+      for (let k = 0; k + 1 < A.length; k++) {
+        const a = A[k]; const b = A[k + 1];
+        const xa = Math.min(a[0], b[0]); const xb = Math.max(a[0], b[0]); const ya = Math.min(a[1], b[1]); const yb = Math.max(a[1], b[1]);
+        for (let m = i === j ? k + 2 : 0; m + 1 < B.length; m++) {
+          if (i === j && k === 0 && m + 1 === A.length - 1) continue; // dernier côté et premier côté : voisins par la fermeture
+          const c = B[m]; const d = B[m + 1];
+          if (Math.max(c[0], d[0]) < xa || Math.min(c[0], d[0]) > xb || Math.max(c[1], d[1]) < ya || Math.min(c[1], d[1]) > yb) continue;
+          if (croise(a, b, c, d)) return { anneau: i + 1, point: k + 1 };
+        }
+      }
+    }
+  }
+  return null;
+}
+
 /** Champs d'un .dbf : { champs: [{nom, debut, longueur}], n, lenEntete, lenEnreg }. */
 function enteteDbf(dbf) {
   if (dbf.length < 33) throw new Error('Le fichier .dbf est trop court.');
