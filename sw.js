@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const VERSION = '20261120-1855'; // @VERSION (écrit par tools/stamp-sw.sh)
+const VERSION = '20261120-2215'; // @VERSION (écrit par tools/stamp-sw.sh)
 const CACHE = 'amgt4cem-app';
 const DELAI_RESEAU_MS = 4000;
 const PARALLELE = 6;
@@ -79,6 +79,7 @@ const FICHIERS = [
   './src/annotate/icons/icone-epaisseur.svg',
   './src/annotate/icons/icone-fleche.svg',
   './src/annotate/icons/icone-gomme.svg',
+  './src/annotate/icons/icone-main.svg',
   './src/annotate/icons/icone-palette.svg',
   './src/annotate/icons/icone-pinceau.svg',
   './src/annotate/icons/icone-poubelle.svg',

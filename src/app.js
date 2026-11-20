@@ -123,7 +123,9 @@
   let networkMode = null; // 'prive' | 'public' : source actuellement affichée (null : rien d'affiché)
   let networkLayers = null; // groupes Leaflet du réseau affiché
   let networkToken = 0; // numéro de la dernière lecture demandée : une lecture périmée est jetée
-  let networkFitted = !!vueMemorisee; // la vue a déjà été recentrée sur le réseau une première fois (ou reprise de la dernière vue)
+  // Adresse ?page=carto&zone=SLUG (lien « Modifier le contour dans l'outil de zone ») : l'outil cadre lui-même la zone, le réseau ne recentre pas la carte.
+  const zoneDemandee = AMGT4CEM_Router && AMGT4CEM_Router.params ? AMGT4CEM_Router.params.get('zone') : null;
+  let networkFitted = !!vueMemorisee || !!zoneDemandee; // la vue a déjà été recentrée sur le réseau une première fois (ou reprise de la dernière vue)
 
   function wantedNetworkMode() {
     return AMGT4CEM_Auth.session() ? 'prive' : 'public';
@@ -229,7 +231,6 @@
   AMGT4CEM_Auth.surveillerExpiration();
 
   // Adresse ?page=carto&zone=SLUG (lien « Modifier le contour dans l'outil de zone ») : l'outil s'ouvre sur cette zone (droit « plans »).
-  const zoneDemandee = AMGT4CEM_Router && AMGT4CEM_Router.params ? AMGT4CEM_Router.params.get('zone') : null;
   if (zoneDemandee) AMGT4CEM_LieuxTool.ouvrirSurZone(zoneDemandee).catch((err) => console.warn('Ouverture de la zone impossible :', err));
 
   document.getElementById('amgt-measure-btn').addEventListener('click', () => {
