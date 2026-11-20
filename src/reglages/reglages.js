@@ -23,6 +23,7 @@
  * `pastille: 'Plans'` affiche le droit requis à côté du nom ; `desactive: 'raison'` grise la ligne (sans action).
  * Une ligne peut enfin porter un champ de réglage de l'appareil : { texte, aide?, champ: { unite, min, max, valeur(), enregistrer(n) } }.
  *
+ * Mon appareil > Affichage (20/11/2026) : durée d'affichage et décalage du pointeur de mesure, dans un sous-écran.
  * Étape 1 (27/10/2026) : « Mon appareil » (compte, version).
  * Étape 2 (27/10/2026) : délai d'affichage des mesures (appareil) ; « Utilisateurs » (page d'administration actuelle,
  * chargée à la demande dans un sous-écran) ; « Services et relais » (src/reglages/serveur.js).
@@ -143,6 +144,40 @@ function monterMotDePasse(conteneur) {
     h('div', { class: 'rgl-actions' }, envoyer));
 }
 
+// ------------------------------------------------------------------ Mon appareil > Affichage
+const LIGNES_AFFICHAGE = [
+  {
+    texte: 'Durée d\'affichage d\'une mesure',
+    aide: 'Le résultat d\'une mesure reste affiché ce nombre de secondes (0 : jusqu\'à ce que vous touchiez « Fermer »). Réglage propre à cet appareil.',
+    champ: { unite: 's', min: 0, max: 600, valeur: () => Reglages.delaiMesureMs() / 1000, enregistrer: (n) => Reglages.fixerDelaiMesureMs(n * 1000) },
+  },
+  {
+    texte: 'Décalage du pointeur de mesure',
+    aide: 'Distance entre le doigt et le point mesuré, pour que le doigt ne le cache pas (chaîne d\'arpenteur et compas). 0 : pas de décalage. Réglage propre à cet appareil.',
+    champ: { unite: 'px', min: 0, max: 200, valeur: () => Reglages.decalageMesurePx(), enregistrer: (n) => Reglages.fixerDecalageMesurePx(n) },
+  },
+];
+const ECRAN_AFFICHAGE = {
+  id: 'affichage',
+  titre: 'Affichage',
+  monter(conteneur) {
+    conteneur.replaceChildren(h('section', { class: 'rgl-bloc' }, ...LIGNES_AFFICHAGE.map(ligneChamp)));
+  },
+};
+
+/**
+ * Ouverture directe d'un sous-écran depuis une autre page (roue dentée de la latte de la carte) : la carte pose
+ * `amgt4cem.reglages.ouvrir` = « affichage|<heure> » avant de venir ici. Valable 2 minutes (connexion éventuelle).
+ */
+function ecranDemande() {
+  let v = null;
+  try { v = sessionStorage.getItem('amgt4cem.reglages.ouvrir'); sessionStorage.removeItem('amgt4cem.reglages.ouvrir'); } catch (e) { /* stockage indisponible */ }
+  if (!v) return null;
+  const [id, t] = v.split('|');
+  if (!(Date.now() - Number(t) < 120000)) return null;
+  return id === 'affichage' ? ECRAN_AFFICHAGE : null;
+}
+
 // ------------------------------------------------------------------ blocs
 Reglages.register({
   id: 'appareil',
@@ -169,14 +204,9 @@ Reglages.register({
       },
     },
     {
-      texte: 'Durée d\'affichage d\'une mesure',
-      aide: 'Le résultat d\'une mesure reste affiché ce nombre de secondes (0 : jusqu\'à ce que vous touchiez « Fermer »). Réglage propre à cet appareil.',
-      champ: { unite: 's', min: 0, max: 600, valeur: () => Reglages.delaiMesureMs() / 1000, enregistrer: (n) => Reglages.fixerDelaiMesureMs(n * 1000) },
-    },
-    {
-      texte: 'Décalage du pointeur de mesure',
-      aide: 'Distance entre le doigt et le point mesuré, pour que le doigt ne le cache pas (chaîne d\'arpenteur et compas). 0 : pas de décalage. Réglage propre à cet appareil.',
-      champ: { unite: 'px', min: 0, max: 200, valeur: () => Reglages.decalageMesurePx(), enregistrer: (n) => Reglages.fixerDecalageMesurePx(n) },
+      texte: 'Affichage',
+      aide: 'Durée d\'affichage d\'une mesure, décalage du pointeur de mesure.',
+      ecran: ECRAN_AFFICHAGE,
     },
     { texte: 'Mot de passe', aide: 'Changer le mot de passe de votre compte.', ecran: { id: 'motdepasse', titre: 'Mot de passe', monter: monterMotDePasse } },
   ],
@@ -317,6 +347,8 @@ function render() {
     const el = bloc(b, s);
     if (el) principal.append(el);
   }
+  const demande = ecranDemande();
+  if (demande) ouvrir(demande);
 }
 
 async function demander() {

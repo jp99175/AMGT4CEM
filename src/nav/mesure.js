@@ -3,14 +3,14 @@
  *
  *  - Appui court : l'outil utilisé en dernier (la chaîne d'arpenteur au premier usage) ; un nouvel appui l'arrête.
  *  - Appui long (500 ms) : la latte glisse vers la gauche et laisse apparaître les deux outils, ainsi qu'une
- *    roue dentée qui ouvre Réglages > Mon appareil (durée d'affichage, décalage du pointeur) :
+ *    roue dentée qui ouvre Réglages > Mon appareil > Affichage (durée d'affichage, décalage du pointeur) :
  *      · chaîne d'arpenteur : on pose les points un à un ; longueur de chaque tronçon, longueur cumulée, et surface
  *        si l'on referme la ligne sur son premier point. À la souris, un clic pose un point (la carte reste
  *        déplaçable). Au doigt, un pointeur apparaît au-dessus du doigt (décalage réglable) : on le glisse, le
  *        point est posé au relâchement ; pour les points suivants, le pointeur part du point précédent et suit le
  *        déplacement du doigt (1 pour 1), le doigt se posant n'importe où ; la carte se déplace et se zoome avec deux doigts ;
  *      · compas : le rayon, outil existant (src/measureTool.js) ; même décalage réglable au doigt.
- *  - Le résultat reste affiché le délai réglé dans Réglages > Mon appareil (0 = jusqu'à « Fermer »).
+ *  - Le résultat reste affiché le délai réglé dans Réglages > Mon appareil > Affichage (0 = jusqu'à « Fermer »).
  *  - Disquette : enregistre une image de la carte avec la mesure (src/screenshotTool.js, inchangé) ;
  *    croix : ferme l'outil.
  *
@@ -646,9 +646,10 @@ const Mesure = {
   },
   fermerPlateau() { this._bloc.classList.remove('mes-bloc--ouvert'); this._latte.classList.remove('mes-presse'); this.majControles(); },
 
-  /** Roue dentée : Réglages > Mon appareil (même chemin que l'onglet Réglages : connexion demandée si besoin). */
+  /** Roue dentée : Réglages > Mon appareil > Affichage (même chemin que l'onglet Réglages : connexion demandée si besoin). */
   ouvrirReglages() {
     this.fermerPlateau();
+    try { sessionStorage.setItem('amgt4cem.reglages.ouvrir', `affichage|${Date.now()}`); } catch (e) { /* tant pis : la liste des réglages s'ouvre */ }
     const onglet = [...document.querySelectorAll('.amgt-nav__tab')].find((a) => /[?&]page=reglages\b/.test(a.getAttribute('href') || ''));
     if (onglet) onglet.click();
   },
