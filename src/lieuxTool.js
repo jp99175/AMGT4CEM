@@ -177,6 +177,8 @@ const AMGT4CEM_LieuxTool = {
           <button type="button" data-a="t-mode" data-e="point" class="amgt-lieux-edonly amgt-hidden" title="Sélectionner ou déplacer un point (toucher un « + » entre deux points pour en ajouter un)" aria-label="Sélectionner un point"></button>
           <button type="button" data-a="t-mode" data-e="deplacer" class="amgt-lieux-edonly amgt-hidden" title="Déplacer toute la forme" aria-label="Déplacer la forme"></button>
           <button type="button" data-a="t-mode" data-e="tourner" class="amgt-lieux-edonly amgt-hidden" title="Tourner toute la forme" aria-label="Tourner la forme"></button>
+          <button type="button" data-a="t-pivot-pose" class="amgt-hidden" title="Fixer le pivot à cet endroit : glisser fera ensuite tourner la forme">Poser le pivot</button>
+          <button type="button" data-a="t-pivot-auto" class="amgt-hidden" title="Remettre le pivot en automatique (point sélectionné, sinon centre de la forme)">Pivot auto</button>
           <button type="button" data-a="t-suppr" class="amgt-lieux-edonly amgt-hidden" title="Supprimer le point sélectionné" aria-label="Supprimer le point"></button>
           <button type="button" data-a="t-valider" class="amgt-lieux-edonly amgt-hidden" title="Terminer la modification">✓ Terminer</button></div>
         <div class="amgt-lieux-row amgt-lieux-poly amgt-hidden" data-f="opsbarre">
@@ -237,6 +239,8 @@ const AMGT4CEM_LieuxTool = {
       else if (a.dataset.a === 'retour') this._retour();
       else if (a.dataset.a === 't-main') { this._viseurOn = !this._viseurOn; a.classList.toggle('amgt-lieux-actif', !this._viseurOn); this._syncDrag(); this._etat(this._viseurOn ? 'Viseur actif.' : 'Carte déplaçable à la souris : le bouton main à nouveau pour reprendre le tracé.'); }
       else if (a.dataset.a === 't-mode') this._editerMode(a.dataset.e);
+      else if (a.dataset.a === 't-pivot-pose') this._pivotPoser();
+      else if (a.dataset.a === 't-pivot-auto') this._pivotAuto();
       else if (a.dataset.a === 't-valider') this._traceTerminer();
       else if (a.dataset.a === 't-suppr') this._traceSupprimer();
       else if (a.dataset.a === 'o-appliquer') this._opsAppliquer();
@@ -255,25 +259,53 @@ const AMGT4CEM_LieuxTool = {
   /** Modification d'un contour : outil actif de la barre (pointeur, déplacer la forme, tourner la forme). */
   _editerMode(m, muet) {
     this._editMode = m;
+    if (this._trace) this._trace.pivotActif = false;
     if (this._panel) for (const b of this._panel.querySelectorAll('[data-a="t-mode"]')) b.classList.toggle('amgt-lieux-actif', b.dataset.e === m);
     if (this._trace && this._trace.sommets) this._traceSommets();
     if (muet) return;
     this._etat({
       point: 'Pointeur : toucher un point pour le prendre, le glisser pour le déplacer ; « + » entre deux points pour en ajouter un.',
       deplacer: 'Déplacer la forme : glisser un doigt n\'importe où sur la carte.',
-      tourner: 'Tourner la forme : glisser un doigt autour du pivot orange. Prendre le pivot pour le déplacer (aimant) ; le toucher sans bouger le remet en automatique (centre, ou point sélectionné).',
+      tourner: 'Tourner la forme : glisser un doigt pour la faire tourner autour du pivot orange. Pour déplacer le pivot, le toucher : un réticule apparaît, puis glisser n\'importe où (aimant), et « Poser le pivot ».',
     }[m]);
   },
 
   /** Position Leaflet -> [x, y] Lambert 72 (AMGT4CEM_CRS renvoie { x, y }). */
   _lamb(ll) { const o = AMGT4CEM_CRS.latLngToLambert(ll); return [o.x, o.y]; },
 
+  /** Boutons « Poser le pivot » (pivot actif) et « Pivot auto » (pivot placé à la main), visibles en mode Tourner. */
+  _pivotBarre() {
+    if (!this._panel) return;
+    const t = this._trace;
+    const tourner = !!t && t.phase === 'edition' && this._editMode === 'tourner';
+    const pose = this._panel.querySelector('[data-a="t-pivot-pose"]');
+    const auto = this._panel.querySelector('[data-a="t-pivot-auto"]');
+    if (pose) pose.classList.toggle('amgt-hidden', !(tourner && t.pivotActif));
+    if (auto) auto.classList.toggle('amgt-hidden', !(tourner && t.pivot));
+  },
+
+  _pivotPoser() {
+    const t = this._trace;
+    if (!t) return;
+    t.pivotActif = false;
+    this._traceSommets();
+    this._etat('Pivot posé : glisser un doigt pour tourner la forme. Le toucher le réactive.');
+  },
+
+  _pivotAuto() {
+    const t = this._trace;
+    if (!t) return;
+    t.pivot = null; t.pivotActif = false;
+    this._traceSommets();
+    this._etat('Pivot remis en automatique (point sélectionné, sinon centre de la forme).');
+  },
+
   /** Pivot de la rotation, en Lambert : le point sélectionné, sinon le centre de l'emprise de la forme. Figé pendant un geste. */
   _pivot() {
     if (this._g && this._g.pivot) return this._g.pivot;
     const t = this._trace;
     if (!t || !t.pts.length) return null;
-    if (t.pivot) return t.pivot; // pivot placé à la main : il reste jusqu'à « Terminer » ou jusqu'à un toucher sur lui (retour en automatique)
+    if (t.pivot) return t.pivot; // pivot placé à la main : il reste jusqu'à « Terminer » ou jusqu'au bouton « Pivot auto »
     const L = t.pts.map((q) => this._lamb(q));
     if (t.sel !== null && t.sel !== undefined && L[t.sel]) return L[t.sel];
     const xs = L.map((q) => q[0]); const ys = L.map((q) => q[1]);
@@ -744,7 +776,8 @@ const AMGT4CEM_LieuxTool = {
       else mk(q, 'amgt-lieux-pt', 7);
     });
     if (edition) for (const m of this._milieux()) if (!(this._g && this._g.insere === m.k)) mk(m.ll, 'amgt-lieux-mid', 12);
-    if (edition && this._editMode === 'tourner') { const pv = this._pivot(); if (pv) mk(AMGT4CEM_CRS.lambertToLatLng(pv), 'amgt-lieux-pivot', 26); }
+    if (edition && this._editMode === 'tourner') { const pv = this._pivot(); if (pv) mk(AMGT4CEM_CRS.lambertToLatLng(pv), t.pivotActif ? 'amgt-lieux-pivot amgt-lieux-pivot--actif' : 'amgt-lieux-pivot', t.pivotActif ? 34 : 26); }
+    this._pivotBarre();
   },
 
   /** Milieux des segments (poignées « + » de l'édition) : { k: rang du segment, ll } ; le segment k relie le sommet k au suivant. */
@@ -809,9 +842,9 @@ const AMGT4CEM_LieuxTool = {
     if (edition && this._editMode === 'tourner') { // pivot : le prendre pour le déplacer (déplacement relatif, aimant)
       const pv = this._pivot();
       const base = pv ? this._map.latLngToContainerPoint(AMGT4CEM_CRS.lambertToLatLng(pv)) : null;
-      if (base && base.distanceTo(pt) <= (e.pointerType === 'mouse' ? 14 : 30)) {
+      if (base && (t.pivotActif || base.distanceTo(pt) <= (e.pointerType === 'mouse' ? 14 : 30))) {
         const fantome = L.marker(AMGT4CEM_CRS.lambertToLatLng(pv), { pane: 'amgtLieuxPane', interactive: false, keyboard: false, opacity: 0, icon: L.divIcon({ className: 'amgt-lieux-pivot-fantome', iconSize: [1, 1] }) }).addTo(this._map);
-        this._g = { id: e.pointerId, pivotDrag: true, i: 'pivot', depart: pt, base, bouge: false, viseur: fantome };
+        this._g = { id: e.pointerId, pivotDrag: true, i: 'pivot', depart: pt, base, bouge: false, viseur: fantome, etaitActif: !!t.pivotActif, pivot0: pv };
         this._aimantDebut('pivot');
         try { this._map.getContainer().setPointerCapture(e.pointerId); } catch (err) { /* ignoré */ }
         e.preventDefault();
@@ -928,7 +961,11 @@ const AMGT4CEM_LieuxTool = {
       this._aimantFin();
       this._map.removeLayer(g.viseur);
       if (!t) return;
-      if (!g.bouge && !accroche) { t.pivot = null; this._etat('Pivot remis en automatique (centre de la forme, ou point sélectionné).'); } else this._etat('Pivot placé. Le toucher sans bouger le remet en automatique.');
+      if (!g.etaitActif) { // premier toucher : le pivot devient actif (réticule) ; il garde sa place s'il n'a pas bougé
+        if (!t.pivot) t.pivot = [g.pivot0[0], g.pivot0[1]];
+        t.pivotActif = true;
+        this._etat('Pivot actif : glisser n\'importe où pour le déplacer (aimant), puis « Poser le pivot ».');
+      } else this._etat(accroche ? 'Pivot accroché. « Poser le pivot » pour tourner.' : 'Pivot déplacé. « Poser le pivot » pour tourner.');
       this._traceSommets();
       return;
     }
@@ -982,7 +1019,7 @@ const AMGT4CEM_LieuxTool = {
     if (!g) return;
     if (g.viseur) this._map.removeLayer(g.viseur);
     const t = this._trace;
-    if (t && t.hist && t.hist.length && !g.pivotDrag) { const h = t.hist.pop(); t.pts = h.pts; t.ferme = h.ferme; t.trous = h.trous; if ('pivot' in h) t.pivot = h.pivot; }
+    if (t && t.hist && t.hist.length && !g.pivotDrag) { const h = t.hist.pop(); t.pts = h.pts; t.ferme = h.ferme; t.trous = h.trous; if ('pivot' in h) t.pivot = h.pivot; t.pivotActif = false; }
     this._aimantFin();
     if (t) this._traceDessin();
   },
@@ -1207,7 +1244,7 @@ const AMGT4CEM_LieuxTool = {
     t.pts = h.pts;
     t.ferme = h.ferme;
     t.trous = h.trous;
-    if ('pivot' in h) t.pivot = h.pivot;
+    if ('pivot' in h) t.pivot = h.pivot; t.pivotActif = false;
     t.sel = null;
     this._traceDessin();
   },
