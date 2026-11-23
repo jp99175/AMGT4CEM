@@ -160,10 +160,11 @@ const AMGT4CEM_LieuxTool = {
           <ul class="amgt-lieux-combo-liste amgt-hidden" data-f="combolist" role="listbox"></ul>
         </div>
         <button type="button" data-a="retour" class="amgt-lieux-l1-retour" title="Retour : annuler la dernière opération" aria-label="Retour">↶</button>
+        <button type="button" data-a="enreg" class="amgt-lieux-l1-retour" title="Enregistrer la zone" aria-label="Enregistrer">💾</button>
         <button type="button" data-a="reduire" title="Réduire à cette ligne / redéployer la fenêtre" aria-label="Réduire">▾</button>
       </div>
       <div class="amgt-lieux-sec amgt-lieux-body">
-        <div class="amgt-lieux-row"><input data-f="nom" placeholder="Nom de la zone (ex. Ascenseur POELAERT)" /><select data-f="genre" title="Genre de la zone" aria-label="Genre de la zone"></select></div>
+        <div class="amgt-lieux-row amgt-lieux-nomrow"><input data-f="nom" placeholder="Nom de la zone (ex. Ascenseur POELAERT)" /><select data-f="genre" title="Genre de la zone" aria-label="Genre de la zone"></select></div>
         <div class="amgt-lieux-corps">
           <div class="amgt-lieux-liste" data-f="liste"></div>
           <input class="amgt-lieux-haut" data-f="haut" type="range" min="0" max="100" value="35" orient="vertical" title="Hauteur de la liste" aria-label="Hauteur de la liste" />

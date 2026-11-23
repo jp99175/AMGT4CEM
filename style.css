@@ -1268,9 +1268,11 @@ html, body {
 #amgt-lieux-panel .amgt-lieux-aimant { white-space: nowrap; font-size: 13px; }
 #amgt-lieux-panel .amgt-lieux-aimant input { width: 46px; }
 
-/* Fenêtre réduite : seule la première ligne reste (liste des lieux, ↶ retour, redéployer) */
+/* Fenêtre réduite : première ligne (liste, ↶, 💾, redéployer) + outils + barres d'outil + état sur une ligne ; nom, liste, aimant cachés */
 #amgt-lieux-panel.amgt-lieux-reduit { max-height: none; overflow: visible; bottom: 72px; padding: 4px 8px; }
-#amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-body { display: none; }
+#amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-nomrow, #amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-corps, #amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-compte, #amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-l9 { display: none; }
+#amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-body { margin-top: 4px; }
+#amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-etat { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #amgt-lieux-panel .amgt-lieux-l1-retour { display: none; }
 #amgt-lieux-panel.amgt-lieux-reduit .amgt-lieux-l1-retour { display: inline-block; }
 #amgt-lieux-panel .amgt-lieux-sp { flex: 1; }
