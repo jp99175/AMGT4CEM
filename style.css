@@ -1330,3 +1330,9 @@ html, body {
 
 /* Dessiner une zone : Remplir / Unir / Soustraire gardent le pointeur normal (Leaflet met une main « grab » / « pointer ») */
 .amgt-lieux-ptr.leaflet-grab, .amgt-lieux-ptr .leaflet-grab, .amgt-lieux-ptr .leaflet-interactive, .amgt-lieux-ptr.leaflet-dragging .leaflet-grab { cursor: default !important; }
+
+.amgt-lieux-depart, .amgt-lieux-cible { border-radius: 50%; box-sizing: border-box; border: 2px solid var(--rc); background: radial-gradient(circle, var(--rc) 0 2px, rgba(255,255,255,.75) 3px); }
+.amgt-lieux-depart { --rc: #185FA5; }
+.amgt-lieux-cible { --rc: #3B6D11; }
+.amgt-lieux-depart--actif, .amgt-lieux-cible--actif { background: radial-gradient(circle, var(--rc) 0 3px, transparent 4px), linear-gradient(var(--rc),var(--rc)) center/1.5px 100% no-repeat, linear-gradient(var(--rc),var(--rc)) center/100% 1.5px no-repeat; border-width: 1.5px; }
+.amgt-lieux-aim-off { opacity: .45; }

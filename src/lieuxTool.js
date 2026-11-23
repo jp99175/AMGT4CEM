@@ -178,6 +178,9 @@ const AMGT4CEM_LieuxTool = {
           <button type="button" data-a="t-mode" data-e="deplacer" class="amgt-lieux-edonly amgt-hidden" title="Déplacer toute la forme" aria-label="Déplacer la forme"></button>
           <button type="button" data-a="t-mode" data-e="tourner" class="amgt-lieux-edonly amgt-hidden" title="Tourner toute la forme" aria-label="Tourner la forme"></button>
           <button type="button" data-a="t-pivot-pose" class="amgt-hidden" title="Fixer le pivot à cet endroit : glisser fera ensuite tourner la forme">Poser le pivot</button>
+          <button type="button" data-a="t-aim" class="amgt-hidden" title="Aimant pour cette étape : actif, il accroche aux points remarquables ; coupé, la pose est libre">Aim.</button>
+          <button type="button" data-a="t-depart" class="amgt-hidden" title="Choisir le point de départ de la rotation">Départ</button>
+          <button type="button" data-a="t-cible" class="amgt-hidden" title="Choisir la cible : la forme tourne pour que le départ prenne la direction de la cible">Cible</button>
           <button type="button" data-a="t-pivot-auto" class="amgt-hidden" title="Remettre le pivot en automatique (point sélectionné, sinon centre de la forme)">Pivot auto</button>
           <button type="button" data-a="t-suppr" class="amgt-lieux-edonly amgt-hidden" title="Supprimer le point sélectionné" aria-label="Supprimer le point"></button>
           <button type="button" data-a="t-valider" class="amgt-lieux-edonly amgt-hidden" title="Terminer la modification">✓ Terminer</button></div>
@@ -239,7 +242,10 @@ const AMGT4CEM_LieuxTool = {
       else if (a.dataset.a === 'retour') this._retour();
       else if (a.dataset.a === 't-main') { this._viseurOn = !this._viseurOn; a.classList.toggle('amgt-lieux-actif', !this._viseurOn); this._syncDrag(); this._etat(this._viseurOn ? 'Viseur actif.' : 'Carte déplaçable à la souris : le bouton main à nouveau pour reprendre le tracé.'); }
       else if (a.dataset.a === 't-mode') this._editerMode(a.dataset.e);
-      else if (a.dataset.a === 't-pivot-pose') this._pivotPoser();
+      else if (a.dataset.a === 't-pivot-pose') this._etapePoser();
+      else if (a.dataset.a === 't-aim') this._aimBascule();
+      else if (a.dataset.a === 't-depart') this._departDebut();
+      else if (a.dataset.a === 't-cible') this._cibleDebut();
       else if (a.dataset.a === 't-pivot-auto') this._pivotAuto();
       else if (a.dataset.a === 't-valider') this._traceTerminer();
       else if (a.dataset.a === 't-suppr') this._traceSupprimer();
@@ -259,45 +265,146 @@ const AMGT4CEM_LieuxTool = {
   /** Modification d'un contour : outil actif de la barre (pointeur, déplacer la forme, tourner la forme). */
   _editerMode(m, muet) {
     this._editMode = m;
-    if (this._trace) this._trace.pivotActif = false;
+    this._etapesRaz();
     if (this._panel) for (const b of this._panel.querySelectorAll('[data-a="t-mode"]')) b.classList.toggle('amgt-lieux-actif', b.dataset.e === m);
     if (this._trace && this._trace.sommets) this._traceSommets();
     if (muet) return;
     this._etat({
       point: 'Pointeur : toucher un point pour le prendre, le glisser pour le déplacer ; « + » entre deux points pour en ajouter un.',
       deplacer: 'Déplacer la forme : glisser un doigt n\'importe où sur la carte.',
-      tourner: 'Tourner la forme : glisser un doigt pour la faire tourner autour du pivot orange. Pour déplacer le pivot, le toucher : un réticule apparaît, puis glisser n\'importe où (aimant), et « Poser le pivot ».',
+      tourner: 'Tourner la forme : glisser un doigt pour la faire tourner autour du pivot orange. Pour déplacer le pivot, le toucher : un réticule apparaît, puis glisser n\'importe où (aimant), et « Poser le pivot ». « Départ » puis « Cible » : tourner d\'un point à un autre.',
     }[m]);
   },
 
   /** Position Leaflet -> [x, y] Lambert 72 (AMGT4CEM_CRS renvoie { x, y }). */
   _lamb(ll) { const o = AMGT4CEM_CRS.latLngToLambert(ll); return [o.x, o.y]; },
 
-  /** Boutons « Poser le pivot » (pivot actif) et « Pivot auto » (pivot placé à la main), visibles en mode Tourner. */
+  /** Étape de rotation en cours : 'pivot', 'depart', 'cible' (un réticule à déplacer) ou null. */
+  _etapeActive() {
+    const t = this._trace;
+    if (!t) return null;
+    return t.pivotActif ? 'pivot' : t.departActif ? 'depart' : t.cibleActif ? 'cible' : null;
+  },
+
+  /** Aimant voulu pour l'étape (actif par défaut) ; sans effet si le rayon du champ 🧲 vaut 0. */
+  _aimActif(i) {
+    const a = this._trace && this._trace.aim;
+    return !a || a[i] === undefined ? true : !!a[i];
+  },
+
+  _aimBascule() {
+    const t = this._trace; const e = this._etapeActive();
+    if (!t || !e) return;
+    if (this._aimantRayon() <= 0) return this._etat('Rayon à 0 : saisir un rayon dans le champ 🧲 pour utiliser l\'aimant.');
+    t.aim = t.aim || {};
+    t.aim[e] = !this._aimActif(e);
+    this._pivotBarre();
+    this._etat(t.aim[e] ? 'Aimant actif pour cette étape.' : 'Aimant coupé pour cette étape : pose libre.');
+  },
+
+  /** Boutons de la rotation, visibles en mode Tourner : Poser (nom selon l'étape), Aim., Départ, Cible, Pivot auto. */
   _pivotBarre() {
     if (!this._panel) return;
     const t = this._trace;
     const tourner = !!t && t.phase === 'edition' && this._editMode === 'tourner';
-    const pose = this._panel.querySelector('[data-a="t-pivot-pose"]');
-    const auto = this._panel.querySelector('[data-a="t-pivot-auto"]');
-    if (pose) pose.classList.toggle('amgt-hidden', !(tourner && t.pivotActif));
-    if (auto) auto.classList.toggle('amgt-hidden', !(tourner && t.pivot));
+    const e = tourner ? this._etapeActive() : null;
+    const q = (a) => this._panel.querySelector(`[data-a="${a}"]`);
+    const vis = (a, v) => { const b = q(a); if (b) b.classList.toggle('amgt-hidden', !v); };
+    const pose = q('t-pivot-pose');
+    if (pose && e) pose.textContent = { pivot: 'Poser le pivot', depart: 'Poser départ', cible: 'Poser cible' }[e];
+    vis('t-pivot-pose', !!e);
+    vis('t-aim', !!e);
+    const aim = q('t-aim');
+    if (aim && e) { aim.classList.toggle('amgt-lieux-actif', this._aimActif(e) && this._aimantRayon() > 0); aim.classList.toggle('amgt-lieux-aim-off', this._aimantRayon() <= 0); }
+    vis('t-depart', tourner && !e && !(t.depart));
+    vis('t-cible', tourner && !e && !!t.depart);
+    vis('t-pivot-auto', tourner && !!t.pivot && !t.depart && e !== 'depart' && e !== 'cible');
   },
 
-  _pivotPoser() {
+  _etapesRaz() {
     const t = this._trace;
     if (!t) return;
-    t.pivotActif = false;
-    this._traceSommets();
-    this._etat('Pivot posé : glisser un doigt pour tourner la forme. Le toucher le réactive.');
+    t.pivotActif = false; t.departActif = false; t.cibleActif = false;
+    t.depart = null; t.cible = null; t.base = null; t.aim = {};
+  },
+
+  _etapePoser() {
+    const t = this._trace; const e = this._etapeActive();
+    if (!t || !e) return;
+    if (e === 'pivot') {
+      t.pivotActif = false;
+      this._traceSommets();
+      this._etat('Pivot posé : glisser un doigt pour tourner la forme, ou « Départ » puis « Cible ». Le toucher le réactive.');
+    } else if (e === 'depart') {
+      t.departActif = false;
+      this._traceSommets();
+      this._etat('Départ posé. « Cible » pour choisir où il doit aller (↶ pour annuler).');
+    } else {
+      t.cibleActif = false;
+      const deg = this._rotDegres();
+      this._etapesRaz();
+      this._traceDessin();
+      this._etat(`Rotation de ${Math.abs(deg).toFixed(1).replace('.', ',')}° faite : ↶ pour annuler.`);
+    }
   },
 
   _pivotAuto() {
     const t = this._trace;
     if (!t) return;
-    t.pivot = null; t.pivotActif = false;
+    t.pivot = null;
+    this._etapesRaz();
     this._traceSommets();
     this._etat('Pivot remis en automatique (point sélectionné, sinon centre de la forme).');
+  },
+
+  /** « Départ » : fige le pivot, puis un réticule bleu (au point sélectionné, sinon au sommet le plus éloigné du pivot) à déplacer. */
+  _departDebut() {
+    const t = this._trace;
+    if (!t || !t.pts.length) return;
+    const pv = this._pivot();
+    t.pivot = [pv[0], pv[1]];
+    const L = t.pts.map((q) => this._lamb(q));
+    let k = t.sel !== null && t.sel !== undefined && L[t.sel] ? t.sel : -1;
+    if (k < 0) { let dm = -1; L.forEach((q, n) => { const d = Math.hypot(q[0] - pv[0], q[1] - pv[1]); if (d > dm) { dm = d; k = n; } }); }
+    t.pivotActif = false; t.cibleActif = false;
+    t.depart = [L[k][0], L[k][1]];
+    t.departActif = true;
+    this._traceSommets();
+    this._etat('Départ : glisser n\'importe où pour déplacer le réticule bleu (aimant au choix), puis « Poser départ ».');
+  },
+
+  /** « Cible » : un réticule vert part du départ ; la forme tourne en aperçu pour que le départ prenne la direction de la cible. */
+  _cibleDebut() {
+    const t = this._trace;
+    if (!t || !t.depart) return;
+    this._traceMemo(true);
+    t.base = { L0: t.pts.map((q) => this._lamb(q)), T0: (t.trous || []).map((h) => h.map((q) => [q[0], q[1]])) };
+    t.cible = [t.depart[0], t.depart[1]];
+    t.departActif = false; t.pivotActif = false; t.cibleActif = true;
+    this._traceSommets();
+    this._etat('Cible : glisser n\'importe où pour déplacer le réticule vert (aimant au choix) ; la forme tourne en direct. « Poser cible » valide.');
+  },
+
+  /** Angle de la rotation (degrés, sens antihoraire) : direction pivot→cible moins direction pivot→départ. */
+  _rotDegres() {
+    const t = this._trace;
+    if (!t || !t.pivot || !t.depart || !t.cible) return 0;
+    const a = Math.atan2(t.cible[1] - t.pivot[1], t.cible[0] - t.pivot[0]) - Math.atan2(t.depart[1] - t.pivot[1], t.depart[0] - t.pivot[0]);
+    return ((a * 180 / Math.PI + 540) % 360) - 180;
+  },
+
+  /** Aperçu en direct : la forme d'origine (t.base) tournée autour du pivot de l'angle départ→cible. */
+  _rotApercu() {
+    const t = this._trace;
+    if (!t || !t.base || !t.pivot) return;
+    const a = (this._rotDegres() * Math.PI) / 180;
+    const c = Math.cos(a); const s = Math.sin(a); const P = t.pivot;
+    const f = (q) => { const x = q[0] - P[0]; const y = q[1] - P[1]; return [P[0] + x * c - y * s, P[1] + x * s + y * c]; };
+    t.pts = t.base.L0.map((q) => L.latLng(AMGT4CEM_CRS.lambertToLatLng(f(q))));
+    if (t.base.T0.length) t.trous = t.base.T0.map((h) => h.map(f));
+    this._traceDessin();
+    const deg = this._rotDegres();
+    this._etat(`Rotation de ${Math.abs(deg).toFixed(1).replace('.', ',')}° dans le sens ${deg >= 0 ? 'antihoraire' : 'horaire'}. « Poser cible » pour valider.`);
   },
 
   /** Pivot de la rotation, en Lambert : le point sélectionné, sinon le centre de l'emprise de la forme. Figé pendant un geste. */
@@ -519,7 +626,7 @@ const AMGT4CEM_LieuxTool = {
   /** ↶ : annule la dernière opération (point du tracé en cours, sinon état précédent de la liste des objets). */
   _retour() {
     const t = this._trace;
-    if (t && t.hist && t.hist.length) return this._traceAnnuler();
+    if (t && ((t.hist && t.hist.length) || t.depart)) return this._traceAnnuler();
     if (!this._hist || !this._hist.length) return this._etat('Rien à annuler.', true);
     if (t) this._traceAbandon();
     const o = this._hist.pop();
@@ -778,6 +885,17 @@ const AMGT4CEM_LieuxTool = {
     });
     if (edition) for (const m of this._milieux()) if (!(this._g && this._g.insere === m.k)) mk(m.ll, 'amgt-lieux-mid', 12);
     if (edition && this._editMode === 'tourner') { const pv = this._pivot(); if (pv) mk(AMGT4CEM_CRS.lambertToLatLng(pv), t.pivotActif ? 'amgt-lieux-pivot amgt-lieux-pivot--actif' : 'amgt-lieux-pivot', t.pivotActif ? 34 : 26); }
+    if (edition && this._editMode === 'tourner' && t.depart) {
+      const pv = this._pivot();
+      const ll = (q) => AMGT4CEM_CRS.lambertToLatLng(q);
+      const rep = (q, nom, actif) => mk(ll(q), `amgt-lieux-${nom}${actif ? ` amgt-lieux-${nom}--actif` : ''}`, actif ? 34 : 18);
+      if (pv) t.sommets.addLayer(L.polyline([ll(pv), ll(t.depart)], { pane: 'amgtLieuxPane', color: '#185FA5', weight: 1.5, dashArray: '4 3', interactive: false }));
+      rep(t.depart, 'depart', t.departActif);
+      if (t.cible) {
+        if (pv) t.sommets.addLayer(L.polyline([ll(pv), ll(t.cible)], { pane: 'amgtLieuxPane', color: '#3B6D11', weight: 1.5, dashArray: '4 3', interactive: false }));
+        rep(t.cible, 'cible', t.cibleActif);
+      }
+    }
     this._pivotBarre();
   },
 
@@ -841,13 +959,15 @@ const AMGT4CEM_LieuxTool = {
     const pt = this._map.mouseEventToContainerPoint(e);
     let t = this._trace;
     const edition = !!t && t.phase === 'edition';
-    if (edition && this._editMode === 'tourner') { // pivot : le prendre pour le déplacer (déplacement relatif, aimant)
-      const pv = this._pivot();
+    if (edition && this._editMode === 'tourner') { // étapes de la rotation : pivot, départ, cible (réticule à déplacer, mouvement relatif, aimant au choix)
+      const etape = this._etapeActive();
+      if (!etape && t.depart) return; // départ posé : « Cible » ou ↶ ; pas de rotation libre entre-temps
+      const pv = etape === 'depart' ? t.depart : etape === 'cible' ? t.cible : this._pivot();
       const base = pv ? this._map.latLngToContainerPoint(AMGT4CEM_CRS.lambertToLatLng(pv)) : null;
-      if (base && (t.pivotActif || base.distanceTo(pt) <= (e.pointerType === 'mouse' ? 14 : 30))) {
+      if (base && (etape || base.distanceTo(pt) <= (e.pointerType === 'mouse' ? 14 : 30))) {
         const fantome = L.marker(AMGT4CEM_CRS.lambertToLatLng(pv), { pane: 'amgtLieuxPane', interactive: false, keyboard: false, opacity: 0, icon: L.divIcon({ className: 'amgt-lieux-pivot-fantome', iconSize: [1, 1] }) }).addTo(this._map);
-        this._g = { id: e.pointerId, pivotDrag: true, i: 'pivot', depart: pt, base, bouge: false, viseur: fantome, etaitActif: !!t.pivotActif, pivot0: pv };
-        this._aimantDebut('pivot');
+        this._g = { id: e.pointerId, pivotDrag: true, i: etape || 'pivot', depart: pt, base, bouge: false, viseur: fantome, etaitActif: !!etape, pivot0: pv };
+        this._aimantDebut(this._g.i);
         try { this._map.getContainer().setPointerCapture(e.pointerId); } catch (err) { /* ignoré */ }
         e.preventDefault();
         return;
@@ -923,8 +1043,8 @@ const AMGT4CEM_LieuxTool = {
     const pt = this._map.mouseEventToContainerPoint(e);
     if (!g.bouge) { if (pt.distanceTo(g.depart) <= 4) return; g.bouge = true; }
     g.viseur.setLatLng(this._map.containerPointToLatLng(g.base.add(pt.subtract(g.depart))));
-    this._aimantDrag(g.viseur, 'pivot');
-    this._traceSommets();
+    this._aimantDrag(g.viseur, g.i);
+    if (g.i === 'pivot') this._traceSommets();
   },
 
   /** Déplacement ou rotation de toute la forme (contour et vides), calculés en Lambert 72 : la forme ne se déforme pas. */
@@ -963,7 +1083,8 @@ const AMGT4CEM_LieuxTool = {
       this._aimantFin();
       this._map.removeLayer(g.viseur);
       if (!t) return;
-      if (!g.etaitActif) { // premier toucher : le pivot devient actif (réticule) ; il garde sa place s'il n'a pas bougé
+      if (g.i !== 'pivot') this._etat(g.i === 'depart' ? 'Départ déplacé. « Poser départ » pour le fixer.' : 'Cible déplacée. « Poser cible » pour valider la rotation.');
+      else if (!g.etaitActif) { // premier toucher : le pivot devient actif (réticule) ; il garde sa place s'il n'a pas bougé
         if (!t.pivot) t.pivot = [g.pivot0[0], g.pivot0[1]];
         t.pivotActif = true;
         this._etat('Pivot actif : glisser n\'importe où pour le déplacer (aimant), puis « Poser le pivot ».');
@@ -1021,7 +1142,7 @@ const AMGT4CEM_LieuxTool = {
     if (!g) return;
     if (g.viseur) this._map.removeLayer(g.viseur);
     const t = this._trace;
-    if (t && t.hist && t.hist.length && !g.pivotDrag) { const h = t.hist.pop(); t.pts = h.pts; t.ferme = h.ferme; t.trous = h.trous; if ('pivot' in h) t.pivot = h.pivot; t.pivotActif = false; }
+    if (t && t.hist && t.hist.length && !g.pivotDrag) { const h = t.hist.pop(); t.pts = h.pts; t.ferme = h.ferme; t.trous = h.trous; if ('pivot' in h) t.pivot = h.pivot; t.pivotActif = false; t.departActif = false; t.cibleActif = false; }
     this._aimantFin();
     if (t) this._traceDessin();
   },
@@ -1117,16 +1238,27 @@ const AMGT4CEM_LieuxTool = {
     return [...lignes.flat(), ...pts, ...this._intersections(lignes)];
   },
 
+  /** Points d'accroche d'une étape. Pour la cible, la forme est prise dans son état d'origine (elle tourne pendant le geste). */
+  _pointsPourEtape(i) {
+    const t = this._trace;
+    if (i === 'cible' && t && t.base) {
+      const sauvegarde = t.pts;
+      t.pts = t.base.L0.map((q) => L.latLng(AMGT4CEM_CRS.lambertToLatLng(q)));
+      try { return this._pointsRemarquables(i); } finally { t.pts = sauvegarde; }
+    }
+    return this._pointsRemarquables(i);
+  },
+
   _aimantDebut(i) {
     this._aimantFin(); // jamais deux jeux de repères d'aimant : un reste d'un geste interrompu serait abandonné sur la carte
-    this._am = { i, pts: this._pointsRemarquables(i), cible: null, timer: null, accroche: null, ring: null, doigt: null };
+    this._am = { i, pts: this._pointsPourEtape(i), cible: null, timer: null, accroche: null, ring: null, doigt: null };
   },
 
   _aimantDrag(mk, i) {
     const am = this._am;
     const t = this._trace;
     if (!am || !t) return;
-    const X = this._aimantRayon();
+    const X = this._aimActif(i) ? this._aimantRayon() : 0;
     const l = AMGT4CEM_CRS.latLngToLambert(mk.getLatLng());
     am.doigt = [l.x, l.y];
     if (am.accroche) {
@@ -1156,6 +1288,8 @@ const AMGT4CEM_LieuxTool = {
     const t = this._trace;
     if (!t) return;
     if (i === 'pivot') { t.pivot = this._lamb(ll); this._traceSommets(); return; }
+    if (i === 'depart') { t.depart = this._lamb(ll); this._traceSommets(); return; }
+    if (i === 'cible') { t.cible = this._lamb(ll); this._traceSommets(); this._rotApercu(); return; }
     t.pts[i] = ll;
     this._traceLignes();
   },
@@ -1242,12 +1376,14 @@ const AMGT4CEM_LieuxTool = {
 
   _traceAnnuler() {
     const t = this._trace;
+    if (t && !t.cibleActif && (t.departActif || t.depart)) { this._etapesRaz(); this._traceSommets(); return this._etat('Départ annulé.'); }
     if (!t || !t.hist || !t.hist.length) return this._etat('Rien à annuler.', true);
+    if (t.cibleActif) this._etapesRaz();
     const h = t.hist.pop();
     t.pts = h.pts;
     t.ferme = h.ferme;
     t.trous = h.trous;
-    if ('pivot' in h) t.pivot = h.pivot; t.pivotActif = false;
+    if ('pivot' in h) t.pivot = h.pivot; t.pivotActif = false; t.departActif = false; t.cibleActif = false;
     t.sel = null;
     this._traceDessin();
   },
