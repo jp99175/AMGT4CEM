@@ -222,7 +222,11 @@ const AMGT4CEM_LieuxTool = {
     this._hauteurListe();
     p.addEventListener('click', (e) => {
       const m = e.target.closest('[data-m]');
-      if (m) return this._mode(m.dataset.m === this._modeActif ? null : m.dataset.m); // un 2e clic sur l'outil actif en sort
+      if (m) {
+        const raison = this._outilIndispo(m.dataset.m);
+        if (raison) return this._etat(raison, true); // outil grisé : on dit pourquoi
+        return this._mode(m.dataset.m === this._modeActif ? null : m.dataset.m); // un 2e clic sur l'outil actif en sort
+      }
       // Liste déroulante des lieux : crayon / corbeille d'une ligne, ou la ligne elle-même (charger le lieu).
       const lig = e.target.closest('.amgt-lieux-combo-liste li');
       if (lig) {
@@ -259,7 +263,7 @@ const AMGT4CEM_LieuxTool = {
     L.DomEvent.disableClickPropagation(p);
     L.DomEvent.disableScrollPropagation(p);
     this._renderListe();
-    this._mode('remplir');
+    this._mode(null);
   },
 
   /** Modification d'un contour : outil actif de la barre (pointeur, déplacer la forme, tourner la forme). */
@@ -460,7 +464,9 @@ const AMGT4CEM_LieuxTool = {
     if (tr(this._modeActif) && !tr(m)) this._viseurStop();
     this._modeActif = m;
     // Unir : les surfaces cochées dans la liste sont présélectionnées (on peut en toucher d'autres ou en désélectionner).
-    this._ops = m === 'unir' ? [...this._cands.values()].filter((c) => c.sel && this._estSurface(c)).map((c) => c.key) : [];
+    // Unir : les surfaces cochées sont présélectionnées. Soustraire : la surface cochée est la base (s'il n'y en a qu'une).
+    const cochees = [...this._cands.values()].filter((c) => c.sel && this._estSurface(c)).map((c) => c.key);
+    this._ops = m === 'unir' ? cochees : m === 'soustraire' && cochees.length === 1 ? cochees : [];
     if (tr(m)) this._viseurStart();
     this._syncDrag();
     // Remplir / Unir / Soustraire : pointeur normal de la souris (pas la main de Leaflet, ni sur les tracés)
@@ -471,15 +477,43 @@ const AMGT4CEM_LieuxTool = {
     const aide = {
       trace: 'Lignes : glisser, le viseur pose un point au relâcher. Toucher le dernier point (ou changer d\'outil) termine la ligne ; toucher le premier point la ferme. Une ligne reste une ligne : les surfaces se font avec Remplir.',
       remplir: 'Remplir : toucher une zone fermée par des lignes visibles (UrbIS Topo affiché, autres zones non masquées, tes lignes) pour en faire une surface ; les îlots restent vides.',
-      unir: 'Unir : les surfaces cochées sont présélectionnées ; toucher d\'autres surfaces pour les ajouter, ou à nouveau pour les désélectionner. L\'union proposée s\'affiche : la confirmer.',
-      soustraire: 'Soustraire : toucher la surface de base, puis celles à retrancher (les toucher à nouveau pour désélectionner). Le résultat proposé s\'affiche : le confirmer.',
+      unir: 'Unir : les surfaces cochées sont présélectionnées ; toucher d\'autres surfaces pour les ajouter, ou à nouveau pour les désélectionner. L\'union proposée s\'affiche : Terminer l\'applique.',
+      soustraire: 'Soustraire : la surface cochée est la base (s\'il y en a plusieurs, toucher d\'abord la base) ; toucher les surfaces à retrancher (un second toucher annule). Le résultat proposé s\'affiche : Terminer l\'applique.',
       modifier: 'Modifier : toucher une ligne ou un contour de la liste, puis déplacer ses points (poignées), ajouter (« + »), retirer (corbeille), déplacer ou tourner toute la forme. ✓ Terminer ou autre outil pour finir.',
     };
-    this._etat(aide[m] || 'Aucun outil actif : choisir un outil, ou cocher / décocher des objets de la liste.');
+    this._etat(aide[m] || (this._cands.size
+      ? 'Aucun outil actif : choisir un outil, ou cocher / décocher des objets de la liste.'
+      : 'Aucun outil actif : toucher une zone existante (carte ou liste) pour la choisir ; Lignes ou Remplir pour en créer une.'));
     this._traceInfo();
     this._opsMaj();
     this._apercu();
     if (m === 'trace' || m === 'modifier') this._chargerAimant(); // (Remplir charge ses propres murs autour du point touché)
+    if (m === 'modifier' && !this._trace) { // un seul objet (coché, sinon de la zone) : ses points s'affichent aussitôt
+      const tous = [...this._cands.values()];
+      const un = tous.filter((c) => c.sel);
+      const choix = un.length === 1 ? un : tous.length === 1 ? tous : [];
+      if (choix.length === 1) this._editerCand(choix[0]);
+    }
+    this._outilsMaj();
+  },
+
+  /** Raison pour laquelle un outil est indisponible (texte), ou '' s'il est utilisable. Lignes, Remplir et Unir le sont toujours. */
+  _outilIndispo(m) {
+    if (m === 'modifier' && !this._cands.size && !this._trace) return 'Modifier : choisir d\'abord une zone (carte ou liste) ou dessiner une forme.';
+    if (m === 'soustraire' && ![...this._cands.values()].some((c) => this._estSurface(c))) return 'Soustraire : il faut une zone choisie qui contient au moins une surface.';
+    return '';
+  },
+
+  /** Grise les outils indisponibles (ils restent touchables : le toucher dit pourquoi) ; sort d'un outil devenu indisponible. */
+  _outilsMaj() {
+    if (!this._panel) return;
+    for (const b of this._panel.querySelectorAll('[data-m]')) {
+      const raison = this._outilIndispo(b.dataset.m);
+      b.classList.toggle('amgt-lieux-grise', !!raison);
+      if (raison) b.setAttribute('aria-disabled', 'true'); else b.removeAttribute('aria-disabled');
+      b.dataset.raison = raison;
+    }
+    if (this._modeActif && this._outilIndispo(this._modeActif)) this._mode(null);
   },
 
   _f(n) { return this._panel.querySelector(`[data-f="${n}"]`); },
@@ -685,6 +719,7 @@ const AMGT4CEM_LieuxTool = {
     this._f('compte').textContent = `${n} coché(s) / ${this._cands.size}`;
     this._apercu();
     this._opsMaj();
+    this._outilsMaj();
   },
 
   _set(c, v) {
@@ -839,6 +874,32 @@ const AMGT4CEM_LieuxTool = {
     if (this._modeActif === 'remplir') this._remplirClic(e.latlng);
     else if (this._modeActif === 'unir' || this._modeActif === 'soustraire') this._opsClic(e.latlng);
     else if (this._modeActif === 'modifier') this._modifierClic(e.latlng);
+    else if (!this._modeActif) this._choisirSurCarte(e.latlng);
+  },
+
+  /** Sans outil actif et sans zone en édition : toucher une zone enregistrée la choisit (la plus petite qui contient le point). */
+  _choisirSurCarte(latlng) {
+    if (this._cur || this._cands.size || this._trace) return; // une zone est déjà en édition : on la change par la liste
+    const a = AMGT4CEM_CRS.latLngToLambert(latlng);
+    const pt = [a.x, a.y];
+    const dedans = (ring) => { let ok = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i]; const [xj, yj] = ring[j]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) ok = !ok; } return ok; };
+    const aire = (r) => Math.abs(r.reduce((s2, q, i) => { const n = r[(i + 1) % r.length]; return s2 + q[0] * n[1] - n[0] * q[1]; }, 0) / 2);
+    const px = this._map.latLngToContainerPoint(latlng);
+    const b = AMGT4CEM_CRS.latLngToLambert(this._map.containerPointToLatLng(L.point(px.x + 16, px.y)));
+    const tol = Math.max(0.3, Math.hypot(b.x - a.x, b.y - a.y));
+    let best = null; let amin = Infinity;
+    for (const r of this._refsLieux()) {
+      let ar = null;
+      for (const poly of r.polys || []) { // poly = [anneau extérieur, vides…]
+        if (poly.length && dedans(poly[0]) && !poly.slice(1).some(dedans)) ar = Math.min(ar === null ? Infinity : ar, aire(poly[0]));
+      }
+      if (ar === null && !(r.polys && r.polys.length)) { // lieu sans contour : on vise une de ses lignes
+        if ((r.lignes || []).some((l) => this._distLigne(a, l) <= tol)) ar = Infinity / 2;
+      }
+      if (ar !== null && ar < amin) { amin = ar; best = r; }
+    }
+    if (!best) return;
+    this._chargerLieu(best.slug);
   },
 
   // --------------------------------------------- chaîne d'arpenteur (tracé)
@@ -1753,7 +1814,7 @@ const AMGT4CEM_LieuxTool = {
     const info = this._f('opsinfo');
     const sous = this._modeActif === 'soustraire';
     const btn = this._panel.querySelector('[data-a="o-appliquer"]');
-    btn.textContent = sous ? 'Confirmer la soustraction' : 'Confirmer l\'union';
+    btn.textContent = 'Terminer';
     if (this._opsApercuLayer) { this._map.removeLayer(this._opsApercuLayer); this._opsApercuLayer = null; }
     let pret = false;
     if (ops.length < 2) {
@@ -1769,7 +1830,7 @@ const AMGT4CEM_LieuxTool = {
         const aire = (rg) => Math.abs(rg.reduce((a, q, i) => { const n = rg[(i + 1) % rg.length]; return a + q[0] * n[1] - n[0] * q[1]; }, 0) / 2);
         const m2 = r.res.reduce((t, poly) => t + poly.reduce((a, rg, k) => a + (k === 0 ? aire(rg) : -aire(rg)), 0), 0);
         const vides = r.res.reduce((t, poly) => t + poly.length - 1, 0);
-        info.textContent = `${sous ? 'Soustraction' : 'Union'} proposée : ${r.res.length} surface${r.res.length > 1 ? 's' : ''}, ${vides} vide${vides > 1 ? 's' : ''}, ${Math.round(m2).toLocaleString('fr-BE')} m². Confirmer pour l'appliquer.`;
+        info.textContent = `${sous ? 'Soustraction' : 'Union'} proposée : ${r.res.length} surface${r.res.length > 1 ? 's' : ''}, ${vides} vide${vides > 1 ? 's' : ''}, ${Math.round(m2).toLocaleString('fr-BE')} m². Terminer pour l'appliquer.`;
         this._opsApercuLayer = L.polygon(r.res.map((poly) => poly.map((rg) => rg.map((q) => AMGT4CEM_CRS.lambertToLatLng(q)))), { pane: 'amgtLieuxPane', interactive: false, color: '#4a148c', weight: 3, dashArray: '6 4', fillColor: '#7b1fa2', fillOpacity: 0.3 }).addTo(this._map);
       }
     }

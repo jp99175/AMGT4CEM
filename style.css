@@ -1336,3 +1336,5 @@ html, body {
 .amgt-lieux-cible { --rc: #3B6D11; }
 .amgt-lieux-depart--actif, .amgt-lieux-cible--actif { background: radial-gradient(circle, var(--rc) 0 3px, transparent 4px), linear-gradient(var(--rc),var(--rc)) center/1.5px 100% no-repeat, linear-gradient(var(--rc),var(--rc)) center/100% 1.5px no-repeat; border-width: 1.5px; }
 .amgt-lieux-aim-off { opacity: .45; }
+
+#amgt-lieux-panel .amgt-lieux-modes button.amgt-lieux-grise { opacity: .45; border-style: dashed; }
