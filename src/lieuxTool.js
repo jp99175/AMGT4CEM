@@ -42,6 +42,8 @@ const AMGT4CEM_LieuxTool = {
     await this._readLieux();
     this._clickH = (e) => this._surClic(e);
     this._map.on('click', this._clickH);
+    this._survolH = (e) => this._survol(e);
+    this._map.on('mousemove', this._survolH);
     this._vueH = () => this._aimantVue();
     this._map.on('moveend', this._vueH);
     this._cur = '';
@@ -59,6 +61,8 @@ const AMGT4CEM_LieuxTool = {
   close() {
     this._active = false;
     if (this._clickH) this._map.off('click', this._clickH);
+    if (this._survolH) this._map.off('mousemove', this._survolH);
+    this._map.getContainer().classList.remove('amgt-lieux-survol');
     if (this._vueH) this._map.off('moveend', this._vueH);
     clearTimeout(this._aimantTimer);
     this._aimantPts = [];
@@ -463,6 +467,7 @@ const AMGT4CEM_LieuxTool = {
     if (this._trace && m !== this._modeActif) this._traceTerminer(); // changer d'outil valide le tracé en cours
     if (tr(this._modeActif) && !tr(m)) this._viseurStop();
     this._modeActif = m;
+    if (this._map) this._map.getContainer().classList.remove('amgt-lieux-survol'); // le doigt se remet au prochain mouvement de souris
     // Unir : les surfaces cochées dans la liste sont présélectionnées (on peut en toucher d'autres ou en désélectionner).
     // Unir : les surfaces cochées sont présélectionnées. Soustraire : la surface cochée est la base (s'il n'y en a qu'une).
     const cochees = [...this._cands.values()].filter((c) => c.sel && this._estSurface(c)).map((c) => c.key);
@@ -879,7 +884,34 @@ const AMGT4CEM_LieuxTool = {
 
   /** Sans outil actif et sans zone en édition : toucher une zone enregistrée la choisit (la plus petite qui contient le point). */
   _choisirSurCarte(latlng) {
-    if (this._cur || this._cands.size || this._trace) return; // une zone est déjà en édition : on la change par la liste
+    if (!this._zoneChoisissable()) return; // une zone est déjà en édition : on la change par la liste
+    const z = this._zoneSousPoint(latlng);
+    if (z) this._chargerLieu(z.slug);
+  },
+
+  _zoneChoisissable() { return !this._modeActif && !this._cur && !this._cands.size && !this._trace; },
+
+  /** Souris : le curseur devient un doigt au-dessus de ce qu'un clic choisirait (zone, surface ou objet), sinon il reste une main. */
+  _survol(e) {
+    if (!this._active) return;
+    this._survolLL = e.latlng; // toujours la dernière position : un seul calcul par image
+    if (this._survolEnCours) return;
+    this._survolEnCours = true;
+    requestAnimationFrame(() => {
+      this._survolEnCours = false;
+      if (!this._active || !this._map) return;
+      let sur = false;
+      if (!this._trace && !(this._g)) {
+        if (this._modeActif === 'unir' || this._modeActif === 'soustraire') sur = !!this._surfaceSousPoint(this._survolLL);
+        else if (this._modeActif === 'modifier') sur = !!this._candSousPoint(this._survolLL);
+        else if (this._zoneChoisissable()) sur = !!this._zoneSousPoint(this._survolLL);
+      }
+      this._map.getContainer().classList.toggle('amgt-lieux-survol', sur);
+    });
+  },
+
+  /** Zone enregistrée sous un point de la carte (la plus petite qui le contient), ou null. */
+  _zoneSousPoint(latlng) {
     const a = AMGT4CEM_CRS.latLngToLambert(latlng);
     const pt = [a.x, a.y];
     const dedans = (ring) => { let ok = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i]; const [xj, yj] = ring[j]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) ok = !ok; } return ok; };
@@ -898,8 +930,7 @@ const AMGT4CEM_LieuxTool = {
       }
       if (ar !== null && ar < amin) { amin = ar; best = r; }
     }
-    if (!best) return;
-    this._chargerLieu(best.slug);
+    return best;
   },
 
   // --------------------------------------------- chaîne d'arpenteur (tracé)
@@ -1838,14 +1869,20 @@ const AMGT4CEM_LieuxTool = {
     for (const r of this._panel.querySelectorAll('.amgt-lieux-liste label[data-key]')) r.classList.toggle('amgt-lieux-op', ops.includes(r.dataset.key));
   },
   _opsClic(latlng) {
+    const best = this._surfaceSousPoint(latlng);
+    if (!best) return this._etat('Aucune surface à cet endroit.', true);
+    this._opsToggle(best);
+  },
+
+  /** Plus petite surface de la liste qui contient le point (hors vides), ou null. */
+  _surfaceSousPoint(latlng) {
     const a = AMGT4CEM_CRS.latLngToLambert(latlng);
     const pt = [a.x, a.y];
     const dedans = (ring) => { let ok = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const [xi, yi] = ring[i]; const [xj, yj] = ring[j]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < ((xj - xi) * (pt[1] - yi)) / (yj - yi) + xi) ok = !ok; } return ok; };
     const aire = (r) => Math.abs(r.reduce((s2, q, i) => { const n = r[(i + 1) % r.length]; return s2 + q[0] * n[1] - n[0] * q[1]; }, 0) / 2);
     let best = null; let amin = Infinity;
     for (const c of this._cands.values()) if (this._estSurface(c) && dedans(c.lignes[0]) && !(c.type === this.TYPE_SURF && c.lignes.slice(1).some(dedans))) { const ar = aire(c.lignes[0]); if (ar < amin) { amin = ar; best = c; } }
-    if (!best) return this._etat('Aucune surface à cet endroit.', true);
-    this._opsToggle(best);
+    return best;
   },
   // ----- Traits de construction : lignes dessinées (hors surfaces et vides), à supprimer une fois les surfaces faites (après confirmation)
   _traitsConstruction() {
@@ -1908,14 +1945,20 @@ const AMGT4CEM_LieuxTool = {
   /** Modifier : toucher une ligne (ou l'intérieur d'une surface) pour éditer ses points. */
   _modifierClic(latlng) {
     if (this._trace) return; // une modification est en cours : ✓ Terminer ou autre outil pour la finir
+    const best = this._candSousPoint(latlng);
+    if (!best) return this._etat('Toucher une ligne ou un contour de la liste.', true);
+    this._editerCand(best);
+  },
+
+  /** Objet de la liste dont une ligne passe à moins de 16 px du point, ou null. */
+  _candSousPoint(latlng) {
     const pt = this._map.latLngToContainerPoint(latlng);
     const a = AMGT4CEM_CRS.latLngToLambert(latlng);
     const b = AMGT4CEM_CRS.latLngToLambert(this._map.containerPointToLatLng(L.point(pt.x + 16, pt.y)));
     const tol = Math.max(0.3, Math.hypot(b.x - a.x, b.y - a.y));
     let best = null; let dmin = tol;
     for (const c of this._cands.values()) for (const l of c.lignes) { const d = this._distLigne(a, l); if (d < dmin) { dmin = d; best = c; } }
-    if (!best) return this._etat('Toucher une ligne ou un contour de la liste.', true);
-    this._editerCand(best);
+    return best;
   },
 
 

@@ -1338,3 +1338,4 @@ html, body {
 .amgt-lieux-aim-off { opacity: .45; }
 
 #amgt-lieux-panel .amgt-lieux-modes button.amgt-lieux-grise { opacity: .45; border-style: dashed; }
+.amgt-lieux-survol.leaflet-grab, .amgt-lieux-survol .leaflet-grab, .amgt-lieux-survol .leaflet-interactive, .amgt-lieux-survol.amgt-lieux-ptr.leaflet-grab, .amgt-lieux-survol.amgt-lieux-ptr .leaflet-grab, .amgt-lieux-survol.amgt-lieux-ptr .leaflet-interactive { cursor: pointer !important; }
