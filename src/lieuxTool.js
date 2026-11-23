@@ -21,7 +21,7 @@ const AMGT4CEM_LieuxTool = {
   _cands: new Map(), // clé « couche:id » -> { key, id, couche, code, type, lignes (Lambert), sel, layers[] }
   _lieux: {},
   _viseurOn: true, // tracé au viseur (bouton main, sur PC à la souris seulement : déplacer la carte à la place ; au doigt, la carte se déplace à deux doigts)
-  _editMode: 'point', // modification d'un contour : 'point' (prendre / déplacer un point, « + » en ajoute) | 'deplacer' (toute la forme) | 'tourner' (toute la forme)
+  _editMode: null, // modification d'un contour : null (aucun sous-outil : rien n'est dessiné sur le contour) | 'point' (voir, prendre, déplacer un point, « + » en ajoute) | 'deplacer' (toute la forme) | 'tourner' (toute la forme)
   DECALAGE_PX: 60, // décalage du viseur au-dessus du doigt (pas à la souris)
 
   init(map, btn) {
@@ -249,7 +249,7 @@ const AMGT4CEM_LieuxTool = {
       else if (a.dataset.a === 'reduire') this._reduire();
       else if (a.dataset.a === 'retour') this._retour();
       else if (a.dataset.a === 't-main') { this._viseurOn = !this._viseurOn; a.classList.toggle('amgt-lieux-actif', !this._viseurOn); this._syncDrag(); this._etat(this._viseurOn ? 'Viseur actif.' : 'Carte déplaçable à la souris : le bouton main à nouveau pour reprendre le tracé.'); }
-      else if (a.dataset.a === 't-mode') this._editerMode(a.dataset.e);
+      else if (a.dataset.a === 't-mode') this._editerMode(a.dataset.e === this._editMode ? null : a.dataset.e); // un 2e toucher sur le sous-outil actif en sort
       else if (a.dataset.a === 't-pivot-pose') this._etapePoser();
       else if (a.dataset.a === 't-aim') this._aimBascule();
       else if (a.dataset.a === 't-depart') this._departDebut();
@@ -272,15 +272,21 @@ const AMGT4CEM_LieuxTool = {
 
   /** Modification d'un contour : outil actif de la barre (pointeur, déplacer la forme, tourner la forme). */
   _editerMode(m, muet) {
+    const t0 = this._trace;
+    if (t0) { // repères de la rotation : la forme telle qu'elle était à l'entrée dans « Tourner », laissée en place
+      if (m === 'tourner' && this._editMode !== 'tourner') t0.ref = t0.pts.map((q) => L.latLng(q.lat, q.lng));
+      if (m !== 'tourner') t0.ref = null;
+    }
     this._editMode = m;
     this._etapesRaz();
     if (this._panel) for (const b of this._panel.querySelectorAll('[data-a="t-mode"]')) b.classList.toggle('amgt-lieux-actif', b.dataset.e === m);
     if (this._trace && this._trace.sommets) this._traceSommets();
     if (muet) return;
     this._etat({
+      null: 'Modifier : choisir dans la barre « Sélectionner un point » (voir et déplacer les points), « Déplacer la forme » ou « Tourner la forme ».',
       point: 'Pointeur : toucher un point pour le prendre, le glisser pour le déplacer ; « + » entre deux points pour en ajouter un.',
       deplacer: 'Déplacer la forme : glisser un doigt n\'importe où sur la carte.',
-      tourner: 'Tourner la forme : glisser un doigt pour la faire tourner autour du pivot orange. Pour déplacer le pivot, le toucher : un réticule apparaît, puis glisser n\'importe où (aimant), et « Poser le pivot ». « Départ » puis « Cible » : tourner d\'un point à un autre.',
+      tourner: 'Tourner la forme : les points de départ restent en place comme repères. Glisser un doigt pour la faire tourner autour du pivot orange. Pour déplacer le pivot, le toucher : un réticule apparaît, puis glisser n\'importe où (aimant), et « Poser le pivot ». « Départ » puis « Cible » : tourner d\'un point à un autre.',
     }[m]);
   },
 
@@ -985,12 +991,14 @@ const AMGT4CEM_LieuxTool = {
     const edition = t.phase === 'edition';
     const mk = (q, cls, px) => t.sommets.addLayer(L.marker(q, { pane: 'amgtLieuxPane', interactive: false, keyboard: false, icon: L.divIcon({ className: cls, iconSize: [px, px] }) }));
     // Le sommet tenu sous le viseur n'est pas dessiné : le réticule reste transparent, on voit la carte à travers.
+    const poignees = edition && this._editMode === 'point'; // les points ne se montrent que dans « Sélectionner un point »
     t.pts.forEach((q, k) => {
       if (this._g && this._g.i === k) return;
-      if (edition) mk(q, `amgt-lieux-poignee${t.sel === k ? ' amgt-lieux-poignee--sel' : ''}`, 16);
-      else mk(q, 'amgt-lieux-pt', 7);
+      if (poignees) mk(q, `amgt-lieux-poignee${t.sel === k ? ' amgt-lieux-poignee--sel' : ''}`, 16);
+      else if (!edition) mk(q, 'amgt-lieux-pt', 7);
     });
-    if (edition) for (const m of this._milieux()) if (!(this._g && this._g.insere === m.k)) mk(m.ll, 'amgt-lieux-mid', 12);
+    if (edition && this._editMode === 'tourner' && t.ref) t.ref.forEach((q, k) => mk(q, `amgt-lieux-poignee amgt-lieux-poignee--ref${t.sel === k ? ' amgt-lieux-poignee--sel' : ''}`, 16)); // repères : la forme de départ
+    if (poignees) for (const m of this._milieux()) if (!(this._g && this._g.insere === m.k)) mk(m.ll, 'amgt-lieux-mid', 12);
     if (edition && this._editMode === 'tourner') { const pv = this._pivot(); if (pv) mk(AMGT4CEM_CRS.lambertToLatLng(pv), t.pivotActif ? 'amgt-lieux-pivot amgt-lieux-pivot--actif' : 'amgt-lieux-pivot', t.pivotActif ? 34 : 26); }
     if (edition && this._editMode === 'tourner' && t.depart) {
       const pv = this._pivot();
@@ -1066,6 +1074,7 @@ const AMGT4CEM_LieuxTool = {
     const pt = this._map.mouseEventToContainerPoint(e);
     let t = this._trace;
     const edition = !!t && t.phase === 'edition';
+    if (edition && !this._editMode) { this._ptrs.delete(e.pointerId); return; } // aucun sous-outil choisi : rien à prendre
     if (edition && this._editMode === 'tourner') { // étapes de la rotation : pivot, départ, cible (réticule à déplacer, mouvement relatif, aimant au choix)
       const etape = this._etapeActive();
       if (!etape && t.depart) return; // départ posé : « Cible » ou ↶ ; pas de rotation libre entre-temps
@@ -1587,8 +1596,8 @@ const AMGT4CEM_LieuxTool = {
     this._renderListe();
     this._traceDessin();
     this._syncDrag();
-    this._editerMode('point', true);
-    this._etat('Édition du tracé : toucher un point pour le prendre, « + » pour en ajouter ; icônes : déplacer ou tourner la forme, corbeille ; ✓ Terminer le remet dans la liste.');
+    this._editerMode(null, true);
+    this._etat('Édition du tracé : choisir dans la barre « Sélectionner un point » pour voir les points, ou déplacer / tourner la forme ; ✓ Terminer le remet dans la liste.');
   },
 
   /** Géométrie GeoJSON -> liste de lignes [[x,y],...] (Lambert), arrondies au cm ; les anneaux des surfaces comptent comme lignes. */
