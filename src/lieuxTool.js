@@ -766,6 +766,7 @@ const AMGT4CEM_LieuxTool = {
 
   _traceSommets() {
     const t = this._trace;
+    if (!this._g && this._am) this._aimantFin(); // aucun geste en cours : plus de repère d'aimant à l'écran
     t.sommets.clearLayers();
     const edition = t.phase === 'edition';
     const mk = (q, cls, px) => t.sommets.addLayer(L.marker(q, { pane: 'amgtLieuxPane', interactive: false, keyboard: false, icon: L.divIcon({ className: cls, iconSize: [px, px] }) }));
@@ -830,6 +831,7 @@ const AMGT4CEM_LieuxTool = {
   },
 
   _vDown(e) {
+    if (this._g && this._g.id === e.pointerId) this._viseurAnnule(); // reste d'un geste dont le relâchement n'a pas été reçu
     if (!this._viseurOn || (this._modeActif !== 'trace' && this._modeActif !== 'modifier')) return;
     if (this._modeActif === 'modifier' && !this._trace) return; // rien en édition : le toucher choisit l'objet (clic de la carte)
     if (e.button > 0 || (e.target.closest && e.target.closest('button, a, .leaflet-control'))) return;
@@ -1116,6 +1118,7 @@ const AMGT4CEM_LieuxTool = {
   },
 
   _aimantDebut(i) {
+    this._aimantFin(); // jamais deux jeux de repères d'aimant : un reste d'un geste interrompu serait abandonné sur la carte
     this._am = { i, pts: this._pointsRemarquables(i), cible: null, timer: null, accroche: null, ring: null, doigt: null };
   },
 
