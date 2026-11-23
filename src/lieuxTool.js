@@ -487,7 +487,7 @@ const AMGT4CEM_LieuxTool = {
       modifier: 'Modifier : toucher une ligne ou un contour de la liste, puis déplacer ses points (poignées), ajouter (« + »), retirer (corbeille), déplacer ou tourner toute la forme. ✓ Terminer ou autre outil pour finir.',
     };
     this._etat(aide[m] || (this._cands.size
-      ? 'Aucun outil actif : choisir un outil, ou cocher / décocher des objets de la liste.'
+      ? 'Aucun outil actif : toucher une autre zone pour la choisir, ou la zone choisie pour la désélectionner ; ou choisir un outil.'
       : 'Aucun outil actif : toucher une zone existante (carte ou liste) pour la choisir ; Lignes ou Remplir pour en créer une.'));
     this._traceInfo();
     this._opsMaj();
@@ -884,12 +884,27 @@ const AMGT4CEM_LieuxTool = {
 
   /** Sans outil actif et sans zone en édition : toucher une zone enregistrée la choisit (la plus petite qui contient le point). */
   _choisirSurCarte(latlng) {
-    if (!this._zoneChoisissable()) return; // une zone est déjà en édition : on la change par la liste
-    const z = this._zoneSousPoint(latlng);
-    if (z) this._chargerLieu(z.slug);
+    if (!this._zoneChoisissable()) return;
+    const cible = this._cibleSansOutil(latlng);
+    if (!cible) return;
+    if (cible.moi) { // un second toucher sur la zone choisie la désélectionne (rien à faire pour une zone pas encore enregistrée)
+      if (!this._cur || !this._confirmerAbandon()) return;
+      this._chargerLieu('');
+      this._etat('Zone désélectionnée. Toucher une zone pour la choisir, ou choisir un outil pour en créer une.');
+      return;
+    }
+    this._editerLieu(cible.slug); // une autre zone : demande confirmation s'il y a des modifications non enregistrées
   },
 
-  _zoneChoisissable() { return !this._modeActif && !this._cur && !this._cands.size && !this._trace; },
+  /** Sans outil actif ni tracé ouvert, un toucher sur la carte choisit, change ou désélectionne une zone. */
+  _zoneChoisissable() { return !this._modeActif && !this._trace; },
+
+  /** Ce que désigne un toucher sans outil : { moi: true } (zone en édition) ou { slug } (autre zone enregistrée), sinon null. La zone en édition a priorité. */
+  _cibleSansOutil(latlng) {
+    if (this._surfaceSousPoint(latlng) || this._candSousPoint(latlng)) return { moi: true };
+    const z = this._zoneSousPoint(latlng);
+    return z ? { slug: z.slug } : null;
+  },
 
   /** Souris : le curseur devient un doigt au-dessus de ce qu'un clic choisirait (zone, surface ou objet), sinon il reste une main. */
   _survol(e) {
@@ -904,7 +919,7 @@ const AMGT4CEM_LieuxTool = {
       if (!this._trace && !(this._g)) {
         if (this._modeActif === 'unir' || this._modeActif === 'soustraire') sur = !!this._surfaceSousPoint(this._survolLL);
         else if (this._modeActif === 'modifier') sur = !!this._candSousPoint(this._survolLL);
-        else if (this._zoneChoisissable()) sur = !!this._zoneSousPoint(this._survolLL);
+        else if (this._zoneChoisissable()) { const c = this._cibleSansOutil(this._survolLL); sur = !!c && (!c.moi || !!this._cur); }
       }
       this._map.getContainer().classList.toggle('amgt-lieux-survol', sur);
     });
