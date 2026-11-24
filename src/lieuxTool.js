@@ -50,6 +50,7 @@ const AMGT4CEM_LieuxTool = {
     this._dirty = false;
     this._hist = [];
     this._buildPanel();
+    this._reduire(); // fenêtre réduite par défaut (liste, outils, état) ; l'utilisateur la développe à la demande (▾)
   },
 
   /** Fermeture demandée par l'utilisateur (✕ ou bouton de la barre) : confirmation s'il y a des modifications non enregistrées. */
