@@ -236,6 +236,11 @@ Reglages.register({
         },
       },
     },
+    ...(window.AMGT4CEM_ArborescenceEcran ? [{
+      texte: 'Arborescence du stockage',
+      aide: 'Tout ce que contient le stockage R2, dossier par dossier (lecture seule).',
+      ecran: window.AMGT4CEM_ArborescenceEcran,
+    }] : []),
   ],
 });
 

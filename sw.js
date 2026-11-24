@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const VERSION = '20261124-0820'; // @VERSION (écrit par tools/stamp-sw.sh)
+const VERSION = '20261124-0902'; // @VERSION (écrit par tools/stamp-sw.sh)
 const CACHE = 'amgt4cem-app';
 const DELAI_RESEAU_MS = 4000;
 const PARALLELE = 6;
@@ -152,6 +152,7 @@ const FICHIERS = [
   './src/plansPrefs.js',
   './src/plugins.js',
   './src/referentiel.js',
+  './src/reglages/arborescenceEcran.js',
   './src/reglages/attributs.js',
   './src/reglages/depotEcran.js',
   './src/reglages/integrationZones.js',

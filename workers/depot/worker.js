@@ -24,6 +24,7 @@
  *   GET|PUT /admin/securite   (jeton ; droit utilisateurs)  nombre de tours PBKDF2, délai croissant après échec
  *   GET  /admin/connexions-interrompues (jeton ; droit utilisateurs)  opérations coupées (erreur 1102) sur 24 h et 7 jours
  *   GET  /admin/compteurs     (jeton ; droit utilisateurs ou plans)          -> état des compteurs (copie de compteurs.json)
+ *   GET  /admin/arborescence?suite=…  (jeton ; droit utilisateurs)  -> { objets: [{ cle, taille, date }], suite } : liste du bucket, 1000 objets par page, lecture seule
  *
  * Jeton : « Authorization: Bearer … », signé (HMAC, secret SESSION_SECRET), valable 30 jours ; l'existence, l'état
  * actif et les DROITS de l'intervenant sont revérifiés dans le référentiel à chaque appel (désactiver un agent ou lui
@@ -640,6 +641,13 @@ async function routeAdmin(request, env, url) {
   if (request.method === 'GET' && p === '/admin/compteurs') {
     await exigerDroit(request, env, 'utilisateurs', 'plans');
     return { status: 200, body: (await compteur(env, { action: 'etat' })).etat };
+  }
+
+  // Arborescence du bucket : une page à la fois (1000 objets au plus), l'écran enchaîne les pages. Lecture seule.
+  if (request.method === 'GET' && p === '/admin/arborescence') {
+    await exigerDroit(request, env, 'utilisateurs');
+    const page = await env.DEPOTS.list({ limit: 1000, cursor: url.searchParams.get('suite') || undefined });
+    return { status: 200, body: { objets: page.objects.map((o) => ({ cle: o.key, taille: o.size, date: o.uploaded })), suite: page.truncated ? page.cursor : null } };
   }
 
   if (request.method === 'GET' && p === '/admin/intervenants') {
