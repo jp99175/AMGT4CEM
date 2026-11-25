@@ -336,7 +336,7 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       template: 'amgt-tpl-reglages',
       nav: true,
       styles: ['./src/auth/auth.css', ...NAV_STYLES, './src/reglages/reglages.css'],
-      scripts: ['./src/icones.js', './src/buildInfo.js', './src/buildInfoPage.js', './src/services.js', './src/peLabelAnchors.js', './src/auth/auth.js', './src/stockage.js', './src/auth/authUi.js', './src/plansPrefs.js', './src/signalements/zip-writer.js', './src/signalements/zip-reader.js', ...NAV_SCRIPTS, './src/reglages/reglages.js', './src/reglages/attributs.js', './src/reglages/integrationZones.js', './src/reglages/stockageEcran.js', './src/reglages/arborescenceEcran.js', './src/reglages/remiseAZeroEcran.js', './src/reglages/depotEcran.js', './src/reglages/serveur.js'],
+      scripts: ['./src/icones.js', './src/buildInfo.js', './src/buildInfoPage.js', './src/services.js', './src/peLabelAnchors.js', './src/auth/auth.js', './src/stockage.js', './src/auth/authUi.js', './src/plansPrefs.js', './src/signalements/zip-writer.js', './src/signalements/zip-reader.js', ...NAV_SCRIPTS, './src/reglages/reglages.js', './src/reglages/attributs.js', './src/reglages/integrationZones.js', './src/reglages/stockageEcran.js', './src/reglages/arborescenceEcran.js', './src/reglages/remiseAZeroEcran.js', './src/reglages/sauvegardesEcran.js', './src/reglages/depotEcran.js', './src/reglages/serveur.js'],
     },
   };
 })(AMGT4CEM_CONFIG.apps);

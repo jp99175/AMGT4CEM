@@ -236,6 +236,11 @@ Reglages.register({
         },
       },
     },
+    ...(window.AMGT4CEM_SauvegardesEcran ? [{
+      texte: 'Sauvegardes',
+      aide: 'Règle de conservation des anciennes versions (attributs, zones, shapefile) et nettoyage immédiat.',
+      ecran: window.AMGT4CEM_SauvegardesEcran,
+    }] : []),
     ...(window.AMGT4CEM_RemiseAZeroEcran ? [{
       texte: 'Remise à zéro des fiches',
       aide: 'Phase d\'essai : effacer les fiches du serveur et des appareils, repartir de 2026-0001.',

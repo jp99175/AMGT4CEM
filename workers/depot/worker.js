@@ -25,6 +25,7 @@
  *   GET  /admin/connexions-interrompues (jeton ; droit utilisateurs)  opérations coupées (erreur 1102) sur 24 h et 7 jours
  *   GET  /admin/compteurs     (jeton ; droit utilisateurs ou plans)          -> état des compteurs (copie de compteurs.json)
  *   GET|POST /admin/remise-a-zero (jeton ; droit utilisateurs)  aperçu / effacement par lots (confirmation « EFFACER ») des fiches, de l'ancien rangement et de l'historique de la couche d'essai ; `finale` : références à zéro et numéro de remise à zéro + 1
+ *   GET|POST /admin/sauvegardes (jeton ; droit utilisateurs)  aperçu / application (confirmation « APPLIQUER ») de la politique de sauvegarde sur les archives et versions existantes
  *   GET  /admin/arborescence?suite=…  (jeton ; droit utilisateurs)  -> { objets: [{ cle, taille, date }], suite } : liste du bucket, 1000 objets par page, lecture seule
  *
  * Jeton : « Authorization: Bearer … », signé (HMAC, secret SESSION_SECRET), valable 30 jours ; l'existence, l'état
@@ -58,7 +59,7 @@
  * X-Depot-Code) reste accepté pour /depot et /sante. Dès le premier compte activé, il ne sert plus.
  */
 
-import { creerRoutesGeometries, cleCourant, prefixeVersions, prefixeDepots } from './geometries.js';
+import { creerRoutesGeometries, cleCourant, prefixeVersions, prefixeDepots, planSauvegardes, CONSERVATION } from './geometries.js';
 
 const MAX_BYTES = 30 * 1024 * 1024;
 const REF_KEY = 'referentiel/intervenants.json';
@@ -691,6 +692,23 @@ async function routeRemiseAZero(request, env, url) {
   return null;
 }
 
+/** Politique de sauvegarde : aperçu (GET) et application (POST, confirmation requise) de ce qui est hors règle. */
+async function routeSauvegardes(request, env, url) {
+  if (url.pathname !== '/admin/sauvegardes') return null;
+  await exigerDroit(request, env, 'utilisateurs');
+  const resume = (groupes) => groupes.map((g) => ({ id: g.id, titre: g.titre, fichiers: g.objets.length, octets: g.objets.reduce((s, o) => s + o.taille, 0) }));
+  if (request.method === 'GET') return { status: 200, body: { regle: CONSERVATION, groupes: resume(await planSauvegardes(env)) } };
+  if (request.method === 'POST') {
+    const b = await lireJson(request);
+    if (b.confirmation !== 'APPLIQUER') throw new HttpError(400, 'Confirmation absente : écrivez APPLIQUER.');
+    const groupes = await planSauvegardes(env);
+    const cles = groupes.flatMap((g) => g.objets.map((o) => o.cle));
+    for (let i = 0; i < cles.length; i += 100) await env.DEPOTS.delete(cles.slice(i, i + 100));
+    return { status: 200, body: { effaces: cles.length, groupes: resume(groupes) } };
+  }
+  return null;
+}
+
 async function routeAdmin(request, env, url) {
   const p = url.pathname;
 
@@ -1080,7 +1098,7 @@ export default {
     const note = operation ? await noterDebut(request, env, operation) : null;
     try {
       const out = (url.pathname.startsWith('/auth/') && (await routeAuth(request, env, url)))
-        || (url.pathname.startsWith('/admin/') && ((await routeRemiseAZero(request, env, url)) || (await routeAdmin(request, env, url))))
+        || (url.pathname.startsWith('/admin/') && ((await routeRemiseAZero(request, env, url)) || (await routeSauvegardes(request, env, url)) || (await routeAdmin(request, env, url))))
         || (await routeGeometries(request, env, url))
         || (await routeDepot(request, env, url));
       if (!out) return reply(request, env, 404, { erreur: 'Route inconnue.' });

@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const VERSION = '20261125-0743'; // @VERSION (écrit par tools/stamp-sw.sh)
+const VERSION = '20261125-2349'; // @VERSION (écrit par tools/stamp-sw.sh)
 const CACHE = 'amgt4cem-app';
 const DELAI_RESEAU_MS = 4000;
 const PARALLELE = 6;
@@ -159,6 +159,7 @@ const FICHIERS = [
   './src/reglages/reglages.css',
   './src/reglages/reglages.js',
   './src/reglages/remiseAZeroEcran.js',
+  './src/reglages/sauvegardesEcran.js',
   './src/reglages/serveur.js',
   './src/reglages/stockageEcran.js',
   './src/router.js',

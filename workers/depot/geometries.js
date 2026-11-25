@@ -66,9 +66,12 @@ const REGLES_ID = { polygones: /^P\d{6,}$/, essai: /^[PT]\d{6,}$/ };
 const nombreId = (id) => Number(id.slice(1));
 const idDe = (prefixe, n) => `${prefixe}${String(n).padStart(6, '0')}`;
 
-// Conservation des versions (décidée le 18/11/2026) : les N dernières + la dernière de chaque mois + la plus ancienne (origine).
+// Politique de sauvegarde (décidée le 25/11/2026, remplace celle du 18/11) : la version en cours, une sauvegarde (la version
+// juste avant) et la dernière version de chaque mois écoulé où quelque chose a changé. Pour les archives (attributs, lieux) :
+// 1 archive = la version juste avant ; pour les versions de shapefile (qui comptent la version en cours) : 2 ; pour les
+// dépôts : les 2 derniers. Seule l'origine du vrai shapefile (« polygones », copie de départ) est gardée en plus.
 // Valeurs fixées dans le code : les changer demande un redéploiement du Worker.
-export const CONSERVATION = { shapefile: 10, attributs: 20, depots: 30 };
+export const CONSERVATION = { shapefile: 2, attributs: 1, depots: 2 };
 const CHAMPS_MODIFIABLES = ['genre', 'name_fr', 'name_nl', 'references', 'sheet_ref'];
 const MAX_CHANGEMENTS = 500;
 
@@ -141,57 +144,79 @@ function champValide(cle, v) {
   return v;
 }
 
-/** Noms des archives à garder : les `n` plus récentes, la plus récente de chaque mois, la plus ancienne. `noms` = noms de version triables. */
-export function archivesAGarder(noms, n) {
+/** Noms des archives à garder : les `n` plus récentes, la plus récente de chaque mois, et (si `avecOrigine`) la plus ancienne. `noms` = noms de version triables. */
+export function archivesAGarder(noms, n, avecOrigine = false) {
   const tries = [...noms].sort();
   const garder = new Set(tries.slice(-n));
   const parMois = new Map();
   for (const x of tries) parMois.set(x.slice(1, 7), x); // vAAAAMM… : le dernier écrase les précédents du même mois
   for (const x of parMois.values()) garder.add(x);
-  if (tries.length) garder.add(tries[0]);
+  if (avecOrigine && tries.length) garder.add(tries[0]);
   return garder;
+}
+
+async function listerCles(env, prefix) {
+  const cles = []; let curseur;
+  do { const page = await env.DEPOTS.list({ prefix, cursor: curseur }); for (const o of page.objects) cles.push({ cle: o.key, taille: o.size }); curseur = page.truncated ? page.cursor : undefined; } while (curseur);
+  return cles;
+}
+
+/** Archives d'un jeu (attributs, lieux) hors politique de sauvegarde. */
+async function planArchives(env, nom) {
+  const cles = await listerCles(env, prefixeArchives(nom));
+  const versions = cles.map((o) => o.cle.slice(prefixeArchives(nom).length).replace(/\.json$/, ''));
+  const garder = archivesAGarder(versions, CONSERVATION.attributs);
+  return cles.filter((o, i) => !garder.has(versions[i]));
 }
 
 /** Supprime les archives hors règle ; ne doit jamais faire échouer une écriture. */
 async function purgerArchives(env, nom) {
   try {
-    const cles = [];
-    let curseur;
-    do {
-      const page = await env.DEPOTS.list({ prefix: prefixeArchives(nom), cursor: curseur });
-      for (const o of page.objects) cles.push(o.key);
-      curseur = page.truncated ? page.cursor : undefined;
-    } while (curseur);
-    const versions = cles.map((k) => k.slice(prefixeArchives(nom).length).replace(/\.json$/, ''));
-    const garder = archivesAGarder(versions, CONSERVATION.attributs);
-    const aSupprimer = cles.filter((k, i) => !garder.has(versions[i]));
-    if (aSupprimer.length) await env.DEPOTS.delete(aSupprimer);
+    const aSupprimer = (await planArchives(env, nom)).map((o) => o.cle);
+    for (let i = 0; i < aSupprimer.length; i += 100) await env.DEPOTS.delete(aSupprimer.slice(i, i + 100));
   } catch (err) { console.error('purge des archives', err); }
 }
 
-/** Supprime les versions de shapefile hors règle (10 dernières, une par mois, 30 derniers dépôts, origine, version courante) ; sans échec bloquant. */
+/** Versions et ZIP de dépôt d'une couche shapefile hors politique de sauvegarde (la version courante et, pour « polygones », l'origine sont gardées). */
+async function planVersions(env, couche, pointeur) {
+  const cles = await listerCles(env, prefixeVersions(couche));
+  const nomVersion = (k) => k.slice(prefixeVersions(couche).length).split('/')[0];
+  const nomsVersions = [...new Set(cles.map((o) => nomVersion(o.cle)))];
+  const depots = await listerCles(env, prefixeDepots(couche));
+  const journaux = depots.filter((o) => o.cle.endsWith('.json')).map((o) => o.cle.slice(prefixeDepots(couche).length).replace(/\.json$/, ''));
+  const garder = archivesAGarder(nomsVersions, CONSERVATION.shapefile, couche === 'polygones');
+  const depotsGardes = archivesAGarder(journaux, CONSERVATION.depots);
+  for (const v of depotsGardes) garder.add(v);
+  garder.add(pointeur.version);
+  if (couche === 'polygones' && pointeur.origine) garder.add(pointeur.origine);
+  // ZIP déposés : mêmes règles que les dépôts ; les journaux (quelques centaines d'octets) restent tous.
+  const zips = depots.filter((o) => o.cle.endsWith('.zip') && !depotsGardes.has(o.cle.slice(prefixeDepots(couche).length).replace(/\.zip$/, '')));
+  return [...cles.filter((o) => !garder.has(nomVersion(o.cle))), ...zips];
+}
+
+/** Supprime les versions de shapefile hors règle ; sans échec bloquant. */
 async function purgerVersions(env, couche, pointeur) {
   try {
-    const lister = async (prefix) => {
-      const cles = []; let curseur;
-      do { const page = await env.DEPOTS.list({ prefix, cursor: curseur }); for (const o of page.objects) cles.push(o.key); curseur = page.truncated ? page.cursor : undefined; } while (curseur);
-      return cles;
-    };
-    const cles = await lister(prefixeVersions(couche));
-    const nomsVersions = [...new Set(cles.map((k) => k.slice(prefixeVersions(couche).length).split('/')[0]))];
-    const journaux = (await lister(prefixeDepots(couche))).filter((k) => k.endsWith('.json')).map((k) => k.slice(prefixeDepots(couche).length).replace(/\.json$/, ''));
-    const garder = archivesAGarder(nomsVersions, CONSERVATION.shapefile);
-    const depotsGardes = archivesAGarder(journaux, CONSERVATION.depots);
-    for (const v of depotsGardes) garder.add(v);
-    garder.add(pointeur.version);
-    if (pointeur.origine) garder.add(pointeur.origine);
-    const aSupprimer = cles.filter((k) => !garder.has(k.slice(prefixeVersions(couche).length).split('/')[0]));
+    const aSupprimer = (await planVersions(env, couche, pointeur)).map((o) => o.cle);
     for (let i = 0; i < aSupprimer.length; i += 100) await env.DEPOTS.delete(aSupprimer.slice(i, i + 100));
-    // ZIP déposés : mêmes règles que les dépôts ; les journaux (quelques centaines d'octets) restent tous.
-    const zips = (await lister(prefixeDepots(couche))).filter((k) => k.endsWith('.zip'));
-    const zipsASupprimer = zips.filter((k) => !depotsGardes.has(k.slice(prefixeDepots(couche).length).replace(/\.zip$/, '')));
-    if (zipsASupprimer.length) await env.DEPOTS.delete(zipsASupprimer);
   } catch (err) { console.error('purge des versions', err); }
+}
+
+/** Tout ce que la politique de sauvegarde ferait partir maintenant : [{ id, titre, objets: [{ cle, taille }] }]. */
+export async function planSauvegardes(env) {
+  const groupes = [];
+  const noms = new Set();
+  for (const o of await listerCles(env, 'prive/attributs/archive/')) { const m = /^prive\/attributs\/archive\/([^/]+)\//.exec(o.cle); if (m) noms.add(m[1]); }
+  for (const nom of [...noms].sort()) groupes.push({ id: `attributs-${nom}`, titre: `Archives des attributs (${nom})`, objets: await planArchives(env, nom) });
+  groupes.push({ id: 'lieux', titre: 'Archives des zones dessinées (lieux)', objets: await planArchives(env, 'lieux') });
+  for (const couche of COUCHES) {
+    const o = await env.DEPOTS.get(cleCourant(couche));
+    let pointeur = null;
+    if (o) { try { pointeur = await o.json(); } catch (err) { pointeur = null; } }
+    if (!pointeur || !pointeur.version) continue;
+    groupes.push({ id: `shapefile-${couche}`, titre: couche === 'polygones' ? 'Versions du shapefile des polygones' : 'Versions du shapefile d\'essai', objets: await planVersions(env, couche, pointeur) });
+  }
+  return groupes;
 }
 
 /**
