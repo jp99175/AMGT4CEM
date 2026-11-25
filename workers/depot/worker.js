@@ -24,6 +24,7 @@
  *   GET|PUT /admin/securite   (jeton ; droit utilisateurs)  nombre de tours PBKDF2, délai croissant après échec
  *   GET  /admin/connexions-interrompues (jeton ; droit utilisateurs)  opérations coupées (erreur 1102) sur 24 h et 7 jours
  *   GET  /admin/compteurs     (jeton ; droit utilisateurs ou plans)          -> état des compteurs (copie de compteurs.json)
+ *   GET|POST /admin/remise-a-zero (jeton ; droit utilisateurs)  aperçu / effacement par lots (confirmation « EFFACER ») des fiches, de l'ancien rangement et de l'historique de la couche d'essai ; `finale` : références à zéro et numéro de remise à zéro + 1
  *   GET  /admin/arborescence?suite=…  (jeton ; droit utilisateurs)  -> { objets: [{ cle, taille, date }], suite } : liste du bucket, 1000 objets par page, lecture seule
  *
  * Jeton : « Authorization: Bearer … », signé (HMAC, secret SESSION_SECRET), valable 30 jours ; l'existence, l'état
@@ -57,7 +58,7 @@
  * X-Depot-Code) reste accepté pour /depot et /sante. Dès le premier compte activé, il ne sert plus.
  */
 
-import { creerRoutesGeometries } from './geometries.js';
+import { creerRoutesGeometries, cleCourant, prefixeVersions, prefixeDepots } from './geometries.js';
 
 const MAX_BYTES = 30 * 1024 * 1024;
 const REF_KEY = 'referentiel/intervenants.json';
@@ -84,6 +85,7 @@ export class Compteur {
   /** État lisible : { version, identifiants: {P, L, G} (prochains), references: {flux: {annee: prochain}} }. */
   async etat() {
     const e = (await this.state.storage.get('etat')) || { version: 1, identifiants: {}, references: {} };
+    if (!Number.isInteger(e.epoque)) e.epoque = 0; // numéro de remise à zéro : chaque remise à zéro l'augmente de 1
     for (const [p, depart] of Object.entries(PREFIXES)) if (!e.identifiants[p]) e.identifiants[p] = depart;
     return e;
   }
@@ -94,6 +96,19 @@ export class Compteur {
     const e = await this.etat();
 
     if (action === 'etat') return Response.json({ etat: e });
+
+    // Remise à zéro des références de fiches (AAAA-NNNN) et des mémoires d'envoi ; les identifiants P, L, G ne bougent pas.
+    if (action === 'raz-references') {
+      const aEffacer = [];
+      for (const prefix of ['refid:', 'id:', 'n:']) for (const k of (await this.state.storage.list({ prefix })).keys()) aEffacer.push(k);
+      for (let i = 0; i < aEffacer.length; i += 128) await this.state.storage.delete(aEffacer.slice(i, i + 128));
+      e.references = {};
+      e.epoque += 1;
+      e.date = new Date().toISOString();
+      e.derniereRemiseAZero = { le: e.date, par: String(demande.par || '') };
+      await this.state.storage.put({ etat: e });
+      return Response.json({ etat: e, effaces: aEffacer.length });
+    }
 
     if (action === 'reference') {
       const { id, annee } = demande;
@@ -146,7 +161,7 @@ function corsHeaders(request, env) {
   const origin = request.headers.get('Origin');
   const headers = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization, X-Depot-Code, X-Signalement-Id, X-Flux, X-Fichier, Content-Type, If-Match, If-None-Match',
+    'Access-Control-Allow-Headers': 'Authorization, X-Depot-Code, X-Signalement-Id, X-Flux, X-Fichier, X-Epoque, Content-Type, If-Match, If-None-Match',
     'Access-Control-Expose-Headers': 'ETag',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
@@ -523,7 +538,7 @@ async function routeAuth(request, env, url) {
     if (u.echecs || u.bloqueJusqua) {
       await modifierRef(env, async (r) => { const c = r.intervenants.find((x) => x.matricule === matricule); if (c) effacerEchecs(c); });
     }
-    return { status: 200, body: { ...(await creerJeton(env, u.matricule)), utilisateur: vue(u) } };
+    return { status: 200, body: { ...(await creerJeton(env, u.matricule)), utilisateur: vue(u), epoque: await epoqueActuelle(env) } };
   }
 
   if (request.method === 'POST' && p === '/auth/activer') {
@@ -542,7 +557,7 @@ async function routeAuth(request, env, url) {
         r.intervenants.push(c);
         return c;
       });
-      return { status: 200, body: { ...(await creerJeton(env, u.matricule)), utilisateur: vue(u) } };
+      return { status: 200, body: { ...(await creerJeton(env, u.matricule)), utilisateur: vue(u), epoque: await epoqueActuelle(env) } };
     }
     const u0 = ref.intervenants.find((x) => x.matricule === matricule);
     if (!u0 || u0.actif === false || !u0.activation) {
@@ -566,11 +581,11 @@ async function routeAuth(request, env, url) {
       c.modifieLe = new Date().toISOString();
       return c;
     });
-    return { status: 200, body: { ...(await creerJeton(env, u.matricule)), utilisateur: vue(u) } };
+    return { status: 200, body: { ...(await creerJeton(env, u.matricule)), utilisateur: vue(u), epoque: await epoqueActuelle(env) } };
   }
 
   if (request.method === 'GET' && p === '/auth/moi') {
-    return { status: 200, body: { utilisateur: vue(await intervenantCourant(request, env)) } };
+    return { status: 200, body: { utilisateur: vue(await intervenantCourant(request, env)), epoque: await epoqueActuelle(env) } };
   }
 
   if (request.method === 'POST' && p === '/auth/motdepasse') {
@@ -584,6 +599,94 @@ async function routeAuth(request, env, url) {
       if (u) { u.hash = hash; u.modifieLe = new Date().toISOString(); }
     });
     return { status: 200, body: { ok: true } };
+  }
+  return null;
+}
+
+/** Numéro de remise à zéro courant ; null si le compteur est injoignable (le client ne fait alors rien). */
+async function epoqueActuelle(env) {
+  try { return (await compteur(env, { action: 'etat' })).etat.epoque; } catch (err) { console.error('epoque', err); return null; }
+}
+
+// ------------------------------------------------------------------ remise à zéro des fiches et des essais
+// Ce qui peut partir, et rien d'autre : ancien rangement (index/, standard/), fiches (signalements/), historique de la
+// couche d'essai du shapefile (toutes les versions et tous les dépôts sauf la version courante).
+const RAZ_PREFIXES = [
+  { id: 'anciens', titre: 'Ancien rangement des fiches (index/, standard/)', prefixes: ['index/', 'standard/'] },
+  { id: 'fiches', titre: 'Fiches de signalement (signalements/)', prefixes: ['signalements/'] },
+];
+const RAZ_LOT = 500; // objets effacés par appel (plafond du forfait gratuit)
+
+async function lireVersionEssai(env) {
+  const o = await env.DEPOTS.get(cleCourant('essai'));
+  if (!o) return null;
+  try { return (await o.json()).version || null; } catch (err) { return null; }
+}
+
+async function listerPrefixe(env, prefix, max) {
+  const out = []; let curseur;
+  do {
+    const page = await env.DEPOTS.list({ prefix, cursor: curseur, limit: 1000 });
+    for (const o of page.objects) { out.push({ cle: o.key, taille: o.size }); if (out.length >= max) return { objets: out, complet: false }; }
+    curseur = page.truncated ? page.cursor : undefined;
+  } while (curseur);
+  return { objets: out, complet: true };
+}
+
+/** Candidats à l'effacement, par groupe. `max` borne le nombre d'objets lus par préfixe. */
+async function candidatsRaz(env, max) {
+  const groupes = [];
+  for (const g of RAZ_PREFIXES) {
+    const objets = []; let complet = true;
+    for (const p of g.prefixes) { const l = await listerPrefixe(env, p, max); objets.push(...l.objets); complet = complet && l.complet; }
+    groupes.push({ id: g.id, titre: g.titre, objets, complet });
+  }
+  const courante = await lireVersionEssai(env);
+  if (courante) {
+    const garderV = `${prefixeVersions('essai')}${courante}/`;
+    const garderD = `${prefixeDepots('essai')}${courante}.`;
+    const v = await listerPrefixe(env, prefixeVersions('essai'), max);
+    const d = await listerPrefixe(env, prefixeDepots('essai'), max);
+    groupes.push({
+      id: 'essai',
+      titre: `Historique des essais d'écriture du shapefile (la version courante ${courante} est gardée)`,
+      objets: [...v.objets.filter((o) => !o.cle.startsWith(garderV)), ...d.objets.filter((o) => !o.cle.startsWith(garderD))],
+      complet: v.complet && d.complet,
+    });
+  }
+  return groupes;
+}
+
+async function routeRemiseAZero(request, env, url) {
+  if (url.pathname !== '/admin/remise-a-zero') return null;
+  const moi = await exigerDroit(request, env, 'utilisateurs');
+  if (request.method === 'GET') {
+    const groupes = await candidatsRaz(env, 20000);
+    const etat = (await compteur(env, { action: 'etat' })).etat;
+    return { status: 200, body: {
+      epoque: etat.epoque,
+      references: etat.references,
+      versionEssaiGardee: await lireVersionEssai(env),
+      groupes: groupes.map((g) => ({ id: g.id, titre: g.titre, fichiers: g.objets.length, octets: g.objets.reduce((s, o) => s + o.taille, 0), partiel: !g.complet })),
+    } };
+  }
+  if (request.method === 'POST') {
+    const b = await lireJson(request);
+    if (b.confirmation !== 'EFFACER') throw new HttpError(400, 'Confirmation absente : écrivez EFFACER.');
+    if (b.finale) {
+      // Dernière étape, demandée par l'écran quand plus rien ne reste à effacer : références à zéro, numéro de remise à zéro + 1.
+      const reste = (await candidatsRaz(env, 1)).reduce((s, g) => s + g.objets.length, 0);
+      if (reste) throw new HttpError(409, 'Des fichiers restent à effacer : relancez l\'effacement.');
+      const out = await compteur(env, { action: 'raz-references', par: moi.matricule });
+      return { status: 200, body: { termine: true, epoque: out.etat.epoque } };
+    }
+    // Étape d'effacement : un lot à la fois ; l'écran rappelle tant que `restant` n'est pas 0.
+    const groupes = await candidatsRaz(env, RAZ_LOT);
+    const cles = groupes.flatMap((g) => g.objets.map((o) => o.cle)).slice(0, RAZ_LOT);
+    if (cles.length) await env.DEPOTS.delete(cles);
+    const lus = groupes.reduce((s, g) => s + g.objets.length, 0);
+    const restant = lus - cles.length + (groupes.some((g) => !g.complet) ? 1 : 0);
+    return { status: 200, body: { effaces: cles.length, restant } };
   }
   return null;
 }
@@ -845,7 +948,7 @@ function anneeBruxelles() {
 async function routeDepot(request, env, url) {
   if (request.method === 'GET' && url.pathname === '/sante') {
     if (await repliCodePartage(request, env)) return { status: 200, body: { ok: true, transitoire: true } };
-    return { status: 200, body: { ok: true, utilisateur: vue(await intervenantCourant(request, env)) } };
+    return { status: 200, body: { ok: true, utilisateur: vue(await intervenantCourant(request, env)), epoque: await epoqueActuelle(env) } };
   }
   const mArchive = /^\/signalements\/(\d{4}-\d{4})\/archive$/.exec(url.pathname);
   if (request.method === 'GET' && mArchive) {
@@ -887,6 +990,12 @@ async function routeDepot(request, env, url) {
   let deposePar;
   if (await repliCodePartage(request, env)) deposePar = null;
   else deposePar = (await intervenantCourant(request, env)).matricule;
+
+  // Remise à zéro : une fiche préparée avant la dernière remise à zéro ne doit pas recevoir une nouvelle référence.
+  const epoqueServeur = await epoqueActuelle(env);
+  if (epoqueServeur && Number(request.headers.get('X-Epoque') || 0) < epoqueServeur) {
+    throw new HttpError(409, 'Les fiches ont été remises à zéro : ouvrez l\'application connecté pour effacer les fiches locales, puis recommencez la saisie.');
+  }
 
   const id = request.headers.get('X-Signalement-Id') || '';
   const flux = request.headers.get('X-Flux') || '';
@@ -971,7 +1080,7 @@ export default {
     const note = operation ? await noterDebut(request, env, operation) : null;
     try {
       const out = (url.pathname.startsWith('/auth/') && (await routeAuth(request, env, url)))
-        || (url.pathname.startsWith('/admin/') && (await routeAdmin(request, env, url)))
+        || (url.pathname.startsWith('/admin/') && ((await routeRemiseAZero(request, env, url)) || (await routeAdmin(request, env, url))))
         || (await routeGeometries(request, env, url))
         || (await routeDepot(request, env, url));
       if (!out) return reply(request, env, 404, { erreur: 'Route inconnue.' });

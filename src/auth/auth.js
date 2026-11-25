@@ -14,6 +14,8 @@
 const AMGT4CEM_Auth = {
   serverUrl: '',
   KEY: 'amgt4cem.session.v1',
+  KEY_EPOQUE: 'amgt4cem.epoque.v1',
+  _razEnCours: false,
 
   init(options) {
     this.serverUrl = String((options && options.serverUrl) || '').replace(/\/+$/, '');
@@ -74,6 +76,7 @@ const AMGT4CEM_Auth = {
     let data = {};
     try { data = await response.json(); } catch (err) { /* corps vide */ }
     if (response.status === 401 && auth && s) this.logout(); // jeton refusé : on ne le garde pas
+    if (response.ok && data && typeof data.epoque === 'number') this._epoque(data.epoque);
     if (!response.ok) {
       const e = new Error(data.erreur || `Erreur du serveur (HTTP ${response.status}).`);
       e.status = response.status;
@@ -81,6 +84,47 @@ const AMGT4CEM_Auth = {
       throw e;
     }
     return data;
+  },
+
+  /** Numéro de remise à zéro connu de cet appareil (0 tant que le serveur n'en a jamais fait). */
+  epoqueLocale() {
+    try { return Number(localStorage.getItem(this.KEY_EPOQUE)) || 0; } catch (err) { return 0; }
+  },
+
+  /**
+   * Le serveur annonce son numéro de remise à zéro (/auth/moi, /sante, connexion). S'il est plus récent que celui de
+   * l'appareil, les fiches et photos gardées localement (brouillons, envois en attente, entrées envoyées) sont effacées :
+   * elles datent d'avant la remise à zéro. Ne fait rien sans réponse du serveur (hors ligne, erreur).
+   */
+  _epoque(serveur) {
+    if (!Number.isInteger(serveur) || serveur <= this.epoqueLocale() || this._razEnCours) return;
+    this._razEnCours = true;
+    try { localStorage.setItem(this.KEY_EPOQUE, String(serveur)); } catch (err) { /* sans mémoire locale : l'effacement sera refait à la prochaine connexion */ }
+    this.viderFichesLocales().then(() => {
+      this._razEnCours = false;
+      // Un écran de saisie ouvert montrerait encore les anciennes fiches : on le recharge (le numéro est déjà noté, pas de boucle).
+      if (window.SIG4CEM) location.reload();
+    });
+  },
+
+  /** Vide les deux bases locales de SIG4CEM (fiches, puis photos et annotations) sans les créer si elles n'existent pas. */
+  async viderFichesLocales() {
+    const vider = (base, magasin) => new Promise((ok) => {
+      let req;
+      try { req = indexedDB.open(base); } catch (err) { ok(); return; }
+      req.onupgradeneeded = () => req.transaction.abort(); // la base n'existait pas : on ne la crée pas
+      req.onerror = () => ok();
+      req.onsuccess = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(magasin)) { db.close(); ok(); return; }
+        const tx = db.transaction(magasin, 'readwrite');
+        tx.objectStore(magasin).clear();
+        tx.oncomplete = () => { db.close(); ok(); };
+        tx.onerror = tx.onabort = () => { db.close(); ok(); };
+      };
+    });
+    await vider('amgt4cem-signal', 'entries');
+    await vider('amgt4cem-pieces', 'pieces');
   },
 
   async login(matricule, motdepasse) {

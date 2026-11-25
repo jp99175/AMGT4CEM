@@ -236,6 +236,11 @@ Reglages.register({
         },
       },
     },
+    ...(window.AMGT4CEM_RemiseAZeroEcran ? [{
+      texte: 'Remise à zéro des fiches',
+      aide: 'Phase d\'essai : effacer les fiches du serveur et des appareils, repartir de 2026-0001.',
+      ecran: window.AMGT4CEM_RemiseAZeroEcran,
+    }] : []),
     ...(window.AMGT4CEM_ArborescenceEcran ? [{
       texte: 'Arborescence du stockage',
       aide: 'Tout ce que contient le stockage R2, dossier par dossier (lecture seule).',

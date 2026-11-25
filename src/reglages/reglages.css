@@ -174,3 +174,6 @@ html[data-app="reglages"] body {
 .rgl-arbo__nom { word-break: break-all; margin-right: 8px; }
 .rgl-arbo__info { color: #52606d; font-size: 13px; }
 .rgl-arbo__fichier { padding: 2px 0; }
+
+/* Remise à zéro des fiches (remiseAZeroEcran.js) */
+.rgl-sous-titre { margin: 16px 0 6px; font-size: 15px; font-weight: 600; }

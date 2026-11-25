@@ -49,6 +49,7 @@ NS.Envoi = {
       blob = (await NS.Depot.buildArchive(stamped, extra)).blob;
       headers = {
         'X-Signalement-Id': s.id,
+        'X-Epoque': String(AMGT4CEM_Auth.epoqueLocale()), // numéro de remise à zéro connu de l'appareil (le serveur refuse un ancien numéro)
         'X-Flux': 'STANDARD', // plus de flux séparé : le serveur accepte encore AMIANTE mais on ne l'utilise plus
         'X-Fichier': NS.Depot.depotFileName(stamped),
         'Content-Type': 'application/zip',

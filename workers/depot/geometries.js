@@ -53,15 +53,15 @@ const ATTRIBUTS = ['ditp-diov', 'plans-patrimoine'];
 const SOURCE_KEY = 'prive/referentiels/source-donnees.json';
 const TYPES = { shp: 'application/octet-stream', shx: 'application/octet-stream', dbf: 'application/octet-stream', prj: 'text/plain; charset=utf-8', cpg: 'text/plain; charset=utf-8' };
 
-const cleCourant = (couche) => `prive/geometries/shapefile/${couche}/courant.json`;
+export const cleCourant = (couche) => `prive/geometries/shapefile/${couche}/courant.json`;
 const cleFichier = (couche, version, ext) => `prive/geometries/shapefile/${couche}/versions/${version}/${couche}.${ext}`;
 const cleAttributs = (nom) => `prive/attributs/${nom}.json`;
 const prefixeArchives = (nom) => (nom === 'lieux' ? 'prive/geometries/json/archive/lieux/' : `prive/attributs/archive/${nom}/`);
 const CLE_LIEUX = 'prive/geometries/json/lieux.json';
-const prefixeVersions = (couche) => `prive/geometries/shapefile/${couche}/versions/`;
+export const prefixeVersions = (couche) => `prive/geometries/shapefile/${couche}/versions/`;
 const cleJournal = (couche, version) => `prive/geometries/depots/${couche}/${version}.json`;
 const cleZip = (couche, version) => `prive/geometries/depots/${couche}/${version}.zip`;
-const prefixeDepots = (couche) => `prive/geometries/depots/${couche}/`;
+export const prefixeDepots = (couche) => `prive/geometries/depots/${couche}/`;
 const REGLES_ID = { polygones: /^P\d{6,}$/, essai: /^[PT]\d{6,}$/ };
 const nombreId = (id) => Number(id.slice(1));
 const idDe = (prefixe, n) => `${prefixe}${String(n).padStart(6, '0')}`;

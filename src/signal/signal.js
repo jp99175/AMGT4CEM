@@ -287,6 +287,7 @@ async function sendEntry(id) {
   NS.Envoi.init(AMGT4CEM_CONFIG.depot || {});
   await NS.Depot.load(); // vocabulaire (natures, types, domaines)
   SIG.Entries.purgeLegacy(); // anciennes saisies d'essai de la carte (abandonnées)
+  AMGT4CEM_Auth.rafraichirDroits(); // relit aussi le numéro de remise à zéro du serveur (efface les fiches locales périmées)
   await renderMenu();
   // Session qui change (déconnexion depuis un autre onglet, jeton refusé) : le menu suit, sans toucher à un formulaire ouvert.
   AMGT4CEM_Auth.onChange(() => { if (!screens.menu.classList.contains('sig4cem-hidden')) renderMenu(); });
