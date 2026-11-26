@@ -1,7 +1,6 @@
 /**
  * Réglages > Utilisateurs > « Remise à zéro des fiches » (droit « utilisateurs »).
- * Phase d'essai seulement : efface sur le serveur l'ancien rangement des fiches, les fiches de signalement et l'historique
- * de la couche d'essai du shapefile, remet à zéro les références (prochaine fiche : AAAA-0001) et fait avancer le numéro
+ * Phase d'essai seulement : efface sur le serveur l'ancien rangement des fiches et les fiches de signalement, remet à zéro les références (prochaine fiche : AAAA-0001) et fait avancer le numéro
  * de remise à zéro : chaque appareil efface ses fiches et photos locales à sa prochaine connexion.
  * À retirer à la mise en service (étape 8 de la spécification du stockage).
  */
@@ -26,7 +25,8 @@ async function monter(conteneur) {
   conteneur.replaceChildren();
   const statut = h('p', { class: 'rgl-statut', text: 'Lecture de l\'état du serveur…' });
   const corps = h('div', {});
-  conteneur.append(statut, corps);
+  const essai = h('div', {});
+  conteneur.append(statut, corps, essai);
   const dire = (t, type) => { statut.className = `rgl-statut${type ? ` rgl-statut--${type}` : ''}`; statut.textContent = t; };
 
   async function afficher() {
@@ -47,7 +47,7 @@ async function monter(conteneur) {
       h('h3', { class: 'rgl-sous-titre', text: 'Références et appareils' }),
       h('p', { class: 'rgl-note', text: `La prochaine fiche sera ${annee}-0001. Chaque appareil effacera ses fiches et photos locales (brouillons, envois en attente, fiches envoyées) à sa prochaine connexion : la remise à zéro passera du n° ${a.epoque} au n° ${a.epoque + 1}. Un envoi préparé avant la remise à zéro est refusé.` }),
       h('h3', { class: 'rgl-sous-titre', text: 'Ne sera pas touché' }),
-      h('p', { class: 'rgl-note', text: 'Comptes, shapefile des polygones, version courante du shapefile d\'essai, zones dessinées (lieux), attributs, nappe, compteurs d\'identifiants P, L et G.' }));
+      h('p', { class: 'rgl-note', text: 'Comptes, shapefile des polygones, zones dessinées (lieux), attributs, nappe, compteurs d\'identifiants P, L et G.' }));
 
     const champ = h('input', { type: 'text', class: 'rgl-input', autocomplete: 'off', autocapitalize: 'characters', 'aria-label': 'Confirmation', placeholder: 'Écrire EFFACER' });
     const bouton = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: 'Effacer' });
@@ -77,6 +77,49 @@ async function monter(conteneur) {
     corps.append(h('div', { class: 'rgl-actions' }, champ, bouton));
   }
   await afficher();
+  await monterEssai(essai);
+}
+
+/** Bloc « Effacer le shapefile d'essai » : tout ce qui reste de la couche d'essai ; le vrai shapefile n'est pas touché. */
+async function monterEssai(zone) {
+  zone.replaceChildren();
+  const statut = h('p', { class: 'rgl-statut', text: 'Lecture de la couche d\'essai…' });
+  zone.append(h('h3', { class: 'rgl-sous-titre', text: 'Effacer le shapefile d\'essai' }), statut);
+  const dire = (t, type) => { statut.className = `rgl-statut${type ? ` rgl-statut--${type}` : ''}`; statut.textContent = t; };
+  let a;
+  try { a = await AMGT4CEM_Auth.call('/admin/effacer-essai'); } catch (err) { dire(`Lecture impossible : ${err.message}`, 'erreur'); return; }
+  const total = a.groupes.reduce((s, g) => s + g.fichiers, 0);
+  if (!total) { dire('Il ne reste rien de la couche d\'essai.', 'ok'); return; }
+  dire(`${pluriel(total, 'fichier')} d'essai à effacer. Le vrai shapefile (polygones) n'est pas touché.`);
+  for (const g of a.groupes.filter((x) => x.fichiers)) {
+    zone.append(h('div', { class: 'rgl-row' }, h('span', { class: 'rgl-row__body' },
+      h('span', { class: 'rgl-row__text', text: g.titre }),
+      h('span', { class: 'rgl-row__aide', text: `${pluriel(g.fichiers, 'fichier')} · ${taille(g.octets)}${g.partiel ? ' (liste partielle)' : ''}` }))));
+  }
+  const champ = h('input', { type: 'text', class: 'rgl-input', autocomplete: 'off', autocapitalize: 'characters', 'aria-label': 'Confirmation', placeholder: 'Écrire ESSAI' });
+  const bouton = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: 'Effacer l\'essai' });
+  bouton.disabled = true;
+  champ.addEventListener('input', () => { bouton.disabled = champ.value.trim() !== 'ESSAI'; });
+  bouton.addEventListener('click', async () => {
+    if (bouton.disabled) return;
+    bouton.disabled = true; champ.disabled = true;
+    let effaces = 0;
+    try {
+      for (let i = 0; i < 100; i++) {
+        dire(`Effacement en cours… ${effaces} fichiers effacés`);
+        const r = await AMGT4CEM_Auth.call('/admin/effacer-essai', { method: 'POST', body: { confirmation: 'ESSAI' } });
+        effaces += r.effaces;
+        if (!r.restant) break;
+        if (i === 99) throw new Error('Effacement interrompu : trop de lots. Relancez-le.');
+      }
+      await monterEssai(zone);
+      dire(`${pluriel(effaces, 'fichier')} d'essai effacé${effaces > 1 ? 's' : ''}.`, 'ok');
+    } catch (err) {
+      await monterEssai(zone);
+      dire(`${effaces} fichiers effacés, puis : ${err.message}`, 'erreur');
+    }
+  });
+  zone.append(h('div', { class: 'rgl-actions' }, champ, bouton));
 }
 
 window.AMGT4CEM_RemiseAZeroEcran = { id: 'remise-a-zero', titre: 'Remise à zéro des fiches', monter };

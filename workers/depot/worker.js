@@ -24,7 +24,8 @@
  *   GET|PUT /admin/securite   (jeton ; droit utilisateurs)  nombre de tours PBKDF2, délai croissant après échec
  *   GET  /admin/connexions-interrompues (jeton ; droit utilisateurs)  opérations coupées (erreur 1102) sur 24 h et 7 jours
  *   GET  /admin/compteurs     (jeton ; droit utilisateurs ou plans)          -> état des compteurs (copie de compteurs.json)
- *   GET|POST /admin/remise-a-zero (jeton ; droit utilisateurs)  aperçu / effacement par lots (confirmation « EFFACER ») des fiches, de l'ancien rangement et de l'historique de la couche d'essai ; `finale` : références à zéro et numéro de remise à zéro + 1
+ *   GET|POST /admin/effacer-essai (jeton ; droit utilisateurs)  aperçu / effacement par lots (confirmation « ESSAI ») de tout ce qui reste de la couche d'essai ; ne touche pas à polygones
+ *   GET|POST /admin/remise-a-zero (jeton ; droit utilisateurs)  aperçu / effacement par lots (confirmation « EFFACER ») des fiches et de l'ancien rangement ; `finale` : références à zéro et numéro de remise à zéro + 1
  *   GET|POST /admin/sauvegardes (jeton ; droit utilisateurs)  aperçu / application (confirmation « APPLIQUER ») de la politique de sauvegarde sur les archives et versions existantes
  *   GET  /admin/arborescence?suite=…  (jeton ; droit utilisateurs)  -> { objets: [{ cle, taille, date }], suite } : liste du bucket, 1000 objets par page, lecture seule
  *
@@ -610,19 +611,12 @@ async function epoqueActuelle(env) {
 }
 
 // ------------------------------------------------------------------ remise à zéro des fiches et des essais
-// Ce qui peut partir, et rien d'autre : ancien rangement (index/, standard/), fiches (signalements/), historique de la
-// couche d'essai du shapefile (toutes les versions et tous les dépôts sauf la version courante).
+// Ce qui peut partir, et rien d'autre : ancien rangement (index/, standard/) et fiches (signalements/).
 const RAZ_PREFIXES = [
   { id: 'anciens', titre: 'Ancien rangement des fiches (index/, standard/)', prefixes: ['index/', 'standard/'] },
   { id: 'fiches', titre: 'Fiches de signalement (signalements/)', prefixes: ['signalements/'] },
 ];
 const RAZ_LOT = 500; // objets effacés par appel (plafond du forfait gratuit)
-
-async function lireVersionEssai(env) {
-  const o = await env.DEPOTS.get(cleCourant('essai'));
-  if (!o) return null;
-  try { return (await o.json()).version || null; } catch (err) { return null; }
-}
 
 async function listerPrefixe(env, prefix, max) {
   const out = []; let curseur;
@@ -642,19 +636,6 @@ async function candidatsRaz(env, max) {
     for (const p of g.prefixes) { const l = await listerPrefixe(env, p, max); objets.push(...l.objets); complet = complet && l.complet; }
     groupes.push({ id: g.id, titre: g.titre, objets, complet });
   }
-  const courante = await lireVersionEssai(env);
-  if (courante) {
-    const garderV = `${prefixeVersions('essai')}${courante}/`;
-    const garderD = `${prefixeDepots('essai')}${courante}.`;
-    const v = await listerPrefixe(env, prefixeVersions('essai'), max);
-    const d = await listerPrefixe(env, prefixeDepots('essai'), max);
-    groupes.push({
-      id: 'essai',
-      titre: `Historique des essais d'écriture du shapefile (la version courante ${courante} est gardée)`,
-      objets: [...v.objets.filter((o) => !o.cle.startsWith(garderV)), ...d.objets.filter((o) => !o.cle.startsWith(garderD))],
-      complet: v.complet && d.complet,
-    });
-  }
   return groupes;
 }
 
@@ -667,7 +648,6 @@ async function routeRemiseAZero(request, env, url) {
     return { status: 200, body: {
       epoque: etat.epoque,
       references: etat.references,
-      versionEssaiGardee: await lireVersionEssai(env),
       groupes: groupes.map((g) => ({ id: g.id, titre: g.titre, fichiers: g.objets.length, octets: g.objets.reduce((s, o) => s + o.taille, 0), partiel: !g.complet })),
     } };
   }
@@ -688,6 +668,40 @@ async function routeRemiseAZero(request, env, url) {
     const lus = groupes.reduce((s, g) => s + g.objets.length, 0);
     const restant = lus - cles.length + (groupes.some((g) => !g.complet) ? 1 : 0);
     return { status: 200, body: { effaces: cles.length, restant } };
+  }
+  return null;
+}
+
+/** Couche d'essai du shapefile : tout ce qui lui reste dans R2 (versions, journaux, zips, pointeur). Ne touche jamais à `polygones`. */
+async function candidatsEssai(env, max) {
+  const groupes = [];
+  for (const [id, titre, prefix] of [['versions', 'Versions du shapefile d\'essai', prefixeVersions('essai')], ['depots', 'Journaux et ZIP des dépôts d\'essai', prefixeDepots('essai')]]) {
+    const l = await listerPrefixe(env, prefix, max);
+    groupes.push({ id, titre, objets: l.objets, complet: l.complet });
+  }
+  const p = await env.DEPOTS.head(cleCourant('essai'));
+  groupes.push({ id: 'pointeur', titre: 'Pointeur de version (courant.json)', objets: p ? [{ cle: cleCourant('essai'), taille: p.size }] : [], complet: true });
+  return groupes;
+}
+
+async function routeEffacerEssai(request, env, url) {
+  if (url.pathname !== '/admin/effacer-essai') return null;
+  await exigerDroit(request, env, 'utilisateurs');
+  if (request.method === 'GET') {
+    const groupes = await candidatsEssai(env, 20000);
+    return { status: 200, body: { groupes: groupes.map((g) => ({ id: g.id, titre: g.titre, fichiers: g.objets.length, octets: g.objets.reduce((t, o) => t + o.taille, 0), partiel: !g.complet })) } };
+  }
+  if (request.method === 'POST') {
+    const b = await lireJson(request);
+    if (b.confirmation !== 'ESSAI') throw new HttpError(400, 'Confirmation absente : écrivez ESSAI.');
+    const groupes = await candidatsEssai(env, RAZ_LOT);
+    const tous = groupes.flatMap((g) => g.objets.map((o) => o.cle));
+    // Le pointeur part en dernier : tant qu'il reste des versions, la couche reste décrite par lui.
+    const cle = tous.filter((c) => c !== cleCourant('essai')).slice(0, RAZ_LOT);
+    const reste = tous.length - cle.length - (tous.includes(cleCourant('essai')) ? 1 : 0) + (groupes.some((g) => !g.complet) ? 1 : 0);
+    if (cle.length) await env.DEPOTS.delete(cle);
+    if (reste <= 0 && tous.includes(cleCourant('essai'))) { await env.DEPOTS.delete(cleCourant('essai')); return { status: 200, body: { effaces: cle.length + 1, restant: 0 } }; }
+    return { status: 200, body: { effaces: cle.length, restant: reste } };
   }
   return null;
 }
@@ -1098,7 +1112,7 @@ export default {
     const note = operation ? await noterDebut(request, env, operation) : null;
     try {
       const out = (url.pathname.startsWith('/auth/') && (await routeAuth(request, env, url)))
-        || (url.pathname.startsWith('/admin/') && ((await routeRemiseAZero(request, env, url)) || (await routeSauvegardes(request, env, url)) || (await routeAdmin(request, env, url))))
+        || (url.pathname.startsWith('/admin/') && ((await routeRemiseAZero(request, env, url)) || (await routeSauvegardes(request, env, url)) || (await routeEffacerEssai(request, env, url)) || (await routeAdmin(request, env, url))))
         || (await routeGeometries(request, env, url))
         || (await routeDepot(request, env, url));
       if (!out) return reply(request, env, 404, { erreur: 'Route inconnue.' });

@@ -9,7 +9,7 @@
  *   prive/geometries/shapefile/<couche>/versions/<version>/<couche>.<ext>   jeu complet (shp, shx, dbf, prj, cpg)
  *   prive/attributs/<nom>.json                                       attributs joints par `id`
  *   prive/referentiels/source-donnees.json                           interrupteur : { source: 'depot' | 'r2' }
- * `<couche>` : polygones (le vrai shapefile) ou essai (fichier d'essai, lot C). `<version>` : vAAAAMMJJ_HHMMSS (Bruxelles).
+ * `<couche>` : polygones (le vrai shapefile). `<version>` : vAAAAMMJJ_HHMMSS (Bruxelles).
  * Un lecteur lit le pointeur puis les fichiers de cette version : il ne voit jamais un jeu à moitié écrit.
  *
  * Routes (jeton exigé ; droit entre parenthèses) :
@@ -46,7 +46,7 @@
 
 import { analyserDepot, composerDbf, composerShpShx, controlerContour, decoderContour, encoderContour, lireIdsDbf, lireJeu, memesOctets, trouverRecoupement } from './shapefile.js';
 
-const COUCHES = ['polygones', 'essai'];
+const COUCHES = ['polygones'];
 const EXTENSIONS = ['shp', 'shx', 'dbf', 'prj', 'cpg'];
 const OBLIGATOIRES = ['shp', 'shx', 'dbf', 'prj'];
 const ATTRIBUTS = ['ditp-diov', 'plans-patrimoine'];
@@ -62,7 +62,7 @@ export const prefixeVersions = (couche) => `prive/geometries/shapefile/${couche}
 const cleJournal = (couche, version) => `prive/geometries/depots/${couche}/${version}.json`;
 const cleZip = (couche, version) => `prive/geometries/depots/${couche}/${version}.zip`;
 export const prefixeDepots = (couche) => `prive/geometries/depots/${couche}/`;
-const REGLES_ID = { polygones: /^P\d{6,}$/, essai: /^[PT]\d{6,}$/ };
+const REGLES_ID = { polygones: /^P\d{6,}$/ };
 const nombreId = (id) => Number(id.slice(1));
 const idDe = (prefixe, n) => `${prefixe}${String(n).padStart(6, '0')}`;
 
@@ -214,7 +214,7 @@ export async function planSauvegardes(env) {
     let pointeur = null;
     if (o) { try { pointeur = await o.json(); } catch (err) { pointeur = null; } }
     if (!pointeur || !pointeur.version) continue;
-    groupes.push({ id: `shapefile-${couche}`, titre: couche === 'polygones' ? 'Versions du shapefile des polygones' : 'Versions du shapefile d\'essai', objets: await planVersions(env, couche, pointeur) });
+    groupes.push({ id: `shapefile-${couche}`, titre: 'Versions du shapefile des polygones', objets: await planVersions(env, couche, pointeur) });
   }
   return groupes;
 }
@@ -336,6 +336,12 @@ export function creerRoutesGeometries(ctx) {
     try { await env.DEPOTS.delete(EXTENSIONS.map((e) => cleFichier(couche, version, e))); } catch (err) { console.error('nettoyage', err); }
   }
 
+  /** Genre et nom (FR) d'un objet existant, d'après les attributs. */
+  function genreNom(id, att) {
+    const e = att['ditp-diov'].entites[id] || att['plans-patrimoine'].entites[id] || {};
+    return { genre: e.genre || '', nom: e.name_fr || '' };
+  }
+
   async function deposer(env, u, couche, d) {
     const f = {};
     for (const ext of EXTENSIONS) {
@@ -371,10 +377,14 @@ export function creerRoutesGeometries(ctx) {
       objetsDeposes: depose.objets.length, versionCourante: cur ? cur.pointeur.version : null, versionBase, versionAncienne: ancienne,
       sansId: analyse.sansId.length, premierId: analyse.sansId.length ? idDe(prefixe, premier) : null, dernierId: analyse.sansId.length ? idDe(prefixe, premier + analyse.sansId.length - 1) : null,
       doublons: analyse.doublons.map((x) => ({ id: x.id, copies: x.attribues.length })), disparus: analyse.disparus, modifies: analyse.modifies.length, inchanges: analyse.inchanges,
+      listeAjoutes: analyse.sansId.map((pos, k) => ({ id: idDe(prefixe, premier + k), genre: depose.objets[pos].genre || '', nom: depose.objets[pos].nom_fr || '' })),
+      listeModifies: analyse.modifies.map((id) => ({ id, ...genreNom(id, att) })),
+      listeDisparus: analyse.disparus.map((id) => ({ id, ...genreNom(id, att) })),
     };
     if (erreurs.length) return refus(erreurs, resume);
     if (d.apercu) return { status: 200, body: { apercu: true, resume } };
     const manque = [];
+    if (!(d.confirmations && d.confirmations.mot === 'POLYGONES')) manque.push('mot');
     if (analyse.disparus.length && !(d.confirmations && d.confirmations.retraits)) manque.push('retraits');
     if (ancienne && !(d.confirmations && d.confirmations.versionAncienne)) manque.push('versionAncienne');
     if (manque.length) return { status: 409, body: { erreur: 'Confirmation manquante : rien n\'a été enregistré.', manque, resume } };
@@ -388,8 +398,16 @@ export function creerRoutesGeometries(ctx) {
         : analyse.sansId.map((_, i) => idDe('T', prochainT + i));
       analyse.sansId.forEach((pos, i) => { ids[pos] = nouveaux[i]; });
     }
+    const valeursNouveaux = {};
+    analyse.sansId.forEach((pos, i) => {
+      const o = depose.objets[pos]; const v = {};
+      if (o.genre) v.genre = o.genre;
+      if (o.nom_fr) v.name_fr = o.nom_fr;
+      if (o.nom_nl) v.name_nl = o.nom_nl;
+      valeursNouveaux[nouveaux[i]] = v;
+    });
     const lignes = ids.map((id) => {
-      const e = att['ditp-diov'].entites[id] || att['plans-patrimoine'].entites[id] || {};
+      const e = att['ditp-diov'].entites[id] || att['plans-patrimoine'].entites[id] || valeursNouveaux[id] || {};
       return { id, genre: e.genre, nom_fr: e.name_fr, nom_nl: e.name_nl };
     });
     const { shp, shx } = composerShpShx(depose.objets.map((o) => o.contenu));
@@ -400,8 +418,8 @@ export function creerRoutesGeometries(ctx) {
     // Le fichier reçu est relu pour vérification avant que quoi que ce soit devienne visible.
     try { const relu = await lireJeuR2(env, couche, version); if (relu.objets.length !== ids.length || relu.objets.some((o, i) => o.id !== ids[i])) throw new Error('relecture différente'); } catch (err) { await supprimerVersion(env, couche, version); throw new HttpError(500, 'La relecture de vérification a échoué : rien n\'a été enregistré.'); }
     if (d.zip) await env.DEPOTS.put(cleZip(couche, version), deBase64(d.zip, 'zip'), { httpMetadata: { contentType: 'application/zip' } });
-    // Les attributs sont ceux du vrai réseau : la couche d'essai (T…) n'y écrit rien (correction du 18/11/2026).
-    if (nouveaux.length && prefixe === 'P') await ajouterEntrees(env, 'ditp-diov', nouveaux, u.matricule);
+    // Les attributs des nouveaux objets viennent du fichier déposé (GENRE, NOM_FR, NOM_NL) ; ceux des objets existants restent ceux de la base.
+    if (nouveaux.length && prefixe === 'P') await ajouterEntrees(env, 'ditp-diov', nouveaux, u.matricule, valeursNouveaux);
     const pointeur = { version, origine: (cur && cur.pointeur.origine) || version, fichiers: EXTENSIONS, objets: ids.length, date: new Date().toISOString(), par: u.matricule, deposePar, source: 'depot', prochainT: prefixe === 'T' ? prochainT + nouveaux.length : prochainT };
     const journal = { version, date: pointeur.date, par: u.matricule, deposePar, source: 'depot', nomZip: typeof d.nomZip === 'string' ? d.nomZip.slice(0, 200) : null, versionBase, versionPrecedente: cur ? cur.pointeur.version : null, objets: ids.length, attribues: nouveaux, doublons: resume.doublons, disparus: analyse.disparus, modifies: analyse.modifies.length, inchanges: analyse.inchanges, valeursCoupees: coupes };
     if (!(await basculer(env, couche, cur, pointeur, journal))) {
@@ -496,7 +514,6 @@ export function creerRoutesGeometries(ctx) {
    *  - retraits : identifiants d'objets du shapefile, retirés du fichier.
    * Couche « polygones » (le vrai réseau) : les zones intégrées quittent les zones, les objets retirés y reviennent (avec leur P…) et les
    * attributs sont écrits dans ditp-diov (les entrées des objets retirés y restent).
-   * Couche « essai » : ni les zones ni les attributs ne sont touchés (un essai ne consomme rien du réel).
    * Ordre : fichiers de la version, relecture, attributs, pointeur (If-Match), puis zones. Si l'écriture des zones échoue après la
    * bascule, la version reste valable et la réponse l'indique (zone « déjà au shapefile », jamais perdue).
    */

@@ -205,6 +205,25 @@ export function lireIdsDbf(dbf) {
   return ids;
 }
 
+/** Lit id, GENRE, NOM_FR, NOM_NL de chaque enregistrement (champ absent : texte vide). */
+export function lireChampsDbf(dbf) {
+  const { champs, n, lenEntete, lenEnreg } = enteteDbf(dbf);
+  const lat = new TextDecoder('windows-1252');
+  const trouve = (nom) => champs.find((x) => x.nom.toLowerCase() === nom);
+  const cs = { id: trouve('id'), genre: trouve('genre'), nom_fr: trouve('nom_fr'), nom_nl: trouve('nom_nl') };
+  const lignes = [];
+  for (let i = 0; i < n; i++) {
+    const l = {};
+    for (const [k, c] of Object.entries(cs)) {
+      if (!c) { l[k] = ''; continue; }
+      const b = lenEntete + i * lenEnreg + c.debut;
+      l[k] = lat.decode(dbf.subarray(b, b + c.longueur)).replace(/\0/g, '').trim();
+    }
+    lignes.push(l);
+  }
+  return lignes;
+}
+
 /** Octets égaux ? */
 export function memesOctets(a, b) {
   if (a.length !== b.length) return false;
@@ -218,7 +237,8 @@ export function lireJeu(f) {
   if (f.shx.length !== 100 + 8 * contenus.length) throw new Error(`Le .shx annonce ${Math.max(0, (f.shx.length - 100) / 8)} objets, le .shp en contient ${contenus.length}.`);
   const ids = lireIdsDbf(f.dbf);
   if (ids.length !== contenus.length) throw new Error(`Le .dbf contient ${ids.length} enregistrements, le .shp ${contenus.length} objets.`);
-  return { objets: contenus.map((contenu, i) => ({ id: ids[i], contenu })) };
+  const champs = lireChampsDbf(f.dbf);
+  return { objets: contenus.map((contenu, i) => ({ id: ids[i], contenu, genre: champs[i].genre, nom_fr: champs[i].nom_fr, nom_nl: champs[i].nom_nl })) };
 }
 
 /** Assemble .shp et .shx à partir des contenus d'enregistrements (copiés tels quels). */

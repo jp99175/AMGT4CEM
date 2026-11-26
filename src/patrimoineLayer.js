@@ -172,19 +172,10 @@ const AMGT4CEM_PatrimoineLayer = {
   },
 
   async _loadFeatures(entry) {
-    if (this._cache[entry.id] && !entry.essaiR2) return this._cache[entry.id]; // la couche d'essai est relue à chaque ouverture
+    if (this._cache[entry.id]) return this._cache[entry.id];
     if (entry.shapefile) {
       // Couche lue dans un shapefile (champ `id` seul) + petit référentiel JSON (nom) : voir src/shpLoader.js.
-      const fc = await AMGT4CEM_ShpLoader.load(entry.shapefile, entry.essaiR2 ? { noms: true, optional: true } : {});
-      if (entry.essaiR2) {
-        if (!fc.features.length) this._bandeau('Essai R2 : disponible seulement avec la source R2 et un fichier d\'essai déposé.');
-        // Les planches (limites des plans patrimoine) ont leur propre couche : on ne les dessine pas ici, elles masquent les contours à comparer.
-        let planches = {};
-        try { const r = await AMGT4CEM_Stockage.fetch(`./data/plans-patrimoine/polygones.json?t=${Date.now()}`, { cache: 'no-store' }); if (r.ok) planches = (await r.json()).entites || {}; } catch (err) { /* sans cette liste : toutes les planches restent affichées */ }
-        fc.features = fc.features.filter((f) => !planches[f.properties.id]);
-        this._cache[entry.id] = fc.features.map((f) => ({ ...f, properties: { genre: 'shapefile', contourSeul: true, nouveau: f.properties.id[0] === 'T', name_fr: `${f.properties.nom || f.properties.id} (${f.properties.id})` } }));
-        return this._cache[entry.id];
-      }
+      const fc = await AMGT4CEM_ShpLoader.load(entry.shapefile, {});
       let entites = {};
       if (entry.referentiel) {
         try { entites = (await (await fetch(`${entry.referentiel}?t=${Date.now()}`)).json()).entites || {}; } catch (err) { /* sans nom : l'id sert d'étiquette */ }
@@ -391,7 +382,7 @@ const AMGT4CEM_PatrimoineLayer = {
   _buildPolygonLayer(feature, color) {
     const props = feature.properties || {};
     const rings = feature.geometry.coordinates.map((ring) => ring.map((pt) => AMGT4CEM_CRS.lambertToLatLng(pt)));
-    // Couche d'essai : contour seul (les zones restent visibles dessous) ; trait plus épais pour les objets nouveaux (T…).
+    // Contour seul (les zones restent visibles dessous) ; trait plus épais pour les objets nouveaux.
     const seul = !!props.contourSeul;
     const layer = L.polygon(rings, {
       color,

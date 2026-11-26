@@ -1,15 +1,16 @@
 /**
  * Réglages > Avancé > Adaptations de plans : cadre « Déposer un shapefile » (droit « plans »).
  *
- * Lot C de l'écriture du shapefile (18/11/2026). Un agent charge le ZIP reçu d'un dessinateur : l'application le contrôle sur le
- * serveur (workers/depot/geometries.js), affiche un résumé (objets sans identifiant, contours modifiés, objets disparus), puis, après
- * confirmation, enregistre une nouvelle version dans R2. Chaque dépôt garde son auteur, sa date et le ZIP tel que reçu ; on peut
- * restaurer une ancienne version. Les contours ne sont jamais ré-encodés ; le .dbf est reconstruit (id, GENRE, NOM_FR, NOM_NL).
- *
- * Couches offertes : seul l'essai pour l'instant. Le vrai shapefile (polygones) s'ajoutera ici après le feu vert explicite de Jph.
+ * Un agent charge le ZIP reçu d'un dessinateur : l'application le contrôle sur le serveur (workers/depot/geometries.js) et liste les
+ * différences avec la version en cours (objets ajoutés, contours modifiés, objets disparus : Id, Genre, Nom FR). Après les cases
+ * de confirmation et le mot POLYGONES, la version en cours est gardée en sauvegarde et remplacée (nouvelle version dans R2).
+ * Chaque dépôt garde son auteur, sa date et le ZIP tel que reçu ; on peut restaurer une ancienne version. Les contours ne sont
+ * jamais ré-encodés ; le .dbf est reconstruit (id, GENRE, NOM_FR, NOM_NL). Seul le vrai shapefile (polygones, DITP-DIOV) existe.
  */
 (function () {
-const COUCHES_OFFERTES = [{ cle: 'essai', libelle: 'Essai (fichier de test)' }];
+const COUCHE = 'polygones';
+const MOT_CONFIRMATION = 'POLYGONES';
+const MAX_LIGNES = 30; // lignes affichées par liste (le reste est résumé : « … et N autres »)
 
 const h = (tag, attrs, ...kids) => {
   const n = document.createElement(tag);
@@ -64,15 +65,14 @@ function cadre() {
   const statut = h('p', { class: 'rgl-statut', text: 'Choisissez le fichier ZIP reçu du dessinateur.' });
   const dire = (texte, type) => { statut.className = `rgl-statut${type ? ` rgl-statut--${type}` : ''}`; statut.textContent = texte; };
 
-  const couche = h('select', { class: 'rgl-input', 'aria-label': 'Couche à écrire' }, ...COUCHES_OFFERTES.map((c) => h('option', { value: c.cle, text: c.libelle })));
-  const fichier = h('input', { type: 'file', accept: '.zip,application/zip', class: 'rgl-input', 'aria-label': 'Fichier ZIP à déposer' });
+    const fichier = h('input', { type: 'file', accept: '.zip,application/zip', class: 'rgl-input', 'aria-label': 'Fichier ZIP à déposer' });
   const par = h('input', { type: 'text', class: 'rgl-input', maxlength: '100', placeholder: 'Nom du dessinateur ou du service', 'aria-label': 'Déposé par' });
   const controler = h('button', { type: 'button', class: 'rgl-btn', text: 'Contrôler le fichier' });
   const zone = h('div', {});
   const histo = h('div', {});
   const champ = (libelle, ...contenu) => h('div', { class: 'rgl-row' }, h('span', { class: 'rgl-row__body' }, h('span', { class: 'rgl-row__text', text: libelle }), ...contenu));
-  bloc.append(h('h2', { class: 'rgl-bloc__titre', text: 'Déposer un shapefile' }), statut,
-    champ('Couche', couche), champ('Fichier ZIP', fichier), champ('Déposé par', par), h('div', { class: 'rgl-actions' }, controler), zone, histo);
+  bloc.append(h('h2', { class: 'rgl-bloc__titre', text: 'Déposer un shapefile (DITP-DIOV)' }), statut,
+    champ('Fichier ZIP', fichier), champ('Déposé par', par), h('div', { class: 'rgl-actions' }, controler), zone, histo);
 
   let courant = null; // { fichiers, zip, nomZip, versionBase }
 
@@ -100,39 +100,53 @@ function cadre() {
       if (erreurs.length > 20) zone.append(h('p', { class: 'rgl-row__aide', text: `… et ${erreurs.length - 20} autres.` }));
       return;
     }
+    const liste = (titre, aide, items, rouge) => {
+      const bloc = h('div', { class: 'rgl-row' }, h('span', { class: 'rgl-row__body' },
+        h('span', { class: 'rgl-row__text', text: `${titre} (${items.length})`, ...(rouge && items.length ? { style: 'color: #9b1c1c; font-weight: 500;' } : {}) })));
+      const corps = bloc.firstChild;
+      if (aide && items.length) corps.append(h('span', { class: 'rgl-row__aide', text: aide }));
+      for (const o of items.slice(0, MAX_LIGNES)) corps.append(h('span', { class: 'rgl-row__aide', text: `${o.id} · ${o.genre || 'genre ?'} · ${o.nom || 'sans nom'}` }));
+      if (items.length > MAX_LIGNES) corps.append(h('span', { class: 'rgl-row__aide', text: `… et ${items.length - MAX_LIGNES} autres` }));
+      return bloc;
+    };
     const lignes = [
       ligne('Contrôles', 'Fichiers cohérents, Lambert 72, contours valides, identifiants sans doublon ambigu.'),
-      ligne(`Version courante : ${dateVersion(resume.versionCourante)}`, resume.versionCourante ? `Objets dans le fichier déposé : ${resume.objetsDeposes}` : `Première écriture de cette couche. Objets dans le fichier : ${resume.objetsDeposes}`),
-      ligne('Objets sans identifiant (Pn)', `${resume.sansId}${resume.sansId ? ` — Les références ${resume.premierId} à ${resume.dernierId} seront appliquées à l'import.` : ''}`),
-      ligne('Contours modifiés', String(resume.modifies)),
-      ligne('Objets disparus du fichier', String(resume.disparus.length), resume.disparus.length > 0),
+      ligne('Version en cours', resume.versionCourante ? `du ${dateVersion(resume.versionCourante)} · fichier déposé : ${resume.objetsDeposes} objets` : `Première écriture. Objets dans le fichier : ${resume.objetsDeposes}`),
+      liste('Objets ajoutés', 'Ils recevront ces identifiants à l\'enregistrement (aperçu : un autre dépôt peut passer avant).', resume.listeAjoutes || []),
+      liste('Contours modifiés', '', resume.listeModifies || []),
+      liste('Objets disparus du fichier', '', resume.listeDisparus || [], true),
       ligne('Inchangés', String(resume.inchanges)),
     ];
-    if (resume.doublons.length) lignes.push(ligne('Identifiants en double', `${resume.doublons.map((d) => `${d.id} (${d.copies} copie${d.copies > 1 ? 's' : ''})`).join(', ')} : les copies recevront un nouvel identifiant.`));
     zone.append(...lignes);
     const conf = {};
     const cases = [];
     if (resume.disparus.length) {
       const c = h('input', { type: 'checkbox' });
-      cases.push([c, 'retraits', `Je confirme le retrait de ${resume.disparus.length} objet${resume.disparus.length > 1 ? 's' : ''} (${resume.disparus.slice(0, 6).join(', ')}${resume.disparus.length > 6 ? '…' : ''}) ; leurs attributs et leur identifiant sont conservés.`]);
+      cases.push([c, 'retraits', `Je confirme le retrait de ${resume.disparus.length} objet${resume.disparus.length > 1 ? 's' : ''} ; leurs attributs et leur identifiant sont conservés.`]);
     }
     if (resume.versionAncienne) {
       const c = h('input', { type: 'checkbox' });
-      cases.push([c, 'versionAncienne', resume.versionBase ? `Ce fichier part de la version du ${dateVersion(resume.versionBase)}, pas de la version courante : je confirme qu'il peut la remplacer.` : 'La version de départ de ce fichier est inconnue (nom du ZIP modifié) : je confirme qu\'il peut remplacer la version courante.']);
+      cases.push([c, 'versionAncienne', resume.versionBase ? `Ce fichier part de la version du ${dateVersion(resume.versionBase)}, pas de la version en cours : je confirme qu'il peut la remplacer.` : 'La version de départ de ce fichier est inconnue (nom du ZIP modifié) : je confirme qu\'il peut remplacer la version en cours.']);
     }
     for (const [c, , texte] of cases) zone.append(h('label', { class: 'rgl-row__aide', style: 'display:flex;gap:8px;align-items:flex-start;margin:8px 0;' }, c, h('span', { text: texte })));
-    const ecrire = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: couche.value === 'essai' ? 'Enregistrer sur l\'essai' : 'Enregistrer dans le vrai shapefile' });
+    const mot = h('input', { type: 'text', class: 'rgl-input', autocomplete: 'off', autocapitalize: 'characters', 'aria-label': 'Confirmation', placeholder: `Écrire ${MOT_CONFIRMATION}` });
+    zone.append(h('p', { class: 'rgl-row__aide', text: 'La version en cours est gardée en sauvegarde, puis remplacée par ce fichier. Pour confirmer :' }), mot);
+    const ecrire = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: 'Enregistrer dans le shapefile' });
+    ecrire.disabled = true;
+    mot.addEventListener('input', () => { ecrire.disabled = mot.value.trim() !== MOT_CONFIRMATION; });
     ecrire.addEventListener('click', async () => {
       if (ecrire.disabled) return; // un seul envoi : un second appui ne doit pas écrire une deuxième version
+      if (mot.value.trim() !== MOT_CONFIRMATION) { dire(`Écrivez ${MOT_CONFIRMATION} pour confirmer.`, 'erreur'); return; }
+      conf.mot = MOT_CONFIRMATION;
       for (const [c, cle] of cases) conf[cle] = c.checked;
       if (cases.some(([c]) => !c.checked)) { dire('Cochez les confirmations demandées avant d\'enregistrer.', 'erreur'); return; }
       const liberer = occuper(ecrire, 'Enregistrement…');
       try {
         dire('Enregistrement…');
-        const out = await Auth.call(`/geometries/shapefile/${couche.value}/deposer`, { method: 'POST', body: { fichiers: courant.fichiers, zip: courant.zip, nomZip: courant.nomZip, versionBase: courant.versionBase, deposePar: par.value.trim(), confirmations: conf } });
+        const out = await Auth.call(`/geometries/shapefile/${COUCHE}/deposer`, { method: 'POST', body: { fichiers: courant.fichiers, zip: courant.zip, nomZip: courant.nomZip, versionBase: courant.versionBase, deposePar: par.value.trim(), confirmations: conf } });
         zone.replaceChildren();
         courant = null;
-        dire(`Version du ${dateVersion(out.version)} enregistrée : ${out.objets} objets${out.attribues.length ? `, identifiants attribués : ${out.attribues.join(', ')}` : ''}. ${out.attribues.some((i) => i[0] === 'P') ? 'Les nouveaux objets sont à compléter dans Attributs (genre, noms). ' : ''}Téléchargez la version à jour avant de la renvoyer au dessinateur.`, 'ok');
+        dire(`Version du ${dateVersion(out.version)} enregistrée : ${out.objets} objets${out.attribues.length ? `, identifiants attribués : ${out.attribues.join(', ')}` : ''}. Téléchargez la version à jour avant de la renvoyer au dessinateur.`, 'ok');
         await montrerHistorique();
       } catch (err) { liberer(); dire(err.message + (err.data && err.data.manque ? ' (confirmation manquante)' : ''), 'erreur'); }
     });
@@ -148,7 +162,7 @@ function cadre() {
       courant = await lireChoix();
       let out;
       try {
-        out = await Auth.call(`/geometries/shapefile/${couche.value}/deposer`, { method: 'POST', body: { fichiers: courant.fichiers, versionBase: courant.versionBase, deposePar: par.value.trim(), apercu: true } });
+        out = await Auth.call(`/geometries/shapefile/${COUCHE}/deposer`, { method: 'POST', body: { fichiers: courant.fichiers, versionBase: courant.versionBase, deposePar: par.value.trim(), apercu: true } });
       } catch (err) {
         if (err.data && err.data.erreurs) { montrerResume(null, err.data.erreurs); dire('Le fichier est refusé.', 'erreur'); return; }
         throw err;
@@ -161,7 +175,7 @@ function cadre() {
   async function montrerHistorique() {
     histo.replaceChildren();
     try {
-      const { versions } = await Auth.call(`/geometries/depots/${couche.value}`);
+      const { versions } = await Auth.call(`/geometries/depots/${COUCHE}`);
       if (!versions.length) return;
       histo.append(h('h3', { class: 'rgl-bloc__titre', text: 'Historique des versions' }));
       for (const v of versions.slice(0, 15)) {
@@ -171,9 +185,9 @@ function cadre() {
           const z = h('button', { type: 'button', class: 'rgl-btn', text: 'ZIP reçu' });
           z.addEventListener('click', async () => {
             try {
-              const r = await fetch(`${Auth.serverUrl}/geometries/depots/${couche.value}/${v.version}/zip`, { headers: { Authorization: `Bearer ${Auth.session().jeton}` } });
+              const r = await fetch(`${Auth.serverUrl}/geometries/depots/${COUCHE}/${v.version}/zip`, { headers: { Authorization: `Bearer ${Auth.session().jeton}` } });
               if (!r.ok) throw new Error(`Téléchargement impossible (HTTP ${r.status}).`);
-              const a = h('a', { href: URL.createObjectURL(await r.blob()), download: v.nomZip || `${couche.value}_${v.version}.zip` });
+              const a = h('a', { href: URL.createObjectURL(await r.blob()), download: v.nomZip || `${COUCHE}_${v.version}.zip` });
               document.body.append(a); a.click(); a.remove();
             } catch (err) { dire(err.message, 'erreur'); }
           });
@@ -186,7 +200,7 @@ function cadre() {
             if (!confirm(`Remettre la version du ${dateVersion(v.version)} comme version courante ?\n\nC'est une nouvelle version : l'historique reste intact.`)) return;
             const liberer = occuper(r, 'Restauration…');
             try {
-              const out = await Auth.call(`/geometries/shapefile/${couche.value}/restaurer`, { method: 'POST', body: { version: v.version } });
+              const out = await Auth.call(`/geometries/shapefile/${COUCHE}/restaurer`, { method: 'POST', body: { version: v.version } });
               dire(`Version du ${dateVersion(v.version)} restaurée (nouvelle version du ${dateVersion(out.version)}).`, 'ok');
               await montrerHistorique();
             } catch (err) { liberer(); dire(err.message, 'erreur'); }
@@ -200,7 +214,6 @@ function cadre() {
       }
     } catch (err) { /* couche pas encore écrite : pas d'historique */ }
   }
-  couche.addEventListener('change', () => { zone.replaceChildren(); montrerHistorique(); });
   montrerHistorique();
   return bloc;
 }
