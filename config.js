@@ -331,6 +331,15 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       styles: ['./src/tuningSynoptique.css'],
       scripts: ['./vendor/leaflet/leaflet.js', './vendor/proj4/proj4.js', './vendor/proj4leaflet/proj4leaflet.js', './src/buildInfo.js', './src/services.js', './src/crs.js', './src/horsLigne/magasin.js', './src/basemap.js', './src/buildInfoControl.js', './src/tuilesGeom.js', './src/tuningSynoptique.js'],
     },
+    // Page jetable (adresse à connaître, absente de la barre de navigation) : essai d'une carte affichée en Lambert 72 (tuiles UrbIS
+    // de la grille EPSG:31370), séparée de la carte principale. Voir src/lambertTest.js.
+    lambert: {
+      title: 'AMGT4CEM – Essai Lambert 72',
+      template: 'amgt-tpl-lambert',
+      nav: false,
+      styles: ['./src/lambertTest.css'],
+      scripts: ['./vendor/leaflet/leaflet.js', './vendor/proj4/proj4.js', './vendor/proj4leaflet/proj4leaflet.js', './src/buildInfo.js', './src/services.js', './src/crs.js', './src/shpLoader.js', './src/buildInfoControl.js', './src/scaleControl.js', './src/lambertTest.js'],
+    },
     reglages: {
       title: 'AMGT4CEM – Réglages',
       template: 'amgt-tpl-reglages',
