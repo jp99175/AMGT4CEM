@@ -419,9 +419,11 @@ async function monter(conteneur, opts = {}) {
     rendre();
   });
   /* ---- Appliquer : contrôle sur le serveur, confirmation, écriture (lot C, partie 2) ----
-   * Cible : la couche d'essai. Le vrai shapefile (« polygones ») ne sera offert qu'après le feu vert explicite de Jph ; le serveur
-   * l'accepte déjà (zones et attributs mis à jour), l'écran n'y mène pas encore. Sur l'essai, ni les zones ni les attributs ne bougent. */
-  const COUCHE_CIBLE = 'essai';
+   * Cible : le vrai shapefile (« polygones »), sur le feu vert de Jph du 26/11/2026 (l'essai a servi à éprouver l'écriture). Les zones
+   * intégrées quittent les zones et les attributs sont écrits : une confirmation par mot (POLYGONES) est demandée avant d'écrire.
+   * Sur la couche d'essai (valeur 'essai'), ni les zones ni les attributs ne bougent. */
+  const COUCHE_CIBLE = 'polygones';
+  const MOT_CONFIRMATION = 'POLYGONES';
   const LIBELLE_CIBLE = { essai: 'Essai (fichier de test)', polygones: 'Shapefile réel' };
   const zoneAppliquer = h('div', {});
   const dateVersion = (v) => { const m = /^v(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})/.exec(v || ''); return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : (v || ''); };
@@ -438,12 +440,18 @@ async function monter(conteneur, opts = {}) {
     lance();
     const info = (texte) => h('p', { class: 'rgl-note', text: texte });
     const annulerB = h('button', { type: 'button', class: 'rgl-btn', text: 'Annuler' });
-    const ecrireB = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: `Enregistrer sur ${COUCHE_CIBLE === 'essai' ? 'l\'essai' : 'le shapefile'}` });
+    const ecrireB = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: COUCHE_CIBLE === 'essai' ? 'Enregistrer sur l\'essai' : 'Enregistrer dans le vrai shapefile' });
+    const champ = h('input', { type: 'text', class: 'rgl-input', autocomplete: 'off', autocapitalize: 'characters', 'aria-label': 'Confirmation', placeholder: `Écrire ${MOT_CONFIRMATION} pour confirmer` });
+    if (COUCHE_CIBLE !== 'essai') {
+      ecrireB.disabled = true;
+      champ.addEventListener('input', () => { ecrireB.disabled = champ.value.trim() !== MOT_CONFIRMATION; });
+    }
     annulerB.addEventListener('click', () => { zoneAppliquer.textContent = ''; });
     ecrireB.addEventListener('click', async () => {
       if (ecrireB.disabled) return;
       const avant = ecrireB.textContent; ecrireB.disabled = true; annulerB.disabled = true; ecrireB.textContent = 'Enregistrement…'; ecrireB.style.opacity = '0.6';
       try {
+        if (COUCHE_CIBLE !== 'essai' && champ.value.trim() !== MOT_CONFIRMATION) throw new Error(`Écrivez ${MOT_CONFIRMATION} pour confirmer.`);
         const out = await AMGT4CEM_Stockage.appliquer(COUCHE_CIBLE, corps);
         zoneAppliquer.textContent = '';
         const num = out.attribues.length ? ` Numéros attribués : ${plage(out.attribues[0], out.attribues[out.attribues.length - 1])}.` : '';
@@ -459,6 +467,7 @@ async function monter(conteneur, opts = {}) {
       info(`Numéros attribués : ${plage(ap.premierId, ap.dernierId)}${ap.ajouts.some((x) => x.id) ? ' (les zones qui gardent un identifiant le conservent)' : ''}`),
       info(`Objets dans le fichier après : ${ap.objetsApres}`),
       info(COUCHE_CIBLE === 'essai' ? 'Sur l\'essai, les vraies zones et les vrais attributs ne sont pas modifiés.' : 'Les zones intégrées quittent les zones ; les objets retirés y reviennent avec leur identifiant ; les attributs sont écrits.'),
+      ...(COUCHE_CIBLE === 'essai' ? [] : [champ]),
       h('div', { class: 'rgl-actions' }, annulerB, ecrireB));
   });
 
