@@ -10,7 +10,7 @@ NS.Importer = {
   /** @returns {Promise<object>} l'entrée prête à être enregistrée (photos déjà dans le stockage local) */
   async fromServer(reference) {
     const blob = await AMGT4CEM_Auth.call(`/signalements/${encodeURIComponent(reference)}/archive`, { blob: true });
-    const files = await NS.ZipReader.read(await blob.arrayBuffer());
+    const files = await NS.ZipLecture.lire(await blob.arrayBuffer());
     const raw = files.get('signalement.json');
     if (!raw) throw new Error('Archive sans signalement.json.');
     const dep = JSON.parse(new TextDecoder().decode(raw));
