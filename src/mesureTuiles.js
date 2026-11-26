@@ -2,8 +2,8 @@
  * Page jetable « ?page=mesure-tuiles » : mesure, depuis l'appareil de l'agent, le poids des tuiles du fond UrbIS (WMTS)
  * autour des stations et tunnels, pour chiffrer un stockage hors ligne. À retirer quand le cache hors ligne existera.
  *
- * Marge constante À L'ÉCRAN : la marge saisie vaut pour le zoom 19, elle double à chaque niveau en moins
- * (100 m en zoom 19, 200 m en 18, 400 m en 17, 800 m en 16, 1 600 m en 15).
+ * Marge constante À L'ÉCRAN : la marge saisie vaut pour le niveau 12 de la grille Lambert 72, elle double à chaque niveau en moins
+ * (100 m au niveau 12, 200 m au 11, 400 m au 10, 800 m au 9, 1 600 m au 8).
  *
  * Étapes : 1) test de lecture autorisée (CORS) sur une tuile ; 2) liste exacte des tuiles qui touchent la marge
  * (distance tuile-contour des stations et tunnels, en Web Mercator) ; 3) tirage au hasard de N tuiles par zoom ;
@@ -27,8 +27,8 @@ const h = (tag, attrs, ...kids) => {
   return n;
 };
 
-const { tuilesAutour } = AMGT4CEM_TuilesGeom; // calcul des tuiles : src/tuilesGeom.js
-const ZOOMS = [19, 18, 17, 16, 15];
+const { tuilesAutour } = AMGT4CEM_TuilesLambert; // calcul des tuiles : src/tuilesLambert.js
+const ZOOMS = [12, 11, 10, 9, 8]; // niveaux de la grille Lambert 72
 const COUCHES_PROPOSEES = ['UrbISFrenchLabeledGray', 'UrbISFrenchDutchLabeledGray'];
 const PARALLELE = 3;
 
@@ -54,8 +54,7 @@ async function chargerSegments() {
     objets += 1;
     const rings = f.geometry.type === 'Polygon' ? f.geometry.coordinates : [].concat(...f.geometry.coordinates);
     for (const ring of rings) {
-      const pts = ring.map((c) => proj4(AMGT4CEM_CONFIG.businessCRS.epsg, 'EPSG:3857', [c[0], c[1]]));
-      for (let i = 0; i < pts.length - 1; i += 1) segs.push([pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]]);
+      for (let i = 0; i < ring.length - 1; i += 1) segs.push([ring[i][0], ring[i][1], ring[i + 1][0], ring[i + 1][1]]); // déjà en Lambert 72
     }
   }
   return { segs, objets };
@@ -146,7 +145,7 @@ function monter() {
     c.dataset.zoom = String(z);
     return c;
   });
-  const lignesZoom = cases.map((c) => h('label', { class: 'mt-case' }, c, h('span', { text: `Zoom ${c.dataset.zoom}` })));
+  const lignesZoom = cases.map((c) => h('label', { class: 'mt-case' }, c, h('span', { text: `Niveau ${c.dataset.zoom}` })));
 
   const statut = h('p', { class: 'mt-statut', role: 'status', hidden: '' });
   const sortie = h('div', { class: 'mt-sortie' });
@@ -159,16 +158,16 @@ function monter() {
   lancer.addEventListener('click', async () => {
     const zooms = cases.filter((c) => c.checked).map((c) => Number(c.dataset.zoom));
     const couche = choixCouche.value;
-    const m19 = Math.max(20, Number(marge.value) || 100);
+    const mFin = Math.max(20, Number(marge.value) || 100);
     const n = Math.max(5, Math.min(60, Number(echantillon.value) || 20));
-    if (!zooms.length) { dire('Cochez au moins un zoom.', true); return; }
+    if (!zooms.length) { dire('Cochez au moins un niveau.', true); return; }
     lancer.disabled = true; copier.hidden = true; sortie.textContent = '';
     try {
       dire('Calcul des tuiles autour des stations et tunnels…');
       const { segs, objets } = await chargerSegments();
       const plan = [];
       for (const z of zooms.sort((a, b) => b - a)) {
-        const margeZ = m19 * 2 ** (19 - z);
+        const margeZ = mFin * 2 ** (12 - z);
         const liste = tuilesAutour(segs, z, margeZ);
         plan.push({ z, marge: margeZ, liste, tirage: tirer(liste, n) });
       }
@@ -189,7 +188,7 @@ function monter() {
       const resultats = [];
       for (const p of plan) {
         const taches = p.tirage.map(([x, y]) => () => peser(adresseTuile(cfg, couche, p.z, x, y)));
-        const mesures = await parLots(taches, PARALLELE, (f, t) => dire(`Zoom ${p.z} : ${f} / ${t} tuiles pesées…`));
+        const mesures = await parLots(taches, PARALLELE, (f, t) => dire(`Niveau ${p.z} : ${f} / ${t} tuiles pesées…`));
         const ok = mesures.filter((r) => !r.erreur).map((r) => r.octets).sort((a, b) => a - b);
         const erreurs = mesures.length - ok.length;
         const moy = ok.length ? ok.reduce((a, b) => a + b, 0) / ok.length : 0;
@@ -202,13 +201,13 @@ function monter() {
       for (const r of resultats) {
         const est = r.moy * r.liste.length;
         total += est; totalTuiles += r.liste.length;
-        lignes.push(`Zoom ${r.z} (marge ${fmtN(r.marge)} m) : ${fmtN(r.liste.length)} tuiles`
+        lignes.push(`Niveau ${r.z} (marge ${fmtN(r.marge)} m) : ${fmtN(r.liste.length)} tuiles`
           + (r.ok.length ? ` ; poids moyen ${fmtKo(r.moy)} (médian ${fmtKo(r.med)}, de ${fmtKo(r.ok[0])} à ${fmtKo(r.ok[r.ok.length - 1])}${r.vides ? `, ${r.vides} quasi vide${r.vides > 1 ? 's' : ''}` : ''}) ; estimation ${fmtMo(est)}` : ' ; aucune mesure')
           + (r.erreurs ? ` ; ${r.erreurs} erreur${r.erreurs > 1 ? 's' : ''}` : ''));
       }
       lignes.push(`Total des ${resultats.length} niveaux : ${fmtN(totalTuiles)} tuiles, environ ${fmtMo(total)}`);
       texteResultat = [`Mesure des tuiles UrbIS (build ${AMGT4CEM_BUILD_TIMESTAMP}) — couche ${couche}`,
-        `${objets} objets (stations et tunnels), ${n} tuiles pesées par zoom, marge ${fmtN(m19)} m au zoom 19 (doublée à chaque niveau en moins)`, ...lignes].join('\n');
+        `${objets} objets (stations et tunnels), ${n} tuiles pesées par zoom, marge ${fmtN(mFin)} m au niveau 12 (doublée à chaque niveau en moins)`, ...lignes].join('\n');
 
       sortie.append(h('h2', { text: 'Résultat' }), ...lignes.map((l) => h('p', { class: 'mt-ligne', text: l })));
       dire('Mesure terminée.');
@@ -225,9 +224,9 @@ function monter() {
   root.append(
     h('section', { class: 'mt-bloc' },
       h('label', { class: 'mt-champ' }, h('span', { text: 'Couche de tuiles' }), choixCouche),
-      h('label', { class: 'mt-champ' }, h('span', { text: 'Marge au zoom 19, en mètres (doublée à chaque niveau en moins)' }), marge),
-      h('label', { class: 'mt-champ' }, h('span', { text: 'Tuiles pesées par zoom (au hasard)' }), echantillon),
-      h('div', { class: 'mt-champ' }, h('span', { text: 'Zooms' }), h('div', { class: 'mt-cases' }, ...lignesZoom))),
+      h('label', { class: 'mt-champ' }, h('span', { text: 'Marge au niveau 12, en mètres (doublée à chaque niveau en moins)' }), marge),
+      h('label', { class: 'mt-champ' }, h('span', { text: 'Tuiles pesées par niveau (au hasard)' }), echantillon),
+      h('div', { class: 'mt-champ' }, h('span', { text: 'Niveaux' }), h('div', { class: 'mt-cases' }, ...lignesZoom))),
     h('p', { class: 'mt-aide', text: 'Environ 100 tuiles seront téléchargées (quelques Mo).' }),
     h('div', { class: 'mt-actions' }, lancer, copier), statut, sortie,
     h('p', { class: 'mt-pied' }, h('a', { href: 'home.html?page=reglages', text: '‹ Réglages' }), ` · build ${AMGT4CEM_BUILD_TIMESTAMP}`));

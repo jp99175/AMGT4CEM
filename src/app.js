@@ -19,6 +19,8 @@
   // Module facultatif : s'il manque (ancienne liste de scripts en cache), la carte s'ouvre quand même sur la vue d'ensemble.
   const vueMemorisee = window.AMGT4CEM_MapView ? AMGT4CEM_MapView.get() : null;
   const map = L.map('map', {
+    // Affichage en Lambert 72 (grille des tuiles de la Région), comme les données et les plans : voir lambertGrid.js.
+    crs: AMGT4CEM_LambertGrid.crs(),
     // Pas de contrôle de zoom Leaflet : remplacé par la recherche en haut à
     // droite (voir searchTool.js). Le zoom reste possible à la molette, au
     // pincement et au double-clic.
@@ -40,11 +42,12 @@
     // détermine l'empilement visuel. On ajoute le repère "BUILD..." APRÈS
     // l'attribution pour qu'il apparaisse au-dessus (voir plus bas).
     attributionControl: false,
-    maxZoom: AMGT4CEM_CONFIG.maxZoom,
+    minZoom: 0,
+    maxZoom: AMGT4CEM_LambertGrid.MAX_ZOOM,
     // Vue par défaut le temps que les données soient chargées (recentrée ensuite
     // sur l'emprise réelle du réseau).
     center: [50.85, 4.35],
-    zoom: 12,
+    zoom: 6,
     // Dernière vue de cet onglet (si elle existe) : prime sur la vue d'ensemble.
     ...(vueMemorisee || {}),
   });

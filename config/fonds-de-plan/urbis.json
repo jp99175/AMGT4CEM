@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-11-26",
-  "note": "Fond de plan de référence grisé : par défaut les TUILES UrbIS (WMTS GeoWebCache, cache mensuel, CC0), grille Web Mercator EPSG:900913 déclarée dans le GetCapabilities du service (relevé du 04/11/2026), couche UrbISFrenchLabeledGray = équivalent de urbisFRGray. Autres couches du service : UrbISDutchLabeled{Gray,Color}, UrbISFrenchDutchLabeled{Gray,Color}, UrbISNotLabeled{Gray,Color}, UrbISFrenchLabeledColor. Repli automatique sur le WMS public UrbIS (le même que MobiGIS ; URL dans services.json, clé « urbis », couche `layers`) si les tuiles ne répondent pas. L'adresse des tuiles se règle dans Réglages > Services et relais (services.json, clé « urbis-tuiles ») ; l'adresse ci-dessous n'est qu'une valeur de secours. Pour n'afficher que le WMS (sans repli ni tuiles), choisir « WMS seul » dans Réglages > Services et relais : cela écrit `\"mode\": \"wms\"` ici (absent ou « tuiles » = tuiles avec WMS en repli) et laisse le bloc `tuiles` intact.",
+  "note": "Fond de plan de référence grisé : par défaut les TUILES UrbIS (WMTS GeoWebCache, cache mensuel, CC0), grille Lambert 72 « EPSG:31370 » (16 niveaux, la même que la carte ; le service ne propose plus la grille Web Mercator EPSG:900913 pour la couche grise depuis novembre 2026, voir claude/decisions-sauvegardes-et-remise-a-zero.md §7), couche UrbISFrenchLabeledGray = équivalent de urbisFRGray. Autres couches du service : UrbISDutchLabeled{Gray,Color}, UrbISFrenchDutchLabeled{Gray,Color}, UrbISNotLabeled{Gray,Color}, UrbISFrenchLabeledColor. Repli automatique sur le WMS public UrbIS (le même que MobiGIS ; URL dans services.json, clé « urbis », couche `layers`) si les tuiles ne répondent pas. L'adresse des tuiles se règle dans Réglages > Services et relais (services.json, clé « urbis-tuiles ») ; l'adresse ci-dessous n'est qu'une valeur de secours. Pour n'afficher que le WMS (sans repli ni tuiles), choisir « WMS seul » dans Réglages > Services et relais : cela écrit `\"mode\": \"wms\"` ici (absent ou « tuiles » = tuiles avec WMS en repli) et laisse le bloc `tuiles` intact.",
   "id": "urbis-grey",
   "label": "UrbIS",
   "type": "wms",
@@ -13,7 +13,7 @@
     "type": "wmts-kvp",
     "url": "https://geoservices-basemap.irisnet.be/geowebcache/service/wmts",
     "layer": "UrbISFrenchLabeledGray",
-    "tileMatrixSet": "EPSG:900913",
+    "tileMatrixSet": "EPSG:31370",
     "format": "image/png"
   },
   "mode": "tuiles"

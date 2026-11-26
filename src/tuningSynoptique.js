@@ -20,7 +20,7 @@
  *    station seule. Un arrêt sans contour (tram, terminus) peut borner une portion : seule la zone des contours entre les bornes est
  *    gardée. Les contours de tout le réseau restent visibles en gris sous la sélection ; les contours choisis sont dessinés sur la carte dans la couleur de la ligne. Une liste permet de retirer
  *    des tronçons ou des stations (retraits mémorisés jusqu'à « Tout remettre »). L'outil calcule les tuiles UrbIS couvertes
- *    (marge de 100 m au zoom 19, doublée à chaque niveau en moins) et leur poids estimé. Rien n'est téléchargé ; la sélection
+ *    (marge de 100 m au niveau 12 de la grille Lambert, doublée à chaque niveau en moins) et leur poids estimé. Rien n'est téléchargé ; la sélection
  *    reste sur l'appareil.
  *
  * Données
@@ -49,7 +49,7 @@ const ARRETS_SECOURS = './config/secours/stib-arrets-tram-metro.json';
 const LIGNES_SECOURS = './config/secours/stib-lignes-tram-metro.json';
 const CLE_BROUILLON = 'amgt4cem.tuning-synoptique.v1';
 const CLE_HL = 'amgt4cem.tuning-synoptique.horsligne.v1';
-const { tuilesAutour } = AMGT4CEM_TuilesGeom; // calcul des tuiles : src/tuilesGeom.js
+const { tuilesAutour } = AMGT4CEM_TuilesLambert; // calcul des tuiles : src/tuilesLambert.js
 const DISTANCE_MEME_LIEU_M = 150; // deux arrêts plus proches que ça forment un seul emplacement
 const COULEURS_ETAT = { valide: '#2e7d32', auto: '#1565c0', ambigu: '#c62828', a_revoir: '#ef6c00', sans: '#6b7280', aucun: '#6b7280' };
 const LIBELLES_ETAT = { valide: 'validé', auto: 'proposé', ambigu: 'à choisir', a_revoir: 'à revoir', sans: 'sans correspondance', aucun: 'pas d\'arrêt réel' };
@@ -471,7 +471,7 @@ function polygonesDe(ps, couleur, fin) {
 }
 
 function recadrerCarte(b) {
-  if (b && b.isValid()) S.map.fitBounds(b, { padding: [24, 24], maxZoom: 19, animate: true });
+  if (b && b.isValid()) S.map.fitBounds(b, { padding: [24, 24], maxZoom: 13, animate: true });
 }
 
 // ------------------------------------------------------------------ sélection
@@ -625,7 +625,7 @@ function rendreDetailArret() {
       h('small', { text: ` ${c.f.properties.mode} · arrêt ${c.id}${c.commun.length ? '' : ' · autre ligne que le dessin'}` }));
     txt.addEventListener('click', () => {
       const ll = enLatLng(xyArret(c.f));
-      S.map.setView(ll, Math.max(S.map.getZoom(), 18), { animate: true });
+      S.map.setView(ll, Math.max(S.map.getZoom(), 12), { animate: true });
     });
     d.append(h('div', { class: 'tun-cand' }, cb, txt));
     c.i = i;
@@ -658,11 +658,12 @@ function enregistrerArret(etat) {
 //
 // Rien n'est téléchargé : l'outil désigne des zones (lignes entières, ou portions de ligne entre deux stations) et calcule les
 // tuiles du fond UrbIS qui les couvrent, avec leur poids estimé. Décisions du 10 et 11/11/2026 : voir
-// claude/specification-cache-hors-ligne.md (projet). Marge de 100 m au zoom 19, doublée à chaque niveau en moins.
+// claude/specification-cache-hors-ligne.md (projet). Marge de 100 m au niveau 12 de la grille Lambert, doublée à chaque niveau en moins.
 
-const HL_ZOOMS = [19, 18, 17, 16, 15];
-const HL_MARGE_19_M = 100;
-const HL_KO_PAR_TUILE = { 19: 7.9, 18: 11.9, 17: 18.2, 16: 9.7, 15: 14.8 }; // poids moyens mesurés le 06/11/2026 (couche UrbISFrenchLabeledGray)
+const HL_ZOOMS = [12, 11, 10, 9, 8]; // niveaux de la grille Lambert 72 (0,27 à 4,35 m par pixel)
+const HL_MARGE_FIN_M = 100; // au niveau le plus fin (12) ; doublée à chaque niveau en moins
+const HL_KO_MOYEN = 12; // poids moyen d'une tuile : ESTIMATION (poids des tuiles Lambert pas encore mesuré)
+const HL_KO_PAR_TUILE = { 12: HL_KO_MOYEN, 11: HL_KO_MOYEN, 10: HL_KO_MOYEN, 9: HL_KO_MOYEN, 8: HL_KO_MOYEN };
 const HL_TOLERANCE = 3; // unités du dessin : écart toléré entre le bout d'un tronçon et le contour d'une station
 
 const fmtN = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -906,8 +907,7 @@ function segmentsDe(p) {
   if (f) {
     const rings = f.geometry.type === 'Polygon' ? f.geometry.coordinates : [].concat(...f.geometry.coordinates);
     for (const ring of rings) {
-      const pts = ring.map((c) => proj4(AMGT4CEM_CONFIG.businessCRS.epsg, 'EPSG:3857', [c[0], c[1]]));
-      for (let i = 0; i < pts.length - 1; i += 1) segs.push([pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]]);
+      for (let i = 0; i < ring.length - 1; i += 1) segs.push([ring[i][0], ring[i][1], ring[i + 1][0], ring[i + 1][1]]); // déjà en Lambert 72
     }
   }
   S.hl.segsP.set(p, segs);
@@ -927,7 +927,7 @@ async function calculerTuilesHL() {
   for (const z of HL_ZOOMS) {
     await new Promise((r) => setTimeout(r, 0));
     if (id !== H.calc) return; // la sélection a changé pendant le calcul
-    res.push({ z, marge: HL_MARGE_19_M * 2 ** (19 - z), liste: tuilesAutour(segs, z, HL_MARGE_19_M * 2 ** (19 - z)) });
+    res.push({ z, marge: HL_MARGE_FIN_M * 2 ** (12 - z), liste: tuilesAutour(segs, z, HL_MARGE_FIN_M * 2 ** (12 - z)) });
   }
   H.resultat = { res, manque, nbPoly: ps.length };
   rendreResultatHL();
@@ -946,11 +946,11 @@ function rendreResultatHL(_, enCours) {
   for (const e of r.res) {
     total += e.liste.length;
     ko += e.liste.length * HL_KO_PAR_TUILE[e.z];
-    H.dom.res.append(h('div', { class: 'tun-d-ligne', text: `Zoom ${e.z} (marge ${fmtN(e.marge)} m) : ${fmtN(e.liste.length)} tuiles, environ ${fmtMo(e.liste.length * HL_KO_PAR_TUILE[e.z])}` }));
+    H.dom.res.append(h('div', { class: 'tun-d-ligne', text: `Niveau ${e.z} (${AMGT4CEM_LambertGrid.resolution(e.z).toFixed(2)} m/px, marge ${fmtN(e.marge)} m) : ${fmtN(e.liste.length)} tuiles, environ ${fmtMo(e.liste.length * HL_KO_PAR_TUILE[e.z])}` }));
   }
   H.dom.res.append(h('p', { class: 'tun-d-titre', style: 'margin-top:4px', text: `Total : ${fmtN(total)} tuiles, environ ${fmtMo(ko)} (${r.nbPoly} polygones)` }));
   if (r.manque) H.dom.res.append(h('div', { class: 'tun-d-ligne', style: 'color:#9b1c1c', text: `${r.manque} polygone(s) absent(s) de la copie de la Région : non comptés.` }));
-  H.dom.res.append(h('div', { class: 'tun-d-ligne tun-petit', text: 'Poids moyens mesurés le 06/11/2026 par zoom. Rien n\'est téléchargé.' }));
+  H.dom.res.append(h('div', { class: 'tun-d-ligne tun-petit', text: 'Poids moyen estimé (12 ko par tuile, pas encore mesuré sur la grille Lambert). Rien n\'est téléchargé.' }));
   dessinerCarreauxHL();
 }
 
@@ -961,8 +961,8 @@ function dessinerCarreauxHL() {
   const e = H.resultat.res.find((x) => x.z === Number(H.carreaux));
   if (!e) return;
   for (const [x, y] of e.liste) {
-    const b = AMGT4CEM_TuilesGeom.emprise(e.z, x, y);
-    L.rectangle([AMGT4CEM_TuilesGeom.versLatLng(b.x0, b.y0), AMGT4CEM_TuilesGeom.versLatLng(b.x1, b.y1)], { weight: 0.6, color: '#0b5c75', fillColor: '#0b5c75', fillOpacity: 0.07, interactive: false }).addTo(S.g.carreaux);
+    const b = AMGT4CEM_TuilesLambert.emprise(e.z, x, y);
+    L.rectangle([AMGT4CEM_CRS.lambertToLatLng([b.x0, b.y0]), AMGT4CEM_CRS.lambertToLatLng([b.x1, b.y1])], { weight: 0.6, color: '#0b5c75', fillColor: '#0b5c75', fillOpacity: 0.07, interactive: false }).addTo(S.g.carreaux);
   }
 }
 
@@ -1144,7 +1144,7 @@ function rendreHL() {
     d.append(h('div', { class: 'tun-d-ligne tun-hl-item' }, h('span', { class: 'tun-hl-txt', text: `${H.exclus.size} retrait(s) mémorisé(s)` }), bRem));
   }
 
-  const choix = h('select', { class: 'tun-select' }, h('option', { value: 'aucun', text: 'aucun' }), ...HL_ZOOMS.map((z) => h('option', { value: String(z), text: `zoom ${z}` })));
+  const choix = h('select', { class: 'tun-select' }, h('option', { value: 'aucun', text: 'aucun' }), ...HL_ZOOMS.map((z) => h('option', { value: String(z), text: `niveau ${z}` })));
   choix.value = H.carreaux;
   choix.addEventListener('change', () => { H.carreaux = choix.value; dessinerCarreauxHL(); });
   d.append(h('div', { class: 'tun-d-ligne', style: 'margin-top:6px' }, 'Carreaux à garder, affichés sur la carte : ', choix));
@@ -1266,7 +1266,7 @@ function construirePuces() {
 }
 
 function initCarte() {
-  const map = L.map('tun-carte', { zoomControl: true, preferCanvas: true, attributionControl: false, maxZoom: AMGT4CEM_CONFIG.maxZoom, center: [50.85, 4.37], zoom: 12 });
+  const map = L.map('tun-carte', { crs: AMGT4CEM_LambertGrid.crs(), zoomControl: true, preferCanvas: true, attributionControl: false, minZoom: 0, maxZoom: AMGT4CEM_LambertGrid.MAX_ZOOM, center: [50.85, 4.37], zoom: 6 });
   S.map = map;
   map.attributionControl = L.control.attribution({ prefix: false }).addTo(map);
   AMGT4CEM_BuildInfoControl.init(map);

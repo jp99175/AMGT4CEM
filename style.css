@@ -1218,9 +1218,14 @@ html, body {
 .amgt-btn--tool.amgt-btn--active,
 .amgt-btn--tool.amgt-btn--active:hover { background: #0b5c75; color: #fff; }
 
-/* Seuil de zoom dans les sélecteurs plein écran (zoomThresholds.js). */
+/* Seuil d'affichage (échelle 1:N) dans les sélecteurs plein écran (zoomThresholds.js). */
 .amgt-zoom-threshold { margin: 6px 0 10px; font-size: 13px; color: #444; }
-.amgt-zoom-threshold input { width: 52px; margin-left: 6px; padding: 3px 4px; font-size: 14px; }
+.amgt-zoom-threshold select { margin-left: 6px; padding: 3px 4px; font-size: 14px; }
+.amgt-zoom-threshold input { width: 80px; margin-left: 2px; padding: 3px 4px; font-size: 14px; }
+.amgt-zoom-threshold__libre { display: inline-block; margin-left: 8px; }
+.amgt-zoom-threshold__libre[hidden] { display: none; }
+.amgt-zoom-threshold__erreur { color: #b42318; font-size: 12px; }
+.amgt-zoom-threshold__erreur:empty { display: none; }
 
 /* Affichage du menu par défaut (menuPrefs.js) : disquette à côté de « Réinitialiser la vue », saisie du code dessous. */
 #amgt-menu-prefs-save {

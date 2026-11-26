@@ -217,9 +217,9 @@ const AMGT4CEM_SearchTool = {
         li.append(labelSpan);
         li.addEventListener('click', () => {
           if (result.bounds) {
-            this._map.fitBounds(result.bounds, { maxZoom: 19, padding: [40, 40] });
+            this._map.fitBounds(result.bounds, { maxZoom: 13, padding: [40, 40] });
           } else if (result.latlng) {
-            this._map.setView(result.latlng, 19);
+            this._map.setView(result.latlng, 13);
           }
           if (result.kind === 'address' && result.latlng) this._placePin(result.latlng, result.label);
           close();

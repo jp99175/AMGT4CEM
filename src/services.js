@@ -163,7 +163,7 @@ const AMGT4CEM_Services = {
       wfsUrl: this._url('urbis-topo'),
       version: t.wfsVersion,
       typeAttribute: t.typeAttribute,
-      minZoom: t.minZoom,
+      echelleMin: t.echelleMin,
       maxFeaturesPerQuery: t.maxFeaturesPerQuery,
       colorPalette: t.colorPalette || [],
     };

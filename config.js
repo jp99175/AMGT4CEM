@@ -124,8 +124,8 @@ const AMGT4CEM_CONFIG = {
   // réception), couche « Points métier » de la carte, administration. '' = pas de serveur.
   depot: {
     serverUrl: 'https://amgt4cem-depot-signalements.jp99175.workers.dev',
-    // Zoom à partir duquel le pictogramme amiante remplace le losange rouge sur la carte (à ajuster).
-    amiantePictoZoomMin: 17,
+    // Échelle 1:N à partir de laquelle le pictogramme amiante remplace le losange rouge sur la carte (à ajuster).
+    amiantePictoEchelleMin: 2500,
   },
 
   // --- Plugins (applications séparées branchées sur la carte, voir src/plugins.js) ---
@@ -161,6 +161,7 @@ const AMGT4CEM_CONFIG = {
         './src/services.js',
         './src/layerOpacityStore.js',
         './src/crs.js',
+        './src/lambertGrid.js',
         './src/shpLoader.js',
         './src/referentiel.js',
         './src/scaledText.js',
@@ -230,6 +231,7 @@ const AMGT4CEM_CONFIG = {
         './src/services.js',
         './src/layerOpacityStore.js',
         './src/crs.js',
+        './src/lambertGrid.js',
         './src/shpLoader.js',
         './src/referentiel.js',
         './src/scaledText.js',
@@ -290,7 +292,7 @@ const AMGT4CEM_CONFIG = {
   },
 
   // --- Affichage ---
-  maxZoom: 22,
+  maxZoom: 15, // niveau le plus fin de la grille Lambert 72 des tuiles (lambertGrid.js)
 };
 
 // --- Interface (home.html?page=…). L'ancienne entrée ?app=… est retirée : le routeur la redirige vers la page équivalente ---
@@ -320,7 +322,7 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       template: 'amgt-tpl-mesure-tuiles',
       nav: false,
       styles: ['./src/auth/auth.css', './src/mesureTuiles.css'],
-      scripts: ['./vendor/proj4/proj4.js', './src/buildInfo.js', './src/services.js', './src/auth/auth.js', './src/stockage.js', './src/auth/authUi.js', './src/shpLoader.js', './src/tuilesGeom.js', './src/mesureTuiles.js'],
+      scripts: ['./vendor/proj4/proj4.js', './src/buildInfo.js', './src/services.js', './src/auth/auth.js', './src/stockage.js', './src/auth/authUi.js', './src/shpLoader.js', './src/tuilesLambert.js', './src/mesureTuiles.js'],
     },
     // Page jetable (adresse à connaître, absente de la barre de navigation) : calage du synoptique du réseau sur le fond de plan
     // (lignes, arrêts, stations, tunnels). Les liens validés sont téléchargés puis déposés dans config/synoptique/liens.json.
@@ -329,7 +331,7 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       template: 'amgt-tpl-tuning-synoptique',
       nav: false,
       styles: ['./src/tuningSynoptique.css'],
-      scripts: ['./vendor/leaflet/leaflet.js', './vendor/proj4/proj4.js', './vendor/proj4leaflet/proj4leaflet.js', './src/buildInfo.js', './src/services.js', './src/crs.js', './src/horsLigne/magasin.js', './src/basemap.js', './src/buildInfoControl.js', './src/tuilesGeom.js', './src/tuningSynoptique.js'],
+      scripts: ['./vendor/leaflet/leaflet.js', './vendor/proj4/proj4.js', './vendor/proj4leaflet/proj4leaflet.js', './src/buildInfo.js', './src/services.js', './src/crs.js', './src/lambertGrid.js', './src/horsLigne/magasin.js', './src/basemap.js', './src/buildInfoControl.js', './src/tuilesLambert.js', './src/tuningSynoptique.js'],
     },
     // Page jetable (adresse à connaître, absente de la barre de navigation) : essai d'une carte affichée en Lambert 72 (tuiles UrbIS
     // de la grille EPSG:31370), séparée de la carte principale. Voir src/lambertTest.js.
@@ -338,7 +340,7 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       template: 'amgt-tpl-lambert',
       nav: false,
       styles: ['./src/lambertTest.css'],
-      scripts: ['./vendor/leaflet/leaflet.js', './vendor/proj4/proj4.js', './vendor/proj4leaflet/proj4leaflet.js', './src/buildInfo.js', './src/services.js', './src/crs.js', './src/shpLoader.js', './src/buildInfoControl.js', './src/scaleControl.js', './src/scaledText.js', './src/lambertTest.js'],
+      scripts: ['./vendor/leaflet/leaflet.js', './vendor/proj4/proj4.js', './vendor/proj4leaflet/proj4leaflet.js', './src/buildInfo.js', './src/services.js', './src/crs.js', './src/lambertGrid.js', './src/shpLoader.js', './src/buildInfoControl.js', './src/scaleControl.js', './src/scaledText.js', './src/lambertTest.js'],
     },
     reglages: {
       title: 'AMGT4CEM – Réglages',

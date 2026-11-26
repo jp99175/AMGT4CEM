@@ -174,14 +174,15 @@ const AMGT4CEM_SignalementsLayer = {
     }
   },
 
-  _pictoZoomMin() {
-    const z = Number(this._options.amiantePictoZoomMin);
-    return Number.isFinite(z) ? z : 17;
+  /** Échelle 1:N à partir de laquelle le pictogramme amiante remplace le losange (config.js : depot.amiantePictoEchelleMin). */
+  _pictoEchelleMin() {
+    const n = Number(this._options.amiantePictoEchelleMin);
+    return Number.isFinite(n) && n > 0 ? n : 2500;
   },
 
   _updateAmianteIcons() {
     if (!this._map) return;
-    const picto = this._map.getZoom() >= this._pictoZoomMin();
+    const picto = AMGT4CEM_LambertGrid.auMoinsDetaillee(this._map, this._pictoEchelleMin());
     for (const a of this._amiante) a.marker.setIcon(picto ? a.picto : a.small);
   },
 

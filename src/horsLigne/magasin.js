@@ -11,7 +11,10 @@
 const AMGT4CEM_HorsLigne = (function () {
 'use strict';
 
-const NOM_BASE = 'amgt4cem-horsligne';
+// Base des tuiles de la grille Lambert 72. Les tuiles de l'ancienne grille Web Mercator (base « amgt4cem-horsligne », clés z/x/y
+// qui désignent d'autres cases) ne servent plus à rien : cette base-là est supprimée à la première ouverture.
+const NOM_BASE = 'amgt4cem-horsligne-l72';
+const ANCIENNE_BASE = 'amgt4cem-horsligne';
 const VERSION_BASE = 2; // 2 : ajout du magasin « travail » (téléchargement confié au service worker)
 const VALIDITE_MS = 60 * 24 * 3600 * 1000;
 
@@ -29,6 +32,7 @@ const HL = {
     if (this._ouverture) return this._ouverture;
     this._ouverture = new Promise((ok) => {
       if (typeof indexedDB === 'undefined') { ok(false); return; }
+      try { indexedDB.deleteDatabase(ANCIENNE_BASE); } catch (err) { /* sans conséquence */ }
       let req;
       try { req = indexedDB.open(NOM_BASE, VERSION_BASE); } catch (err) { ok(false); return; }
       req.onupgradeneeded = () => {

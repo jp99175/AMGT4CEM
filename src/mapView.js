@@ -5,7 +5,7 @@
  * Partagé par la carte (src/app.js) et par la carte de choix de position des signalements (src/signal/mapPicker.js).
  */
 (function () {
-const CLE = 'amgt4cem-derniere-vue';
+const CLE = 'amgt4cem-derniere-vue-l72'; // « -l72 » : les anciennes vues mémorisées étaient en zoom Web Mercator
 
 const MapView = {
   /** Vue mémorisée { center: [lat, lng], zoom } ou null. */
@@ -13,7 +13,7 @@ const MapView = {
     try {
       const v = JSON.parse(sessionStorage.getItem(CLE) || 'null');
       if (v && Array.isArray(v.center) && v.center.length === 2 && v.center.every(Number.isFinite) && Number.isFinite(v.zoom)
-        && v.center[0] > 50 && v.center[0] < 51.7 && v.center[1] > 3.5 && v.center[1] < 5.5 && v.zoom >= 8 && v.zoom <= 22) return v; // région bruxelloise seulement : une valeur aberrante est ignorée
+        && v.center[0] > 50 && v.center[0] < 51.7 && v.center[1] > 3.5 && v.center[1] < 5.5 && v.zoom >= 0 && v.zoom <= 15) return v; // région bruxelloise seulement : une valeur aberrante est ignorée
     } catch (err) { /* stockage indisponible ou valeur illisible : pas de vue mémorisée */ }
     return null;
   },

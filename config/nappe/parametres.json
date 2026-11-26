@@ -3,7 +3,7 @@
   "date": "2026-10-20",
   "note": "Réglages de la couche « Nappe phréatique » (WFS de Bruxelles Environnement : stations = service « water », clé « eaux-souterraines » ; isopièzes = service « geology », clé « geologie » ; URL dans config/fonds-de-plan/services.json). Source des noms de couches et d'attributs : descriptif officiel du WFS géologie/hydrogéologie (20190513_descriptif_wfs_geol_hydrogeol_FR.pdf) et catalogue Geobru ; AUCUN n'a pu être vérifié par un appel réel (l'accès sortant de l'environnement de développement vers *.environnement.brussels est bloqué). Le préfixe d'espace de noms des couches n'est pas supposé : nappeLayer.js le retrouve dans le GetCapabilities en cherchant le nom de couche ci-dessous comme fin du nom publié. À confirmer depuis un navigateur : noms d'attributs, CORS, nombre d'objets par emprise. Données du modèle BPSM v1.0 (FEFLOW), état de MAI 2013, valeur indicative, CC BY 4.0. Constat du 21/10/2026 sur le service « water » : il publie `monitoring_groundwater_level` (sans préfixe `water_`) ; les couches `groundwater_model_*` du descriptif de 2019 n'y figurent pas, elles relèvent du service « geology » (adresse déduite du schéma ows.environnement.brussels/<thème>, à confirmer). Copie dans R2 : le Worker workers/sync/ (clé `nappe-sync` de services.json) récupère les jeux marqués `synchro`, les range sous public/nappe/ et les revérifie tous les `intervalleJours` ; la carte lit cette copie, puis son cache navigateur, puis le service.",
   "wfsVersion": "1.1.0",
-  "minZoom": 13,
+  "echelleMin": 40000,
   "maxFeaturesPerQuery": 2000,
   "periodeReference": "mai 2013",
   "mentionLegale": "Données issues d'un modèle (BPSM v1.0), état de mai 2013 : valeur indicative, qui ne remplace pas une étude d'expert.",
@@ -22,9 +22,9 @@
     },
     "couleur": "#0b5fa5",
     "epaisseur": 1.5,
-    "etiquetteMinZoom": 15,
+    "etiquetteEchelleMin": 10000,
     "service": "geologie",
-    "minZoom": 14,
+    "echelleMin": 20000,
     "synchro": {
       "intervalleJours": 30
     },
@@ -57,7 +57,7 @@
     "rayon": 6,
     "note": "Position et caractéristiques des stations (52 au 21/10/2026) : masse d'eau, fréquence de relevé (« 1 heure » = automatique), début du suivi, cote de référence, profondeur. AUCUN niveau mesuré ni date de mesure dans ce service : les chroniques sont dans BruWater.",
     "service": "eaux-souterraines",
-    "minZoom": 13,
+    "echelleMin": 40000,
     "synchro": {
       "intervalleJours": 1
     },

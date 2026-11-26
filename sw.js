@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const VERSION = '20261126-2113'; // @VERSION (écrit par tools/stamp-sw.sh)
+const VERSION = '20261126-2247'; // @VERSION (écrit par tools/stamp-sw.sh)
 const CACHE = 'amgt4cem-app';
 const DELAI_RESEAU_MS = 4000;
 const PARALLELE = 6;
@@ -115,6 +115,7 @@ const FICHIERS = [
   './src/horsLigne/magasin.js',
   './src/icones.js',
   './src/interstation.js',
+  './src/lambertGrid.js',
   './src/lambertTest.css',
   './src/lambertTest.js',
   './src/layerOpacityStore.js',
@@ -195,7 +196,6 @@ const FICHIERS = [
   './src/signalementsLayer.js',
   './src/stockage.js',
   './src/swRegister.js',
-  './src/tuilesGeom.js',
   './src/tuilesLambert.js',
   './src/tuningSynoptique.css',
   './src/tuningSynoptique.js',

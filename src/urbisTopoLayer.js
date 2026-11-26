@@ -53,7 +53,7 @@ const AMGT4CEM_UrbisTopoLayer = {
   estAffichee() {
     if (!this._enabled || !this._map || !this._map.hasLayer(this._group)) return false;
     if (!Object.keys(AMGT4CEM_UrbisTopoSelectionStore.getSelection()).length) return false;
-    if (this._map.getZoom() < AMGT4CEM_ZoomThresholds.get('urbistopo', AMGT4CEM_CONFIG.urbisTopo.minZoom)) return false;
+    if (!AMGT4CEM_ZoomThresholds.visible(this._map, 'urbistopo', AMGT4CEM_CONFIG.urbisTopo.echelleMin)) return false;
     return this._opacityFactor > 0;
   },
 
@@ -122,7 +122,7 @@ const AMGT4CEM_UrbisTopoLayer = {
     }
     this._group.addTo(this._map);
 
-    if (this._map.getZoom() < AMGT4CEM_ZoomThresholds.get('urbistopo', AMGT4CEM_CONFIG.urbisTopo.minZoom)) {
+    if (!AMGT4CEM_ZoomThresholds.visible(this._map, 'urbistopo', AMGT4CEM_CONFIG.urbisTopo.echelleMin)) {
       this._vider();
       return;
     }

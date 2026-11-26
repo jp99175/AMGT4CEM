@@ -79,9 +79,9 @@ const AMGT4CEM_NappeLayer = {
   },
 
   /** Outil « Forage virtuel » : visible seulement quand la couche Géotechnique est active. */
-  /** Seuil de zoom d'un élément : choix de l'utilisateur (menu de sélection), sinon réglage du fichier. */
-  _minZoom(part, cfg) {
-    return AMGT4CEM_ZoomThresholds.get(`nappe.${part}`, cfg[part].minZoom);
+  /** Seuil d'affichage d'un élément (échelle 1:N) : choix de l'utilisateur (menu de sélection), sinon réglage du fichier. */
+  _echelleMin(part, cfg) {
+    return AMGT4CEM_ZoomThresholds.get(`nappe.${part}`, cfg[part].echelleMin);
   },
 
   _syncBoreButton() {
@@ -178,8 +178,8 @@ const AMGT4CEM_NappeLayer = {
       text.append(document.createTextNode(label));
       if (code === 'isopieses' || code === 'stations') {
         const cfg = AMGT4CEM_CONFIG.nappe || {};
-        const dflt = cfg[code] ? cfg[code].minZoom : 14;
-        text.append(AMGT4CEM_ZoomThresholds.buildControl(`nappe.${code}`, dflt, 'Afficher à partir du zoom', this, { inline: true }));
+        const dflt = cfg[code] ? cfg[code].echelleMin : 20000;
+        text.append(AMGT4CEM_ZoomThresholds.buildControl(`nappe.${code}`, dflt, "Afficher à partir de l'échelle", this, { inline: true }));
         row.classList.add('amgt-checkbox-row--top');
       }
       row.append(cb, text);
@@ -226,14 +226,15 @@ const AMGT4CEM_NappeLayer = {
     }
     this._group.addTo(this._map);
 
-    // Seuil de zoom propre à chaque élément (config/nappe/parametres.json) : stations dès 13, isopièzes dès 15.
-    const zoom = this._map.getZoom();
-    const zIso = this._minZoom('isopieses', cfg), zSta = this._minZoom('stations', cfg);
-    const wantIsopieses = this._showIsopieses && zoom >= zIso;
-    const wantStations = this._showStations && zoom >= zSta;
+    // Seuil d'affichage propre à chaque élément (config/nappe/parametres.json, échelle 1:N) : stations dès 1:40 000, isopièzes dès 1:20 000.
+    const grille = AMGT4CEM_LambertGrid;
+    const zIso = this._echelleMin('isopieses', cfg), zSta = this._echelleMin('stations', cfg);
+    const wantIsopieses = this._showIsopieses && grille.auMoinsDetaillee(this._map, zIso);
+    const wantStations = this._showStations && grille.auMoinsDetaillee(this._map, zSta);
+    const fmt = (n) => AMGT4CEM_ZoomThresholds.format(n);
     const tooFar = [];
-    if (this._showIsopieses && !wantIsopieses) tooFar.push(`isopièzes dès le zoom ${zIso}`);
-    if (this._showStations && !wantStations) tooFar.push(`stations dès le zoom ${zSta}`);
+    if (this._showIsopieses && !wantIsopieses) tooFar.push(`isopièzes dès ${fmt(zIso)}`);
+    if (this._showStations && !wantStations) tooFar.push(`stations dès ${fmt(zSta)}`);
     if (!wantIsopieses && !wantStations) {
       this._setStatus(`Zoomer davantage : ${tooFar.join(', ')}.`);
       return;
@@ -814,7 +815,7 @@ const AMGT4CEM_NappeLayer = {
     const map = this._map;
     const px = part.etiquettePx || 12;
     const padding = 4;
-    const labelled = map.getZoom() >= part.etiquetteMinZoom;
+    const labelled = AMGT4CEM_LambertGrid.auMoinsDetaillee(map, part.etiquetteEchelleMin);
     const margin = 200;
     for (const feature of list) {
       const value = Number(feature.properties && feature.properties[part.attributNiveau]);

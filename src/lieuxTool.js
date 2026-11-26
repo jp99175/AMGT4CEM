@@ -451,7 +451,7 @@ const AMGT4CEM_LieuxTool = {
     const mx = Math.round((taille.x) * marge); const my = Math.round((taille.y - bas) * marge);
     const snap = m.options.zoomSnap;
     m.options.zoomSnap = 0;
-    try { m.fitBounds(bornes, { paddingTopLeft: [mx, my], paddingBottomRight: [mx, my + bas], maxZoom: 21, animate: false }); } finally { m.options.zoomSnap = snap; }
+    try { m.fitBounds(bornes, { paddingTopLeft: [mx, my], paddingBottomRight: [mx, my + bas], maxZoom: 15, animate: false }); } finally { m.options.zoomSnap = snap; }
   },
 
   /** Réduit la fenêtre à sa première ligne (liste des lieux, retour, redéployer) ; un second appui la redéploie. */

@@ -67,11 +67,13 @@ SIG.MapPicker = {
 
       const vueMemorisee = window.AMGT4CEM_MapView ? AMGT4CEM_MapView.get() : null; // module facultatif
       this.map = L.map(this.canvas, {
+        crs: AMGT4CEM_LambertGrid.crs(), // Lambert 72, comme la carte AMGT4CEM
         attributionControl: false,
         preferCanvas: true, // comme la carte AMGT4CEM : rendu Canvas pour toutes les couches vectorielles
-        maxZoom: AMGT4CEM_CONFIG.maxZoom,
+        minZoom: 0,
+        maxZoom: AMGT4CEM_LambertGrid.MAX_ZOOM,
         center: [50.85, 4.37],
-        zoom: 13,
+        zoom: 7,
         ...(vueMemorisee || {}), // dernière vue de cet onglet (carte AMGT4CEM ou choix précédent)
       });
       const map = this.map;
@@ -146,15 +148,15 @@ SIG.MapPicker = {
     this._updateAmianteIcons();
   },
 
-  /** Zoom à partir duquel le pictogramme amiante remplace le losange (config.js : depot.amiantePictoZoomMin). */
-  _pictoZoomMin() {
-    const z = Number((AMGT4CEM_CONFIG.depot || {}).amiantePictoZoomMin);
-    return Number.isFinite(z) ? z : 17;
+  /** Échelle 1:N à partir de laquelle le pictogramme amiante remplace le losange (config.js : depot.amiantePictoEchelleMin). */
+  _pictoEchelleMin() {
+    const n = Number((AMGT4CEM_CONFIG.depot || {}).amiantePictoEchelleMin);
+    return Number.isFinite(n) && n > 0 ? n : 2500;
   },
 
   _updateAmianteIcons() {
     if (!this.map) return;
-    const showPicto = this.map.getZoom() >= this._pictoZoomMin();
+    const showPicto = AMGT4CEM_LambertGrid.auMoinsDetaillee(this.map, this._pictoEchelleMin());
     for (const a of this._amiante) a.marker.setIcon(showPicto ? a.picto : a.small);
   },
 
@@ -207,7 +209,7 @@ SIG.MapPicker = {
     if (position) {
       const latlng = AMGT4CEM_CRS.lambertToLatLng([position.x, position.y]);
       this._moved = true;
-      this.map.setView(latlng, Math.max(this.map.getZoom(), 17));
+      this.map.setView(latlng, Math.max(this.map.getZoom(), 11));
       this._place(latlng);
     }
   },

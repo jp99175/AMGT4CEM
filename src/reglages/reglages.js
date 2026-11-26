@@ -197,7 +197,7 @@ Reglages.register({
           if (conteneur.firstChild) { if (conteneur.__rafraichir) conteneur.__rafraichir(); return; }
           conteneur.append(h('p', { class: 'rgl-note', text: 'Chargement…' }));
           await charger('css', './src/horsLigne/horsLigne.css');
-          for (const src of ['./vendor/proj4/proj4.js', './src/shpLoader.js', './src/tuilesGeom.js', './src/horsLigne/magasin.js', './src/horsLigne/ecran.js']) await charger('script', src);
+          for (const src of ['./vendor/proj4/proj4.js', './src/shpLoader.js', './src/tuilesLambert.js', './src/horsLigne/magasin.js', './src/horsLigne/ecran.js']) await charger('script', src);
           conteneur.replaceChildren();
           AMGT4CEM_EcranHorsLigne.monter(conteneur);
         },

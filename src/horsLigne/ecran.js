@@ -17,9 +17,9 @@ const AMGT4CEM_EcranHorsLigne = (function () {
 
 const SVG_URL = './data/synoptique/synoptique-reseau-v17.svg';
 const CLE_CHOIX = 'amgt4cem.horsligne.choix.v1';
-const ZOOMS = [19, 18, 17, 16, 15];
-const MARGE_19_M = 100; // doublée à chaque niveau en moins (marge constante à l'écran)
-const KO_PAR_TUILE = { 19: 7.9, 18: 11.9, 17: 18.2, 16: 9.7, 15: 14.8 }; // poids moyens mesurés le 06/11/2026
+const ZOOMS = [12, 11, 10, 9, 8]; // niveaux de la grille Lambert 72 (0,27 à 4,35 m par pixel) ; le plus fin = 12
+const MARGE_FIN_M = 100; // au niveau 12, doublée à chaque niveau en moins (marge constante à l'écran)
+const KO_PAR_TUILE = { 12: 12, 11: 12, 10: 12, 9: 12, 8: 12 }; // ESTIMATION : le poids des tuiles Lambert n'est pas encore mesuré (page ?page=mesure-tuiles)
 const PARALLELE = 6;
 const TOLERANCE = 3; // unités du dessin : écart toléré entre le bout d'un tronçon et le contour d'une station
 
@@ -583,8 +583,7 @@ function monter(conteneur) {
       const rings = f.geometry.type === 'Polygon' ? f.geometry.coordinates : [].concat(...f.geometry.coordinates);
       const segs = [];
       for (const ring of rings) {
-        const pts = ring.map((c) => proj4(AMGT4CEM_CONFIG.businessCRS.epsg, 'EPSG:3857', [c[0], c[1]]));
-        for (let i = 0; i < pts.length - 1; i += 1) segs.push([pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]]);
+        for (let i = 0; i < ring.length - 1; i += 1) segs.push([ring[i][0], ring[i][1], ring[i + 1][0], ring[i + 1][1]]); // déjà en Lambert 72
       }
       out.set(id, segs);
     }
@@ -603,7 +602,7 @@ function monter(conteneur) {
         for (const u of aFaire) {
           const s = u.ps.flatMap((p) => segs.get(p) || []);
           u.tuiles = [];
-          if (s.length) for (const z of ZOOMS) u.tuiles.push(...AMGT4CEM_TuilesGeom.tuilesAutour(s, z, MARGE_19_M * 2 ** (19 - z)).map(([x, y]) => `${z}/${x}/${y}`));
+          if (s.length) for (const z of ZOOMS) u.tuiles.push(...AMGT4CEM_TuilesLambert.tuilesAutour(s, z, MARGE_FIN_M * 2 ** (12 - z)).map(([x, y]) => `${z}/${x}/${y}`));
           i += 1;
           if (i % 6 === 0) await new Promise((r) => setTimeout(r, 0));
         }

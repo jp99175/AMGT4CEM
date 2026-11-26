@@ -109,8 +109,8 @@ const AMGT4CEM_Basemap = {
   /**
    * Fond UrbIS : tuiles pré-calculées (WMTS, config.basemaps.urbis.tuiles) si elles sont configurées, avec repli
    * automatique sur le WMS si les premières tuiles échouent toutes (service injoignable, couche renommée...) ;
-   * sinon WMS seul. Les tuiles sont demandées en Web Mercator (grille EPSG:900913 du service) : aucun changement
-   * du système de coordonnées d'affichage de la carte.
+   * sinon WMS seul. Les tuiles sont demandées dans la grille Lambert 72 du service (TileMatrixSet « EPSG:31370 »), qui est
+   * aussi celle de la carte (lambertGrid.js) : une tuile correspond exactement à une case de la carte, sans reprojection.
    */
   _buildUrbisLayer() {
     const cfg = AMGT4CEM_CONFIG.basemaps.urbis;
@@ -123,7 +123,10 @@ const AMGT4CEM_Basemap = {
       + `&tilerow={y}&tilecol={x}&format=${encodeURIComponent(t.format || 'image/png')}`;
     const layer = new this._CorsTileLayer(template, {
       attribution: cfg.attribution,
-      maxZoom: AMGT4CEM_CONFIG.maxZoom,
+      tileSize: AMGT4CEM_LambertGrid.GRILLE.taille,
+      minZoom: 0,
+      maxZoom: AMGT4CEM_LambertGrid.MAX_ZOOM,
+      noWrap: true,
     });
 
     // Repli : 3 tuiles en erreur sans qu'aucune n'ait chargé -> on remet le WMS à la place.
@@ -480,14 +483,12 @@ const AMGT4CEM_Basemap = {
       format: entry.format || 'image/png',
       transparent: false,
       attribution: entry.attribution,
-      maxZoom: AMGT4CEM_CONFIG.maxZoom,
+      maxZoom: AMGT4CEM_LambertGrid.MAX_ZOOM,
     };
-    // La carte Leaflet affiche en Web Mercator (EPSG:3857) par défaut. Certains
-    // services WMS (ex : orthophotos Bruciel) ne déclarent que EPSG:31370 dans
-    // leur GetCapabilities et refusent les requêtes en 3857 : `crs` force alors
-    // Leaflet à requêter ce fond dans son CRS natif, sans changer le CRS
-    // d'affichage général de la carte (Leaflet convertit automatiquement).
-    if (entry.crs) options.crs = this._resolveLeafletCrs(entry.crs);
+    // La carte s'affiche en Lambert 72 (EPSG:31370, lambertGrid.js) : un service WMS qui déclare ce même système est
+    // requêté tel quel. `crs` n'est forcé que pour un service qui demanderait un autre système que celui de la carte
+    // (Leaflet convertit alors automatiquement).
+    if (entry.crs && entry.crs !== this._map.options.crs.code) options.crs = this._resolveLeafletCrs(entry.crs);
     // Limite le chargement des tuiles à cette emprise (WGS84) : rien n'est
     // demandé au serveur ni affiché au-delà (voir config.basemaps.flandre).
     if (entry.bounds) options.bounds = entry.bounds;
