@@ -338,7 +338,7 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       template: 'amgt-tpl-lambert',
       nav: false,
       styles: ['./src/lambertTest.css'],
-      scripts: ['./vendor/leaflet/leaflet.js', './vendor/proj4/proj4.js', './vendor/proj4leaflet/proj4leaflet.js', './src/buildInfo.js', './src/services.js', './src/crs.js', './src/shpLoader.js', './src/buildInfoControl.js', './src/scaleControl.js', './src/lambertTest.js'],
+      scripts: ['./vendor/leaflet/leaflet.js', './vendor/proj4/proj4.js', './vendor/proj4leaflet/proj4leaflet.js', './src/buildInfo.js', './src/services.js', './src/crs.js', './src/shpLoader.js', './src/buildInfoControl.js', './src/scaleControl.js', './src/scaledText.js', './src/lambertTest.js'],
     },
     reglages: {
       title: 'AMGT4CEM – Réglages',

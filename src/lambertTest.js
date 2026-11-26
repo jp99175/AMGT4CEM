@@ -7,7 +7,8 @@
  *  1. que les tuiles Lambert 72 s'affichent (gris et couleur) ;
  *  2. que les géométries du projet (shapefile des polygones, en Lambert 72) tombent au bon endroit ;
  *  3. que l'échelle et le niveau de zoom de l'application (src/scaleControl.js) sont justes dans ce système ;
- *  4. ce que valent les niveaux de zoom (mètres par pixel), pour recaler les seuils d'affichage.
+ *  4. ce que valent les niveaux de zoom (mètres par pixel), pour recaler les seuils d'affichage ;
+ *  5. que les textes à taille réelle (src/scaledText.js) gardent leur taille en mètres : bouton « Textes ».
  *
  * Grille des tuiles : relevée dans le GetCapabilities du service (TileMatrixSet « EPSG:31370 », 16 niveaux de 256 px) :
  * coin haut-gauche (16478 ; 304073), dénominateur d'échelle du niveau 0 = 3 973 618,066406251, divisé par 2 à chaque niveau.
@@ -30,7 +31,7 @@ const AMGT4CEM_LambertTest = (function () {
 
   const resolutions = Array.from({ length: GRILLE.niveaux }, (_, z) => GRILLE.echelle0 * GRILLE.pixelOGC / 2 ** z);
 
-  const S = { map: null, crs: null, fond: null, poly: null, couche: 'gris', ok: 0, erreurs: 0, nbPoly: null, urlService: SERVICE_PAR_DEFAUT };
+  const S = { map: null, crs: null, fond: null, poly: null, essai: null, couche: 'gris', ok: 0, erreurs: 0, nbPoly: null, urlService: SERVICE_PAR_DEFAUT };
 
   /** CRS Leaflet « Lambert 72 », avec la grille des tuiles de la Région. La distance se calcule dans le plan Lambert (en mètres au sol). */
   function creerCrs() {
@@ -105,6 +106,21 @@ const AMGT4CEM_LambertTest = (function () {
     majInfo();
   }
 
+  /** Carré de 100 m de côté (axes Lambert) et deux textes de taille réelle 10 m et 20 m : le texte doit rester 10 fois / 5 fois plus petit que le carré à tous les zooms. */
+  function poserTextes(afficher) {
+    const bouton = document.querySelector('[data-lt-textes]');
+    if (S.essai) { S.map.removeLayer(S.essai); S.essai = null; }
+    if (bouton) bouton.classList.toggle('lt-btn--on', !!afficher);
+    if (!afficher) return;
+    const [x, y] = [148900, 170800]; // près de la Grand-Place, en Lambert 72
+    const ll = (dx, dy) => AMGT4CEM_CRS.lambertToLatLng([x + dx, y + dy]);
+    S.essai = L.layerGroup().addTo(S.map);
+    L.polygon([ll(0, 0), ll(100, 0), ll(100, 100), ll(0, 100)], { weight: 1.5, color: '#0b5c75', fillOpacity: 0.05, interactive: false }).addTo(S.essai);
+    AMGT4CEM_ScaledText.createMarker(ll(0, 0), 'ABC 10 m', { color: '#0b5c75', heightMeters: 10, ref: 'bl', minPx: 0, maxPx: 600 }).addTo(S.essai);
+    AMGT4CEM_ScaledText.createMarker(ll(0, 100), 'ABC 20 m', { color: '#b42318', heightMeters: 20, ref: 'tl', minPx: 0, maxPx: 600 }).addTo(S.essai);
+    S.map.setView(ll(50, 50), 12);
+  }
+
   const fmt = (v, d = 0) => Number(v).toLocaleString('fr-BE', { minimumFractionDigits: d, maximumFractionDigits: d });
 
   function majInfo() {
@@ -140,6 +156,10 @@ const AMGT4CEM_LambertTest = (function () {
     p.type = 'button'; p.className = 'lt-btn'; p.textContent = 'Polygones'; p.dataset.ltPoly = '1';
     p.addEventListener('click', () => poserPolygones(!(S.poly && S.map.hasLayer(S.poly))));
     rang.append(p);
+    const t = document.createElement('button');
+    t.type = 'button'; t.className = 'lt-btn'; t.textContent = 'Textes'; t.dataset.ltTextes = '1';
+    t.addEventListener('click', () => poserTextes(!S.essai));
+    rang.append(t);
     const retour = document.createElement('a');
     retour.className = 'lt-btn lt-lien'; retour.textContent = 'Carte'; retour.href = './home.html?page=carto';
     rang.append(retour);
@@ -158,6 +178,7 @@ const AMGT4CEM_LambertTest = (function () {
     L.control.attribution({ prefix: false }).addTo(S.map);
     L.control.zoom({ position: 'topright' }).addTo(S.map);
     AMGT4CEM_BuildInfoControl.init(S.map);
+    AMGT4CEM_ScaledText.initMap(S.map);
     AMGT4CEM_ScaleControl.init(S.map); // l'échelle et le niveau de zoom de la carte principale, tels quels
     poserFond('gris');
     S.map.on('moveend zoomend', majInfo);

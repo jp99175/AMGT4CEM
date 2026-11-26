@@ -27,11 +27,9 @@
  * largeur/hauteur ne change pas avec le zoom) : le point de référence reste
  * collé à son ancre et l'alignement est conservé à tous les zooms.
  *
- * Calcul mètres/pixel : projection Web Mercator (celle utilisée par
- * Leaflet par défaut — AMGT4CEM_CRS ne fait que fournir les coordonnées
- * lat/lon affichées dessus, pas un CRS Leaflet personnalisé), formule
- * standard dérivée de la taille de tuile (256 px) et de la circonférence
- * équatoriale terrestre, ajustée par le cosinus de la latitude.
+ * Calcul mètres/pixel : mesuré sur la carte elle-même (distance au sol entre deux points de l'écran distants de 100 px, au
+ * centre de la carte), donc valable quel que soit le système d'affichage (Web Mercator ou Lambert 72). Même mesure que celle de
+ * l'échelle graphique (scaleControl.js) : texte et règle restent d'accord.
  */
 const AMGT4CEM_ScaledText = {
   _entries: [], // { marker, heightMeters, minPx, maxPx, orig, def, pose }
@@ -174,7 +172,7 @@ const AMGT4CEM_ScaledText = {
     if (!el) return;
     const span = el.querySelector('.amgt-scaled-text');
     if (!span) return;
-    const metersPerPixel = this._metersPerPixel(map.getCenter().lat, map.getZoom());
+    const metersPerPixel = this._metersPerPixel(map);
     const px = Math.max(entry.minPx, Math.min(entry.maxPx, entry.heightMeters / metersPerPixel));
     span.style.fontSize = `${px}px`;
     // Après le font-size : l'alignement mesure la boîte de texte à sa taille actuelle.
@@ -300,8 +298,9 @@ const AMGT4CEM_ScaledText = {
     return ` transform:rotate(${pose.angle}deg) translate(${-r.x * 100}%,${-r.y * 100}%);`;
   },
 
-  _metersPerPixel(lat, zoom) {
-    const EARTH_CIRCUMFERENCE_M = 40075016.686;
-    return (EARTH_CIRCUMFERENCE_M * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
+  /** Mètres au sol par pixel d'écran, au centre de la carte (mesure sur la carte : valable dans tout système d'affichage). */
+  _metersPerPixel(map) {
+    const y = map.getSize().y / 2;
+    return map.distance(map.containerPointToLatLng([0, y]), map.containerPointToLatLng([100, y])) / 100;
   },
 };
