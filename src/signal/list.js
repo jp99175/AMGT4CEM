@@ -254,6 +254,7 @@ SIG.List = {
         edit.addEventListener('click', () => this.ctx.revise(entry.reference));
         actions.append(edit);
       }
+      if (entry.reference && window.AMGT4CEM_RapportPdf) actions.append(AMGT4CEM_RapportPdf.bouton(entry.reference, entry.version || 1));
       // Corbeille : supprime l'entrée du système (serveur) puis la copie de cet appareil.
       if (entry.reference && SIG.All.canDelete(entry.redacteur)) {
         actions.append(SIG.All.trashButton(entry.reference, entry.titre || entry.label || 'Entrée', async () => { await SIG.Entries.remove(entry.id); await this.render(); }));

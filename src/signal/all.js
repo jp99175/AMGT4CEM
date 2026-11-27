@@ -110,7 +110,7 @@ SIG.All = {
       h('span', { class: 'sig4cem-row__status sig4cem-row__status--ok', text: ident }));
     const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', text: '✎ Modifier (révision)' });
     edit.addEventListener('click', () => ctx.revise(e.reference));
-    const actions = h('div', { class: 'sig4cem-row__actions' }, edit);
+    const actions = h('div', { class: 'sig4cem-row__actions' }, edit, window.AMGT4CEM_RapportPdf ? AMGT4CEM_RapportPdf.bouton(e.reference, e.version || 1) : null);
     if (this.canDelete(e.redacteur)) actions.append(this.trashButton(e.reference, title, () => this.open(ctx)));
     const vign = h('div', { class: `sig4cem-row__vign${e.nbPieces ? '' : ' sig4cem-row__vign--vide'}`, text: e.nbPieces ? '' : 'sans photo' });
     if (e.nbPieces && SIG.vignetteServeur) SIG.vignetteServeur(e).then((url) => { if (url) vign.style.backgroundImage = `url(${url})`; }).catch(() => {});

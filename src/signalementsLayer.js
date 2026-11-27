@@ -268,6 +268,7 @@ const AMGT4CEM_SignalementsLayer = {
     edit.className = 'amgt-sig-popup__edit';
     edit.textContent = '✎ Modifier (révision)';
     actions.append(edit);
+    if (window.AMGT4CEM_RapportPdf) actions.append(AMGT4CEM_RapportPdf.bouton(s.reference, s.version || 1));
     // Corbeille alignée à droite : rédacteur de l'entrée ou administrateur (le serveur le vérifie aussi).
     const me = AMGT4CEM_Auth.session();
     if (me && (AMGT4CEM_Auth.aDroit('utilisateurs', me) || (s.redacteur && s.redacteur === me.utilisateur.matricule))) {

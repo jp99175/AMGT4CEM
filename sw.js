@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const VERSION = '20261127-1938'; // @VERSION (écrit par tools/stamp-sw.sh)
+const VERSION = '20261127-1949'; // @VERSION (écrit par tools/stamp-sw.sh)
 const CACHE = 'amgt4cem-app';
 const DELAI_RESEAU_MS = 4000;
 const PARALLELE = 6;
@@ -82,6 +82,7 @@ const FICHIERS = [
   './src/annotate/icons/icone-gomme.svg',
   './src/annotate/icons/icone-main.svg',
   './src/annotate/icons/icone-palette.svg',
+  './src/annotate/icons/icone-pdf.svg',
   './src/annotate/icons/icone-pinceau.svg',
   './src/annotate/icons/icone-poubelle.svg',
   './src/annotate/icons/icone-redim-diag1.svg',
@@ -151,6 +152,7 @@ const FICHIERS = [
   './src/pickerDefaultBar.js',
   './src/plansPrefs.js',
   './src/plugins.js',
+  './src/rapportPdf.js',
   './src/referentiel.js',
   './src/reglages/arborescenceEcran.js',
   './src/reglages/attributs.js',

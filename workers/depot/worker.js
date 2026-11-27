@@ -13,6 +13,7 @@
  *   POST /auth/motdepasse     (jeton) { ancien, nouveau }                  -> { ok: true }
  *   GET  /signalements       (jeton)  -> { date, signalements:[…] } index lu par la carte
  *   GET  /signalements/AAAA-NNNN/couverture (jeton) photo de couverture (JPEG) pour le pop-up de la carte
+ *   GET  /signalements/AAAA-NNNN/pdf?v=N   (jeton) rapport PDF de la version N (à défaut la dernière)
  *   POST /signalements/AAAA-NNNN/supprimer (jeton ; rédacteur ou droit utilisateurs) retire l'entrée de l'index (archive conservée)
  *   GET  /sante               (jeton)                                      -> { ok: true, utilisateur }
  *   POST /depot               (jeton) corps ZIP ; X-Signalement-Id, X-Flux, X-Fichier
@@ -1132,6 +1133,21 @@ async function routeDepot(request, env, url) {
     const o = await env.DEPOTS.get(`${BASE}/${mCouv[1]}/pieces/${nom}`);
     if (!o) throw new HttpError(404, 'Photo introuvable.');
     return { status: 200, raw: o.body, type: 'image/jpeg', headers: { 'Cache-Control': 'private, max-age=300' } };
+  }
+  // Rapport PDF d'une entrée : celui de la version demandée (`?v=N`), à défaut de la dernière (fabriqué à l'envoi, rangé dans revisions/).
+  const mPdf = /^\/signalements\/(\d{4}-\d{4})\/pdf$/.exec(url.pathname);
+  if (request.method === 'GET' && mPdf) {
+    await intervenantCourant(request, env);
+    const ix = await env.DEPOTS.get(INDEX_KEY);
+    const entree = ix ? (await ix.json()).signalements.find((x) => x.reference === mPdf[1]) : null;
+    if (!entree) throw new HttpError(404, 'Entrée inconnue.');
+    if (estSupprime(entree)) throw new HttpError(410, 'Entrée supprimée.');
+    const demandee = Number(url.searchParams.get('v'));
+    const version = Number.isInteger(demandee) && demandee >= 1 && demandee <= 999 ? demandee : entree.version;
+    const nn = String(version).padStart(2, '0');
+    const o = await env.DEPOTS.get(`${BASE}/${mPdf[1]}/revisions/v0.${nn}.pdf`);
+    if (!o) throw new HttpError(404, 'Pas de rapport PDF pour cette version.');
+    return { status: 200, raw: o.body, type: 'application/pdf', headers: { 'Cache-Control': 'private, max-age=300', 'Content-Disposition': `inline; filename="FICH_${mPdf[1]}-v0-${nn}_FR.pdf"` } };
   }
   const mSup = /^\/signalements\/(\d{4}-\d{4})\/supprimer$/.exec(url.pathname);
   if (request.method === 'POST' && mSup) {

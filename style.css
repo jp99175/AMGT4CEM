@@ -1089,7 +1089,8 @@ html, body {
 .amgt-sig-popup__ref { color: #52606d; }
 .amgt-sig-popup__kind { font-weight: 700; color: #52606d; }
 .amgt-sig-popup__edit { display: inline-block; margin-top: 8px; color: #1565c0; font-size: 13px; }
-.amgt-sig-popup__actions { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+.amgt-sig-popup__actions { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.amgt-sig-popup__actions .amgt-sig-popup__trash { margin-left: auto; }
 .amgt-sig-popup__actions .amgt-sig-popup__edit { margin-top: 0; }
 .amgt-sig-popup__trash { padding: 2px 6px; font-size: 18px; line-height: 1; background: none; border: none; cursor: pointer; }
 .amgt-sig-popup__trash:disabled { opacity: 0.4; }
@@ -1355,3 +1356,8 @@ html, body {
 /* Message bref (src/toast.js) : une ligne en haut de l'écran, disparaît après 2 secondes. */
 .amgt-toast { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 100000; max-width: calc(100vw - 24px); padding: 8px 14px; border-radius: 6px; background: #0b5c75; color: #fff; font-size: 14px; line-height: 1.3; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); pointer-events: none; transition: opacity 0.3s; }
 .amgt-toast--fin { opacity: 0; }
+
+/* Rapport PDF d'une entrée envoyée (carte et Saisie) : icône seule, 23 px, trait fin, bleu */
+.amgt-rapport-pdf { padding: 2px; background: none; border: none; cursor: pointer; line-height: 0; }
+.amgt-rapport-pdf:disabled { opacity: 0.4; }
+.amgt-rapport-pdf__ic { display: block; width: 23px; height: 23px; background: #0b5c75; -webkit-mask: url(src/annotate/icons/icone-pdf.svg) center / contain no-repeat; mask: url(src/annotate/icons/icone-pdf.svg) center / contain no-repeat; }
