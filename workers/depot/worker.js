@@ -622,10 +622,10 @@ async function epoqueActuelle(env) {
 }
 
 // ------------------------------------------------------------------ remise à zéro des fiches et des essais
-// Ce qui peut partir, et rien d'autre : ancien rangement (index/, standard/) et fiches (signalements/).
+// Ce qui peut partir, et rien d'autre : anciens rangements (index/, standard/, signalements/) et fiches (prive/entrees/).
 const RAZ_PREFIXES = [
-  { id: 'anciens', titre: 'Ancien rangement des fiches (index/, standard/)', prefixes: ['index/', 'standard/'] },
-  { id: 'fiches', titre: 'Fiches de signalement (signalements/)', prefixes: ['signalements/'] },
+  { id: 'anciens', titre: 'Anciens rangements des fiches (index/, standard/, signalements/)', prefixes: ['index/', 'standard/', 'signalements/'] },
+  { id: 'fiches', titre: 'Fiches de signalement (prive/entrees/)', prefixes: ['prive/entrees/'] },
 ];
 const RAZ_LOT = 500; // objets effacés par appel (plafond du forfait gratuit)
 
@@ -853,7 +853,7 @@ async function routeAdmin(request, env, url) {
 // sous-dossier par entrée : fiche.json (dernière version), depot.zip (archive de la dernière version), pieces/ (photos et
 // calques), revisions/ (un PDF par révision), historique/ (archives des versions précédentes), recu.json (réception).
 const FORMULAIRE = 'signalement-demande';
-const BASE = `signalements/${FORMULAIRE}`;
+const BASE = `prive/entrees/${FORMULAIRE}`;
 const INDEX_KEY = `${BASE}/index.json`;
 
 /** Entrée sortie du système (statut « supprime » ; `supprimeLe` pour les entrées supprimées avant l'ajout du statut). */
