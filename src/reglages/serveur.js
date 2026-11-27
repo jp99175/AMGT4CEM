@@ -155,6 +155,13 @@ Reglages.register({
       aide: 'Adresses des services externes (UrbIS, orthophotos, géocodeur) et du relais d\'enregistrement.',
       ecran: { id: 'services', titre: 'Services et relais', monter },
     }] : []),
+    // Utilisateurs : droit « utilisateurs » ; grisée sans lui (écran défini dans reglages.js : liste des intervenants, droits, sécurité).
+    {
+      texte: 'Utilisateurs',
+      pastille: 'Utilisateurs',
+      aide: 'Intervenants, droits, trigrammes, codes d\'activation et sécurité des mots de passe.',
+      ...(AMGT4CEM_Auth.aDroit('utilisateurs', s) && Reglages.ECRAN_UTILISATEURS ? { ecran: Reglages.ECRAN_UTILISATEURS } : { desactive: 'Réservé aux comptes disposant du droit « utilisateurs ».' }),
+    },
     // Attributs : droit « attributs » ; grisée sans lui (écran défini dans attributs.js).
     {
       texte: 'Attributs',

@@ -1,5 +1,5 @@
 /**
- * Réglages > Utilisateurs > « Sauvegardes » (droit « utilisateurs ») : applique tout de suite la politique de sauvegarde
+ * Réglages > Administration temporaire > « Sauvegardes » (droit « utilisateurs ») : applique tout de suite la politique de sauvegarde
  * aux archives et versions déjà présentes dans R2 (attributs, zones dessinées, shapefile). Le serveur l'applique aussi, seul,
  * après chaque enregistrement ; cet écran sert à ne pas attendre le prochain.
  * Politique (25/11/2026) : la version en cours, une sauvegarde (la version juste avant) et la dernière version de chaque mois écoulé.

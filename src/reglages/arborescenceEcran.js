@@ -1,5 +1,5 @@
 /**
- * Réglages > Utilisateurs > « Arborescence du stockage » (droit « utilisateurs ») : liste en lecture seule de tout ce que
+ * Réglages > Administration temporaire > « Arborescence du stockage » (droit « utilisateurs ») : liste en lecture seule de tout ce que
  * contient le bucket R2, dossiers dépliés, avec le nombre de fichiers et la taille de chaque dossier.
  * Le serveur renvoie la liste à plat, 1000 objets par page (GET /admin/arborescence) ; l'arbre est construit ici.
  */

@@ -1,5 +1,5 @@
 /**
- * Réglages > Utilisateurs > « Remise à zéro des fiches » (droit « utilisateurs »).
+ * Réglages > Administration temporaire > « Remise à zéro des fiches » (droit « utilisateurs »).
  * Phase d'essai seulement : efface sur le serveur l'ancien rangement des fiches et les fiches de signalement, remet à zéro les références (prochaine fiche : AAAA-0001) et fait avancer le numéro
  * de remise à zéro : chaque appareil efface ses fiches et photos locales à sa prochaine connexion.
  * À retirer à la mise en service (étape 8 de la spécification du stockage).

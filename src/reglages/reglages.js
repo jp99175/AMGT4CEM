@@ -26,7 +26,7 @@
  * Mon appareil > Affichage (20/11/2026) : durée d'affichage et décalage du pointeur de mesure, dans un sous-écran.
  * Étape 1 (27/10/2026) : « Mon appareil » (compte, version).
  * Étape 2 (27/10/2026) : délai d'affichage des mesures (appareil) ; « Utilisateurs » (page d'administration actuelle,
- * chargée à la demande dans un sous-écran) ; « Services et relais » (src/reglages/serveur.js).
+ * chargée à la demande dans un sous-écran ; depuis le 27/11/2026 dans la section Avancé, avec sa pastille) ; « Services et relais » (src/reglages/serveur.js).
  */
 (function () {
 const root = document.getElementById('reglages-root');
@@ -212,30 +212,29 @@ Reglages.register({
   ],
 });
 
-Reglages.register({
+// Écran des intervenants (liste, fiche, droits, sécurité) : ouvert depuis « Avancé > Utilisateurs » (serveur.js).
+Reglages.ECRAN_UTILISATEURS = {
   id: 'utilisateurs',
-  ordre: 20,
   titre: 'Utilisateurs',
+  persistant: true,
+  async monter(conteneur) {
+    // La page d'administration actuelle s'attache à un élément #admin-root : on la charge une seule fois.
+    if (!conteneur.firstChild) {
+      const zone = h('div', { id: 'admin-root' });
+      conteneur.append(zone);
+      await charger('css', './src/admin/admin.css');
+      await charger('script', './src/admin/admin.js');
+    }
+  },
+};
+
+// Outils d'administration de la phase d'essai (sans rapport avec la gestion des comptes) : à retirer à la mise en service.
+Reglages.register({
+  id: 'admin-temporaire',
+  ordre: 95,
+  titre: 'Administration temporaire',
   droit: 'utilisateurs',
   lignes: () => [
-    {
-      texte: 'Intervenants, droits et sécurité',
-      aide: 'Créer un compte, donner des droits, envoyer un code d\'activation, régler la sécurité des mots de passe.',
-      ecran: {
-        id: 'utilisateurs',
-        titre: 'Utilisateurs',
-        persistant: true,
-        async monter(conteneur) {
-          // La page d'administration actuelle s'attache à un élément #admin-root : on la charge une seule fois.
-          if (!conteneur.firstChild) {
-            const zone = h('div', { id: 'admin-root' });
-            conteneur.append(zone);
-            await charger('css', './src/admin/admin.css');
-            await charger('script', './src/admin/admin.js');
-          }
-        },
-      },
-    },
     ...(window.AMGT4CEM_SauvegardesEcran ? [{
       texte: 'Sauvegardes',
       aide: 'Règle de conservation des anciennes versions (attributs, zones, shapefile) et nettoyage immédiat.',
