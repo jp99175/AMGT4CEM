@@ -164,14 +164,15 @@ function formulaire() {
     service: champ('adm-srv', 'Service', nouveau ? 'CEM' : edition.service),
     trigramme: champ('adm-tri', 'Trigramme (2 ou 3 lettres, unique ; sert aux noms de fichiers)', edition.trigramme, { autocapitalize: 'characters', autocorrect: 'off', spellcheck: 'false', maxlength: '3' }),
   };
-  // Sans trigramme : la proposition est directement dans la case (« Enregistrer » la valide) ; elle suit le prénom et le nom tant que la case n'est pas touchée.
+  // Sans trigramme : la case reste vide avec « Proposé : XXX » en grisé ; si on n'y touche pas, « Enregistrer » attribue la proposition.
   const pris = trigrammesPris(edition.matricule);
-  let tri = !!edition.trigramme;
-  const proposer = () => { if (!tri) f.trigramme.input.value = trigrammePropose(f.prenom.input.value, f.nom.input.value, pris); };
-  f.trigramme.input.addEventListener('input', () => { tri = true; f.trigramme.input.value = lettres(f.trigramme.input.value).slice(0, 3); });
-  f.prenom.input.addEventListener('input', proposer);
-  f.nom.input.addEventListener('input', proposer);
-  proposer();
+  const sansTrigramme = !edition.trigramme;
+  const proposition = () => trigrammePropose(f.prenom.input.value, f.nom.input.value, pris);
+  const afficherProposition = () => { if (sansTrigramme) f.trigramme.input.placeholder = `Proposé : ${proposition() || '—'}`; };
+  f.trigramme.input.addEventListener('input', () => { f.trigramme.input.value = lettres(f.trigramme.input.value).slice(0, 3); });
+  f.prenom.input.addEventListener('input', afficherProposition);
+  f.nom.input.addEventListener('input', afficherProposition);
+  afficherProposition();
   const droits = droitsDe(edition);
   const cases = Object.entries(DROITS).map(([code, d]) => {
     const c = h('input', { type: 'checkbox', id: `adm-droit-${code}`, value: code });
@@ -209,7 +210,7 @@ function formulaire() {
         gsm: gsmNormalise(f.gsm.input.value), email: f.email.input.value,
         organisation: f.organisation.input.value, division: f.division.input.value,
         departement: f.departement.input.value, service: f.service.input.value,
-        trigramme: f.trigramme.input.value,
+        trigramme: f.trigramme.input.value || (sansTrigramme ? proposition() : ''),
         droits: cases.filter((x) => x.c.checked).map((x) => x.code), actif: actif.checked,
         // Compatibilité avec un serveur pas encore à jour (il ne lit que `admin`) ; le serveur à jour lit `droits`.
         admin: cases.some((x) => x.code === 'utilisateurs' && x.c.checked),

@@ -50,3 +50,4 @@ html[data-app="admin"] body { background: #f4f6f8; color: #1f2933; font-family: 
 
 .adm-card__tri-vide { font-size: 14px; color: #7b8794; }
 .adm-card__tri { font-size: 16px; font-weight: 400; }
+#adm-tri { text-transform: uppercase; color: #000; }

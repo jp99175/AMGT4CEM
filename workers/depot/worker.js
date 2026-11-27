@@ -813,7 +813,7 @@ async function routeAdmin(request, env, url) {
       // Un trigramme est unique parmi tous les intervenants (même inactifs).
       if (fiche.trigramme) {
         const pris = ref.intervenants.find((x) => x.matricule !== fiche.matricule && String(x.trigramme || '').toUpperCase() === fiche.trigramme);
-        if (pris) throw new HttpError(409, `Le trigramme ${fiche.trigramme} est déjà attribué à ${`${pris.prenom} ${pris.nom}`.trim()} (${pris.matricule}).`);
+        if (pris) throw new HttpError(409, 'Ce trigramme existe déjà. Choisissez-en un autre.');
       }
       if (existant) {
         Object.assign(existant, fiche, { modifieLe: now });
