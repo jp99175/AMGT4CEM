@@ -240,3 +240,8 @@ html[data-app="signal"] body {
 .sig4cem-row__vign { flex: none; width: 64px; height: 64px; border-radius: 6px; background: #c9d3d8 center / cover no-repeat; border: 1px solid #cbd2d9; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #52606d; text-align: center; }
 .sig4cem-row__vign--vide { background: none; border-style: dashed; }
 .sig4cem-row__nd { font-weight: 400; font-style: italic; letter-spacing: 0; }
+
+/* Vignette à droite du cadre ; dans une entrée envoyée elle est dans la ligne du triangle (la galerie dépliée garde toute la largeur). */
+.sig4cem-listrow__details summary { min-height: 64px; }
+.sig4cem-listrow__details summary .sig4cem-row__vign { float: right; margin-left: 10px; }
+@media (max-width: 359px) { .sig4cem-row__vign { display: none; } .sig4cem-listrow__details summary { min-height: 0; } }

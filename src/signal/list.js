@@ -62,6 +62,18 @@ async function vignetteDe(entry) {
   return url;
 }
 
+// Entrée envoyée dont les photos ne sont plus sur cet appareil : photo de couverture lue sur le serveur (même route que le pop-up de la carte).
+const vignettesServeur = new Map();
+async function vignetteServeur(entry) {
+  if (!entry.reference || !AMGT4CEM_Auth.session()) return null;
+  const cle = `${entry.reference}@${entry.version || 1}`;
+  if (!vignettesServeur.has(cle)) {
+    vignettesServeur.set(cle, AMGT4CEM_Auth.call(`/signalements/${encodeURIComponent(entry.reference)}/couverture?v=${entry.version || 1}`, { blob: true })
+      .then((b) => URL.createObjectURL(b)).catch(() => { vignettesServeur.delete(cle); return null; }));
+  }
+  return vignettesServeur.get(cle);
+}
+
 function fmtDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -202,7 +214,9 @@ SIG.List = {
     const nd = natureFr ? `(${natureFr.toLocaleUpperCase('fr-BE')}${domaineFr ? ` – ${domaineFr}` : ''})` : (domaineFr ? `(${domaineFr})` : '');
     const titleEl = h('strong', { class: 'sig4cem-row__title', text: entry.reference ? `${entry.reference} : ${title}` : title });
     const vign = h('div', { class: `sig4cem-row__vign${(entry.pieces || []).length ? '' : ' sig4cem-row__vign--vide'}`, text: (entry.pieces || []).length ? '' : 'sans photo' });
-    if ((entry.pieces || []).length) vignetteDe(entry).then((url) => { if (url) { vign.style.backgroundImage = `url(${url})`; } }).catch((err) => console.warn('[SIG4CEM] Vignette non calculée :', err));
+    if ((entry.pieces || []).length) {
+      vignetteDe(entry).then((url) => url || vignetteServeur(entry)).then((url) => { if (url) { vign.style.backgroundImage = `url(${url})`; } }).catch((err) => console.warn('[SIG4CEM] Vignette non calculée :', err));
+    }
     const rest = h('div', { class: 'sig4cem-row__rest' },
       nd ? h('span', { class: 'sig4cem-row__nd', text: nd }) : null,
       h('span', { class: 'sig4cem-row__meta', text: meta }), ident, status);
@@ -217,10 +231,10 @@ SIG.List = {
       });
       const open = h('button', { type: 'button', class: 'sig4cem-listrow__open', title: 'Ouvrir pour modifier' }, body);
       open.addEventListener('click', () => this.ctx.edit(entry));
-      li.append(cb, vign, open);
+      li.append(cb, open, vign);
     } else {
       // Entrée envoyée : le titre est sur la ligne du triangle, le reste en dessous.
-      const details = h('details', { class: 'sig4cem-listrow__details' }, h('summary', {}, titleEl, rest));
+      const details = h('details', { class: 'sig4cem-listrow__details' }, h('summary', {}, vign, titleEl, rest));
       const dl = h('dl', { class: 'sig4cem-dl' });
       const add = (k, v) => { if (v) dl.append(h('dt', { text: k }), h('dd', { text: v })); };
       const D = NS.Depot;
@@ -262,7 +276,7 @@ SIG.List = {
         }
       });
       if (actions.childNodes.length) details.append(actions);
-      li.append(vign, details);
+      li.append(details);
     }
     return li;
   },

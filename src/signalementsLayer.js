@@ -217,7 +217,7 @@ const AMGT4CEM_SignalementsLayer = {
     const cle = `${s.reference}@${s.version || 1}`;
     try {
       if (!this._vignettes.has(cle)) {
-        this._vignettes.set(cle, AMGT4CEM_Auth.call(`/signalements/${encodeURIComponent(s.reference)}/couverture`, { blob: true }).then((b) => URL.createObjectURL(b)));
+        this._vignettes.set(cle, AMGT4CEM_Auth.call(`/signalements/${encodeURIComponent(s.reference)}/couverture?v=${s.version || 1}`, { blob: true }).then((b) => URL.createObjectURL(b)));
       }
       const url = await this._vignettes.get(cle);
       const img = document.createElement('img');
