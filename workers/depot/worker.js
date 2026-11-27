@@ -345,6 +345,13 @@ function texte(v, max, nom, obligatoire) {
   return s;
 }
 
+/** Trigramme (initiales servant aux noms de fichiers) : 2 ou 3 lettres A-Z, sans accent ; vide = pas encore attribué. */
+function normTrigramme(v) {
+  const t = String(v == null ? '' : v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+  if (t && !/^[A-Z]{2,3}$/.test(t)) throw new HttpError(400, 'Trigramme invalide : 2 ou 3 lettres, sans chiffre ni accent.');
+  return t;
+}
+
 /** Fiche reçue de la page admin -> champs validés (jamais le hash, ni l'activation). */
 function validerFiche(f) {
   if (!f || typeof f !== 'object') throw new HttpError(400, 'Fiche manquante.');
@@ -360,6 +367,8 @@ function validerFiche(f) {
     division: texte(f.division, 60, 'division', false),
     departement: texte(f.departement, 60, 'département', false),
     service: texte(f.service, 60, 'service', false),
+    // Trigramme : absent de la fiche (ancienne page) = on garde celui qui existe.
+    ...(f.trigramme === undefined ? {} : { trigramme: normTrigramme(f.trigramme) }),
     // Droits cochés ; ancienne page d'administration (case « admin ») : les quatre droits.
     droits: Array.isArray(f.droits) ? DROITS.filter((d) => f.droits.includes(d)) : (f.admin === true ? [...DROITS] : []),
     actif: f.actif !== false,
@@ -371,6 +380,7 @@ function vue(u) {
   return {
     matricule: u.matricule, prenom: u.prenom, nom: u.nom, gsm: u.gsm, email: u.email,
     organisation: u.organisation, division: u.division, departement: u.departement, service: u.service,
+    trigramme: u.trigramme || '',
     droits: droitsDe(u), admin: aDroit(u, 'utilisateurs'), actif: u.actif !== false, // admin : compatibilité des anciennes pages
     motDePasseDefini: !!u.hash,
     activationExpire: u.activation ? u.activation.expire : null,
@@ -800,6 +810,11 @@ async function routeAdmin(request, env, url) {
     const resultat = await modifierRef(env, async (ref) => {
       const now = new Date().toISOString();
       const existant = ref.intervenants.find((x) => x.matricule === fiche.matricule);
+      // Un trigramme est unique parmi tous les intervenants (même inactifs).
+      if (fiche.trigramme) {
+        const pris = ref.intervenants.find((x) => x.matricule !== fiche.matricule && String(x.trigramme || '').toUpperCase() === fiche.trigramme);
+        if (pris) throw new HttpError(409, `Le trigramme ${fiche.trigramme} est déjà attribué à ${`${pris.prenom} ${pris.nom}`.trim()} (${pris.matricule}).`);
+      }
       if (existant) {
         Object.assign(existant, fiche, { modifieLe: now });
         delete existant.admin;

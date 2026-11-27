@@ -92,6 +92,24 @@ const DROITS = {
 };
 
 /** Droits d'une fiche ; fiche d'avant les droits (booléen admin) : les quatre si admin. */
+// ------------------------------------------------------------------ trigramme
+const PARTICULES = new Set(['de', 'du', 'des', 'le', 'la', 'les', 'van', 'von', 'der', 'den', 'ter', 'ten', 'te', 'di', 'da', 'dos', 'el', 'al', 'd', 'l']);
+const lettres = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z]/g, '').toUpperCase();
+
+/** Trigramme proposé : 1re lettre du prénom + 2 premières du nom (particules ignorées) ; si pris : 2 du prénom + 1 du nom ; sinon 3 du nom. '' si rien de libre. */
+function trigrammePropose(prenom, nom, pris) {
+  const mots = String(nom || '').split(/[\s'’-]+/).filter(Boolean);
+  const utiles = mots.filter((m) => !PARTICULES.has(m.toLowerCase()));
+  const N = lettres((utiles.length ? utiles : mots).join(''));
+  const P = lettres(String(prenom || '').split(/[\s-]+/).filter(Boolean)[0] || '');
+  const essais = [P.slice(0, 1) + N.slice(0, 2), P.slice(0, 2) + N.slice(0, 1), N.slice(0, 3)];
+  return essais.find((t) => t.length >= 2 && !pris.has(t)) || '';
+}
+
+function trigrammesPris(sauf) {
+  return new Set(liste.filter((u) => u.matricule !== sauf && u.trigramme).map((u) => String(u.trigramme).toUpperCase()));
+}
+
 function droitsDe(u) {
   if (Array.isArray(u.droits)) return Object.keys(DROITS).filter((d) => u.droits.includes(d));
   return u.admin ? Object.keys(DROITS) : [];
@@ -115,7 +133,9 @@ function carte(u) {
   else if (u.motDePasseDefini && !u.activationExpire) etat.push(pastille('Compte activé', 'adm-badge--ok'));
   else if (u.activationExpire) etat.push(pastille(`En attente d'activation (jusqu'au ${jour(u.activationExpire)})`, 'adm-badge--wait'));
   const b = h('button', { type: 'button', class: 'adm-card' },
-    h('strong', { text: `${u.prenom} ${u.nom.toLocaleUpperCase('fr-BE')}` }),
+    h('span', { class: 'adm-card__nom' },
+      h('strong', { text: `${u.prenom} ${u.nom.toLocaleUpperCase('fr-BE')} ` }),
+      u.trigramme ? h('strong', { text: `[${u.trigramme}]` }) : h('em', { class: 'adm-card__tri-vide', text: '[à attribuer]' })),
     h('span', { class: 'adm-card__mat', text: u.matricule }),
     h('span', { class: 'adm-card__line', text: org }),
     h('span', { class: 'adm-card__line', text: [gsmAffiche(u.gsm), u.email].filter(Boolean).join(' · ') }),
@@ -142,7 +162,16 @@ function formulaire() {
     division: champ('adm-div', 'Division', nouveau ? 'DITP' : edition.division),
     departement: champ('adm-dep', 'Département', nouveau ? 'AMGT' : edition.departement),
     service: champ('adm-srv', 'Service', nouveau ? 'CEM' : edition.service),
+    trigramme: champ('adm-tri', 'Trigramme (2 ou 3 lettres, unique ; sert aux noms de fichiers)', edition.trigramme, { autocapitalize: 'characters', autocorrect: 'off', spellcheck: 'false', maxlength: '3' }),
   };
+  // Sans trigramme : la proposition est directement dans la case (« Enregistrer » la valide) ; elle suit le prénom et le nom tant que la case n'est pas touchée.
+  const pris = trigrammesPris(edition.matricule);
+  let tri = !!edition.trigramme;
+  const proposer = () => { if (!tri) f.trigramme.input.value = trigrammePropose(f.prenom.input.value, f.nom.input.value, pris); };
+  f.trigramme.input.addEventListener('input', () => { tri = true; f.trigramme.input.value = lettres(f.trigramme.input.value).slice(0, 3); });
+  f.prenom.input.addEventListener('input', proposer);
+  f.nom.input.addEventListener('input', proposer);
+  proposer();
   const droits = droitsDe(edition);
   const cases = Object.entries(DROITS).map(([code, d]) => {
     const c = h('input', { type: 'checkbox', id: `adm-droit-${code}`, value: code });
@@ -180,6 +209,7 @@ function formulaire() {
         gsm: gsmNormalise(f.gsm.input.value), email: f.email.input.value,
         organisation: f.organisation.input.value, division: f.division.input.value,
         departement: f.departement.input.value, service: f.service.input.value,
+        trigramme: f.trigramme.input.value,
         droits: cases.filter((x) => x.c.checked).map((x) => x.code), actif: actif.checked,
         // Compatibilité avec un serveur pas encore à jour (il ne lit que `admin`) ; le serveur à jour lit `droits`.
         admin: cases.some((x) => x.code === 'utilisateurs' && x.c.checked),
@@ -199,6 +229,7 @@ function formulaire() {
     h('h2', { text: nouveau ? 'Nouvel intervenant' : `${edition.prenom} ${edition.nom} (${edition.matricule})` }),
     f.matricule.row, h('div', { class: 'adm-grid' }, f.prenom.row, f.nom.row), h('div', { class: 'adm-grid' }, f.gsm.row, f.email.row),
     h('div', { class: 'adm-grid' }, f.organisation.row, f.division.row), h('div', { class: 'adm-grid' }, f.departement.row, f.service.row),
+    f.trigramme.row,
     h('fieldset', { class: 'adm-droits' }, h('legend', { text: 'Droits' }), ...cases.map((x) => x.row),
       h('p', { class: 'adm-note', text: 'Sans droit coché : agent (lit les couches, crée et révise ses entrées).' })),
     nouveau ? null : h('label', { class: 'adm-check' }, actif, ' Compte actif (décoché : accès coupé immédiatement)'),

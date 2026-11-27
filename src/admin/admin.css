@@ -47,3 +47,5 @@ html[data-app="admin"] body { background: #f4f6f8; color: #1f2933; font-family: 
 .adm-stat { font-size: 14px; font-weight: 600; margin: 4px 0; }
 .adm-liste { font-size: 13px; color: #444; margin: 4px 0 8px; padding-left: 18px; }
 .adm-row .adm-note { margin: 2px 0 0; font-size: 12px; }
+
+.adm-card__tri-vide { font-size: 14px; color: #7b8794; }
