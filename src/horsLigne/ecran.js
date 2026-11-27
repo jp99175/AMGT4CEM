@@ -19,7 +19,7 @@ const SVG_URL = './data/synoptique/synoptique-reseau-v17.svg';
 const CLE_CHOIX = 'amgt4cem.horsligne.choix.v1';
 const ZOOMS = [12, 11, 10, 9, 8]; // niveaux de la grille Lambert 72 (0,27 à 4,35 m par pixel) ; le plus fin = 12
 const MARGE_FIN_M = 100; // au niveau 12, doublée à chaque niveau en moins (marge constante à l'écran)
-const KO_PAR_TUILE = { 12: 12, 11: 12, 10: 12, 9: 12, 8: 12 }; // ESTIMATION : le poids des tuiles Lambert n'est pas encore mesuré (page ?page=mesure-tuiles)
+const KO_DEFAUT = 12; // poids supposé d'une tuile tant qu'aucune tuile du niveau n'est gardée (estimation)
 const PARALLELE = 6;
 const TOLERANCE = 3; // unités du dessin : écart toléré entre le bout d'un tronçon et le contour d'une station
 
@@ -36,7 +36,18 @@ const fmtMo = (ko) => { if (!(ko > 0)) return '0 Mo'; const mo = ko / 1000; retu
 const tri = (a, b) => Number(a) - Number(b) || String(a).localeCompare(String(b));
 const norm = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const nomSansParentheses = (t) => norm(String(t).replace(/\(.*?\)/g, ''));
-const koDeCle = (k) => KO_PAR_TUILE[Number(k.split('/')[0])] || 12;
+// Poids d'une tuile : le vrai (octets notés au téléchargement) si elle est gardée ; sinon la moyenne des tuiles gardées du même niveau ;
+// à défaut, KO_DEFAUT. Les chiffres « à télécharger » sont donc des estimations qui s'affinent à chaque téléchargement.
+let moyennes = { n: -1, ko: new Map() };
+function koMoyen(z) {
+  if (moyennes.n !== AMGT4CEM_HorsLigne.index.size) {
+    const somme = new Map();
+    for (const [k, v] of AMGT4CEM_HorsLigne.index) { const n = k.split('/')[0]; const a = somme.get(n) || [0, 0]; a[0] += (v.o || 0) / 1000; a[1] += 1; somme.set(n, a); }
+    moyennes = { n: AMGT4CEM_HorsLigne.index.size, ko: new Map([...somme].map(([n, a]) => [n, a[0] / a[1]])) };
+  }
+  return moyennes.ko.get(String(z)) || KO_DEFAUT;
+}
+const koDeCle = (k) => { const v = AMGT4CEM_HorsLigne.index.get(k); return v && v.o ? v.o / 1000 : koMoyen(k.split('/')[0]); };
 const distBoite = (p, b) => Math.hypot(Math.max(b.x - p.x, 0, p.x - (b.x + b.w)), Math.max(b.y - p.y, 0, p.y - (b.y + b.h)));
 
 function monter(conteneur) {
@@ -779,7 +790,7 @@ function monter(conteneur) {
     }
     // Mettre à jour : télécharge seulement, sans confirmation ; absent quand tout est à jour (le résumé le dit).
     if (T && T.manquantes.length) {
-      const maj = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: `Mettre à jour · ${fmtMo(T.koManque)}` });
+      const maj = h('button', { type: 'button', class: 'rgl-btn rgl-btn--primary', text: `Mettre à jour · ≈ ${fmtMo(T.koManque)}` });
       if (!HL.pret || E.vidage) maj.disabled = true;
       maj.addEventListener('click', () => mettreAJour());
       el.push(maj, h('p', { class: 'rgl-note hl-actions__note', text: 'Le wifi est préférable.' }));
@@ -851,7 +862,7 @@ function monter(conteneur) {
     if (T && H.items.length) {
       const ligneTot = (k, v) => h('div', { class: 'hl-totaux__ligne' }, h('span', { text: k }), h('span', { text: v }));
       const tot = [ligneTot('Gardé', fmtMo(T.ko))];
-      if (T.manquantes.length) tot.push(ligneTot('À télécharger', fmtMo(T.koManque)));
+      if (T.manquantes.length) tot.push(ligneTot('À télécharger (estimation)', fmtMo(T.koManque)));
       if (T.aEffacer.length) tot.push(ligneTot('Récupérable (corbeille)', fmtMo(T.koEfface)));
       items.push(h('div', { class: 'hl-totaux' }, ...tot));
     }

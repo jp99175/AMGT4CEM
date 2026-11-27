@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const VERSION = '20261126-2343'; // @VERSION (écrit par tools/stamp-sw.sh)
+const VERSION = '20261127-0813'; // @VERSION (écrit par tools/stamp-sw.sh)
 const CACHE = 'amgt4cem-app';
 const DELAI_RESEAU_MS = 4000;
 const PARALLELE = 6;
@@ -116,16 +116,12 @@ const FICHIERS = [
   './src/icones.js',
   './src/interstation.js',
   './src/lambertGrid.js',
-  './src/lambertTest.css',
-  './src/lambertTest.js',
   './src/layerOpacityStore.js',
   './src/lieuxTool.js',
   './src/mapMenu.js',
   './src/mapView.js',
   './src/measureTool.js',
   './src/menuPrefs.js',
-  './src/mesureTuiles.css',
-  './src/mesureTuiles.js',
   './src/nappeLayer.js',
   './src/nappeSelectionStore.js',
   './src/nav/ajouter-point.svg',

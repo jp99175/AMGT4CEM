@@ -316,14 +316,6 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       return { ...p, styles: [...p.styles, './src/nav/couches.css', './src/nav/mesure.css', './src/horsLigne/indicateur.css'], scripts: [...p.scripts, './src/nav/couches.js', './src/nav/mesureIcones.js', './src/nav/mesure.js', './src/horsLigne/indicateur.js'] };
     })(),
     signal: avecNav(apps.signal),
-    // Page jetable (adresse à connaître, absente de la barre de navigation) : poids des tuiles UrbIS, pour chiffrer le hors ligne.
-    'mesure-tuiles': {
-      title: 'AMGT4CEM – Mesure des tuiles',
-      template: 'amgt-tpl-mesure-tuiles',
-      nav: false,
-      styles: ['./src/auth/auth.css', './src/mesureTuiles.css'],
-      scripts: ['./vendor/proj4/proj4.js', './src/buildInfo.js', './src/services.js', './src/auth/auth.js', './src/stockage.js', './src/auth/authUi.js', './src/shpLoader.js', './src/tuilesLambert.js', './src/mesureTuiles.js'],
-    },
     // Page jetable (adresse à connaître, absente de la barre de navigation) : calage du synoptique du réseau sur le fond de plan
     // (lignes, arrêts, stations, tunnels). Les liens validés sont téléchargés puis déposés dans config/synoptique/liens.json.
     'tuning-synoptique': {
@@ -332,15 +324,6 @@ AMGT4CEM_CONFIG.pages = (function (apps) {
       nav: false,
       styles: ['./src/tuningSynoptique.css'],
       scripts: ['./vendor/leaflet/leaflet.js', './vendor/proj4/proj4.js', './vendor/proj4leaflet/proj4leaflet.js', './src/buildInfo.js', './src/services.js', './src/crs.js', './src/lambertGrid.js', './src/horsLigne/magasin.js', './src/basemap.js', './src/buildInfoControl.js', './src/tuilesLambert.js', './src/tuningSynoptique.js'],
-    },
-    // Page jetable (adresse à connaître, absente de la barre de navigation) : essai d'une carte affichée en Lambert 72 (tuiles UrbIS
-    // de la grille EPSG:31370), séparée de la carte principale. Voir src/lambertTest.js.
-    lambert: {
-      title: 'AMGT4CEM – Essai Lambert 72',
-      template: 'amgt-tpl-lambert',
-      nav: false,
-      styles: ['./src/lambertTest.css'],
-      scripts: ['./vendor/leaflet/leaflet.js', './vendor/proj4/proj4.js', './vendor/proj4leaflet/proj4leaflet.js', './src/buildInfo.js', './src/services.js', './src/crs.js', './src/lambertGrid.js', './src/shpLoader.js', './src/buildInfoControl.js', './src/scaleControl.js', './src/scaledText.js', './src/lambertTest.js'],
     },
     reglages: {
       title: 'AMGT4CEM – Réglages',
