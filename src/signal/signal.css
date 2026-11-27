@@ -232,3 +232,11 @@ html[data-app="signal"] body {
 .sig4cem-trash { padding: 4px 6px; }
 
 
+
+/* Photo de couverture : badge sur l'aperçu (seulement si ce n'est pas la première photo), bouton surligné quand la photo est la couverture. */
+.sig4cem-photo__badge { position: absolute; top: -6px; left: -6px; width: 26px; height: 26px; border-radius: 50%; background: #0b5c75 center / 18px 18px no-repeat; border: 2px solid #fff; background-image: url("data:image/svg+xml,%3Csvg%20viewBox%3D%270%200%2024%2024%27%20width%3D%2718%27%20height%3D%2718%27%20aria-hidden%3D%27true%27%20fill%3D%27none%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.3%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%279.5%27%20r%3D%276.6%27%2F%3E%3Cpath%20d%3D%27M8.7%2015.1v6.4l3.3-1.9%203.3%201.9v-6.4%27%2F%3E%3Cpath%20d%3D%27M10.3%208.2l2.2-1.4v5.6%27%2F%3E%3Cpath%20d%3D%27M10.4%2012.4h4.1%27%2F%3E%3C%2Fsvg%3E"); }
+.sig4cem-btn--on { border-color: #0b5c75 !important; background: #e3f0f4 !important; }
+/* Liste : vignette de la photo de couverture à gauche du cadre. */
+.sig4cem-row__vign { flex: none; width: 64px; height: 64px; border-radius: 6px; background: #c9d3d8 center / cover no-repeat; border: 1px solid #cbd2d9; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #52606d; text-align: center; }
+.sig4cem-row__vign--vide { background: none; border-style: dashed; }
+.sig4cem-row__nd { font-weight: 400; font-style: italic; letter-spacing: 0; }

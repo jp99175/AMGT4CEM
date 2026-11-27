@@ -31,11 +31,35 @@ function fmtDay(iso) {
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`;
 }
 
-/** « 2026-0122 v0.06 du 10.10.2026 » (la référence n'apparaît qu'une fois attribuée par le serveur). */
+/** « v0.06 du 10.10.2026 » (la référence est en tête du titre, une fois attribuée par le serveur). */
 function idLine(entry) {
   const v = `v0.${String(entry.version || 1).padStart(2, '0')}`;
   const day = fmtDay(entry.modifieLe || entry.envoyeLe || entry.creeLe);
-  return [entry.reference, v, day ? `du ${day}` : ''].filter(Boolean).join(' ');
+  return [v, day ? `du ${day}` : ''].filter(Boolean).join(' ');
+}
+
+// Vignettes : petite image de la photo de couverture (sans annotations, avec son pivotement et son recadrage), calculée une fois par
+// session puis gardée en mémoire (la liste peut être longue : on ne charge jamais les photos en taille réelle dans la liste).
+const vignettes = new Map();
+async function vignetteDe(entry) {
+  const pieces = entry.pieces || [];
+  const meta = pieces.find((m) => m.id === entry.couverture) || pieces[0];
+  if (!meta) return null;
+  const record = await AMGT4CEM_Annotate.Store.get(meta.id);
+  if (!record) return null;
+  const cle = `${meta.id}|${JSON.stringify(record.mep || null)}`;
+  if (vignettes.has(cle)) return vignettes.get(cle);
+  const base = record.mep && AMGT4CEM_Annotate.vue ? await AMGT4CEM_Annotate.vue(record.blob, record.mep, 160) : record.blob;
+  const bmp = await createImageBitmap(base);
+  const k = Math.min(1, 128 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(bmp.width * k));
+  c.height = Math.max(1, Math.round(bmp.height * k));
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  if (bmp.close) bmp.close();
+  const url = c.toDataURL('image/jpeg', 0.8);
+  vignettes.set(cle, url);
+  return url;
 }
 
 function fmtDate(iso) {
@@ -175,8 +199,10 @@ SIG.List = {
     const typeDef = D0.type(entry.type);
     const natureFr = (D0.nature(entry.nature || (typeDef && typeDef.nature)) || {}).fr;
     const domaineFr = entry.domaine ? (D0.domaine(entry.domaine) || {}).fr : '';
-    const nd = [natureFr, domaineFr].filter(Boolean).join(' – ').toLocaleUpperCase('fr-BE');
-    const titleEl = h('strong', { class: 'sig4cem-row__title', text: title });
+    const nd = natureFr ? `(${natureFr.toLocaleUpperCase('fr-BE')}${domaineFr ? ` – ${domaineFr}` : ''})` : (domaineFr ? `(${domaineFr})` : '');
+    const titleEl = h('strong', { class: 'sig4cem-row__title', text: entry.reference ? `${entry.reference} : ${title}` : title });
+    const vign = h('div', { class: `sig4cem-row__vign${(entry.pieces || []).length ? '' : ' sig4cem-row__vign--vide'}`, text: (entry.pieces || []).length ? '' : 'sans photo' });
+    if ((entry.pieces || []).length) vignetteDe(entry).then((url) => { if (url) { vign.style.backgroundImage = `url(${url})`; } }).catch((err) => console.warn('[SIG4CEM] Vignette non calculée :', err));
     const rest = h('div', { class: 'sig4cem-row__rest' },
       nd ? h('span', { class: 'sig4cem-row__nd', text: nd }) : null,
       h('span', { class: 'sig4cem-row__meta', text: meta }), ident, status);
@@ -191,7 +217,7 @@ SIG.List = {
       });
       const open = h('button', { type: 'button', class: 'sig4cem-listrow__open', title: 'Ouvrir pour modifier' }, body);
       open.addEventListener('click', () => this.ctx.edit(entry));
-      li.append(cb, open);
+      li.append(cb, vign, open);
     } else {
       // Entrée envoyée : le titre est sur la ligne du triangle, le reste en dessous.
       const details = h('details', { class: 'sig4cem-listrow__details' }, h('summary', {}, titleEl, rest));
@@ -236,7 +262,7 @@ SIG.List = {
         }
       });
       if (actions.childNodes.length) details.append(actions);
-      li.append(details);
+      li.append(vign, details);
     }
     return li;
   },

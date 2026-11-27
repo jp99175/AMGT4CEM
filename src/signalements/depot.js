@@ -110,6 +110,8 @@ NS.Depot = {
       creeLe: s.creeLe,
       version: s.version || 1, // v0.nn : incrémentée à chaque modification enregistrée sur l'appareil
       modifieLe: s.modifieLe || s.creeLe || null,
+      // Photo de couverture (nom du fichier) : seulement si ce n'est pas la première photo, qui est la couverture par défaut.
+      couverture: (() => { const i = s.couverture ? (s.pieces || []).findIndex((m) => m.id === s.couverture) : -1; return i > 0 ? this.pieceFileName(s, i) : null; })(),
       pieces: (s.pieces || []).map((meta, i) => ({
         nom: this.pieceFileName(s, i),
         type: 'image/jpeg',

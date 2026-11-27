@@ -120,6 +120,12 @@ SIG.Form = {
     }
   },
 
+  /** Photo de couverture choisie, si ce n'est pas la première : la première photo est la couverture par défaut, sans badge. */
+  _couvertureChoisie() {
+    const c = this.couverture;
+    return c && this.photos.length > 1 && this.photos[0].id !== c && this.photos.some((m) => m.id === c) ? c : null;
+  },
+
   async _renderPhotos() {
     const list = this.f.photoList;
     for (const img of list.querySelectorAll('img')) URL.revokeObjectURL(img.src);
@@ -130,6 +136,7 @@ SIG.Form = {
       const rm = h('button', { type: 'button', class: 'sig4cem-photo__rm', title: 'Retirer cette photo', 'aria-label': 'Retirer cette photo', text: '✕' });
       rm.addEventListener('click', async () => {
         this.photos.splice(i, 1);
+        if (this.couverture === meta.id) this.couverture = null; // la couverture retirée : retour à la première photo
         if (this.editing) this.removed.push(meta.id); else await AMGT4CEM_Annotate.Store.remove(meta.id);
         await this._renderPhotos();
       });
@@ -138,6 +145,8 @@ SIG.Form = {
       const thumb = h('span', { class: 'sig4cem-photo' }, h('img', { src: URL.createObjectURL(vueBlob), alt: `Photo ${i + 1}` }));
       if (record.annot) thumb.append(h('img', { class: 'sig4cem-photo__overlay', src: URL.createObjectURL(record.annot), alt: '' }));
       thumb.append(rm);
+      const estCouverture = (this._couvertureChoisie() || (this.photos[0] && this.photos[0].id)) === meta.id;
+      if (i > 0 && estCouverture) thumb.append(h('span', { class: 'sig4cem-photo__badge', title: 'Photo de couverture', 'aria-label': 'Photo de couverture' }));
       const edit = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small', });
       edit.innerHTML = `${'<span class="annotate-ic annotate-ic--crayon" aria-hidden="true"></span>'} ${record.annot ? 'Modifier les annotations' : 'Annoter'}`;
       edit.addEventListener('click', () => {
@@ -165,10 +174,13 @@ SIG.Form = {
       const crop = h('button', { type: 'button', class: 'sig4cem-btn sig4cem-btn--small sig4cem-btn--ico', title: 'Recadrer', 'aria-label': 'Recadrer' });
       crop.innerHTML = '<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="#0b5c75" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2.5v14.5h14.5"/><path d="M2.5 7H17v14.5"/></svg>';
       crop.addEventListener('click', () => ouvrirEditeur('mep'));
+      const couv = h('button', { type: 'button', class: `sig4cem-btn sig4cem-btn--small sig4cem-btn--ico${estCouverture ? ' sig4cem-btn--on' : ''}`, title: estCouverture ? 'Photo de couverture de l\'entrée' : 'Définir comme photo de couverture', 'aria-label': 'Définir comme photo de couverture', 'aria-pressed': estCouverture ? 'true' : 'false' });
+      couv.innerHTML = '<svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true" fill="none" stroke="#0b5c75" stroke-width="0.835" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9.5" r="6.6"/><path d="M8.7 15.1v6.4l3.3-1.9 3.3 1.9v-6.4"/><path d="M10.3 8.2l2.2-1.4v5.6"/><path d="M10.4 12.4h4.1"/></svg>';
+      couv.addEventListener('click', async () => { this.couverture = i === 0 ? null : meta.id; await this._renderPhotos(); });
       const comment = h('textarea', { class: 'sig4cem-photo__comment', rows: '2', maxlength: '500', placeholder: 'Commentaire sur cette photo (facultatif)' });
       comment.value = meta.commentaire || '';
       comment.addEventListener('input', () => { meta.commentaire = comment.value; });
-      list.append(h('div', { class: 'sig4cem-photo-card' }, thumb, h('div', { class: 'sig4cem-photo-card__side' }, comment, h('div', { class: 'sig4cem-photo-buttons' }, edit, rot, crop))));
+      list.append(h('div', { class: 'sig4cem-photo-card' }, thumb, h('div', { class: 'sig4cem-photo-card__side' }, comment, h('div', { class: 'sig4cem-photo-buttons' }, edit, rot, crop, couv))));
     }
   },
 
@@ -205,6 +217,7 @@ SIG.Form = {
       referenceDemandeur: f.refDemandeur.value.trim(),
       description: f.description.value.trim(),
       pieces: this.photos.map((m) => ({ ...m, commentaire: (m.commentaire || '').trim() })),
+      couverture: this._couvertureChoisie(),
       ...(this.editing ? { creeLe: this.editing.creeLe } : {}),
     };
   },
@@ -221,6 +234,7 @@ SIG.Form = {
       this.removed = [];
       this.entryId = entry ? entry.id : entryId;
       this.photos = entry ? (entry.pieces || []).map((m) => ({ ...m })) : [];
+      this.couverture = entry && entry.couverture ? entry.couverture : null;
       f.title.textContent = entry ? "Modifier l'entrée" : 'Nouvelle entrée';
       f.fields.classList.remove('sig4cem-hidden');
       this._fillTypes();

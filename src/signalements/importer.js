@@ -34,6 +34,8 @@ NS.Importer = {
       meta.commentaire = p.commentaire || '';
       pieces.push(meta);
     }
+    // Couverture : nom de fichier dans l'archive -> identifiant de la photo rétablie (absente : la première photo).
+    const iCouv = dep.couverture ? (dep.pieces || []).findIndex((p) => p.nom === dep.couverture) : -1;
     const loc = dep.localisation;
     return {
       id: dep.id,
@@ -51,6 +53,7 @@ NS.Importer = {
       referenceDemandeur: (dep.provenance || {}).referenceDemandeur || '',
       description: dep.description || '',
       pieces,
+      couverture: iCouv > 0 && pieces[iCouv] ? pieces[iCouv].id : null,
       creeLe: dep.creeLe,
       version: dep.version || 1,
       modifieLe: dep.modifieLe,
