@@ -74,6 +74,8 @@ async function vignetteServeur(entry) {
   return vignettesServeur.get(cle);
 }
 
+SIG.vignetteServeur = vignetteServeur; // aussi utilisée par la liste « Toutes les entrées » (all.js)
+
 function fmtDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);

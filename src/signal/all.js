@@ -94,9 +94,9 @@ SIG.All = {
     const typeDef = D.type(e.type);
     const natureFr = (D.nature(e.nature || (typeDef && typeDef.nature)) || {}).fr;
     const domaineFr = e.domaine ? (D.domaine(e.domaine) || {}).fr : '';
-    const nd = [natureFr, domaineFr].filter(Boolean).join(' – ').toLocaleUpperCase('fr-BE');
+    const nd = natureFr ? `(${natureFr.toLocaleUpperCase('fr-BE')}${domaineFr ? ` – ${domaineFr}` : ''})` : (domaineFr ? `(${domaineFr})` : '');
     const day = fmtDay(e.modifieLe || e.recuLe);
-    const ident = [e.reference, `v0.${String(e.version || 1).padStart(2, '0')}`, day ? `du ${day}` : ''].filter(Boolean).join(' ');
+    const ident = [`v0.${String(e.version || 1).padStart(2, '0')}`, day ? `du ${day}` : ''].filter(Boolean).join(' ');
     const title = e.titre || (typeDef && typeDef.fr) || 'Entrée';
     const meta = [e.dateObservation, e.lieu, e.nbPieces ? `${e.nbPieces} photo${e.nbPieces > 1 ? 's' : ''}` : '', e.x == null ? 'sans position' : ''].filter(Boolean).join(' · ');
     const dl = h('dl', { class: 'sig4cem-dl' });
@@ -112,7 +112,9 @@ SIG.All = {
     edit.addEventListener('click', () => ctx.revise(e.reference));
     const actions = h('div', { class: 'sig4cem-row__actions' }, edit);
     if (this.canDelete(e.redacteur)) actions.append(this.trashButton(e.reference, title, () => this.open(ctx)));
-    const details = h('details', { class: 'sig4cem-listrow__details' }, h('summary', {}, h('strong', { class: 'sig4cem-row__title', text: title }), rest), dl, actions);
+    const vign = h('div', { class: `sig4cem-row__vign${e.nbPieces ? '' : ' sig4cem-row__vign--vide'}`, text: e.nbPieces ? '' : 'sans photo' });
+    if (e.nbPieces && SIG.vignetteServeur) SIG.vignetteServeur(e).then((url) => { if (url) vign.style.backgroundImage = `url(${url})`; }).catch(() => {});
+    const details = h('details', { class: 'sig4cem-listrow__details' }, h('summary', {}, vign, h('strong', { class: 'sig4cem-row__title', text: e.reference ? `${e.reference} : ${title}` : title }), rest), dl, actions);
     return h('li', { class: 'sig4cem-listrow' }, details);
   },
 };
