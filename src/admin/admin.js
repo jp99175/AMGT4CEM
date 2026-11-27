@@ -135,7 +135,7 @@ function carte(u) {
   const b = h('button', { type: 'button', class: 'adm-card' },
     h('span', { class: 'adm-card__nom' },
       h('strong', { text: `${u.prenom} ${u.nom.toLocaleUpperCase('fr-BE')} ` }),
-      u.trigramme ? h('strong', { text: `[${u.trigramme}]` }) : h('em', { class: 'adm-card__tri-vide', text: '[à attribuer]' })),
+      u.trigramme ? h('span', { class: 'adm-card__tri', text: `[${u.trigramme}]` }) : h('em', { class: 'adm-card__tri-vide', text: '[à attribuer]' })),
     h('span', { class: 'adm-card__mat', text: u.matricule }),
     h('span', { class: 'adm-card__line', text: org }),
     h('span', { class: 'adm-card__line', text: [gsmAffiche(u.gsm), u.email].filter(Boolean).join(' · ') }),
