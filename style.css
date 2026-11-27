@@ -1361,3 +1361,7 @@ html, body {
 .amgt-rapport-pdf { padding: 2px; background: none; border: none; cursor: pointer; line-height: 0; }
 .amgt-rapport-pdf:disabled { opacity: 0.4; }
 .amgt-rapport-pdf__ic { display: block; width: 23px; height: 23px; background: #0b5c75; -webkit-mask: url(src/annotate/icons/icone-pdf.svg) center / contain no-repeat; mask: url(src/annotate/icons/icone-pdf.svg) center / contain no-repeat; }
+
+/* Pop-up d'une entrée : le rapport PDF en bas à droite du cadre du haut */
+.amgt-sig-popup__cadre { position: relative; padding-right: 30px; min-height: 76px; }
+.amgt-sig-popup__cadre .amgt-rapport-pdf { position: absolute; right: 0; bottom: 0; }

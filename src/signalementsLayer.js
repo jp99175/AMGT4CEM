@@ -242,25 +242,23 @@ const AMGT4CEM_SignalementsLayer = {
     const nature = (vocab.natures || []).find((n) => n.code === s.nature);
     const box = document.createElement('div');
     box.className = 'amgt-popup amgt-sig-popup';
+    // Cadre du haut : photo, titre, référence et version, nature – type – domaine ; icône du rapport PDF en bas à droite.
+    const cadre = document.createElement('div');
+    cadre.className = 'amgt-sig-popup__cadre';
     const titre = document.createElement('strong');
     titre.textContent = s.titre || (type && type.fr) || 'Entrée';
     if (s.nbPieces) {
       const vign = document.createElement('div');
       vign.className = 'amgt-sig-popup__vign';
-      box.append(vign);
+      cadre.append(vign);
     }
-    box.append(titre);
+    cadre.append(titre);
     const v = `v0.${String(s.version || 1).padStart(2, '0')}`;
     const quand = day(s.modifieLe || s.recuLe);
-    box.append(p([s.reference, v, quand ? `du ${quand}` : ''].filter(Boolean).join(' '), 'amgt-sig-popup__ref'));
-    box.append(p([(nature && nature.fr) || s.nature, (type && type.fr) || s.type, s.domaine].filter(Boolean).join(' – ').toUpperCase(), 'amgt-sig-popup__kind'));
-    if (s.dateObservation) box.append(p(`Observé le ${day(s.dateObservation)}`));
-    if (s.lieu) box.append(p(s.lieu));
-    if (s.description) box.append(p(s.description));
-    if (s.nbPieces) box.append(p(`${s.nbPieces} photo${s.nbPieces > 1 ? 's' : ''}`));
-    if (s.redacteurNom) box.append(p(`Rédacteur : ${s.redacteurNom}`));
-    const autres = (s.contributeursNoms || []).filter((n) => n !== s.redacteurNom);
-    if (autres.length) box.append(p(`Contributeurs : ${autres.join(', ')}`));
+    cadre.append(p([s.reference, v, quand ? `du ${quand}` : ''].filter(Boolean).join(' '), 'amgt-sig-popup__ref'));
+    cadre.append(p([(nature && nature.fr) || s.nature, (type && type.fr) || s.type, s.domaine].filter(Boolean).join(' – ').toUpperCase(), 'amgt-sig-popup__kind'));
+    if (window.AMGT4CEM_RapportPdf) cadre.append(AMGT4CEM_RapportPdf.bouton(s.reference, s.version || 1));
+    box.append(cadre);
     const actions = document.createElement('div');
     actions.className = 'amgt-sig-popup__actions';
     const edit = document.createElement('a');
@@ -268,7 +266,6 @@ const AMGT4CEM_SignalementsLayer = {
     edit.className = 'amgt-sig-popup__edit';
     edit.textContent = '✎ Modifier (révision)';
     actions.append(edit);
-    if (window.AMGT4CEM_RapportPdf) actions.append(AMGT4CEM_RapportPdf.bouton(s.reference, s.version || 1));
     // Corbeille alignée à droite : rédacteur de l'entrée ou administrateur (le serveur le vérifie aussi).
     const me = AMGT4CEM_Auth.session();
     if (me && (AMGT4CEM_Auth.aDroit('utilisateurs', me) || (s.redacteur && s.redacteur === me.utilisateur.matricule))) {
