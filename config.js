@@ -253,6 +253,7 @@ const AMGT4CEM_CONFIG = {
         './src/plugins.js', // seulement captureClicks : les polygones du réseau lui renvoient les clics
         './src/searchTool.js',
         './src/signal/shims.js',
+        './src/annotate/heurePrise.js',
         './src/annotate/store.js',
         './src/signalements/zip-writer.js',
         './src/signalements/depot.js',

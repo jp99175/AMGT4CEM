@@ -112,7 +112,8 @@ SIG.Form = {
 
   async _addPhoto(file) {
     try {
-      this.photos.push(await AMGT4CEM_Annotate.Store.add(this.entryId, file));
+      const me = AMGT4CEM_Auth.session();
+      this.photos.push(await AMGT4CEM_Annotate.Store.add(this.entryId, file, me ? me.utilisateur.matricule : null));
       await this._renderPhotos();
     } catch (err) {
       console.error('[SIG4CEM] Photo non ajoutée :', err);

@@ -32,6 +32,8 @@ NS.Importer = {
         mep: p.mep || null,
       });
       meta.commentaire = p.commentaire || '';
+      meta.auteur = p.auteur || null;
+      meta.prisLe = p.prisLe || null;
       pieces.push(meta);
     }
     // Couverture : nom de fichier dans l'archive -> identifiant de la photo rétablie (absente : la première photo).

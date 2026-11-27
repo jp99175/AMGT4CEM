@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const VERSION = '20261127-1818'; // @VERSION (écrit par tools/stamp-sw.sh)
+const VERSION = '20261127-1848'; // @VERSION (écrit par tools/stamp-sw.sh)
 const CACHE = 'amgt4cem-app';
 const DELAI_RESEAU_MS = 4000;
 const PARALLELE = 6;
@@ -72,6 +72,7 @@ const FICHIERS = [
   './src/annotate/annotate.js',
   './src/annotate/dom.js',
   './src/annotate/editor.js',
+  './src/annotate/heurePrise.js',
   './src/annotate/history.js',
   './src/annotate/icons/icone-cercle.svg',
   './src/annotate/icons/icone-crayon.svg',

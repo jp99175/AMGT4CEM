@@ -925,6 +925,113 @@ async function lireToutZip(buffer) {
   return out;
 }
 
+// ---------------------------------------------------------------- nommage des photos (convention du 4/11/2026, décisions du 27/11/2026)
+// Nom définitif : IMG_AAAA-0nnn-TTT_AAAAMMJJ_HHMMSS.jpg = référence, trigramme de l'AUTEUR de la photo, heure de prise de vue
+// (heure de Bruxelles). Le suffixe -2, -3… n'existe que si plusieurs photos d'une même fiche ont le même auteur et la même seconde.
+// Le renommage est déterministe (mêmes photos dans le même ordre = mêmes noms) : une révision renvoyée donne les mêmes noms.
+
+let tableCrc = null;
+function crc32(octets) {
+  if (!tableCrc) {
+    tableCrc = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; tableCrc[n] = c >>> 0; }
+  }
+  let crc = 0xffffffff;
+  for (let i = 0; i < octets.length; i++) crc = tableCrc[(crc ^ octets[i]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+/** Archive ZIP « stored » (sans compression, comme celle de l'appareil). @param {{name:string,data:Uint8Array}[]} entrees */
+function construireZip(entrees) {
+  const enc = new TextEncoder();
+  const d = new Date();
+  const dosTime = (d.getUTCHours() << 11) | (d.getUTCMinutes() << 5) | (d.getUTCSeconds() >> 1);
+  const dosDate = ((d.getUTCFullYear() - 1980) << 9) | ((d.getUTCMonth() + 1) << 5) | d.getUTCDate();
+  const locaux = [];
+  const centraux = [];
+  let decalage = 0;
+  for (const { name, data } of entrees) {
+    const nom = enc.encode(name);
+    const crc = crc32(data);
+    const l = new DataView(new ArrayBuffer(30));
+    l.setUint32(0, 0x04034b50, true); l.setUint16(4, 20, true); l.setUint16(6, 0x0800, true); l.setUint16(10, dosTime, true); l.setUint16(12, dosDate, true);
+    l.setUint32(14, crc, true); l.setUint32(18, data.length, true); l.setUint32(22, data.length, true); l.setUint16(26, nom.length, true);
+    locaux.push(new Uint8Array(l.buffer), nom, data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(12, dosTime, true); c.setUint16(14, dosDate, true);
+    c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, nom.length, true); c.setUint32(42, decalage, true);
+    centraux.push(new Uint8Array(c.buffer), nom);
+    decalage += 30 + nom.length + data.length;
+  }
+  const tailleCentral = centraux.reduce((n, x) => n + x.length, 0);
+  const fin = new DataView(new ArrayBuffer(22));
+  fin.setUint32(0, 0x06054b50, true); fin.setUint16(8, entrees.length, true); fin.setUint16(10, entrees.length, true); fin.setUint32(12, tailleCentral, true); fin.setUint32(16, decalage, true);
+  const morceaux = [...locaux, ...centraux, new Uint8Array(fin.buffer)];
+  const out = new Uint8Array(morceaux.reduce((n, x) => n + x.length, 0));
+  let o = 0;
+  for (const x of morceaux) { out.set(x, o); o += x.length; }
+  return out;
+}
+
+/** « AAAA-MM-JJTHH:MM:SS » (heure du mur) à partir d'un instant, en heure de Bruxelles. */
+function heureBruxelles(iso) {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Brussels', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso));
+  const g = (t) => parts.find((x) => x.type === t).value;
+  return `${g('year')}-${g('month')}-${g('day')}T${g('hour')}:${g('minute')}:${g('second')}`;
+}
+
+/** Matricule de l'auteur de chaque photo : celui noté sur la photo, à défaut celui qui envoie. */
+function auteurDe(piece, deposePar) {
+  return (piece && typeof piece.auteur === 'string' && piece.auteur) || deposePar || null;
+}
+
+/** Refuse l'envoi si l'auteur d'une photo est inconnu ou n'a pas de trigramme. @throws HttpError 409 */
+function verifierAuteurs(sig, ref, deposePar) {
+  const vus = new Set();
+  for (const p of (sig && Array.isArray(sig.pieces) ? sig.pieces : [])) {
+    const m = auteurDe(p, deposePar);
+    if (vus.has(m)) continue;
+    vus.add(m);
+    const u = m ? ref.intervenants.find((x) => x.matricule === m) : null;
+    if (!u) throw new HttpError(409, 'Envoi refusé : l\'auteur d\'une photo n\'est pas identifié. Reconnectez-vous puis renvoyez.');
+    if (!u.trigramme) throw new HttpError(409, `Envoi refusé : ${`${u.prenom} ${u.nom}`.trim()} n'a pas encore de trigramme. Un gestionnaire des utilisateurs doit lui en attribuer un (Réglages > Utilisateurs) ; la fiche reste sur l'appareil, renvoyez ensuite.`);
+  }
+}
+
+/**
+ * Donne leur nom définitif aux photos (et aux calques) d'une archive, réécrit signalement.json et renvoie la nouvelle archive.
+ * @returns {{ zip: Uint8Array, fichiers: Map, sig: object }}
+ */
+function renommerPhotos(fichiers, sig, reference, ref, deposePar, recuLe) {
+  const noms = new Map();   // ancien nom -> nouveau
+  const vus = new Map();
+  const pieces = Array.isArray(sig.pieces) ? sig.pieces : [];
+  for (const p of pieces) {
+    const u = ref.intervenants.find((x) => x.matricule === auteurDe(p, deposePar));
+    const t = typeof p.prisLe === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(p.prisLe) ? p.prisLe : heureBruxelles(recuLe);
+    const base = `IMG_${reference}-${String(u.trigramme).toUpperCase()}_${t.slice(0, 4)}${t.slice(5, 7)}${t.slice(8, 10)}_${t.slice(11, 13)}${t.slice(14, 16)}${t.slice(17, 19)}`;
+    const n = (vus.get(base) || 0) + 1;
+    vus.set(base, n);
+    const nouveau = `${base}${n > 1 ? `-${n}` : ''}`;
+    if (!fichiers.has(p.nom)) throw new HttpError(400, `Photo « ${p.nom} » absente de l'archive.`);
+    noms.set(p.nom, `${nouveau}.jpg`);
+    if (p.annotations && p.annotations.nom) {
+      if (!fichiers.has(p.annotations.nom)) throw new HttpError(400, `Calque « ${p.annotations.nom} » absent de l'archive.`);
+      noms.set(p.annotations.nom, `${nouveau}_ANNOT.png`);
+    }
+  }
+  const sortie = new Map();
+  for (const [nom, octets] of fichiers) sortie.set(noms.get(nom) || nom, octets);
+  const neuf = JSON.parse(JSON.stringify(sig));
+  for (const p of neuf.pieces || []) {
+    p.nom = noms.get(p.nom);
+    if (p.annotations && p.annotations.nom) p.annotations.nom = noms.get(p.annotations.nom);
+  }
+  if (neuf.couverture) neuf.couverture = noms.get(neuf.couverture) || null;
+  sortie.set('signalement.json', new TextEncoder().encode(JSON.stringify(neuf, null, 2)));
+  return { zip: construireZip([...sortie].map(([name, data]) => ({ name, data }))), fichiers: sortie, sig: neuf };
+}
+
 /** Ce que la carte a besoin de savoir d'un signalement (jamais les pièces ni le détail). */
 function entreeIndex(sig, reference, recuLe, deposePar) {
   const loc = sig.localisation && Number.isFinite(sig.localisation.x) && Number.isFinite(sig.localisation.y) ? sig.localisation : null;
@@ -1073,13 +1180,24 @@ async function routeDepot(request, env, url) {
   const magic = new Uint8Array(body.slice(0, 4));
   if (!(magic[0] === 0x50 && magic[1] === 0x4b && magic[2] === 0x03 && magic[3] === 0x04)) throw new HttpError(400, "Ce n'est pas une archive ZIP.");
 
+  // Photos : l'auteur de chacune doit être identifié et avoir un trigramme AVANT qu'une référence soit attribuée.
+  let fichiersEnvoyes;
+  try { fichiersEnvoyes = await lireToutZip(body); } catch (err) { throw new HttpError(400, 'Archive ZIP illisible.'); }
+  let sigEnvoye = null;
+  try { const brut = fichiersEnvoyes.get('signalement.json'); sigEnvoye = brut ? JSON.parse(new TextDecoder().decode(brut)) : null; } catch (err) { sigEnvoye = null; }
+  const { ref: refIntervenants } = await chargerRef(env);
+  if (sigEnvoye) verifierAuteurs(sigEnvoye, refIntervenants, deposePar);
+
   // Série « commun » tant que les deux flux partagent le même dossier R2 (séparation à l'étape des fiches).
   const { reference, deja } = await compteur(env, { action: 'reference', flux: 'commun', id, annee: anneeBruxelles() });
 
   const dossier = `${BASE}/${reference}`;
   const recuLe = new Date().toISOString();
   const fichier = (request.headers.get('X-Fichier') || '').replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 120);
-  const entree = await entreeDepuisArchive(body, reference, recuLe, deposePar);
+  // Noms définitifs des photos : l'archive rangée (depot.zip) et le déballage portent les mêmes noms que fiche.json.
+  const renomme = sigEnvoye ? renommerPhotos(fichiersEnvoyes, sigEnvoye, reference, refIntervenants, deposePar, recuLe) : null;
+  const corps = renomme ? renomme.zip : new Uint8Array(body);
+  const entree = await entreeDepuisArchive(corps.buffer.slice(corps.byteOffset, corps.byteOffset + corps.byteLength), reference, recuLe, deposePar);
 
   // Révision d'une entrée déjà reçue : même identifiant, version plus récente. Une version plus ancienne que celle du
   // serveur est refusée (quelqu'un d'autre a révisé entre-temps) ; l'ancienne version est gardée dans historique/.
@@ -1106,7 +1224,7 @@ async function routeDepot(request, env, url) {
   }
   if (entree && !revisions.some((r) => r.version === entree.version)) revisions.push({ version: entree.version, recuLe, deposePar });
   // Écriture à chaque envoi (même si deja) : une écriture ratée au premier essai se rattrape au suivant.
-  await env.DEPOTS.put(`${dossier}/depot.zip`, body, { httpMetadata: { contentType: 'application/zip' } });
+  await env.DEPOTS.put(`${dossier}/depot.zip`, corps, { httpMetadata: { contentType: 'application/zip' } });
   await env.DEPOTS.put(
     `${dossier}/recu.json`,
     JSON.stringify({ reference, id, flux, fichier, taille: body.byteLength, recuLe, deposePar, revisions }, null, 2),
@@ -1115,7 +1233,7 @@ async function routeDepot(request, env, url) {
   // Déballage pour la consultation : fiche.json, pieces/ (photos et calques, mêmes noms que dans l'archive) et revisions/ (PDF de cette
   // version). Un échec ici ne perd pas le dépôt : l'archive complète est déjà rangée.
   try {
-    const fichiers = await lireToutZip(body);
+    const fichiers = renomme ? renomme.fichiers : fichiersEnvoyes;
     const types = { json: 'application/json', pdf: 'application/pdf', jpg: 'image/jpeg', png: 'image/png' };
     for (const [nom, octets] of fichiers) {
       if (!/^[A-Za-z0-9._-]{1,150}$/.test(nom)) continue;

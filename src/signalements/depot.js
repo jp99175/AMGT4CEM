@@ -66,13 +66,12 @@ NS.Depot = {
     return id.replace(/[^0-9a-f]/gi, '').slice(0, 8).toUpperCase().padEnd(8, '0');
   },
 
-  /** Nom de photo : IMG_<titre>_<AAAAMMJJ>_MX.jpg (convention de nommage de l'organisation). */
+  /**
+   * Nom PROVISOIRE d'une photo dans l'archive d'envoi. Le nom définitif (IMG_AAAA-0nnn-TTT_AAAAMMJJ_HHMMSS.jpg : référence, trigramme
+   * de l'auteur, heure de prise de vue) est donné par le serveur à la réception, car la référence n'existe qu'après le premier envoi.
+   */
   pieceFileName(s, index) {
-    const titre = [this.shortRef(s.id), this.type(s.type).court]
-      .concat(s.domaine ? [this.domaine(s.domaine).court] : [])
-      .concat([String(index + 1).padStart(2, '0')])
-      .join('-');
-    return `IMG_${titre}_${s.dateObservation.replace(/-/g, '')}_MX.jpg`;
+    return `IMG_PROVISOIRE-${String(index + 1).padStart(2, '0')}.jpg`;
   },
 
   /** Calque d'annotations d'une photo : même nom que la photo, suffixe _ANNOT, en PNG. */
@@ -118,6 +117,8 @@ NS.Depot = {
         taille: meta.taille,
         sha256: meta.sha256,
         sha256Original: meta.sha256Original,
+        auteur: meta.auteur || null, // matricule de celui qui a ajouté la photo (le serveur en tire le trigramme)
+        prisLe: meta.prisLe || null, // heure de prise de vue (heure de Bruxelles) : AAAA-MM-JJTHH:MM:SS
         // Commentaire de la photo et calque d'annotations (PNG transparent, à superposer : la photo reste intacte).
         commentaire: meta.commentaire || '',
         annotations: meta.annotation

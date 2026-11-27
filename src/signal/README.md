@@ -48,8 +48,10 @@ d'interstation. Pas de points métier. Seuls points affichés : les entrées loc
 Chaque photo (réduite à 2000 px, JPEG 85) a un commentaire texte et, au choix, des annotations (crayon, flèche, cercle,
 texte en zone transparente, modifiable, déplaçable, de taille et couleur réglables) saisies avec l'outil commun `src/annotate/` (voir son README). La photo n'est jamais modifiée : les annotations sont enregistrées à part, sur un
 calque PNG transparent (grand côté 1000 px) superposé à l'affichage, avec les traits (coordonnées relatives) pour les
-reprendre. Dans l'archive de dépôt : `IMG_…_MX.jpg` (photo), `IMG_…_MX_ANNOT.png` (calque) et, dans `signalement.json`,
-`pieces[i].commentaire` et `pieces[i].annotations` (nom, taille, SHA-256), champs facultatifs (schéma version 1).
+reprendre. Dans l'archive d'envoi, les noms sont provisoires (`IMG_PROVISOIRE-01.jpg`, `…_ANNOT.png`) ; le serveur les renomme à la réception en
+`IMG_AAAA-0nnn-TTT_AAAAMMJJ_HHMMSS.jpg` (référence, trigramme de l'auteur de la photo, heure de prise de vue ; `-2`, `-3`… seulement si
+même auteur et même seconde). Dans `signalement.json` : `pieces[i].auteur` (matricule), `pieces[i].prisLe` (heure de prise de vue, heure de
+Bruxelles), `pieces[i].commentaire` et `pieces[i].annotations` (nom, taille, SHA-256), champs facultatifs (schéma version 1).
 Reste à faire : recadrage.
 
 ## À faire
