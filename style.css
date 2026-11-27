@@ -1347,3 +1347,7 @@ html, body {
 #amgt-lieux-panel .amgt-lieux-modes button.amgt-lieux-grise { opacity: .45; border-style: dashed; }
 .amgt-lieux-survol.leaflet-grab, .amgt-lieux-survol .leaflet-grab, .amgt-lieux-survol .leaflet-interactive, .amgt-lieux-survol.amgt-lieux-ptr.leaflet-grab, .amgt-lieux-survol.amgt-lieux-ptr .leaflet-grab, .amgt-lieux-survol.amgt-lieux-ptr .leaflet-interactive { cursor: pointer !important; }
 .amgt-lieux-poignee--ref { opacity: .55; pointer-events: none; }
+
+.amgt-sig-popup__vign { float: left; width: 72px; height: 72px; margin: 0 10px 4px 0; border-radius: 6px; background: #d9e1e6; overflow: hidden; }
+.amgt-sig-popup__vign img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.amgt-sig-popup__actions { clear: both; }

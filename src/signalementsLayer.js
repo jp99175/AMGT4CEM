@@ -196,6 +196,7 @@ const AMGT4CEM_SignalementsLayer = {
     });
     const marker = L.marker(AMGT4CEM_CRS.lambertToLatLng([s.x, s.y]), { icon: small, opacity: this._opacityFactor });
     marker.bindPopup(this._popup(s, vocab), { className: 'amgt-sig-popup-wrap' });
+    if (s.nbPieces) marker.on('popupopen', () => this._chargerVignette(s, marker.getPopup().getElement()));
     marker.addTo(this._group);
     if (amiante) {
       const picto = L.divIcon({
@@ -205,6 +206,27 @@ const AMGT4CEM_SignalementsLayer = {
         iconAnchor: [8, 18],
       });
       this._amiante.push({ marker, small, picto });
+    }
+  },
+
+  /** Vignette de couverture : téléchargée à l'ouverture du pop-up seulement ; sans réseau, le pop-up reste sans vignette. */
+  async _chargerVignette(s, el) {
+    const zone = el && el.querySelector('.amgt-sig-popup__vign');
+    if (!zone || zone.firstChild) return;
+    this._vignettes = this._vignettes || new Map();
+    const cle = `${s.reference}@${s.version || 1}`;
+    try {
+      if (!this._vignettes.has(cle)) {
+        this._vignettes.set(cle, AMGT4CEM_Auth.call(`/signalements/${encodeURIComponent(s.reference)}/couverture`, { blob: true }).then((b) => URL.createObjectURL(b)));
+      }
+      const url = await this._vignettes.get(cle);
+      const img = document.createElement('img');
+      img.alt = 'Photo de couverture';
+      img.src = url;
+      zone.append(img);
+    } catch (err) {
+      this._vignettes.delete(cle);
+      zone.remove();
     }
   },
 
@@ -222,6 +244,11 @@ const AMGT4CEM_SignalementsLayer = {
     box.className = 'amgt-popup amgt-sig-popup';
     const titre = document.createElement('strong');
     titre.textContent = s.titre || (type && type.fr) || 'Entrée';
+    if (s.nbPieces) {
+      const vign = document.createElement('div');
+      vign.className = 'amgt-sig-popup__vign';
+      box.append(vign);
+    }
     box.append(titre);
     const v = `v0.${String(s.version || 1).padStart(2, '0')}`;
     const quand = day(s.modifieLe || s.recuLe);

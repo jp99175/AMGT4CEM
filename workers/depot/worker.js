@@ -12,6 +12,7 @@
  *   GET  /auth/moi            (jeton)                                      -> { utilisateur }
  *   POST /auth/motdepasse     (jeton) { ancien, nouveau }                  -> { ok: true }
  *   GET  /signalements       (jeton)  -> { date, signalements:[…] } index lu par la carte
+ *   GET  /signalements/AAAA-NNNN/couverture (jeton) photo de couverture (JPEG) pour le pop-up de la carte
  *   POST /signalements/AAAA-NNNN/supprimer (jeton ; rédacteur ou droit utilisateurs) retire l'entrée de l'index (archive conservée)
  *   GET  /sante               (jeton)                                      -> { ok: true, utilisateur }
  *   POST /depot               (jeton) corps ZIP ; X-Signalement-Id, X-Flux, X-Fichier
@@ -990,6 +991,23 @@ async function routeDepot(request, env, url) {
     const o = await env.DEPOTS.get(`${BASE}/${mArchive[1]}/depot.zip`);
     if (o) return { status: 200, raw: o.body, type: 'application/zip' };
     throw new HttpError(404, 'Entrée inconnue.');
+  }
+  // Photo de couverture d'une entrée (pop-up de la carte) : la photo non annotée choisie comme couverture, sinon la première.
+  const mCouv = /^\/signalements\/(\d{4}-\d{4})\/couverture$/.exec(url.pathname);
+  if (request.method === 'GET' && mCouv) {
+    await intervenantCourant(request, env);
+    const ix = await env.DEPOTS.get(INDEX_KEY);
+    if (ix && (await ix.json()).signalements.some((x) => x.reference === mCouv[1] && estSupprime(x))) throw new HttpError(410, 'Entrée supprimée.');
+    const f = await env.DEPOTS.get(`${BASE}/${mCouv[1]}/fiche.json`);
+    if (!f) throw new HttpError(404, 'Entrée inconnue.');
+    let fiche;
+    try { fiche = await f.json(); } catch (err) { throw new HttpError(404, 'Fiche illisible.'); }
+    const noms = (Array.isArray(fiche.pieces) ? fiche.pieces : []).map((m) => m && m.nom).filter((n) => typeof n === 'string' && /^[A-Za-z0-9._-]{1,150}$/.test(n));
+    const nom = noms.includes(fiche.couverture) ? fiche.couverture : noms[0];
+    if (!nom) throw new HttpError(404, 'Aucune photo.');
+    const o = await env.DEPOTS.get(`${BASE}/${mCouv[1]}/pieces/${nom}`);
+    if (!o) throw new HttpError(404, 'Photo introuvable.');
+    return { status: 200, raw: o.body, type: 'image/jpeg', headers: { 'Cache-Control': 'private, max-age=300' } };
   }
   const mSup = /^\/signalements\/(\d{4}-\d{4})\/supprimer$/.exec(url.pathname);
   if (request.method === 'POST' && mSup) {
