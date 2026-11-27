@@ -119,6 +119,7 @@ NS.Depot = {
         sha256Original: meta.sha256Original,
         auteur: meta.auteur || null, // matricule de celui qui a ajouté la photo (le serveur en tire le trigramme)
         prisLe: meta.prisLe || null, // heure de prise de vue (heure de Bruxelles) : AAAA-MM-JJTHH:MM:SS
+        ...(meta.importee ? { importee: true } : {}), // heure non certaine : instant de l'ajout (nom « …-import-TTT_… »)
         // Commentaire de la photo et calque d'annotations (PNG transparent, à superposer : la photo reste intacte).
         commentaire: meta.commentaire || '',
         annotations: meta.annotation

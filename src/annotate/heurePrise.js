@@ -1,7 +1,7 @@
 /**
  * Heure de prise de vue d'une photo, lue AVANT la réduction (la réduction par canvas efface les données EXIF).
  * Ordre : 1. heure EXIF (écrite par l'appareil photo) ; 2. heure écrite dans le nom du fichier (avec les secondes) ;
- * 3. date de dernière modification du fichier ; 4. instant de l'ajout.
+ * 3. sinon l'instant de l'ajout, signalé « importée » (décision du 27/11/2026 : la date de modification du fichier n'est pas utilisée).
  * Résultat : texte « AAAA-MM-JJTHH:MM:SS » en heure de Bruxelles (sans fuseau, c'est l'heure du mur).
  */
 (function () {
@@ -71,16 +71,19 @@ function bruxelles(ms) {
   return texte(g('year'), g('month'), g('day'), g('hour'), g('minute'), g('second'));
 }
 
-/** @param {File} file @returns {Promise<string>} */
+/**
+ * @param {File} file
+ * @returns {Promise<{prisLe:string, importee:boolean}>} `importee` : heure NON certaine (ni EXIF, ni heure dans le nom) ;
+ * `prisLe` est alors l'instant de l'ajout (la date de modification du fichier n'est pas fiable : sur téléphone, c'est souvent l'instant du choix).
+ */
 async function heurePrise(file) {
   try {
     const t = lireExif(new Uint8Array(await file.slice(0, 262144).arrayBuffer()));
-    if (t) return t;
+    if (t) return { prisLe: t, importee: false };
   } catch (err) { /* repli */ }
   const n = heureDuNom(file && file.name);
-  if (n) return n;
-  if (file && file.lastModified > 0) return bruxelles(file.lastModified);
-  return bruxelles(Date.now());
+  if (n) return { prisLe: n, importee: false };
+  return { prisLe: bruxelles(Date.now()), importee: true };
 }
 
 NS.heurePrise = heurePrise;

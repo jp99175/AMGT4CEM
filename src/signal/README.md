@@ -50,7 +50,7 @@ texte en zone transparente, modifiable, déplaçable, de taille et couleur régl
 calque PNG transparent (grand côté 1000 px) superposé à l'affichage, avec les traits (coordonnées relatives) pour les
 reprendre. Dans l'archive d'envoi, les noms sont provisoires (`IMG_PROVISOIRE-01.jpg`, `…_ANNOT.png`) ; le serveur les renomme à la réception en
 `IMG_AAAA-0nnn-TTT_AAAAMMJJ_HHMMSS.jpg` (référence, trigramme de l'auteur de la photo, heure de prise de vue ; `-2`, `-3`… seulement si
-même auteur et même seconde). Dans `signalement.json` : `pieces[i].auteur` (matricule), `pieces[i].prisLe` (heure de prise de vue, heure de
+même auteur et même seconde ; `IMG_AAAA-0nnn-import-TTT_…` quand l'heure n'est pas certaine : photo de la galerie sans EXIF ni heure dans le nom, heure = instant de l'ajout). Dans `signalement.json` : `pieces[i].auteur` (matricule), `pieces[i].prisLe` (heure de prise de vue, heure de
 Bruxelles), `pieces[i].commentaire` et `pieces[i].annotations` (nom, taille, SHA-256), champs facultatifs (schéma version 1).
 Reste à faire : recadrage.
 

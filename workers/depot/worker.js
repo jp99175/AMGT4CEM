@@ -926,7 +926,7 @@ async function lireToutZip(buffer) {
 }
 
 // ---------------------------------------------------------------- nommage des photos (convention du 4/11/2026, décisions du 27/11/2026)
-// Nom définitif : IMG_AAAA-0nnn-TTT_AAAAMMJJ_HHMMSS.jpg = référence, trigramme de l'AUTEUR de la photo, heure de prise de vue
+// Nom définitif : IMG_AAAA-0nnn-TTT_AAAAMMJJ_HHMMSS.jpg (ou IMG_AAAA-0nnn-import-TTT_… si l'heure n'est pas certaine) = référence, trigramme de l'AUTEUR, heure de prise de vue
 // (heure de Bruxelles). Le suffixe -2, -3… n'existe que si plusieurs photos d'une même fiche ont le même auteur et la même seconde.
 // Le renommage est déterministe (mêmes photos dans le même ordre = mêmes noms) : une révision renvoyée donne les mêmes noms.
 
@@ -1008,8 +1008,10 @@ function renommerPhotos(fichiers, sig, reference, ref, deposePar, recuLe) {
   const pieces = Array.isArray(sig.pieces) ? sig.pieces : [];
   for (const p of pieces) {
     const u = ref.intervenants.find((x) => x.matricule === auteurDe(p, deposePar));
-    const t = typeof p.prisLe === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(p.prisLe) ? p.prisLe : heureBruxelles(recuLe);
-    const base = `IMG_${reference}-${String(u.trigramme).toUpperCase()}_${t.slice(0, 4)}${t.slice(5, 7)}${t.slice(8, 10)}_${t.slice(11, 13)}${t.slice(14, 16)}${t.slice(17, 19)}`;
+    const valide = typeof p.prisLe === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(p.prisLe);
+    const t = valide ? p.prisLe : heureBruxelles(recuLe);
+    const importee = p.importee === true || !valide; // heure non certaine : « import » devant le trigramme
+    const base = `IMG_${reference}-${importee ? 'import-' : ''}${String(u.trigramme).toUpperCase()}_${t.slice(0, 4)}${t.slice(5, 7)}${t.slice(8, 10)}_${t.slice(11, 13)}${t.slice(14, 16)}${t.slice(17, 19)}`;
     const n = (vus.get(base) || 0) + 1;
     vus.set(base, n);
     const nouveau = `${base}${n > 1 ? `-${n}` : ''}`;

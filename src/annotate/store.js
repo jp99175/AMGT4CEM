@@ -68,16 +68,16 @@ NS.Store = {
   /**
    * Enregistre une photo pour un point.
    * `auteur` : matricule de celui qui ajoute la photo ; l'heure de prise de vue est lue sur le fichier d'origine (avant la réduction).
-   * @returns {Promise<{id:string,taille:number,largeur:number,hauteur:number,sha256:string,sha256Original:string,auteur:string|null,prisLe:string}>}
+   * @returns {Promise<{id:string,taille:number,largeur:number,hauteur:number,sha256:string,sha256Original:string,auteur:string|null,prisLe:string,importee?:boolean}>}
    */
   async add(pointId, file, auteur) {
-    const prisLe = await NS.heurePrise(file);
+    const { prisLe, importee } = await NS.heurePrise(file);
     const sha256Original = await this.sha256(file);
     const { blob, width, height } = await this.shrink(file);
     const sha256 = await this.sha256(blob);
     const id = crypto.randomUUID ? crypto.randomUUID() : `pc-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     await this._tx('readwrite', (store) => store.put({ id, pointId, blob, sha256, sha256Original, largeur: width, hauteur: height }));
-    return { id, taille: blob.size, largeur: width, hauteur: height, sha256, sha256Original, auteur: auteur || null, prisLe };
+    return { id, taille: blob.size, largeur: width, hauteur: height, sha256, sha256Original, auteur: auteur || null, prisLe, ...(importee ? { importee: true } : {}) };
   },
 
   /** Remet en stock une photo venue du serveur (révision d'une entrée envoyée) : fichier inchangé, calque et traits repris. */
