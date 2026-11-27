@@ -126,10 +126,10 @@ async function backToMenu() {
   await renderMenu();
 }
 
-/** Retour à l'écran d'où l'on vient (après modification d'une entrée) : liste, « Toutes les entrées », carte, sinon menu. `message` : seulement pour les listes « Mes entrées ». */
+/** Retour à l'écran d'où l'on vient (après modification d'une entrée) : liste, « Toutes les entrées », carte, sinon menu. `message` : bandeau de la liste « Mes entrées », ou message bref (2 s) pour la carte et « Toutes les entrées ». */
 async function backToOrigin(message) {
-  if (origin === 'carte') { origin = null; location.href = AMGT4CEM_Router.url('carto'); return; }
-  if (origin === 'all') { await openAll(); return; }
+  if (origin === 'carte') { origin = null; AMGT4CEM_Toast.afterReload(message); location.href = AMGT4CEM_Router.url('carto'); return; }
+  if (origin === 'all') { await openAll(); AMGT4CEM_Toast.show(message); return; }
   if (origin) { const o = origin; await openList(o, message); return; }
   await backToMenu();
 }

@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const VERSION = '20261127-1519'; // @VERSION (écrit par tools/stamp-sw.sh)
+const VERSION = '20261127-1522'; // @VERSION (écrit par tools/stamp-sw.sh)
 const CACHE = 'amgt4cem-app';
 const DELAI_RESEAU_MS = 4000;
 const PARALLELE = 6;
@@ -192,6 +192,7 @@ const FICHIERS = [
   './src/signalementsLayer.js',
   './src/stockage.js',
   './src/swRegister.js',
+  './src/toast.js',
   './src/tuilesLambert.js',
   './src/tuningSynoptique.css',
   './src/tuningSynoptique.js',
