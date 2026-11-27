@@ -145,8 +145,9 @@ async function startRevision(reference) {
   await renderMenu();
   try {
     const entry = await NS.Importer.fromServer(reference);
-    const old = await SIG.Entries.get(entry.id);
-    if (old) await SIG.Entries.remove(entry.id); // copie locale envoyée : remplacée par la version du serveur
+    // Copie locale envoyée : remplacée par la version du serveur. Les photos rétablies depuis le serveur portent le même identifiant de
+    // point que l'ancienne copie : on ne supprime donc que les anciennes photos, jamais celles-là.
+    await SIG.Entries.remplacerCopie(entry.id, (entry.pieces || []).map((p) => p.id));
     const saved = await SIG.Entries.add({ ...entry, statut: S.DRAFT, importe: true, lotOuvert: false });
     notice = '';
     origin = null;

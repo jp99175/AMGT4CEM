@@ -92,6 +92,22 @@ SIG.Entries = {
     });
   },
 
+  /**
+   * Remplace la copie locale d'une entrée déjà envoyée par la version rouverte depuis le serveur : supprime l'ancienne entrée et
+   * celles de ses photos qui ne sont pas reprises (`gardees` : identifiants des photos de la version rouverte). Ne touche surtout
+   * pas aux photos rétablies depuis le serveur, qui portent le même identifiant de point (sinon la fiche rouverte n'a plus de photo).
+   */
+  async remplacerCopie(id, gardees) {
+    const old = await this.get(id);
+    if (!old) return;
+    await this._run('readwrite', (s) => s.delete(id));
+    const garde = new Set(gardees || []);
+    for (const p of old.pieces || []) {
+      if (garde.has(p.id)) continue;
+      try { await window.AMGT4CEM_Annotate.Store.remove(p.id); } catch (err) { console.warn('[SIG4CEM] Photo locale non supprimée :', err); }
+    }
+  },
+
   /** Supprime l'entrée et ses photos locales (jamais la copie du serveur, s'il y en a une). */
   async remove(id) {
     await this._run('readwrite', (s) => s.delete(id));
