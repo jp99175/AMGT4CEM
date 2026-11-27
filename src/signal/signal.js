@@ -19,7 +19,7 @@ const S = SIG.STATUT;
 const root = document.getElementById('sig4cem-root');
 const screens = {};
 let notice = ''; // message affiché une fois dans le menu (résultat du dernier enregistrement)
-let origin = null; // liste d'où vient l'entrée en cours de modification (on y revient après), ou null : menu
+let origin = null; // d'où vient l'entrée en cours de modification (on y revient après) : 'draft' | 'file' | 'envoye' (Mes entrées), 'all' (Toutes les entrées), 'carte' (bulle de la carte), ou null : menu
 
 function newId() {
   return crypto.randomUUID ? crypto.randomUUID() : `sg-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -82,7 +82,7 @@ async function renderMenu() {
   if (AMGT4CEM_Auth.session()) SIG.All.count().then((n) => { allCounter.textContent = n == null ? '(indisponible)' : `(${n})`; });
   const nav = h('nav', { class: 'sig4cem-menu', 'aria-label': 'Signalements et demandes' },
     h('h2', { text: 'NOUVELLE ENTRÉE' }),
-    item('Signalement/demande', { text: `(${c.draft} en local)`, sub: true }, startNewEntry),
+    item('Signalement/demande', { text: '', sub: true }, startNewEntry),
     h('h3', { text: 'Mes entrées' }),
     item('Draft', { text: `(${c.draft} en local)`, sub: true }, () => openList('draft')),
     item('Téléversement en cours', { text: `(${enFile}/${c.lot})`, sub: true }, () => openList('file')),
@@ -126,20 +126,24 @@ async function backToMenu() {
   await renderMenu();
 }
 
-/** Retour à la liste d'où l'on vient (après modification d'une entrée), sinon au menu. */
-async function backToOrigin() {
-  if (origin) await openList(origin);
-  else await backToMenu();
+/** Retour à l'écran d'où l'on vient (après modification d'une entrée) : liste, « Toutes les entrées », carte, sinon menu. `message` : seulement pour les listes « Mes entrées ». */
+async function backToOrigin(message) {
+  if (origin === 'carte') { origin = null; location.href = AMGT4CEM_Router.url('carto'); return; }
+  if (origin === 'all') { await openAll(); return; }
+  if (origin) { const o = origin; await openList(o, message); return; }
+  await backToMenu();
 }
 
 // ------------------------------------------------------------------ révision d'une entrée déjà envoyée
 /** Rouvre une entrée du serveur (par sa référence) dans le formulaire : nouvelle version à enregistrer puis à envoyer. */
-async function startRevision(reference) {
+async function startRevision(reference, depuis) {
+  // `depuis` : 'carte' quand on arrive par la bulle de la carte ; sinon on garde l'origine en cours (liste ou « Toutes les entrées »).
+  if (depuis) origin = depuis;
   const s = AMGT4CEM_Auth.session() || await AMGT4CEM_Auth.ensure({ message: 'Connectez-vous pour modifier une entrée.' });
   if (!s) return;
   // Une révision déjà en cours sur cet appareil (brouillon ou envoi en attente) : on la reprend telle quelle.
   const local = (await SIG.Entries.all()).find((e) => e.reference === reference && e.statut !== S.ENVOYE);
-  if (local) { origin = null; startEdit(local); return; }
+  if (local) { startEdit(local); return; }
   showScreen('menu');
   notice = `Chargement de ${reference}…`;
   await renderMenu();
@@ -150,7 +154,6 @@ async function startRevision(reference) {
     await SIG.Entries.remplacerCopie(entry.id, (entry.pieces || []).map((p) => p.id));
     const saved = await SIG.Entries.add({ ...entry, statut: S.DRAFT, importe: true, lotOuvert: false });
     notice = '';
-    origin = null;
     openForm(saved.id, saved.x == null ? null : { x: saved.x, y: saved.y }, false, saved);
   } catch (err) {
     console.error('[SIG4CEM] Entrée non rouverte :', err);
@@ -165,7 +168,7 @@ async function openAll() {
     const ok = await AMGT4CEM_Auth.ensure({ message: 'Connectez-vous pour voir les entrées du système.' });
     if (!ok) return;
   }
-  origin = null;
+  origin = 'all';
   showScreen('all');
   await SIG.All.open({ back: backToMenu, revise: startRevision });
 }
@@ -237,7 +240,9 @@ async function saveEntry(data, send) {
       // Révision sans aucune modification : rien à enregistrer ni à envoyer.
       await SIG.Entries.remove(data.id);
       notice = 'Aucune modification : la version du serveur reste inchangée.';
-      if (origin) await openList(origin, notice); else await backToMenu();
+      const m = notice;
+      notice = '';
+      await backToOrigin(m);
       return true;
     }
     // Rédacteur = créateur, contributeurs = ceux qui ajoutent ou révisent : tirés de la session connectée, pas du formulaire.
@@ -253,13 +258,11 @@ async function saveEntry(data, send) {
   }
   notice = send ? "Entrée enregistrée, envoi demandé." : 'Entrée enregistrée en local (brouillon).';
   if (send) notice = await sendEntry(data.id);
-  if (origin) {
-    const message = notice;
-    notice = '';
-    await openList(origin, message);
-  } else {
-    await backToMenu();
-  }
+  const message = notice;
+  notice = '';
+  // Depuis la bulle de la carte : « Enregistrer en local » mène à la liste des brouillons, « Enregistrer et envoyer » ramène à la carte.
+  if (origin === 'carte' && !send) origin = 'draft';
+  await backToOrigin(message);
   return true;
 }
 
@@ -306,7 +309,7 @@ async function sendEntry(id) {
   const pe = AMGT4CEM_Router.params.get('edit');
   if (pe && /^\d{4}-\d{4}$/.test(pe)) {
     history.replaceState(null, '', AMGT4CEM_Router.url('signal'));
-    await startRevision(pe);
+    await startRevision(pe, 'carte');
     return;
   }
   // Arrivée depuis « Ajouter un point » de la carte : formulaire tout de suite, position pré-remplie.

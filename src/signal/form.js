@@ -235,7 +235,7 @@ SIG.Form = {
       this.entryId = entry ? entry.id : entryId;
       this.photos = entry ? (entry.pieces || []).map((m) => ({ ...m })) : [];
       this.couverture = entry && entry.couverture ? entry.couverture : null;
-      f.title.textContent = entry ? "Modifier l'entrée" : 'Nouvelle entrée';
+      f.title.textContent = entry ? `Modifier l'entrée${entry.reference ? ` ${entry.reference}` : ''}` : 'Nouvelle entrée';
       f.fields.classList.remove('sig4cem-hidden');
       this._fillTypes();
       if (entry) {
